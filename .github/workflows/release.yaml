@@ -3,6 +3,9 @@ name: Build and Publish .NET 9 Native AOT Application (Windows)
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write  # Allows creating releases and uploading assets
+
 jobs:
   build-windows:
     runs-on: windows-latest
