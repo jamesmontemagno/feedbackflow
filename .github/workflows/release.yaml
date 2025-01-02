@@ -1,4 +1,4 @@
-name: Build and Publish .NET 9 Native AOT Application
+name: Create Release
 
 on:
   workflow_dispatch:
