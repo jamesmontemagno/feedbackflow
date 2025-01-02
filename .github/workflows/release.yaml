@@ -40,7 +40,7 @@ jobs:
       run: echo "::set-output name=FullSemVer::$(dotnet-gitversion /output json /showvariable FullSemVer)"
 
     - name: Install dependencies
-      run: dotnet restore -c Release
+      run: dotnet restore
 
     - name: Build GithubFeedbackGrabber
       run: dotnet publish ./GithubFeedbackGrabber/GithubFeedbackGrabber.csproj --no-restore -c Release -r ${{ matrix.rid }} --self-contained -p:PublishAot=true -p:Version=${{ steps.gitversion.outputs.FullSemVer }} -o ./publish/GithubFeedbackGrabber
