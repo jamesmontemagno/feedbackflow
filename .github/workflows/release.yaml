@@ -37,16 +37,16 @@ jobs:
 
     - name: Determine version
       id: gitversion
-      run: echo "FullSemVer=$(dotnet-gitversion /output json /showvariable FullSemVer)" >> $GITHUB_OUTPUT
+      run: echo "::set-output name=FullSemVer::$(dotnet-gitversion /output json /showvariable FullSemVer)"
 
     - name: Install dependencies
-      run: dotnet restore
+      run: dotnet restore -c Release
 
     - name: Build GithubFeedbackGrabber
-      run: dotnet publish ./GithubFeedbackGrabber/GithubFeedbackGrabber.csproj -c Release -r ${{ matrix.rid }} --self-contained -p:PublishAot=true -p:Version=${{ steps.gitversion.outputs.FullSemVer }} -o ./publish/GithubFeedbackGrabber
+      run: dotnet publish ./GithubFeedbackGrabber/GithubFeedbackGrabber.csproj --no-restore -c Release -r ${{ matrix.rid }} --self-contained -p:PublishAot=true -p:Version=${{ steps.gitversion.outputs.FullSemVer }} -o ./publish/GithubFeedbackGrabber
 
     - name: Build YouTubeCommentGrabber
-      run: dotnet publish ./YouTubeCommentGrabber/YouTubeCommentGrabber.csproj -c Release -r ${{ matrix.rid }} --self-contained -p:PublishAot=true -p:Version=${{ steps.gitversion.outputs.FullSemVer }} -o ./publish/YouTubeCommentGrabber
+      run: dotnet publish ./YouTubeCommentGrabber/YouTubeCommentGrabber.csproj --no-restore -c Release -r ${{ matrix.rid }} --self-contained -p:PublishAot=true -p:Version=${{ steps.gitversion.outputs.FullSemVer }} -o ./publish/YouTubeCommentGrabber
 
     - name: Upload GithubFeedbackGrabber Artifact
       uses: actions/upload-artifact@v3
