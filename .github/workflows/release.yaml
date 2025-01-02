@@ -11,12 +11,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         include:
           - os: ubuntu-latest
             rid: linux-x64
           - os: windows-latest
             rid: win-x64
+          - os: macos-latest
+            rid: osx-x64
     outputs:
       FullSemVer: ${{ steps.gitversion.outputs.FullSemVer }}
     steps:
@@ -85,7 +87,7 @@ jobs:
     needs: create_release
     strategy:
       matrix:
-        rid: [linux-x64, win-x64]
+        rid: [linux-x64, win-x64, osx-x64]
     steps:
     - name: Download GithubFeedbackGrabber Artifact
       uses: actions/download-artifact@v3
