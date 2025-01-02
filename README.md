@@ -49,7 +49,7 @@ To use FeedbackFlow, ensure you have the following:
 To collect feedback from GitHub:
 
 ```bash
-./ghdump --r <repository>
+./ghdump -r <repository>
 ```
 
 #### YouTube Comment Collector (`ytdump`)
@@ -57,7 +57,7 @@ To collect feedback from GitHub:
 To gather comments from YouTube:
 
 ```bash
-./ytdump --v <video-id> --output <output-file>
+./ytdump -v <video-id> -o <output-file.json>
 ```
 
 ## License
