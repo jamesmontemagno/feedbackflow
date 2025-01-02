@@ -16,11 +16,12 @@ jobs:
       with:
         dotnet-version: '9.0.x'
 
-    - name: Use GitVersion
+    - name: Install GitVersion
+      run: dotnet tool install --global GitVersion.Tool
+
+    - name: Determine version
       id: gitversion
-      uses: gittools/actions/gitversion/execute@v0.9.12
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: gitversion /output json /showvariable FullSemVer
 
     - name: Install dependencies
       run: dotnet restore
