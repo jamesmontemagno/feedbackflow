@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ghdump": {
+      "commandName": "Project",
+      "commandLineArgs": "-r dotnet/aspire"
+    }
+  }
+}

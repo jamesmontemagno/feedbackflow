@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "ytdump": {
+      "commandName": "Project",
+      "commandLineArgs": "-c appsettings.json -o $(OutputPath)\\comments.json",
+      "workingDirectory": "$(ProjectDir)"
+    }
+  }
+}

@@ -1,0 +1,63 @@
+name: Build and Publish .NET 9 Native AOT Application (Windows)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Use GitVersion
+      id: gitversion
+      uses: gittools/actions/gitversion/execute@v0.9.12
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Install dependencies
+      run: dotnet restore
+
+    - name: Build GithubFeedbackGrabber
+      run: dotnet publish ./GithubFeedbackGrabber/GithubFeedbackGrabber.csproj -c Release -r win-x64 --self-contained -p:PublishAot=true -p:Version=${{ steps.gitversion.outputs.FullSemVer }} -o ./publish/GithubFeedbackGrabber
+
+    - name: Build YouTubeCommentGrabber
+      run: dotnet publish ./YouTubeCommentGrabber/YouTubeCommentGrabber.csproj -c Release -r win-x64 --self-contained -p:PublishAot=true -p:Version=${{ steps.gitversion.outputs.FullSemVer }} -o ./publish/YouTubeCommentGrabber
+
+    - name: Create GitHub Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: true
+
+    - name: Upload GithubFeedbackGrabber Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./publish/GithubFeedbackGrabber/ghdump.exe
+        asset_name: ghdump.exe
+        asset_content_type: application/octet-stream
+
+    - name: Upload YouTubeCommentGrabber Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./publish/YouTubeCommentGrabber/ytdump.exe
+        asset_name: ytdump.exe
+        asset_content_type: application/octet-stream
