@@ -47,13 +47,13 @@ jobs:
       run: dotnet publish ./YouTubeCommentGrabber/YouTubeCommentGrabber.csproj -c Release -r ${{ matrix.rid }} --self-contained -p:PublishAot=true -p:Version=${{ steps.gitversion.outputs.FullSemVer }} -o ./publish/YouTubeCommentGrabber
 
     - name: Upload GithubFeedbackGrabber Artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: ghdump-${{ matrix.rid }}
         path: ./publish/GithubFeedbackGrabber/ghdump
 
     - name: Upload YouTubeCommentGrabber Artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: ytdump-${{ matrix.rid }}
         path: ./publish/YouTubeCommentGrabber/ytdump
@@ -88,13 +88,13 @@ jobs:
         rid: [linux-x64, win-x64]
     steps:
     - name: Download GithubFeedbackGrabber Artifact
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: ghdump-${{ matrix.rid }}
         path: ./publish/GithubFeedbackGrabber
 
     - name: Download YouTubeCommentGrabber Artifact
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: ytdump-${{ matrix.rid }}
         path: ./publish/YouTubeCommentGrabber
