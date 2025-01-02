@@ -97,12 +97,6 @@ async Task RunAsync(string? apiKey, string[]? videosIds, string[]? playlists, st
         }
     }
 
-    var jsonSerializerOptions = new JsonSerializerOptions
-    {
-        PropertyNameCaseInsensitive = true,
-        WriteIndented = true
-    };
-
     var playListVideos = await Task.WhenAll(playlists.Select(GetVideoIdsFromPlaylist));
     string[] videos = [.. videosIds, .. playListVideos.SelectMany(s => s)];
 

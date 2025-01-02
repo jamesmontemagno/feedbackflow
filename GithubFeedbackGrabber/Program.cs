@@ -95,12 +95,6 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
 
     Console.WriteLine($"Including discussions: {(includeDiscussions.Value ? "yes" : "no")}");
 
-    var jsonSerializerOptions = new JsonSerializerOptions
-    {
-        PropertyNameCaseInsensitive = true,
-        WriteIndented = true
-    };
-
     var discussionsTask = includeDiscussions.Value ? WriteDiscussionsAsync() : Task.CompletedTask;
     var issuesTask = WriteIssuesAsync(labels);
 
