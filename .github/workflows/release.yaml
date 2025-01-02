@@ -37,7 +37,7 @@ jobs:
 
     - name: Determine version
       id: gitversion
-      run: echo "::set-output name=FullSemVer::$(dotnet-gitversion /output json /showvariable FullSemVer)"
+      run: echo "FullSemVer=$(dotnet-gitversion /output json /showvariable FullSemVer)" >> $GITHUB_OUTPUT
 
     - name: Install dependencies
       run: dotnet restore
@@ -66,11 +66,6 @@ jobs:
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      with:
-        fetch-depth: 0  # Fetch all history for all branches and tags
-
     - name: Create GitHub Release
       id: create_release
       uses: actions/create-release@v1
