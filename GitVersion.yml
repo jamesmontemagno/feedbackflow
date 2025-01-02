@@ -2,12 +2,9 @@ mode: ContinuousDeployment
 next-version: 0.1.0
 branches:
   main:
-    tag: ''
     increment: None
-    prevent-increment-of-merged-branch-version: true
     track-merge-target: false
     regex: ^main$
-    is-mainline: true
     tracks-release-branches: false
     is-release-branch: false
 ignore:
