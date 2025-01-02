@@ -1,4 +1,4 @@
-name: Build and Publish .NET 9 Native AOT Application (Windows)
+name: Build and Publish .NET 9 Native AOT Application
 
 on:
   workflow_dispatch:
@@ -7,8 +7,16 @@ permissions:
   contents: write  # Allows creating releases and uploading assets
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: windows-latest
+            rid: win-x64
 
     steps:
     - name: Checkout code
@@ -32,12 +40,13 @@ jobs:
       run: dotnet restore
 
     - name: Build GithubFeedbackGrabber
-      run: dotnet publish ./GithubFeedbackGrabber/GithubFeedbackGrabber.csproj -c Release -r win-x64 --self-contained -p:PublishAot=true -p:Version=${{ steps.gitversion.outputs.FullSemVer }} -o ./publish/GithubFeedbackGrabber
+      run: dotnet publish ./GithubFeedbackGrabber/GithubFeedbackGrabber.csproj -c Release -r ${{ matrix.rid }} --self-contained -p:PublishAot=true -p:Version=${{ steps.gitversion.outputs.FullSemVer }} -o ./publish/GithubFeedbackGrabber
 
     - name: Build YouTubeCommentGrabber
-      run: dotnet publish ./YouTubeCommentGrabber/YouTubeCommentGrabber.csproj -c Release -r win-x64 --self-contained -p:PublishAot=true -p:Version=${{ steps.gitversion.outputs.FullSemVer }} -o ./publish/YouTubeCommentGrabber
+      run: dotnet publish ./YouTubeCommentGrabber/YouTubeCommentGrabber.csproj -c Release -r ${{ matrix.rid }} --self-contained -p:PublishAot=true -p:Version=${{ steps.gitversion.outputs.FullSemVer }} -o ./publish/YouTubeCommentGrabber
 
     - name: Create GitHub Release
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       id: create_release
       uses: actions/create-release@v1
       env:
@@ -54,8 +63,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./publish/GithubFeedbackGrabber/ghdump.exe
-        asset_name: ghdump.exe
+        asset_path: ./publish/GithubFeedbackGrabber/ghdump
+        asset_name: ghdump-${{ matrix.os }}
         asset_content_type: application/octet-stream
 
     - name: Upload YouTubeCommentGrabber Release Asset
@@ -64,6 +73,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./publish/YouTubeCommentGrabber/ytdump.exe
-        asset_name: ytdump.exe
+        asset_path: ./publish/YouTubeCommentGrabber/ytdump
+        asset_name: ytdump-${{ matrix.os }}
         asset_content_type: application/octet-stream
