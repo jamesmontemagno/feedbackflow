@@ -2,6 +2,7 @@ mode: ContinuousDeployment
 next-version: 0.1.0
 branches:
   main:
+    label: ci
     increment: None
     track-merge-target: false
     regex: ^main$
