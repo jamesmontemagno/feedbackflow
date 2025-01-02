@@ -23,16 +23,19 @@ jobs:
 
     - name: Determine version
       id: gitversion
-      run: echo "::set-output name=FullSemVer::$(dotnet-gitversion /output json /showvariable FullSemVer)"
+      run: |
+        FullSemVer=$(dotnet-gitversion /output json /showvariable FullSemVer)
+        echo "FullSemVer=$FullSemVer" >> $GITHUB_ENV
+        echo "FullSemVer=$FullSemVer" >> $GITHUB_OUTPUT
 
     - name: Install dependencies
       run: dotnet restore
 
     - name: Build GithubFeedbackGrabber
-      run: dotnet publish ./GithubFeedbackGrabber/GithubFeedbackGrabber.csproj -c Release -r win-x64 --self-contained -p:PublishAot=true -p:Version=${{ steps.gitversion.outputs.FullSemVer }} -o ./publish/GithubFeedbackGrabber
+      run: dotnet publish ./GithubFeedbackGrabber/GithubFeedbackGrabber.csproj -c Release -r win-x64 --self-contained -p:PublishAot=true -p:Version=${{ env.FullSemVer }} -o ./publish/GithubFeedbackGrabber
 
     - name: Build YouTubeCommentGrabber
-      run: dotnet publish ./YouTubeCommentGrabber/YouTubeCommentGrabber.csproj -c Release -r win-x64 --self-contained -p:PublishAot=true -p:Version=${{ steps.gitversion.outputs.FullSemVer }} -o ./publish/YouTubeCommentGrabber
+      run: dotnet publish ./YouTubeCommentGrabber/YouTubeCommentGrabber.csproj -c Release -r win-x64 --self-contained -p:PublishAot=true -p:Version=${{ env.FullSemVer }} -o ./publish/YouTubeCommentGrabber
 
     - name: Create GitHub Release
       id: create_release
@@ -40,8 +43,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
+        tag_name: ${{ steps.gitversion.outputs.FullSemVer }}
+        release_name: Release ${{ steps.gitversion.outputs.FullSemVer }}
         draft: false
         prerelease: true
 

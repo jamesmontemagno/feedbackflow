@@ -2,12 +2,20 @@ mode: ContinuousDeployment
 next-version: 0.1.0
 branches:
   main:
-    label: ci
+    mode: ContinuousDelivery
+    label: alpha
     increment: None
-    track-merge-target: false
-    regex: ^main$
-    tracks-release-branches: false
+    prevent-increment:
+      when-current-commit-tagged: false
+    track-merge-target: true
+    track-merge-message: true
+    source-branches:
+    - main
+    is-source-branch-for: []
+    tracks-release-branches: true
     is-release-branch: false
+    is-main-branch: false
+    pre-release-weight: 0
 ignore:
   sha: []
 merge-message-formats: {}
