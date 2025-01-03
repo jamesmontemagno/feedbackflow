@@ -24,8 +24,16 @@ accessTokenOption.AddValidator(r =>
     }
 });
 
-var videosOption = new Option<string[]?>(["-v", "--video"], () => null, "The list of video IDs to process.");
-var playlistsOption = new Option<string[]?>(["-p", "--playlist"], () => null, "The list of playlist IDs to process.");
+var videosOption = new Option<string[]?>(["-v", "--video"], () => null, "The list of video IDs to process.")
+{
+    AllowMultipleArgumentsPerToken = true
+};
+
+var playlistsOption = new Option<string[]?>(["-p", "--playlist"], () => null, "The list of playlist IDs to process.")
+{
+    AllowMultipleArgumentsPerToken = true
+};
+
 var outputFileOption = new Option<string?>(["-o", "--output"], () => null, "The output file name and path. Default is comments.json");
 var inputConfigOption = new Option<string?>(["-c", "--config"], () => null, "The JSON file that describes a set of videos and playlists.");
 
