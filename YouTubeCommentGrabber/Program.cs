@@ -1,4 +1,5 @@
-﻿using System.CommandLine;
+﻿using System.Collections.Concurrent;
+using System.CommandLine;
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -106,11 +107,28 @@ async Task RunAsync(string? apiKey, string[]? videosIds, string[]? playlists, st
         }
     }
 
-    var playListVideos = await Task.WhenAll(playlists.Select(GetVideoIdsFromPlaylistAsync));
-    HashSet<string> videos = [.. videosIds, .. playListVideos.SelectMany(s => s)];
 
     var sw = Stopwatch.StartNew();
-    var allVideos = await Task.WhenAll(videos.Select(GetYouTubeVideoAsync));
+
+    // Process playlists and the videos in parallel
+
+    // Helper memoization function for video fetching, this should avoid fetching the same video multiple times in parallel
+    ConcurrentDictionary<string, Task<YouTubeOutputVideo?>> videoCache = [];
+    async Task<YouTubeOutputVideo?> GetYouTubeVideoCachedAsync(string videoId) =>
+        await videoCache.GetOrAdd(videoId, id => GetYouTubeVideoAsync(id));
+
+    async Task<YouTubeOutputVideo?[]> GetYouTubeVideosAsync(Task<List<string>> videosTask) =>
+        await Task.WhenAll((await videosTask).Select(GetYouTubeVideoCachedAsync));
+
+    var playListVideosTask = Task.WhenAll(playlists.Select(GetVideoIdsFromPlaylistAsync).Select(GetYouTubeVideosAsync));
+    var videosTask = Task.WhenAll(videosIds.Select(GetYouTubeVideoCachedAsync));
+
+    var playlistVideos = await playListVideosTask;
+    var videos = await videosTask;
+
+    // Combine and filter out unprocessed videos, also dedupe videos by ID
+    YouTubeOutputVideo[] allVideos = [.. videos.Concat(playlistVideos.SelectMany(s => s)).Where(v => v != null).DistinctBy(v => v!.Id)!];
+
     sw.Stop();
 
     if (allVideos.Length > 0)

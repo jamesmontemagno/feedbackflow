@@ -75,7 +75,7 @@ public class YouTubeOutputVideo
     public string? Title { get; set; }
     public string? Url { get; set; }
     public DateTime UploadDate { get; set; }
-    public List<YouTubeOutputComment> Comments { get; set; } = new();
+    public List<YouTubeOutputComment> Comments { get; set; } = [];
 }
 
 public class YouTubeOutputComment
