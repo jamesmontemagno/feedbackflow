@@ -49,28 +49,31 @@ var labelOption = new Option<string[]>(["-l", "-labels"], "When exporting issues
     AllowMultipleArgumentsPerToken = true
 };
 
-var includeDiscussionsOption = new Option<bool?>(["-d", "--include-discussions"], () => null, "Include github discussions");
+var includeDiscussionsOption = new Option<bool?>(["-d", "--include-discussions"], () => null, "Include github discussions.");
+var outputPath = new Option<string?>(["-o", "--output"], () => null, "The directory where the results will be written. Defaults to the current working directory");
 
 var rootCommand = new RootCommand("CLI tool for extracting Github issues and discussions in a JSON format.")
 {
     accessToken,
     repoOption,
     labelOption,
-    includeDiscussionsOption
+    includeDiscussionsOption,
+    outputPath
 };
 
-rootCommand.SetHandler(RunAsync, accessToken, repoOption, labelOption, includeDiscussionsOption);
+rootCommand.SetHandler(RunAsync, accessToken, repoOption, labelOption, includeDiscussionsOption, outputPath);
 
 await rootCommand.InvokeAsync(args);
 
-async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? includeDiscussions)
+async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? includeDiscussions, string? outputDirectory)
 {
     accessToken ??= configAccessToken;
-    includeDiscussions ??= labels.Length == 0 ? true : false;
+    includeDiscussions ??= labels is [];
+    outputDirectory ??= Environment.CurrentDirectory;
 
     var (repoOwner, repoName) = repo?.Split('/') switch
     {
-    [var owner, var name] => (owner, name),
+        [var owner, var name] => (owner, name),
         _ => throw new InvalidOperationException("Invalid repository format, expected owner/repository. Please specify it in the configuration section Github:Repo")
     };
 
@@ -84,6 +87,7 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
 
     // Print out the repository information
     Console.WriteLine($"Repository: {repoOwner}/{repoName}");
+
     if (labels.Length > 0)
     {
         Console.WriteLine($"Labels: {string.Join(", ", labels)}");
@@ -95,15 +99,68 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
 
     Console.WriteLine($"Including discussions: {(includeDiscussions.Value ? "yes" : "no")}");
 
-    var discussionsTask = includeDiscussions.Value ? WriteDiscussionsAsync() : Task.CompletedTask;
-    var issuesTask = WriteIssuesAsync(labels);
+    var discussionsTask = GetDiscussionsAsync(includeDiscussions.Value);
+    var issuesTask = GetIssuesAsync(labels);
 
     await Task.WhenAll(discussionsTask, issuesTask);
 
-    async Task WriteIssuesAsync(string[] labels)
+    var (issues, issuesElapsed) = await issuesTask;
+    var (discussions, discussionsElapsed) = await discussionsTask;
+
+    await WriteResultsToDisk(outputDirectory, issues, issuesElapsed, includeDiscussions.Value, discussions, discussionsElapsed);
+
+
+    async Task WriteResultsToDisk(
+        string outputDirectory, 
+        List<GithubIssueModel> issues, 
+        TimeSpan issuesElapsed,
+        bool includeDiscussions,
+        List<GithubDiscussionModel> discussions, 
+        TimeSpan discussionsElapsed)
     {
-        var labelsPart = labels.Length > 0 ? string.Join("_", labels) : "all";
-        var fileName = $"issues_{repoOwner}_{repoName}_{labelsPart}_output.json";
+        Console.WriteLine();
+
+        if (issues.Count > 0)
+        {
+            var labelsPart = labels.Length > 0 ? string.Join("_", labels) : "all";
+            var fileName = $"issues_{repoOwner}_{repoName}_{labelsPart}_output.json";
+
+            var outputPath = Path.Combine(outputDirectory, fileName);
+            await using var fileStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true);
+
+            await JsonSerializer.SerializeAsync(fileStream, issues, ModelsJsonContext.Default.ListGithubIssueModel);
+
+            Console.WriteLine($"Processed {issues.Count} issues in {issuesElapsed}");
+            Console.WriteLine($"Issues have been written to {fileName}");
+            Console.WriteLine();
+        }
+        else
+        {
+            Console.WriteLine("No issues found.");
+            Console.WriteLine();
+        }
+
+        if (discussions.Count > 0)
+        {
+            var fileName = $"discussions_{repoOwner}_{repoName}_output.json";
+
+            var outputPath = Path.Combine(outputDirectory, fileName);
+
+            await using var fileStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true);
+            await JsonSerializer.SerializeAsync(fileStream, discussions, ModelsJsonContext.Default.ListGithubDiscussionModel);
+
+            Console.WriteLine($"Processed {discussions.Count} discussions in {discussionsElapsed}");
+            Console.WriteLine($"Discussions have been written to {fileName}");
+        }
+        else if (includeDiscussions)
+        {
+            Console.WriteLine("No discussions found.");
+        }
+    }
+
+
+    async Task<(List<GithubIssueModel>, TimeSpan)> GetIssuesAsync(string[] labels)
+    {
         var sw = Stopwatch.StartNew();
 
         string? issuesCursor = null;
@@ -211,14 +268,14 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
                     Body = issue.Body,
                     Upvotes = issue.Reactions?.TotalCount ?? 0,
                     Labels = issue.Labels.Nodes.Select(label => label.Name),
-                    Comments = issue.Comments.Edges.Select(commentEdge => new GithubCommentModel
+                    Comments = [.. issue.Comments.Edges.Select(commentEdge => new GithubCommentModel
                     {
                         Id = commentEdge.Node.Id,
                         Author = commentEdge.Node.Author?.Login ?? "??",
                         CreatedAt = commentEdge.Node.CreatedAt,
                         Content = commentEdge.Node.Body,
                         Url = commentEdge.Node.Url
-                    }).ToArray()
+                    })]
                 };
 
                 allIssues.Add(issueJson);
@@ -230,17 +287,17 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
 
         sw.Stop();
 
-        await using var fileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true);
-        await JsonSerializer.SerializeAsync(fileStream, allIssues, ModelsJsonContext.Default.ListGithubIssueModel);
-
-
-        Console.WriteLine($"Processed {allIssues.Count} issues in {sw.Elapsed}");
-        Console.WriteLine($"Issues and comments have been written to {fileName}");
+        return (allIssues, sw.Elapsed);
     }
 
 
-    async Task WriteDiscussionsAsync()
+    async Task<(List<GithubDiscussionModel>, TimeSpan)> GetDiscussionsAsync(bool includeDiscussions)
     {
+        if (!includeDiscussions)
+        {
+            return ([], TimeSpan.Zero);
+        }
+
         string? discussionsCursor = null;
         GraphqlResponse? graphqlResult;
         var allDiscussions = new List<GithubDiscussionModel>();
@@ -364,7 +421,7 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
                     Title = discussion.Title,
                     AnswerId = discussion.Answer?.Id,
                     Url = discussion.Url,
-                    Comments = commentsList.ToArray()
+                    Comments = [.. commentsList]
                 };
 
                 allDiscussions.Add(discussionJson);
@@ -376,12 +433,6 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
 
         sw.Stop();
 
-        var fileName = $"discussions_{repoOwner}_{repoName}_output.json";
-        var outputPath = Path.Combine(Environment.CurrentDirectory, fileName);
-        await using var fileStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true);
-        await JsonSerializer.SerializeAsync(fileStream, allDiscussions, ModelsJsonContext.Default.ListGithubDiscussionModel);
-
-        Console.WriteLine($"Processed {allDiscussions.Count} discussions in {sw.Elapsed}");
-        Console.WriteLine($"Discussions have been written to {outputPath}");
+        return (allDiscussions, sw.Elapsed);
     }
 }
