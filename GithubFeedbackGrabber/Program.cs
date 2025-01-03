@@ -36,20 +36,21 @@ repoOption.AddValidator(r =>
 
     if (string.IsNullOrWhiteSpace(repo))
     {
-        r.ErrorMessage = "Unable to determine the repository. Please specify it via the command line argument -repo";
+        r.ErrorMessage = "Unable to determine the repository. Please specify it via the command line argument -r/--repository. Example: -r owner/repo";
     }
     else if (!repo.Contains('/'))
     {
-        r.ErrorMessage = "Invalid repository format, expected owner/repository. Please specify it in the configuration section Github:Repo";
+        r.ErrorMessage = "Invalid repository format, expected owner/repo. Example: dotnet/aspnetcore.";
     }
 });
 
-var labelOption = new Option<string[]>(["-l", "-labels"], "When exporting issues, what labels should be used to filter.")
+var labelOption = new Option<string[]>(["-l", "-labels"], "Labels to filter issues when exporting. Multiple labels can be specified.")
 {
     AllowMultipleArgumentsPerToken = true
 };
 
 var includeDiscussionsOption = new Option<bool?>(["-d", "--include-discussions"], () => null, "Include github discussions.");
+
 var outputPath = new Option<string?>(["-o", "--output"], () => null, "The directory where the results will be written. Defaults to the current working directory");
 
 var rootCommand = new RootCommand("CLI tool for extracting Github issues and discussions in a JSON format.")
@@ -74,7 +75,7 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
     var (repoOwner, repoName) = repo?.Split('/') switch
     {
         [var owner, var name] => (owner, name),
-        _ => throw new InvalidOperationException("Invalid repository format, expected owner/repository. Please specify it in the configuration section Github:Repo")
+        _ => throw new InvalidOperationException("Invalid repository format, expected owner/repo. Example: dotnet/aspnetcore.")
     };
 
     var maxRetries = 5;
@@ -108,7 +109,6 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
     var (discussions, discussionsElapsed) = await discussionsTask;
 
     await WriteResultsToDisk(outputDirectory, issues, issuesElapsed, includeDiscussions.Value, discussions, discussionsElapsed);
-
 
     async Task WriteResultsToDisk(
         string outputDirectory, 
