@@ -7,7 +7,7 @@ public class GraphqlResponse
 
 public class RepositoryData
 {
-    public required Repository Repository { get; set; }
+    public required Repository? Repository { get; set; }
 }
 
 // This type is shared between the discussions code and issues code so we will pretend
@@ -136,6 +136,18 @@ public class GithubCommentModel
 }
 
 // Graph QL queries
+
+public class GithubRepositoryQuery
+{
+    public required string Query { get; set; }
+    public required RepositoryQueryVariables Variables { get; set; }
+    public class RepositoryQueryVariables
+    {
+        public required string Owner { get; set; }
+        public required string Name { get; set; }
+    }
+}
+
 public class GithubIssueQuery
 {
     public required string Query { get; set; }
@@ -173,6 +185,7 @@ public class GithubDiscussionQuery
 
 [JsonSerializable(typeof(GithubIssueQuery))]
 [JsonSerializable(typeof(GithubDiscussionQuery))]
+[JsonSerializable(typeof(GithubRepositoryQuery))]
 
 [JsonSerializable(typeof(GraphqlResponse))]
 [JsonSerializable(typeof(RepositoryData))]

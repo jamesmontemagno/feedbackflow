@@ -14,7 +14,7 @@ var builder = new ConfigurationBuilder()
 var configuration = builder.Build();
 
 // The access token can be specified in the command line argument -t/--token or by using the environment variable GITHUB_TOKEN
-var configAccessToken = configuration["Github:ApiKey"] ?? configuration["GITHUB_TOKEN"] ?? "";
+var configAccessToken = configuration["Github:Token"] ?? configuration["GITHUB_TOKEN"] ?? "";
 
 var accessToken = new Option<string?>(["-t", "--token"], () => null, "The Github access token. Can be specified in an environment variable GITHUB_TOKEN.");
 
@@ -101,6 +101,13 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
     Console.WriteLine($"Including discussions: {(includeDiscussions.Value ? "yes" : "no")}");
     Console.WriteLine($"Results directory: {outputDirectory}");
 
+    if (!await CheckRepositoryValid(repoOwner, repoName))
+    {
+        Console.WriteLine();
+        Console.WriteLine($"{repoOwner}/{repoName} is an invalid repository.");
+        return;
+    }
+
     var sw = Stopwatch.StartNew();
 
     var discussionsTask = GetDiscussionsAsync(includeDiscussions.Value);
@@ -115,11 +122,38 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
 
     await WriteResultsToDisk(outputDirectory, issues, includeDiscussions.Value, discussions, sw.Elapsed);
 
+    async Task<bool> CheckRepositoryValid(string repoOwner, string repoName)
+    {
+        // Check if this repository is valid
+        var checkRepoQuery = @"
+            query($owner: String!, $name: String!) {
+                repository(owner: $owner, name: $name) {
+                    id
+                }
+            }";
+
+        var response = await httpClient.PostAsJsonAsync("https://api.github.com/graphql", new GithubRepositoryQuery
+        {
+            Query = checkRepoQuery,
+            Variables = new() { Owner = repoOwner, Name = repoName }
+        },
+        ModelsJsonContext.Default.GithubRepositoryQuery);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return false;
+        }
+
+        var result = await response.Content.ReadFromJsonAsync(ModelsJsonContext.Default.GraphqlResponse);
+
+        return result?.Data.Repository is not null;
+    }
+
     async Task WriteResultsToDisk(
-        string outputDirectory, 
-        List<GithubIssueModel> issues, 
+        string outputDirectory,
+        List<GithubIssueModel> issues,
         bool includeDiscussions,
-        List<GithubDiscussionModel> discussions, 
+        List<GithubDiscussionModel> discussions,
         TimeSpan elapsed)
     {
         Console.WriteLine();
@@ -255,7 +289,7 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
 
             graphqlResult = (await graphqlResponse.Content.ReadFromJsonAsync(ModelsJsonContext.Default.GraphqlResponse))!;
 
-            foreach (var issueEdge in graphqlResult.Data.Repository.Issues.Edges)
+            foreach (var issueEdge in graphqlResult.Data.Repository!.Issues.Edges)
             {
                 var issue = issueEdge.Node;
 
@@ -286,7 +320,7 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
 
             issuesCursor = graphqlResult.Data.Repository.Issues.PageInfo.EndCursor;
 
-        } while (graphqlResult!.Data.Repository.Issues.PageInfo.HasNextPage);
+        } while (graphqlResult!.Data.Repository!.Issues.PageInfo.HasNextPage);
 
         return allIssues;
     }
@@ -370,7 +404,7 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
 
             graphqlResult = (await graphqlResponse.Content.ReadFromJsonAsync(ModelsJsonContext.Default.GraphqlResponse))!;
 
-            foreach (var discussionEdge in graphqlResult.Data.Repository.Discussions.Edges)
+            foreach (var discussionEdge in graphqlResult.Data.Repository!.Discussions.Edges)
             {
                 var discussion = discussionEdge.Node;
 
