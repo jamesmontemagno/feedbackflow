@@ -38,7 +38,7 @@ repoOption.AddValidator(r =>
     {
         r.ErrorMessage = "Unable to determine the repository. Please specify it via the command line argument -r/--repository. Example: -r owner/repo";
     }
-    else if (!repo.Contains('/'))
+    else if (repo.Trim().Split('/', StringSplitOptions.RemoveEmptyEntries) is not [_, _])
     {
         r.ErrorMessage = "Invalid repository format, expected owner/repo. Example: dotnet/aspnetcore.";
     }
@@ -72,7 +72,7 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
     includeDiscussions ??= labels is [];
     outputDirectory ??= Environment.CurrentDirectory;
 
-    var (repoOwner, repoName) = repo?.Split('/') switch
+    var (repoOwner, repoName) = repo?.Trim().Split('/', StringSplitOptions.RemoveEmptyEntries) switch
     {
         [var owner, var name] => (owner, name),
         _ => throw new InvalidOperationException("Invalid repository format, expected owner/repo. Example: dotnet/aspnetcore.")
