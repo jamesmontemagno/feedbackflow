@@ -35,7 +35,7 @@ var playlistsOption = new Option<string[]?>(["-p", "--playlist"], () => null, "T
 };
 
 var outputFileOption = new Option<string?>(["-o", "--output"], () => null, "The output file name and path. Default is comments.json");
-var inputConfigOption = new Option<string?>(["-c", "--config"], () => null, "The JSON file that describes a set of videos and playlists.");
+var inputConfigOption = new Option<string?>(["-f", "--file"], () => null, "The JSON file that describes a set of videos and playlists.");
 
 var rootCommand = new RootCommand
 {
@@ -76,12 +76,13 @@ async Task RunAsync(string? apiKey, string[]? videosIds, string[]? playlists, st
 
     if (configFile is not null)
     {
-        var inputConfig = new ConfigurationBuilder().SetBasePath(Environment.CurrentDirectory).AddJsonFile(configFile).Build();
-        var youTubSection = inputConfig.GetSection("YouTube");
-        videosIds = [.. youTubSection.GetSection("Videos").Get<string[]>() ?? []];
-        playlists = [.. youTubSection.GetSection("Playlists").Get<string[]>() ?? []];
-
         Console.WriteLine($"Config: {configFile}");
+
+        await using var configFileStream = new FileStream(configFile, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
+        var inputFile = await JsonSerializer.DeserializeAsync(configFileStream, YouTubeJsonContext.Default.YouTubeInputFile);
+
+        videosIds = [.. inputFile?.Videos ?? []];
+        playlists = [.. inputFile?.Playlists ?? []];
     }
     else
     {
@@ -105,25 +106,31 @@ async Task RunAsync(string? apiKey, string[]? videosIds, string[]? playlists, st
         }
     }
 
-    var playListVideos = await Task.WhenAll(playlists.Select(GetVideoIdsFromPlaylist));
-    string[] videos = [.. videosIds, .. playListVideos.SelectMany(s => s)];
+    var playListVideos = await Task.WhenAll(playlists.Select(GetVideoIdsFromPlaylistAsync));
+    HashSet<string> videos = [.. videosIds, .. playListVideos.SelectMany(s => s)];
 
     var sw = Stopwatch.StartNew();
-    var tasks = videos.Distinct().Select(FetchCommentsAndWriteToFile);
-    await Task.WhenAll(tasks);
+    var allVideos = await Task.WhenAll(videos.Select(GetYouTubeVideoAsync));
     sw.Stop();
 
-    var allVideos = tasks.Select(t => t.Result).Where(v => v is not null).Select(v => v!).ToArray();
+    if (allVideos.Length > 0)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
 
-    Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+        await using var fileStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true);
+        await JsonSerializer.SerializeAsync(fileStream, allVideos, YouTubeJsonContext.Default.YouTubeOutputVideoArray);
 
-    await using var fileStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true);
-    await JsonSerializer.SerializeAsync(fileStream, allVideos, YouTubeJsonContext.Default.YouTubeOutputVideoArray);
+        Console.WriteLine();
+        Console.WriteLine($"Processed {allVideos.Length} vidoes in {sw.Elapsed}");
+        Console.WriteLine($"Wrote output to {outputPath}");
+    }
+    else
+    {
+        Console.WriteLine();
+        Console.WriteLine("No videos processed.");
+    }
 
-    Console.WriteLine($"Processed {allVideos.Length} vidoes in {sw.Elapsed}");
-    Console.WriteLine($"Wrote output to {outputPath}");
-
-    async Task<bool> GetVideoInfo(YouTubeOutputVideo video)
+    async Task<bool> GetVideoInfoAsync(YouTubeOutputVideo video)
     {
         string apiUrl = $"https://www.googleapis.com/youtube/v3/videos?part=snippet&id={video.Id}&key={apiKey}";
 
@@ -150,7 +157,7 @@ async Task RunAsync(string? apiKey, string[]? videosIds, string[]? playlists, st
         return true;
     }
 
-    async Task<List<string>> GetVideoIdsFromPlaylist(string playlistId)
+    async Task<List<string>> GetVideoIdsFromPlaylistAsync(string playlistId)
     {
         string apiUrl = $"https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId={playlistId}&key={apiKey}";
 
@@ -202,7 +209,7 @@ async Task RunAsync(string? apiKey, string[]? videosIds, string[]? playlists, st
         return videoIds;
     }
 
-    async Task<YouTubeOutputVideo?> FetchCommentsAndWriteToFile(string videoId)
+    async Task<YouTubeOutputVideo?> GetYouTubeVideoAsync(string videoId)
     {
         string apiUrl = $"https://www.googleapis.com/youtube/v3/commentThreads?part=snippet,replies&videoId={videoId}&key={apiKey}&maxResults=100";
 
@@ -216,7 +223,7 @@ async Task RunAsync(string? apiKey, string[]? videosIds, string[]? playlists, st
         };
 
         // Write the video title and URL into the file
-        if (!await GetVideoInfo(video))
+        if (!await GetVideoInfoAsync(video))
         {
             Console.WriteLine($"Could not fetch video info for video {videoId}");
             return null;

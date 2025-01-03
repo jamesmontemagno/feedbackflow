@@ -87,7 +87,17 @@ public class YouTubeOutputComment
     public required DateTime PublishedAt { get; init; }
 }
 
+public class YouTubeInputFile
+{
+    public string[]? Videos { get; set; }
+
+    public string[]? Playlists { get; set; }
+}
+
 [JsonSourceGenerationOptions(PropertyNameCaseInsensitive = true, WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
+
+// Input models
+[JsonSerializable(typeof(YouTubeInputFile))]
 
 // Output models
 [JsonSerializable(typeof(YouTubeOutputComment))]
