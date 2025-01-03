@@ -10,7 +10,7 @@ var builder = new ConfigurationBuilder()
     .AddEnvironmentVariables();
 
 var configuration = builder.Build();
-string configApiKey = configuration["YouTube:ApiKey"] ?? configuration["YT_APIKEY"] ?? throw new InvalidOperationException("YouTube API key is missing, please specify it in the configuration section YouTube:ApiKey");
+string? configApiKey = configuration["YouTube:ApiKey"] ?? configuration["YT_APIKEY"];
 
 var accessTokenOption = new Option<string?>(["-k", "--key"], () => null, "The YouTube API Key. Can be specified in an environment variable YT_APIKEY.");
 
@@ -20,14 +20,14 @@ accessTokenOption.AddValidator(r =>
 
     if (string.IsNullOrEmpty(value))
     {
-        r.ErrorMessage = "YouTube API key is missing, please specify it in the configuration section YT_APIKEY";
+        r.ErrorMessage = "A YouTube API key is required. Please specify it via the commandline argument -k/--key or by using the the environment variable YT_APIKEY";
     }
 });
 
 var videosOption = new Option<string[]?>(["-v", "--video"], () => null, "The list of video IDs to process.");
 var playlistsOption = new Option<string[]?>(["-p", "--playlist"], () => null, "The list of playlist IDs to process.");
 var outputFileOption = new Option<string?>(["-o", "--output"], () => null, "The output file name and path. Default is comments.json");
-var inputConfigOption = new Option<string?>(["-c", "--config"], () => null, "The configuration file to use.");
+var inputConfigOption = new Option<string?>(["-c", "--config"], () => null, "The JSON file that describes a set of videos and playlists.");
 
 var rootCommand = new RootCommand
 {
@@ -47,7 +47,7 @@ rootCommand.AddValidator(r =>
 
     if (videos is null or [] && playlists is null or [] && configFile is null)
     {
-        r.ErrorMessage = "No videos, playlists or config file specified";
+        r.ErrorMessage = "No videos, playlists or configuration file specified";
     }
 });
 
