@@ -99,26 +99,31 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
     }
 
     Console.WriteLine($"Including discussions: {(includeDiscussions.Value ? "yes" : "no")}");
+    Console.WriteLine($"Results directory: {outputDirectory}");
+
+    var sw = Stopwatch.StartNew();
 
     var discussionsTask = GetDiscussionsAsync(includeDiscussions.Value);
     var issuesTask = GetIssuesAsync(labels);
 
     await Task.WhenAll(discussionsTask, issuesTask);
 
-    var (issues, issuesElapsed) = await issuesTask;
-    var (discussions, discussionsElapsed) = await discussionsTask;
+    sw.Stop();
 
-    await WriteResultsToDisk(outputDirectory, issues, issuesElapsed, includeDiscussions.Value, discussions, discussionsElapsed);
+    var issues = await issuesTask;
+    var discussions = await discussionsTask;
+
+    await WriteResultsToDisk(outputDirectory, issues, includeDiscussions.Value, discussions, sw.Elapsed);
 
     async Task WriteResultsToDisk(
         string outputDirectory, 
         List<GithubIssueModel> issues, 
-        TimeSpan issuesElapsed,
         bool includeDiscussions,
         List<GithubDiscussionModel> discussions, 
-        TimeSpan discussionsElapsed)
+        TimeSpan elapsed)
     {
         Console.WriteLine();
+        Console.WriteLine($"Processing completed in {elapsed}.");
 
         if (issues.Count > 0)
         {
@@ -130,8 +135,8 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
 
             await JsonSerializer.SerializeAsync(fileStream, issues, ModelsJsonContext.Default.ListGithubIssueModel);
 
-            Console.WriteLine($"Processed {issues.Count} issues in {issuesElapsed}");
-            Console.WriteLine($"Issues have been written to {fileName}");
+            Console.WriteLine($"Processed {issues.Count} issues.");
+            Console.WriteLine($"Issues have been written to {fileName}.");
             Console.WriteLine();
         }
         else
@@ -149,8 +154,8 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
             await using var fileStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true);
             await JsonSerializer.SerializeAsync(fileStream, discussions, ModelsJsonContext.Default.ListGithubDiscussionModel);
 
-            Console.WriteLine($"Processed {discussions.Count} discussions in {discussionsElapsed}");
-            Console.WriteLine($"Discussions have been written to {fileName}");
+            Console.WriteLine($"Processed {discussions.Count} discussions.");
+            Console.WriteLine($"Discussions have been written to {fileName}.");
         }
         else if (includeDiscussions)
         {
@@ -159,10 +164,8 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
     }
 
 
-    async Task<(List<GithubIssueModel>, TimeSpan)> GetIssuesAsync(string[] labels)
+    async Task<List<GithubIssueModel>> GetIssuesAsync(string[] labels)
     {
-        var sw = Stopwatch.StartNew();
-
         string? issuesCursor = null;
         GraphqlResponse? graphqlResult = null;
 
@@ -285,23 +288,20 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
 
         } while (graphqlResult!.Data.Repository.Issues.PageInfo.HasNextPage);
 
-        sw.Stop();
-
-        return (allIssues, sw.Elapsed);
+        return allIssues;
     }
 
 
-    async Task<(List<GithubDiscussionModel>, TimeSpan)> GetDiscussionsAsync(bool includeDiscussions)
+    async Task<List<GithubDiscussionModel>> GetDiscussionsAsync(bool includeDiscussions)
     {
         if (!includeDiscussions)
         {
-            return ([], TimeSpan.Zero);
+            return [];
         }
 
         string? discussionsCursor = null;
         GraphqlResponse? graphqlResult;
         var allDiscussions = new List<GithubDiscussionModel>();
-        var sw = Stopwatch.StartNew();
 
         do
         {
@@ -431,8 +431,6 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
 
         } while (graphqlResult.Data.Repository.Discussions.PageInfo.HasNextPage);
 
-        sw.Stop();
-
-        return (allDiscussions, sw.Elapsed);
+        return allDiscussions;
     }
 }
