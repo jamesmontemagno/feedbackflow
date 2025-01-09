@@ -45,17 +45,35 @@ jobs:
     - name: Build YouTubeCommentGrabber
       run: dotnet publish ./YouTubeCommentGrabber/YouTubeCommentGrabber.csproj -c Release -r ${{ matrix.rid }} --self-contained -p:PublishAot=true -p:Version=${{ steps.gitversion.outputs.FullSemVer }} -o ./publish/YouTubeCommentGrabber
 
+    - name: Zip GithubFeedbackGrabber Artifact
+      run: |
+        cd ./publish/GithubFeedbackGrabber
+        if [[ "${{ matrix.rid }}" == "win-x64" ]]; then
+          zip -r ghdump-${{ matrix.rid }}.zip ghdump.exe
+        else
+          zip -r ghdump-${{ matrix.rid }}.zip ghdump
+        fi
+
+    - name: Zip YouTubeCommentGrabber Artifact
+      run: |
+        cd ./publish/YouTubeCommentGrabber
+        if [[ "${{ matrix.rid }}" == "win-x64" ]]; then
+          zip -r ytdump-${{ matrix.rid }}.zip ytdump.exe
+        else
+          zip -r ytdump-${{ matrix.rid }}.zip ytdump
+        fi
+
     - name: Upload GithubFeedbackGrabber Artifact
       uses: actions/upload-artifact@v3
       with:
         name: ghdump-${{ matrix.rid }}
-        path: ./publish/GithubFeedbackGrabber/ghdump*
+        path: ./publish/GithubFeedbackGrabber/ghdump-${{ matrix.rid }}.zip
 
     - name: Upload YouTubeCommentGrabber Artifact
       uses: actions/upload-artifact@v3
       with:
         name: ytdump-${{ matrix.rid }}
-        path: ./publish/YouTubeCommentGrabber/ytdump*
+        path: ./publish/YouTubeCommentGrabber/ytdump-${{ matrix.rid }}.zip
 
   create_release:
     runs-on: ubuntu-latest
@@ -99,9 +117,9 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: ./publish/GithubFeedbackGrabber/ghdump${{ matrix.rid == 'win-x64' && '.exe' || '' }}
-        asset_name: ghdump-${{ matrix.rid }}${{ matrix.rid == 'win-x64' && '.exe' || '' }}
-        asset_content_type: application/octet-stream
+        asset_path: ./publish/GithubFeedbackGrabber/ghdump-${{ matrix.rid }}.zip
+        asset_name: ghdump-${{ matrix.rid }}.zip
+        asset_content_type: application/zip
 
     - name: Upload YouTubeCommentGrabber Release Asset
       uses: actions/upload-release-asset@v1
@@ -109,6 +127,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: ./publish/YouTubeCommentGrabber/ytdump${{ matrix.rid == 'win-x64' && '.exe' || '' }}
-        asset_name: ytdump-${{ matrix.rid }}${{ matrix.rid == 'win-x64' && '.exe' || '' }}
-        asset_content_type: application/octet-stream
+        asset_path: ./publish/YouTubeCommentGrabber/ytdump-${{ matrix.rid }}.zip
+        asset_name: ytdump-${{ matrix.rid }}.zip
+        asset_content_type: application/zip
