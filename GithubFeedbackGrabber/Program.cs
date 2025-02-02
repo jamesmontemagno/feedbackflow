@@ -74,7 +74,7 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
 
     var (repoOwner, repoName) = repo?.Trim().Split('/', StringSplitOptions.RemoveEmptyEntries) switch
     {
-        [var owner, var name] => (owner, name),
+    [var owner, var name] => (owner, name),
         _ => throw new InvalidOperationException("Invalid repository format, expected owner/repo. Example: dotnet/aspnetcore.")
     };
 
@@ -103,8 +103,6 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
 
     if (!await CheckRepositoryValid(repoOwner, repoName))
     {
-        Console.WriteLine();
-        Console.WriteLine($"{repoOwner}/{repoName} is an invalid repository.");
         return;
     }
 
@@ -141,6 +139,7 @@ async Task RunAsync(string? accessToken, string? repo, string[] labels, bool? in
 
         if (!response.IsSuccessStatusCode)
         {
+            Console.WriteLine(await response.Content.ReadAsStringAsync());
             return false;
         }
 
