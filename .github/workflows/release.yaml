@@ -17,6 +17,8 @@ jobs:
             path: ghdump/ghdump.csproj
           - name: ytdump
             path: ytdump/ytdump.csproj
+          - name: hndump
+            path: hndump/hndump.csproj
         include:
           - os: ubuntu-latest
             rid: linux-x64
@@ -48,16 +50,19 @@ jobs:
       run: dotnet publish ./${{ matrix.project.path }} -c Release -r ${{ matrix.rid }} --self-contained -p:PublishAot=true -p:Version=${{ steps.gitversion.outputs.FullSemVer }} -o ./publish/${{ matrix.project.name }}
 
     - name: Zip ${{ matrix.project.name }} Artifact
+      if: runner.os != 'Windows'
       run: |
         cd ./publish/${{ matrix.project.name }}
-        if [[ "${{ matrix.rid }}" == "win-x64" ]]; then
-          zip -r ${{ matrix.project.name }}-${{ matrix.rid }}.zip ${{ matrix.project.name }}.exe
-        else
-          zip -r ${{ matrix.project.name }}-${{ matrix.rid }}.zip ${{ matrix.project.name }}
-        fi
+        zip -r ${{ matrix.project.name }}-${{ matrix.rid }}.zip ${{ matrix.project.name }}
+    
+    - name: Zip ${{ matrix.project.name }} Artifact
+      if: runner.os == 'Windows'
+      run: |
+        cd ./publish/${{ matrix.project.name }}
+        powershell Compress-Archive -Path ${{ matrix.project.name }}.exe -DestinationPath ${{ matrix.project.name }}-${{ matrix.rid }}.zip
 
     - name: Upload ${{ matrix.project.name }} Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.project.name }}-${{ matrix.rid }}
         path: ./publish/${{ matrix.project.name }}/${{ matrix.project.name }}-${{ matrix.rid }}.zip
@@ -88,9 +93,10 @@ jobs:
         project: 
           - name: ghdump
           - name: ytdump
+          - name: hndump
     steps:
     - name: Download ${{ matrix.project.name }} Artifact
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: ${{ matrix.project.name }}-${{ matrix.rid }}
         path: ./publish/${{ matrix.project.name }}
