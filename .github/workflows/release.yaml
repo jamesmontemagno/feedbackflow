@@ -12,6 +12,11 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        project: 
+          - name: ghdump
+            path: ghdump/ghdump.csproj
+          - name: ytdump
+            path: ytdump/ytdump.csproj
         include:
           - os: ubuntu-latest
             rid: linux-x64
@@ -39,41 +44,23 @@ jobs:
       id: gitversion
       run: echo "::set-output name=FullSemVer::$(dotnet-gitversion /output json /showvariable FullSemVer)"
 
-    - name: Build GithubFeedbackGrabber
-      run: dotnet publish ./GithubFeedbackGrabber/GithubFeedbackGrabber.csproj -c Release -r ${{ matrix.rid }} --self-contained -p:PublishAot=true -p:Version=${{ steps.gitversion.outputs.FullSemVer }} -o ./publish/GithubFeedbackGrabber
+    - name: Build ${{ matrix.project.name }}
+      run: dotnet publish ./${{ matrix.project.path }} -c Release -r ${{ matrix.rid }} --self-contained -p:PublishAot=true -p:Version=${{ steps.gitversion.outputs.FullSemVer }} -o ./publish/${{ matrix.project.name }}
 
-    - name: Build YouTubeCommentGrabber
-      run: dotnet publish ./YouTubeCommentGrabber/YouTubeCommentGrabber.csproj -c Release -r ${{ matrix.rid }} --self-contained -p:PublishAot=true -p:Version=${{ steps.gitversion.outputs.FullSemVer }} -o ./publish/YouTubeCommentGrabber
-
-    - name: Zip GithubFeedbackGrabber Artifact
+    - name: Zip ${{ matrix.project.name }} Artifact
       run: |
-        cd ./publish/GithubFeedbackGrabber
+        cd ./publish/${{ matrix.project.name }}
         if [[ "${{ matrix.rid }}" == "win-x64" ]]; then
-          zip -r ghdump-${{ matrix.rid }}.zip ghdump.exe
+          zip -r ${{ matrix.project.name }}-${{ matrix.rid }}.zip ${{ matrix.project.name }}.exe
         else
-          zip -r ghdump-${{ matrix.rid }}.zip ghdump
+          zip -r ${{ matrix.project.name }}-${{ matrix.rid }}.zip ${{ matrix.project.name }}
         fi
 
-    - name: Zip YouTubeCommentGrabber Artifact
-      run: |
-        cd ./publish/YouTubeCommentGrabber
-        if [[ "${{ matrix.rid }}" == "win-x64" ]]; then
-          zip -r ytdump-${{ matrix.rid }}.zip ytdump.exe
-        else
-          zip -r ytdump-${{ matrix.rid }}.zip ytdump
-        fi
-
-    - name: Upload GithubFeedbackGrabber Artifact
+    - name: Upload ${{ matrix.project.name }} Artifact
       uses: actions/upload-artifact@v3
       with:
-        name: ghdump-${{ matrix.rid }}
-        path: ./publish/GithubFeedbackGrabber/ghdump-${{ matrix.rid }}.zip
-
-    - name: Upload YouTubeCommentGrabber Artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: ytdump-${{ matrix.rid }}
-        path: ./publish/YouTubeCommentGrabber/ytdump-${{ matrix.rid }}.zip
+        name: ${{ matrix.project.name }}-${{ matrix.rid }}
+        path: ./publish/${{ matrix.project.name }}/${{ matrix.project.name }}-${{ matrix.rid }}.zip
 
   create_release:
     runs-on: ubuntu-latest
@@ -98,35 +85,22 @@ jobs:
     strategy:
       matrix:
         rid: [linux-x64, win-x64, osx-x64]
+        project: 
+          - name: ghdump
+          - name: ytdump
     steps:
-    - name: Download GithubFeedbackGrabber Artifact
+    - name: Download ${{ matrix.project.name }} Artifact
       uses: actions/download-artifact@v3
       with:
-        name: ghdump-${{ matrix.rid }}
-        path: ./publish/GithubFeedbackGrabber
+        name: ${{ matrix.project.name }}-${{ matrix.rid }}
+        path: ./publish/${{ matrix.project.name }}
 
-    - name: Download YouTubeCommentGrabber Artifact
-      uses: actions/download-artifact@v3
-      with:
-        name: ytdump-${{ matrix.rid }}
-        path: ./publish/YouTubeCommentGrabber
-
-    - name: Upload GithubFeedbackGrabber Release Asset
+    - name: Upload ${{ matrix.project.name }} Release Asset
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: ./publish/GithubFeedbackGrabber/ghdump-${{ matrix.rid }}.zip
-        asset_name: ghdump-${{ matrix.rid }}.zip
-        asset_content_type: application/zip
-
-    - name: Upload YouTubeCommentGrabber Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: ./publish/YouTubeCommentGrabber/ytdump-${{ matrix.rid }}.zip
-        asset_name: ytdump-${{ matrix.rid }}.zip
+        asset_path: ./publish/${{ matrix.project.name }}/${{ matrix.project.name }}-${{ matrix.rid }}.zip
+        asset_name: ${{ matrix.project.name }}-${{ matrix.rid }}.zip
         asset_content_type: application/zip
