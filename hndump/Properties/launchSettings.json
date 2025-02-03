@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "hndump": {
+      "commandName": "Project",
+      "commandLineArgs": "--id 42893622"
+    }
+  }
+}
