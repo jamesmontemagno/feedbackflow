@@ -8,6 +8,7 @@ using System.Threading.Channels;
 
 var ids = new Option<int[]>(["--id"], "The article id. Multiple can be specified.")
 {
+    IsRequired = true,
     AllowMultipleArgumentsPerToken = true
 };
 
