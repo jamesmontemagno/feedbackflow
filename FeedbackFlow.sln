@@ -20,6 +20,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "hndump", "hndump\hndump.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "shareddump", "shareddump\shareddump.csproj", "{41ACEC92-5CB7-462F-B545-4422661B9F76}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "feedbackfunctions", "feedbackfunctions\feedbackfunctions.csproj", "{A3D9B09F-31A4-486B-B7C2-643D3865AE2C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -78,6 +80,18 @@ Global
 		{41ACEC92-5CB7-462F-B545-4422661B9F76}.Release|x64.Build.0 = Release|Any CPU
 		{41ACEC92-5CB7-462F-B545-4422661B9F76}.Release|x86.ActiveCfg = Release|Any CPU
 		{41ACEC92-5CB7-462F-B545-4422661B9F76}.Release|x86.Build.0 = Release|Any CPU
+		{A3D9B09F-31A4-486B-B7C2-643D3865AE2C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3D9B09F-31A4-486B-B7C2-643D3865AE2C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A3D9B09F-31A4-486B-B7C2-643D3865AE2C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A3D9B09F-31A4-486B-B7C2-643D3865AE2C}.Debug|x64.Build.0 = Debug|Any CPU
+		{A3D9B09F-31A4-486B-B7C2-643D3865AE2C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A3D9B09F-31A4-486B-B7C2-643D3865AE2C}.Debug|x86.Build.0 = Debug|Any CPU
+		{A3D9B09F-31A4-486B-B7C2-643D3865AE2C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A3D9B09F-31A4-486B-B7C2-643D3865AE2C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A3D9B09F-31A4-486B-B7C2-643D3865AE2C}.Release|x64.ActiveCfg = Release|Any CPU
+		{A3D9B09F-31A4-486B-B7C2-643D3865AE2C}.Release|x64.Build.0 = Release|Any CPU
+		{A3D9B09F-31A4-486B-B7C2-643D3865AE2C}.Release|x86.ActiveCfg = Release|Any CPU
+		{A3D9B09F-31A4-486B-B7C2-643D3865AE2C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

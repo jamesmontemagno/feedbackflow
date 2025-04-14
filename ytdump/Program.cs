@@ -1,7 +1,6 @@
 ﻿using System.CommandLine;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration.UserSecrets;
 using SharedDump.Models.YouTube;
 using SharedDump.Json;
 
@@ -20,7 +19,7 @@ rootCommand.SetHandler(RunAsync, userInput, channelId, outputPath);
 
 await rootCommand.InvokeAsync(args);
 
-async Task<int> RunAsync(FileInfo? input, string? channelId, string? outputPath)
+static async Task<int> RunAsync(FileInfo? input, string? channelId, string? outputPath)
 {
     var config = new ConfigurationBuilder()
         .AddEnvironmentVariables()
@@ -46,7 +45,7 @@ async Task<int> RunAsync(FileInfo? input, string? channelId, string? outputPath)
         }
 
         using var stream = input.OpenRead();
-        var inputConfig = await JsonSerializer.DeserializeAsync(stream, YouTubeApiJsonContext.Default.YouTubeInputFile);
+        var inputConfig = await JsonSerializer.DeserializeAsync(stream, YouTubeJsonContext.Default.YouTubeInputFile);
 
         if (inputConfig?.Videos is { Length: > 0 } inputIds)
         {
