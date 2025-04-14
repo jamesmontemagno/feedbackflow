@@ -1,5 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
+// GraphQL API models
 public class GraphqlResponse
 {
     public required RepositoryData Data { get; set; }
@@ -10,8 +11,6 @@ public class RepositoryData
     public required Repository? Repository { get; set; }
 }
 
-// This type is shared between the discussions code and issues code so we will pretend
-// like neither are null when they are being used to avoid splitting the object hierarchy.
 public class Repository
 {
     public DiscussionConnection Discussions { get; set; } = default!;
@@ -52,7 +51,7 @@ public class Comment
     public required string Url { get; set; }
     public required string CreatedAt { get; set; }
     public required Author Author { get; set; }
-    public CommentConnection? Replies { get; set; } // Include replies for hoisting
+    public CommentConnection? Replies { get; set; }
 }
 
 public class Author
@@ -126,40 +125,7 @@ public class Label
     public required string Name { get; set; }
 }
 
-// Output models
-public class GithubDiscussionModel
-{
-    public required string Title { get; set; }
-    public string? AnswerId { get; set; }
-    public required string Url { get; set; }
-    public required GithubCommentModel[] Comments { get; set; }
-}
-
-public class GithubIssueModel
-{
-    public required string Id { get; set; }
-    public required string Author { get; set; }
-    public required string Title { get; set; }
-    public required string URL { get; set; }
-    public required DateTime CreatedAt { get; set; }
-    public required DateTime LastUpdated { get; set; }
-    public required string Body { get; set; }
-    public required int Upvotes { get; set; }
-    public required IEnumerable<string> Labels { get; set; }
-    public required GithubCommentModel[] Comments { get; set; }
-}
-public class GithubCommentModel
-{
-    public required string Id { get; set; }
-    public string? ParentId { get; set; }
-    public required string Author { get; set; }
-    public required string Content { get; set; }
-    public required string CreatedAt { get; set; }
-    public required string Url { get; set; }
-}
-
-// Graph QL queries
-
+// GraphQL queries
 public class GithubRepositoryQuery
 {
     public required string Query { get; set; }
@@ -197,19 +163,12 @@ public class GithubDiscussionQuery
     }
 }
 
-
 [JsonSourceGenerationOptions(PropertyNameCaseInsensitive = true, WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
-// Output models
-[JsonSerializable(typeof(List<GithubDiscussionModel>))]
-[JsonSerializable(typeof(List<GithubIssueModel>))]
-[JsonSerializable(typeof(GithubCommentModel[]))]
-
 // Queries
-
 [JsonSerializable(typeof(GithubIssueQuery))]
 [JsonSerializable(typeof(GithubDiscussionQuery))]
 [JsonSerializable(typeof(GithubRepositoryQuery))]
-
+// API responses
 [JsonSerializable(typeof(GraphqlResponse))]
 [JsonSerializable(typeof(RepositoryData))]
 [JsonSerializable(typeof(Repository))]
@@ -228,6 +187,4 @@ public class GithubDiscussionQuery
 [JsonSerializable(typeof(Reaction))]
 [JsonSerializable(typeof(LabelConnection))]
 [JsonSerializable(typeof(Label))]
-public partial class ModelsJsonContext : JsonSerializerContext
-{
-}
+public partial class GithubApiJsonContext : JsonSerializerContext { }

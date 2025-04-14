@@ -1,306 +1,248 @@
-﻿using System.Collections.Concurrent;
-using System.CommandLine;
-using System.Diagnostics;
-using System.Net.Http.Headers;
+﻿using System.CommandLine;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.UserSecrets;
+using SharedDump.Models.YouTube;
+using SharedDump.Json;
 
-var builder = new ConfigurationBuilder()
-    .AddUserSecrets<Program>()
-    .AddEnvironmentVariables();
+var userInput = new Option<FileInfo?>(["--input", "-i"], "The input file with video/playlist IDs.");
+var channelId = new Option<string?>(["--channel", "-c"], "The ID of the channel.");
+var outputPath = new Option<string?>(["--output", "-o"], () => null, "The path where the results will be written. Defaults to current directory.");
 
-var configuration = builder.Build();
-string? configApiKey = configuration["YouTube:ApiKey"] ?? configuration["YT_APIKEY"];
-
-var accessTokenOption = new Option<string?>(["-k", "--key"], () => null, "The YouTube API Key. Can be specified in an environment variable YT_APIKEY.");
-
-accessTokenOption.AddValidator(r =>
+var rootCommand = new RootCommand("CLI tool for extracting YouTube comments in JSON format.")
 {
-    var value = r.GetValueOrDefault<string?>() ?? configApiKey;
-
-    if (string.IsNullOrEmpty(value))
-    {
-        r.ErrorMessage = "A YouTube API key is required. Please specify it via the commandline argument -k/--key or by using the the environment variable YT_APIKEY";
-    }
-});
-
-var videosOption = new Option<string[]?>(["-v", "--video"], () => null, "The list of video IDs to process.")
-{
-    AllowMultipleArgumentsPerToken = true
+    userInput,
+    channelId,
+    outputPath
 };
 
-var playlistsOption = new Option<string[]?>(["-p", "--playlist"], () => null, "The list of playlist IDs to process.")
-{
-    AllowMultipleArgumentsPerToken = true
-};
-
-var outputFileOption = new Option<string?>(["-o", "--output"], () => null, "The output file name and path. Default is comments.json");
-var inputConfigOption = new Option<string?>(["-f", "--file"], () => null, "The JSON file that describes a set of videos and playlists.");
-
-var rootCommand = new RootCommand
-{
-    accessTokenOption,
-    videosOption,
-    playlistsOption,
-    outputFileOption,
-    inputConfigOption
-};
-
-rootCommand.SetHandler(RunAsync, accessTokenOption, videosOption, playlistsOption, outputFileOption, inputConfigOption);
-rootCommand.AddValidator(r =>
-{
-    var videos = r.GetValueForOption(videosOption);
-    var playlists = r.GetValueForOption(playlistsOption);
-    var configFile = r.GetValueForOption(inputConfigOption);
-
-    if (videos is null or [] && playlists is null or [] && configFile is null)
-    {
-        r.ErrorMessage = "No videos, playlists or configuration file specified";
-    }
-});
+rootCommand.SetHandler(RunAsync, userInput, channelId, outputPath);
 
 await rootCommand.InvokeAsync(args);
 
-async Task RunAsync(string? apiKey, string[]? videosIds, string[]? playlists, string? outputPath, string? configFile)
+async Task<int> RunAsync(FileInfo? input, string? channelId, string? outputPath)
 {
-    var client = new HttpClient();
-    var an = typeof(Program).Assembly.GetName();
-    client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(an.Name!, $"{an.Version}"));
+    var config = new ConfigurationBuilder()
+        .AddEnvironmentVariables()
+        .AddUserSecrets<Program>()
+        .Build();
 
-    apiKey ??= configApiKey;
-    playlists ??= [];
-    videosIds ??= [];
-    outputPath = outputPath is null
-        ? Path.Combine(Environment.CurrentDirectory, "comments.json")
-        : Path.GetFullPath(outputPath);
+    var apiKey = config["YouTube:ApiKey"];
 
-    if (configFile is not null)
+    using var client = new HttpClient();
+
+    var videoIds = new List<string>();
+
+    if (input is not null)
     {
-        Console.WriteLine($"Config: {configFile}");
-
-        await using var configFileStream = new FileStream(configFile, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
-        var inputFile = await JsonSerializer.DeserializeAsync(configFileStream, YouTubeJsonContext.Default.YouTubeInputFile);
-
-        videosIds = [.. inputFile?.Videos ?? []];
-        playlists = [.. inputFile?.Playlists ?? []];
-    }
-    else
-    {
-        if (playlists.Length > 0)
+        if (!input.Exists)
         {
-            // Print inputs here
-            Console.WriteLine($"Playlists: {string.Join(", ", playlists)}");
-        }
-        else
-        {
-            Console.WriteLine("No playlists specified");
+            Console.WriteLine($"Input file {input.FullName} does not exist.");
+            return 1;
         }
 
-        if (videosIds.Length > 0)
+        using var stream = input.OpenRead();
+        var inputConfig = await JsonSerializer.DeserializeAsync(stream, YouTubeApiJsonContext.Default.YouTubeInputFile);
+
+        if (inputConfig?.Videos is { Length: > 0 } inputIds)
         {
-            Console.WriteLine($"Videos: {string.Join(", ", videosIds)}");
-        }
-        else
-        {
-            Console.WriteLine("No videos specified");
-        }
-    }
-
-
-    var sw = Stopwatch.StartNew();
-
-    // Process playlists and the videos in parallel
-
-    // Helper memoization function for video fetching, this should avoid fetching the same video multiple times in parallel
-    ConcurrentDictionary<string, Task<YouTubeOutputVideo?>> videoCache = [];
-    async Task<YouTubeOutputVideo?> GetYouTubeVideoCachedAsync(string videoId) =>
-        await videoCache.GetOrAdd(videoId, id => GetYouTubeVideoAsync(id));
-
-    async Task<YouTubeOutputVideo?[]> GetYouTubeVideosAsync(Task<List<string>> videosTask) =>
-        await Task.WhenAll((await videosTask).Select(GetYouTubeVideoCachedAsync));
-
-    var playListVideosTask = Task.WhenAll(playlists.Select(GetVideoIdsFromPlaylistAsync).Select(GetYouTubeVideosAsync));
-    var videosTask = Task.WhenAll(videosIds.Select(GetYouTubeVideoCachedAsync));
-
-    var playlistVideos = await playListVideosTask;
-    var videos = await videosTask;
-
-    // Combine and filter out unprocessed videos, also dedupe videos by ID
-    YouTubeOutputVideo[] allVideos = [.. videos.Concat(playlistVideos.SelectMany(s => s)).Where(v => v != null).DistinctBy(v => v!.Id)!];
-
-    sw.Stop();
-
-    if (allVideos.Length > 0)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-
-        await using var fileStream = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true);
-        await JsonSerializer.SerializeAsync(fileStream, allVideos, YouTubeJsonContext.Default.YouTubeOutputVideoArray);
-
-        Console.WriteLine();
-        Console.WriteLine($"Processed {allVideos.Length} vidoes in {sw.Elapsed}");
-        Console.WriteLine($"Wrote output to {outputPath}");
-    }
-    else
-    {
-        Console.WriteLine();
-        Console.WriteLine("No videos processed.");
-    }
-
-    async Task<bool> GetVideoInfoAsync(YouTubeOutputVideo video)
-    {
-        string apiUrl = $"https://www.googleapis.com/youtube/v3/videos?part=snippet&id={video.Id}&key={apiKey}";
-
-        HttpResponseMessage response = await client.GetAsync(apiUrl);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            Console.WriteLine($"Error: {response.StatusCode}");
-            return false;
+            videoIds.AddRange(inputIds);
         }
 
-        var videoResponse = await response.Content.ReadFromJsonAsync(YouTubeJsonContext.Default.YouTubeVideoResponse);
-
-        if (videoResponse == null || videoResponse.Items.Count == 0)
+        if (inputConfig?.Playlists is { Length: > 0 } playlists)
         {
-            return false;
-        }
-
-        var snippet = videoResponse.Items[0].Snippet;
-        video.Title = snippet.Title;
-        video.UploadDate = snippet.PublishedAt;
-        video.Url = $"https://www.youtube.com/watch?v={video.Id}";
-
-        return true;
-    }
-
-    async Task<List<string>> GetVideoIdsFromPlaylistAsync(string playlistId)
-    {
-        string apiUrl = $"https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId={playlistId}&key={apiKey}";
-
-        var videoIds = new List<string>();
-        string? nextPageToken = null;
-
-        Console.WriteLine($"Fetching videos from playlist {playlistId}");
-
-        try
-        {
-            do
+            foreach (var playlistId in playlists)
             {
-                string requestUrl = string.IsNullOrEmpty(nextPageToken)
-                    ? apiUrl
-                    : $"{apiUrl}&pageToken={nextPageToken}";
+                var playlistVideoIds = await GetPlaylistVideos(playlistId);
+                videoIds.AddRange(playlistVideoIds);
+            }
+        }
+    }
+    else if (channelId is not null)
+    {
+        var channelVideoIds = await GetChannelVideos(channelId);
+        videoIds.AddRange(channelVideoIds);
+    }
+    else
+    {
+        Console.WriteLine("Either an input file or a channel ID must be provided.");
+        return 1;
+    }
 
-                HttpResponseMessage response = await client.GetAsync(requestUrl);
+    var outputVideos = new List<YouTubeOutputVideo>();
 
-                if (!response.IsSuccessStatusCode)
+    foreach (var videoId in videoIds)
+    {
+        var video = await ProcessVideo(videoId);
+        outputVideos.Add(video);
+    }
+
+    var outputDirectory = outputPath ?? Environment.CurrentDirectory;
+    var outputFile = Path.Combine(outputDirectory, "output.json");
+
+    await using var fileStream = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.None);
+    await JsonSerializer.SerializeAsync(fileStream, outputVideos.ToArray(), YouTubeJsonContext.Default.YouTubeOutputVideoArray);
+
+    Console.WriteLine($"Output written to {outputFile}");
+
+    return 0;
+
+    async Task<IEnumerable<string>> GetPlaylistVideos(string playlistId)
+    {
+        var videoIds = new List<string>();
+        string? pageToken = null;
+
+        do
+        {
+            var url = $"https://youtube.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId={playlistId}&key={apiKey}";
+            if (pageToken is not null)
+            {
+                url += $"&pageToken={pageToken}";
+            }
+
+            try
+            {
+                var response = await client.GetFromJsonAsync<YouTubeVideoResponse>(url, YouTubeApiJsonContext.Default.YouTubeVideoResponse);
+
+                if (response is null)
                 {
-                    return videoIds;
+                    break;
                 }
 
-                var result = await response.Content.ReadFromJsonAsync(YouTubeJsonContext.Default.YouTubeVideoResponse);
-
-                if (result?.Items != null)
+                foreach (var item in response.Items)
                 {
-                    foreach (var item in result.Items)
+                    if (item.Snippet.ResourceId?.VideoId is { } videoId)
                     {
-                        var videoId = item.Snippet?.ResourceId?.VideoId;
-                        if (!string.IsNullOrEmpty(videoId))
-                        {
-                            videoIds.Add(videoId);
-                        }
+                        videoIds.Add(videoId);
                     }
                 }
 
-                nextPageToken = result?.NextPageToken;
+                pageToken = response.NextPageToken;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
+                break;
+            }
 
-            } while (!string.IsNullOrEmpty(nextPageToken));
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"An error occurred: {ex.Message}");
-        }
-
-        Console.WriteLine($"Found {videoIds.Count} videos in playlist {playlistId}");
+        } while (!string.IsNullOrEmpty(pageToken));
 
         return videoIds;
     }
 
-    async Task<YouTubeOutputVideo?> GetYouTubeVideoAsync(string videoId)
+    async Task<IEnumerable<string>> GetChannelVideos(string channelId)
     {
-        string apiUrl = $"https://www.googleapis.com/youtube/v3/commentThreads?part=snippet,replies&videoId={videoId}&key={apiKey}&maxResults=100";
+        var videoIds = new List<string>();
+        string? pageToken = null;
 
-        string? nextPageToken = null;
+        do
+        {
+            var url = $"https://youtube.googleapis.com/youtube/v3/search?part=snippet&maxResults=50&type=video&channelId={channelId}&key={apiKey}";
+            if (pageToken is not null)
+            {
+                url += $"&pageToken={pageToken}";
+            }
 
-        Console.WriteLine($"Processing Video {videoId}");
+            try
+            {
+                var response = await client.GetFromJsonAsync<YouTubeVideoResponse>(url, YouTubeApiJsonContext.Default.YouTubeVideoResponse);
 
+                if (response is null)
+                {
+                    break;
+                }
+
+                foreach (var item in response.Items)
+                {
+                    if (item.Snippet.ResourceId?.VideoId is { } videoId)
+                    {
+                        videoIds.Add(videoId);
+                    }
+                }
+
+                pageToken = response.NextPageToken;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
+                break;
+            }
+        } while (!string.IsNullOrEmpty(pageToken));
+
+        return videoIds;
+    }
+
+    async Task<YouTubeOutputVideo> ProcessVideo(string videoId)
+    {
         var video = new YouTubeOutputVideo
         {
-            Id = videoId
+            Id = videoId,
+            Url = $"https://www.youtube.com/watch?v={videoId}"
         };
-
-        // Write the video title and URL into the file
-        if (!await GetVideoInfoAsync(video))
-        {
-            Console.WriteLine($"Could not fetch video info for video {videoId}");
-            return null;
-        }
-
-        Console.WriteLine($"Video Title: {video.Title}");
-        Console.WriteLine($"Video URL: {video.Url}");
 
         try
         {
+            var videoUrl = $"https://youtube.googleapis.com/youtube/v3/videos?part=snippet&id={videoId}&key={apiKey}";
+            var videoResponse = await client.GetFromJsonAsync<YouTubeVideoResponse>(videoUrl, YouTubeApiJsonContext.Default.YouTubeVideoResponse);
+
+            if (videoResponse?.Items.Count > 0)
+            {
+                var videoInfo = videoResponse.Items[0];
+                video.Title = videoInfo.Snippet.Title;
+                video.UploadDate = videoInfo.Snippet.PublishedAt;
+            }
+
+            var commentsList = new List<YouTubeOutputComment>();
+            string? nextPageToken = null;
+
             do
             {
-                string requestUrl = string.IsNullOrEmpty(nextPageToken)
-                    ? apiUrl
-                    : $"{apiUrl}&pageToken={nextPageToken}";
-
-                HttpResponseMessage response = await client.GetAsync(requestUrl);
-
-                if (!response.IsSuccessStatusCode)
+                var commentsUrl = $"https://youtube.googleapis.com/youtube/v3/commentThreads?part=snippet,replies&maxResults=100&videoId={videoId}&key={apiKey}";
+                if (nextPageToken is not null)
                 {
-                    Console.WriteLine($"Error: {response.StatusCode}");
-                    return null;
+                    commentsUrl += $"&pageToken={nextPageToken}";
                 }
 
-                var commentResponse = await response.Content.ReadFromJsonAsync(YouTubeJsonContext.Default.YouTubeCommentResponse);
+                var commentResponse = await client.GetFromJsonAsync<YouTubeCommentResponse>(commentsUrl, YouTubeApiJsonContext.Default.YouTubeCommentResponse);
 
-                if (commentResponse == null)
+                if (commentResponse?.Items is null)
                 {
-                    return null;
+                    break;
                 }
 
                 foreach (var item in commentResponse.Items)
                 {
-                    video.Comments.Add(new YouTubeOutputComment
+                    var comment = item.Snippet.TopLevelComment;
+                    commentsList.Add(new YouTubeOutputComment
                     {
-                        Id = item.Snippet.TopLevelComment.Id,
-                        Author = item.Snippet.TopLevelComment.Snippet.AuthorDisplayName,
-                        Text = item.Snippet.TopLevelComment.Snippet.TextDisplay,
-                        PublishedAt = item.Snippet.TopLevelComment.Snippet.PublishedAt
+                        Id = comment.Id,
+                        Author = comment.Snippet.AuthorDisplayName,
+                        Text = comment.Snippet.TextDisplay,
+                        PublishedAt = comment.Snippet.PublishedAt
                     });
 
-
-                    // Handle replies
-                    foreach (var reply in item.Replies.Comments)
+                    if (item.Replies.Comments.Count > 0)
                     {
-                        video.Comments.Add(new YouTubeOutputComment
+                        foreach (var reply in item.Replies.Comments)
                         {
-                            Id = reply.Id,
-                            Author = reply.Snippet.AuthorDisplayName,
-                            Text = reply.Snippet.TextDisplay,
-                            PublishedAt = reply.Snippet.PublishedAt,
-                            ParentId = item.Id
-                        });
+                            commentsList.Add(new YouTubeOutputComment
+                            {
+                                Id = reply.Id,
+                                Author = reply.Snippet.AuthorDisplayName,
+                                Text = reply.Snippet.TextDisplay,
+                                PublishedAt = reply.Snippet.PublishedAt,
+                                ParentId = item.Id
+                            });
+                        }
                     }
                 }
 
                 nextPageToken = commentResponse.NextPageToken;
 
             } while (!string.IsNullOrEmpty(nextPageToken));
+
+            video.Comments = commentsList;
         }
         catch (Exception ex)
         {

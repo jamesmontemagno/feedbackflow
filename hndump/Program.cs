@@ -2,9 +2,10 @@
 using System.CommandLine;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading.Channels;
+using SharedDump.Models.HackerNews;
+using SharedDump.Json;
 
 var ids = new Option<int[]>(["--id"], "The article id. Multiple can be specified.")
 {
@@ -82,7 +83,7 @@ async Task RunAsync(int[] itemIds, string? outputPath)
 
         // Write comments to file using JsonSerializer and a FileStream
         await using var fileStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.Write, 16 * 1024, useAsync: true);
-        await JsonSerializer.SerializeAsync(fileStream, GetAllComments(), AppJsonContext.Default.IAsyncEnumerableHackerNewsItem);
+        await JsonSerializer.SerializeAsync(fileStream, GetAllComments(), HackerNewsJsonContext.Default.IAsyncEnumerableHackerNewsItem);
 
         Console.WriteLine($"Comments written to {fullPath}");
 
@@ -90,7 +91,7 @@ async Task RunAsync(int[] itemIds, string? outputPath)
             value is null ? "" : Regexes.SlugRegex().Replace(value, "-").ToLowerInvariant();
 
         Task<HackerNewsItem?> GetItemData(int itemId) =>
-            client.GetFromJsonAsync($"https://hacker-news.firebaseio.com/v0/item/{itemId}.json", AppJsonContext.Default.HackerNewsItem);
+            client.GetFromJsonAsync($"https://hacker-news.firebaseio.com/v0/item/{itemId}.json", HackerNewsJsonContext.Default.HackerNewsItem);
 
         async Task GetComments(int itemId, ChannelWriter<HackerNewsItem> writer)
         {
@@ -116,33 +117,6 @@ async Task RunAsync(int[] itemIds, string? outputPath)
             }
         }
     }
-}
-
-public class HackerNewsItem
-{
-    public required int Id { get; set; }
-    public bool? Deleted { get; set; }
-    public string? Type { get; set; }
-    public string? By { get; set; }
-    public long Time { get; set; }
-    public string? Text { get; set; }
-    public bool? Dead { get; set; }
-    public int? Parent { get; set; }
-    public int? Poll { get; set; }
-    public List<int> Kids { get; set; } = [];
-    public string? Url { get; set; }
-    public int? Score { get; set; }
-    public string? Title { get; set; }
-    public List<int> Parts { get; set; } = [];
-    public int? Descendants { get; set; }
-}
-
-
-[JsonSourceGenerationOptions(WriteIndented = true, PropertyNameCaseInsensitive = true)]
-[JsonSerializable(typeof(HackerNewsItem))]
-[JsonSerializable(typeof(IAsyncEnumerable<HackerNewsItem>))]
-public partial class AppJsonContext : JsonSerializerContext
-{
 }
 
 public partial class Regexes

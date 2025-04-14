@@ -17,4 +17,8 @@
 	<PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.*" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\shareddump\shareddump.csproj" />
+  </ItemGroup>
+
 </Project>

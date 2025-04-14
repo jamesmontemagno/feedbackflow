@@ -18,4 +18,8 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.*" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\shareddump\shareddump.csproj" />
+  </ItemGroup>
+
 </Project>
