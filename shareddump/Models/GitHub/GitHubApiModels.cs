@@ -1,4 +1,6 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
+
+namespace SharedDump.Models.GitHub;
 
 // GraphQL API models
 public class GraphqlResponse
@@ -162,29 +164,3 @@ public class GithubDiscussionQuery
         public string? After { get; set; }
     }
 }
-
-[JsonSourceGenerationOptions(PropertyNameCaseInsensitive = true, WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
-// Queries
-[JsonSerializable(typeof(GithubIssueQuery))]
-[JsonSerializable(typeof(GithubDiscussionQuery))]
-[JsonSerializable(typeof(GithubRepositoryQuery))]
-// API responses
-[JsonSerializable(typeof(GraphqlResponse))]
-[JsonSerializable(typeof(RepositoryData))]
-[JsonSerializable(typeof(Repository))]
-[JsonSerializable(typeof(DiscussionConnection))]
-[JsonSerializable(typeof(Discussion))]
-[JsonSerializable(typeof(Answer))]
-[JsonSerializable(typeof(CommentConnection))]
-[JsonSerializable(typeof(Comment))]
-[JsonSerializable(typeof(Author))]
-[JsonSerializable(typeof(Edge<>))]
-[JsonSerializable(typeof(PageInfo))]
-[JsonSerializable(typeof(IssueConnection))]
-[JsonSerializable(typeof(Issue))]
-[JsonSerializable(typeof(PullRequestConnection))]
-[JsonSerializable(typeof(PullRequest))]
-[JsonSerializable(typeof(Reaction))]
-[JsonSerializable(typeof(LabelConnection))]
-[JsonSerializable(typeof(Label))]
-public partial class GithubApiJsonContext : JsonSerializerContext { }
