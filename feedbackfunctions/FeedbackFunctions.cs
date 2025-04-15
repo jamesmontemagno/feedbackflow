@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Configuration;
@@ -9,6 +9,9 @@ using Microsoft.Extensions.Logging;
 using SharedDump.Models.GitHub;
 using SharedDump.Models.HackerNews;
 using SharedDump.Models.YouTube;
+using Microsoft.Extensions.AI;
+using Azure.AI.OpenAI;
+using Azure;
 
 namespace FeedbackFunctions
 {
@@ -19,6 +22,7 @@ namespace FeedbackFunctions
         private readonly GitHubService _githubService;
         private readonly HackerNewsService _hnService;
         private readonly YouTubeService _ytService;
+        private readonly IChatClient _chatClient;
 
         public FeedbackFunctions(ILogger<FeedbackFunctions> logger, IConfiguration configuration)
         {
@@ -32,6 +36,16 @@ namespace FeedbackFunctions
             
             var ytApiKey = _configuration["YouTube:ApiKey"];
             _ytService = new YouTubeService(ytApiKey ?? throw new InvalidOperationException("YouTube API key not configured"));
+
+            var endpoint = _configuration["Azure:OpenAI:Endpoint"];
+            var deployment = _configuration["Azure:OpenAI:Deployment"];
+            var apiKey = _configuration["Azure:OpenAI:ApiKey"];
+
+            _chatClient = new AzureOpenAIClient(
+                    new Uri(endpoint ?? throw new InvalidOperationException("Azure OpenAI endpoint not configured")), 
+                    new AzureKeyCredential(apiKey ?? throw new InvalidOperationException("Azure OpenAI API key not configured")))
+                .GetChatClient(deployment ?? throw new InvalidOperationException("Azure OpenAI deployment name not configured"))
+                .AsIChatClient();
         }
 
         [Function("GetGitHubFeedback")]
@@ -202,5 +216,92 @@ namespace FeedbackFunctions
                 return response;
             }
         }
+
+        private string GetServiceSpecificPrompt(string serviceType)
+        {
+            return serviceType.ToLowerInvariant() switch
+            {
+                "youtube" => @"You are an expert at analyzing YouTube comments. 
+                    When analyzing comments, provide:
+                    1. A summary of the overall sentiment and viewer engagement
+                    2. Key topics, timestamps, or sections of the video mentioned frequently
+                    3. Most positive feedback and what viewers particularly liked
+                    4. Most constructive criticism or suggestions for improvement
+                    5. Common questions or points of confusion from viewers
+                    Format your response in markdown.",
+
+                "github" => @"You are an expert at analyzing GitHub feedback. 
+                    When analyzing comments, provide:
+                    1. A summary of the overall sentiment and discussion quality
+                    2. Key technical topics, features, or issues mentioned
+                    3. Most insightful or helpful contributions
+                    4. Most critical issues or pain points raised
+                    5. Common feature requests or enhancement suggestions
+                    Format your response in markdown.",
+
+                "hackernews" => @"You are an expert at analyzing Hacker News comments. 
+                    When analyzing comments, provide:
+                    1. A summary of the overall discussion quality and technical depth
+                    2. Key technical insights and alternative perspectives shared
+                    3. Most insightful technical contributions or explanations
+                    4. Most critical technical concerns or limitations pointed out
+                    5. Interesting related technologies or approaches mentioned
+                    Format your response in markdown.",
+
+                _ => throw new ArgumentException($"Invalid service type: {serviceType}", nameof(serviceType))
+            };
+        }
+
+        [Function("AnalyzeComments")]
+        public async Task<HttpResponseData> AnalyzeComments(
+            [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
+        {
+            _logger.LogInformation("Processing comment analysis request");
+
+            try
+            {
+                var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+                var request = JsonSerializer.Deserialize(requestBody, FeedbackJsonContext.Default.AnalyzeCommentsRequest);
+
+                if (string.IsNullOrEmpty(request?.Comments))
+                {
+                    var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await badResponse.WriteStringAsync("Comments JSON is required");
+                    return badResponse;
+                }
+
+                var servicePrompt = GetServiceSpecificPrompt(request.ServiceType);
+                var prompt = $@"{servicePrompt}
+
+                    Comments to analyze:
+                    {request.Comments}";
+
+                var analysisBuilder = new System.Text.StringBuilder();
+                await foreach (var update in ChatClientExtensions.GetStreamingResponseAsync(_chatClient, prompt))
+                {
+                    analysisBuilder.Append(update);
+                }
+
+                var response = req.CreateResponse(HttpStatusCode.OK);
+                await response.WriteStringAsync(analysisBuilder.ToString());
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing comment analysis request");
+                var response = req.CreateResponse(HttpStatusCode.InternalServerError);
+                await response.WriteStringAsync("An error occurred processing the request");
+                return response;
+            }
+        }
+    }
+
+    public class AnalyzeCommentsRequest
+    {
+        [JsonPropertyName("comments")]
+        public string Comments { get; set; } = string.Empty;
+        
+        [JsonPropertyName("serviceType")]
+        public string ServiceType { get; set; } = string.Empty;
     }
 }

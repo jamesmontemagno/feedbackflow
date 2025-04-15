@@ -1,0 +1,14 @@
+### Get YouTube Comments
+GET http://localhost:7071/api/GetYouTubeFeedback?videos=MKD-sCZWpZQ
+# You can also use channel or playlists parameters:
+# GET http://localhost:7071/api/GetYouTubeFeedback?channel=CHANNEL_ID_HERE
+# GET http://localhost:7071/api/GetYouTubeFeedback?playlists=PLAYLIST_ID_HERE
+
+### Analyze YouTube Comments
+POST http://localhost:7071/api/AnalyzeComments
+Content-Type: application/json
+
+{
+    "serviceType": "YouTube",
+    "comments": "Great video! Really helped me understand the topic.\n\nCould you make a follow-up video explaining X in more detail?"
+}
