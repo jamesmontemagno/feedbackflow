@@ -1,22 +1,45 @@
 @namespace FeedbackWebApp.Components.Feedback
 @using SharedDump.Utils
 
-<div class="row g-3">
-    <div class="col-12">
-        <div class="form-floating mb-3">
-            <input type="text" class="form-control" id="videoIds" @bind="VideoIds" placeholder="Enter video IDs or URLs" />
+<div class="youtube-input">
+    <div class="input-type-selector mb-3">
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="inputType" id="videoInput" value="video" 
+                   checked="@(InputType == "video")" @onchange="@(() => InputType = "video")" />
+            <label class="form-check-label" for="videoInput">
+                <i class="bi bi-play-btn me-1"></i>Video
+            </label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="inputType" id="playlistInput" value="playlist" 
+                   checked="@(InputType == "playlist")" @onchange="@(() => InputType = "playlist")" />
+            <label class="form-check-label" for="playlistInput">
+                <i class="bi bi-collection-play me-1"></i>Playlist
+            </label>
+        </div>
+    </div>
+
+    @if (InputType == "video")
+    {
+        <div class="form-floating">
+            <input type="text" class="form-control" id="videoIds" @bind="VideoIds" 
+                   placeholder="Enter video IDs or URLs" />
             <label for="videoIds">Video IDs or URLs (comma-separated)</label>
         </div>
-    </div>
-    <div class="col-12">
-        <div class="form-floating mb-3">
-            <input type="text" class="form-control" id="playlistIds" @bind="PlaylistIds" placeholder="Enter playlist IDs or URLs" />
+    }
+    else
+    {
+        <div class="form-floating">
+            <input type="text" class="form-control" id="playlistIds" @bind="PlaylistIds" 
+                   placeholder="Enter playlist IDs or URLs" />
             <label for="playlistIds">Playlist IDs or URLs (comma-separated)</label>
         </div>
-    </div>
+    }
 </div>
 
 @code {
+    private string InputType { get; set; } = "video";
+
     public string? VideoIds { get; set; }
 
     public string? PlaylistIds { get; set; }
