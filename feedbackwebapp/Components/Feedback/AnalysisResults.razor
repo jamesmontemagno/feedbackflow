@@ -1,5 +1,6 @@
 @namespace FeedbackWebApp.Components.Feedback
 @using Markdig
+@inject IJSRuntime JSRuntime
 
 @if (!string.IsNullOrEmpty(Error))
 {
@@ -12,8 +13,12 @@
 @if (!string.IsNullOrEmpty(MarkdownResult))
 {
     <div class="card mt-4 shadow-sm">
-        <div class="card-header bg-primary text-white">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h5 class="card-title mb-0">Analysis Summary</h5>
+            <button class="btn btn-sm btn-light" @onclick="CopyToClipboard">
+                <i class="bi bi-clipboard me-1"></i>
+                Copy
+            </button>
         </div>
         <div class="card-body">
             <div class="markdown-body">
@@ -29,4 +34,9 @@
 
     [Parameter]
     public string MarkdownResult { get; set; } = "";
+
+    private async Task CopyToClipboard()
+    {
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", MarkdownResult);
+    }
 }

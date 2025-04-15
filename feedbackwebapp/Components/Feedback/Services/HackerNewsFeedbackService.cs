@@ -2,7 +2,7 @@ using SharedDump.Utils;
 
 namespace FeedbackWebApp.Components.Feedback.Services;
 
-public class HackerNewsFeedbackService : FeedbackService
+public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackService
 {
     private readonly string _storyIds;
 

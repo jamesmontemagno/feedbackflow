@@ -3,11 +3,11 @@
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
 @using SharedDump.Models.YouTube
-@using SharedDump.Utils
 @using FeedbackWebApp.Components.Feedback
 @using FeedbackWebApp.Components.Feedback.Services
 @inject IConfiguration Configuration
 @inject HttpClient Http
+@inject FeedbackServiceProvider ServiceProvider
 
 <PageTitle>FeedbackFlow</PageTitle>
 
@@ -25,11 +25,8 @@
         }
         else
         {
-
-
             <div class="card shadow-sm">
                 <div class="card-body">
-
                     <div class="mb-4">
                         <label for="sourceType" class="form-label fw-bold">Select Feedback Source</label>
                         <select id="sourceType" class="form-select form-select-lg" @bind="selectedSource">
@@ -39,8 +36,6 @@
                             <option value="GitHub" disabled>📝 GitHub (Coming Soon)</option>
                         </select>
                     </div>
-
-                   @*  <SourceSelector @bind-Value="selectedSource"/> *@
 
                     @if (selectedSource == "YouTube")
                     {
@@ -87,10 +82,10 @@
             youtubeVideos = null;
             isLoading = true;
 
-            FeedbackService service = selectedSource switch
+            IFeedbackService service = selectedSource switch
             {
-                "YouTube" => new YouTubeFeedbackService(Http, Configuration,youtubeInput?.VideoIds ?? string.Empty, youtubeInput?.PlaylistIds ?? string.Empty),
-                "HackerNews" => new HackerNewsFeedbackService(Http, Configuration, hackerNewsInputForm?.Value ?? string.Empty),
+                "YouTube" => ServiceProvider.CreateYouTubeService(youtubeInput?.VideoIds ?? string.Empty, youtubeInput?.PlaylistIds ?? string.Empty),
+                "HackerNews" => ServiceProvider.CreateHackerNewsService(hackerNewsInputForm?.Value ?? string.Empty),
                 _ => throw new InvalidOperationException("Please select a feedback source")
             };
 

@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace FeedbackWebApp.Components.Feedback.Services;
 
-public class YouTubeFeedbackService : FeedbackService
+public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
 {
     private readonly string _videoIds;
     private readonly string _playlistIds;
