@@ -1,18 +1,19 @@
 using SharedDump.Models.YouTube;
 using SharedDump.Utils;
 using System.Text.Json;
+using System.Text;
 
 namespace FeedbackWebApp.Components.Feedback.Services;
 
-public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
+public class YouTubeService : FeedbackService, IYouTubeFeedbackService
 {
     private readonly string _videoIds;
     private readonly string _playlistIds;
 
-    public YouTubeFeedbackService(
+    public YouTubeService(
         HttpClient http, 
-        IConfiguration configuration,
-        string videoIds,
+        IConfiguration configuration, 
+        string videoIds, 
         string playlistIds,
         FeedbackStatusUpdate? onStatusUpdate = null) 
         : base(http, configuration, onStatusUpdate)

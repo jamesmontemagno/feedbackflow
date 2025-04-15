@@ -2,10 +2,21 @@ using SharedDump.Models.YouTube;
 
 namespace FeedbackWebApp.Components.Feedback.Services;
 
-public class MockYouTubeFeedbackService : IYouTubeFeedbackService
+public class MockYouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
 {
-    public Task<(string markdownResult, object? additionalData)> GetFeedback()
+    public MockYouTubeFeedbackService(
+        HttpClient http,
+        IConfiguration configuration,
+        FeedbackStatusUpdate? onStatusUpdate = null) 
+        : base(http, configuration, onStatusUpdate)
     {
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    {
+        UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching YouTube comments...");
+        await Task.Delay(1500); // Simulate network delay
+
         var mockVideos = new List<YouTubeOutputVideo>
         {
             new()
@@ -31,6 +42,9 @@ public class MockYouTubeFeedbackService : IYouTubeFeedbackService
             }
         };
 
+        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing YouTube comments...");
+        await Task.Delay(2000); // Simulate AI analysis time
+
         const string mockMarkdown = @"# Analysis Summary
 
 ## Overall Sentiment
@@ -45,15 +59,29 @@ Very positive engagement with constructive feedback.
 - Consider creating follow-up videos
 - More in-depth explanations requested";
 
-        object? additionalData = mockVideos;
-        return Task.FromResult((mockMarkdown, additionalData));
+        UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed");
+        return (mockMarkdown, mockVideos);
     }
 }
 
-public class MockHackerNewsFeedbackService : IHackerNewsFeedbackService
+public class MockHackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackService
 {
-    public Task<(string markdownResult, object? additionalData)> GetFeedback()
+    public MockHackerNewsFeedbackService(
+        HttpClient http,
+        IConfiguration configuration,
+        FeedbackStatusUpdate? onStatusUpdate = null) 
+        : base(http, configuration, onStatusUpdate)
     {
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    {
+        UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching Hacker News comments...");
+        await Task.Delay(1500); // Simulate network delay
+
+        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing Hacker News discussion...");
+        await Task.Delay(2000); // Simulate AI analysis time
+
         const string mockMarkdown = @"# HackerNews Discussion Analysis
 
 ## Overview
@@ -68,6 +96,7 @@ High quality technical discussion with valuable insights.
 - Several users shared real-world implementation experiences
 - Good balance of theoretical and practical perspectives";
 
-        return Task.FromResult((mockMarkdown, (object?)null));
+        UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed");
+        return (mockMarkdown, null);
     }
 }

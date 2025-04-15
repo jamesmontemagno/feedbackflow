@@ -221,7 +221,7 @@ namespace FeedbackFunctions
         {
             return serviceType.ToLowerInvariant() switch
             {
-                "youtube" => @"You are an expert at analyzing YouTube comments. 
+                "youtube" => @"You are an expert at analyzing YouTube comments and like to use emoji to help bring visual spice to the analysis. 
                     When analyzing comments, provide:
                     1. A summary of the overall sentiment and viewer engagement
                     2. Key topics, timestamps, or sections of the video mentioned frequently
@@ -230,7 +230,7 @@ namespace FeedbackFunctions
                     5. Common questions or points of confusion from viewers
                     Format your response in markdown.",
 
-                "github" => @"You are an expert at analyzing GitHub feedback. 
+                "github" => @"You are an expert at analyzing GitHub feedback and like to use emoji to help bring visual spice to the analysis. 
                     When analyzing comments, provide:
                     1. A summary of the overall sentiment and discussion quality
                     2. Key technical topics, features, or issues mentioned
@@ -239,7 +239,7 @@ namespace FeedbackFunctions
                     5. Common feature requests or enhancement suggestions
                     Format your response in markdown.",
 
-                "hackernews" => @"You are an expert at analyzing Hacker News comments. 
+                "hackernews" => @"You are an expert at analyzing Hacker News comments and like to use emoji to help bring visual spice to the analysis. 
                     When analyzing comments, provide:
                     1. A summary of the overall discussion quality and technical depth
                     2. Key technical insights and alternative perspectives shared

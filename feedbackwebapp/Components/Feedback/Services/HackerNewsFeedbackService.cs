@@ -9,7 +9,9 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
     public HackerNewsFeedbackService(
         HttpClient http, 
         IConfiguration configuration,
-        string storyIds) : base(http, configuration)
+        string storyIds,
+        FeedbackStatusUpdate? onStatusUpdate = null) 
+        : base(http, configuration, onStatusUpdate)
     {
         _storyIds = storyIds;
     }
@@ -22,6 +24,8 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
         {
             throw new InvalidOperationException("Please enter at least one valid Hacker News story ID or URL");
         }
+
+        UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching Hacker News comments...");
 
         var hnCode = Configuration["FeedbackApi:GetHackerNewsFeedbackCode"]
             ?? throw new InvalidOperationException("Hacker News API code not configured");

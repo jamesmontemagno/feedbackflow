@@ -13,17 +13,17 @@ public class FeedbackServiceProvider
         _useMocks = configuration.GetValue<bool>("FeedbackApi:UseMocks");
     }
 
-    public IYouTubeFeedbackService CreateYouTubeService(string videoIds, string playlistIds)
+    public IYouTubeFeedbackService CreateYouTubeService(string videoIds, string playlistIds, FeedbackStatusUpdate? onStatusUpdate = null)
     {
         return _useMocks 
-            ? new MockYouTubeFeedbackService()
-            : new YouTubeFeedbackService(_http, _configuration, videoIds, playlistIds);
+            ? new MockYouTubeFeedbackService(_http, _configuration, onStatusUpdate)
+            : new YouTubeFeedbackService(_http, _configuration, videoIds, playlistIds, onStatusUpdate);
     }
 
-    public IHackerNewsFeedbackService CreateHackerNewsService(string storyIds)
+    public IHackerNewsFeedbackService CreateHackerNewsService(string storyIds, FeedbackStatusUpdate? onStatusUpdate = null)
     {
         return _useMocks
-            ? new MockHackerNewsFeedbackService()
-            : new HackerNewsFeedbackService(_http, _configuration, storyIds);
+            ? new MockHackerNewsFeedbackService(_http, _configuration, onStatusUpdate)
+            : new HackerNewsFeedbackService(_http, _configuration, storyIds, onStatusUpdate);
     }
 }

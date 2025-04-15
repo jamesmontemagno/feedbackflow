@@ -48,6 +48,21 @@
 
                     <SubmitButton ShowWhenSource="@selectedSource" IsLoading="@isLoading" OnSubmit="SubmitFeedbackRequest" />
                     
+                    @if (isLoading)
+                    {
+                        <div class="alert alert-info mt-3">
+                            <div class="d-flex align-items-center">
+                                <div class="spinner-border spinner-border-sm me-2" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <div>
+                                    <strong>@currentStatus</strong>
+                                    <div class="small">@currentStatusMessage</div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
                     <AnalysisResults Error="@error" MarkdownResult="@markdownResult" />
                     
                     <YouTubeComments Videos="@youtubeVideos" />
@@ -66,10 +81,19 @@
     private bool isLoading = false;
     private bool isAuthenticated = false;
     private List<YouTubeOutputVideo>? youtubeVideos;
+    private FeedbackProcessStatus currentStatus;
+    private string currentStatusMessage = "";
 
     private void HandleAuthenticated(bool success)
     {
         isAuthenticated = success;
+        StateHasChanged();
+    }
+
+    private void HandleStatusUpdate(FeedbackProcessStatus status, string message)
+    {
+        currentStatus = status;
+        currentStatusMessage = message;
         StateHasChanged();
     }
 
@@ -84,8 +108,13 @@
 
             IFeedbackService service = selectedSource switch
             {
-                "YouTube" => ServiceProvider.CreateYouTubeService(youtubeInput?.VideoIds ?? string.Empty, youtubeInput?.PlaylistIds ?? string.Empty),
-                "HackerNews" => ServiceProvider.CreateHackerNewsService(hackerNewsInputForm?.Value ?? string.Empty),
+                "YouTube" => ServiceProvider.CreateYouTubeService(
+                    youtubeInput?.VideoIds ?? string.Empty, 
+                    youtubeInput?.PlaylistIds ?? string.Empty, 
+                    HandleStatusUpdate),
+                "HackerNews" => ServiceProvider.CreateHackerNewsService(
+                    hackerNewsInputForm?.Value ?? string.Empty, 
+                    HandleStatusUpdate),
                 _ => throw new InvalidOperationException("Please select a feedback source")
             };
 
@@ -104,6 +133,7 @@
         finally
         {
             isLoading = false;
+            currentStatusMessage = "";
         }
     }
 }

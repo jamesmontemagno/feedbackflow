@@ -1,0 +1,16 @@
+.alert {
+    transition: all 0.3s ease-in-out;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.alert-info {
+    border-left: 4px solid var(--bs-info);
+}
+
+.spinner-border {
+    color: var(--bs-info);
+}
+
+.small {
+    opacity: 0.8;
+}
