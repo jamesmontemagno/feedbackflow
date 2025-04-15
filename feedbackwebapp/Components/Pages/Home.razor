@@ -1,5 +1,8 @@
 ﻿@page "/"
 @using System.Text.Json
+@using Markdig
+@using SharedDump.Models
+@using SharedDump.Models.YouTube
 @inject IConfiguration Configuration
 @inject HttpClient Http
 
@@ -13,74 +16,133 @@
     </nav>
 
     <div class="container">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <div class="mb-4">
-                    <label for="sourceType" class="form-label fw-bold">Select Feedback Source</label>
-                    <select id="sourceType" class="form-select form-select-lg" @bind="selectedSource">
-                        <option value="">Choose a source...</option>
-                        <option value="YouTube">📺 YouTube</option>
-                        <option value="GitHub" disabled>📝 GitHub (Coming Soon)</option>
-                        <option value="HackerNews" disabled>💡 Hacker News (Coming Soon)</option>
-                    </select>
+        @if (!isAuthenticated)
+        {
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Authentication Required</h5>
+                    <div class="form-floating mb-3">
+                        <input type="password" class="form-control" id="password" @bind="password" @onkeyup="HandleKeyPress" placeholder="Enter password" />
+                        <label for="password">Password</label>
+                    </div>
+                    <button class="btn btn-primary" @onclick="Authenticate">Login</button>
+                    @if (!string.IsNullOrEmpty(authError))
+                    {
+                        <div class="alert alert-danger mt-3" role="alert">
+                            @authError
+                        </div>
+                    }
                 </div>
-
-                @if (selectedSource == "YouTube")
-                {
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="form-floating mb-3">
-                                <input type="text" class="form-control" id="videoIds" @bind="videoIds" placeholder="Enter video IDs" />
-                                <label for="videoIds">Video IDs (comma-separated)</label>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-floating mb-3">
-                                <input type="text" class="form-control" id="playlistIds" @bind="playlistIds" placeholder="Enter playlist IDs" />
-                                <label for="playlistIds">Playlist IDs (comma-separated)</label>
-                            </div>
-                        </div>
-                    </div>
-                }
-
-                @if (!string.IsNullOrEmpty(selectedSource))
-                {
-                    <button class="btn btn-primary btn-lg w-100" @onclick="SubmitFeedbackRequest" disabled="@isLoading">
-                        @if (isLoading)
-                        {
-                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                            <span>Processing...</span>
-                        }
-                        else
-                        {
-                            <span>Get Feedback</span>
-                        }
-                    </button>
-                }
-
-                @if (!string.IsNullOrEmpty(error))
-                {
-                    <div class="alert alert-danger mt-4" role="alert">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        @error
-                    </div>
-                }
-
-                @if (!string.IsNullOrEmpty(markdownResult))
-                {
-                    <div class="card mt-4 shadow-sm">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="card-title mb-0">Results</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="markdown-body">
-                                @((MarkupString)markdownResult)
-                            </div>
-                        </div>
-                    </div>
-                }
             </div>
-        </div>
+        }
+        else
+        {
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="mb-4">
+                        <label for="sourceType" class="form-label fw-bold">Select Feedback Source</label>
+                        <select id="sourceType" class="form-select form-select-lg" @bind="selectedSource">
+                            <option value="">Choose a source...</option>
+                            <option value="YouTube">📺 YouTube</option>
+                            <option value="GitHub" disabled>📝 GitHub (Coming Soon)</option>
+                            <option value="HackerNews" disabled>💡 Hacker News (Coming Soon)</option>
+                        </select>
+                    </div>
+
+                    @if (selectedSource == "YouTube")
+                    {
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" id="videoIds" @bind="videoIds" placeholder="Enter video IDs" />
+                                    <label for="videoIds">Video IDs (comma-separated)</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" id="playlistIds" @bind="playlistIds" placeholder="Enter playlist IDs" />
+                                    <label for="playlistIds">Playlist IDs (comma-separated)</label>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(selectedSource))
+                    {
+                        <button class="btn btn-primary btn-lg w-100" @onclick="SubmitFeedbackRequest" disabled="@isLoading">
+                            @if (isLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Processing...</span>
+                            }
+                            else
+                            {
+                                <span>Get Feedback</span>
+                            }
+                        </button>
+                    }
+
+                    @if (!string.IsNullOrEmpty(error))
+                    {
+                        <div class="alert alert-danger mt-4" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            @error
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(markdownResult))
+                    {
+                        <div class="card mt-4 shadow-sm">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="card-title mb-0">Analysis Summary</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="markdown-body">
+                                    @((MarkupString)Markdown.ToHtml(markdownResult))
+                                </div>
+                            </div>
+                        </div>
+
+                        @if (youtubeVideos != null)
+                        {
+                            foreach (var video in youtubeVideos)
+                            {
+                                <div class="card mt-4 shadow-sm">
+                                    <div class="card-header bg-light">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h5 class="card-title mb-0">
+                                                <i class="bi bi-youtube text-danger me-2"></i>
+                                                @video.Title
+                                            </h5>
+                                            <button class="btn btn-sm btn-outline-primary" @onclick="@(() => ToggleComments(video.Id))">
+                                                @(expandedVideos.Contains(video.Id) ? "Hide Comments" : "Show Comments")
+                                            </button>
+                                        </div>
+                                    </div>
+                                    @if (expandedVideos.Contains(video.Id))
+                                    {
+                                        <div class="card-body">
+                                            <div class="list-group">
+                                                @foreach (var comment in video.Comments)
+                                                {
+                                                    <div class="list-group-item">
+                                                        <div class="d-flex w-100 justify-content-between">
+                                                            <h6 class="mb-1">@comment.Author</h6>
+                                                            <small class="text-muted">@comment.PublishedAt.ToLocalTime().ToString("g")</small>
+                                                        </div>
+                                                        <p class="mb-1">@comment.Text</p>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        }
+                    }
+                </div>
+            </div>
+        }
     </div>
 </div>
 
@@ -91,16 +153,72 @@
     private string markdownResult = "";
     private string error = "";
     private bool isLoading = false;
+    
+    // Add authentication state
+    private string password = "";
+    private string authError = "";
+    private bool isAuthenticated = false;
+
+    private List<YouTubeOutputVideo>? youtubeVideos;
+    private HashSet<string> expandedVideos = new();
+
+    protected override void OnInitialized()
+    {
+        var configuredPassword = Configuration["FeedbackApp:AccessPassword"];
+        if (string.IsNullOrEmpty(configuredPassword))
+        {
+            authError = "System error: Password not configured";
+        }
+    }
+
+    private void HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            Authenticate();
+        }
+    }
+
+    private void Authenticate()
+    {
+        var configuredPassword = Configuration["FeedbackApp:AccessPassword"];
+        if (string.IsNullOrEmpty(configuredPassword))
+        {
+            authError = "System error: Password not configured";
+            return;
+        }
+
+        if (password == configuredPassword)
+        {
+            isAuthenticated = true;
+            authError = "";
+        }
+        else
+        {
+            authError = "Invalid password";
+            password = "";
+        }
+    }
+
+    private void ToggleComments(string videoId)
+    {
+        if (expandedVideos.Contains(videoId))
+            expandedVideos.Remove(videoId);
+        else
+            expandedVideos.Add(videoId);
+    }
 
     private async Task SubmitFeedbackRequest()
     {
-        error = "";
-        markdownResult = "";
-        isLoading = true;
-
         try
         {
-            var baseUrl = Configuration["FeedbackApi:BaseUrl"] ?? throw new InvalidOperationException("API base URL not configured");
+            error = "";
+            markdownResult = "";
+            youtubeVideos = null;
+            isLoading = true;
+
+            var baseUrl = Configuration["FeedbackApi:BaseUrl"] 
+                ?? throw new InvalidOperationException("API base URL not configured");
 
             if (selectedSource == "YouTube")
             {
@@ -109,18 +227,58 @@
                     error = "Please enter at least one video ID or playlist ID";
                     return;
                 }
-                
-                var requestBody = JsonSerializer.Serialize(new
+
+                var youTubeCode = Configuration["FeedbackApi:GetYouTubeFeedbackCode"]
+                    ?? throw new InvalidOperationException("YouTube API code not configured");
+                var analyzeCode = Configuration["FeedbackApi:AnalyzeCommentsCode"]
+                    ?? throw new InvalidOperationException("Analyze API code not configured");
+
+                // First get the comments from the YouTube API
+                var queryParams = new List<string>
                 {
-                    videos = videoIds,
-                    playlist = playlistIds
+                    $"code={Uri.EscapeDataString(youTubeCode)}"
+                };
+                
+                if (!string.IsNullOrWhiteSpace(videoIds))
+                {
+                    queryParams.Add($"videos={Uri.EscapeDataString(videoIds)}");
+                }
+                if (!string.IsNullOrWhiteSpace(playlistIds))
+                {
+                    queryParams.Add($"playlists={Uri.EscapeDataString(playlistIds)}");
+                }
+
+                var getFeedbackUrl = $"{baseUrl}/api/GetYouTubeFeedback?{string.Join("&", queryParams)}";
+                var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
+                feedbackResponse.EnsureSuccessStatusCode();
+                var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
+                
+                // Parse the YouTube response
+                youtubeVideos = JsonSerializer.Deserialize<List<YouTubeOutputVideo>>(responseContent);
+                
+                if (youtubeVideos == null || !youtubeVideos.Any())
+                {
+                    error = "No comments found for the specified videos/playlists";
+                    return;
+                }
+
+                // Then analyze the comments
+                var analyzeRequestBody = JsonSerializer.Serialize(new
+                {
+                    serviceType = "YouTube",
+                    comments = responseContent
                 });
 
-                var content = new StringContent(requestBody, System.Text.Encoding.UTF8, "application/json");
-                var response = await Http.PostAsync(baseUrl, content);
+                var analyzeContent = new StringContent(
+                    analyzeRequestBody, 
+                    System.Text.Encoding.UTF8, 
+                    "application/json");
 
-                response.EnsureSuccessStatusCode();
-                markdownResult = await response.Content.ReadAsStringAsync();
+                var getAnalysisUrl = $"{baseUrl}/api/AnalyzeComments?code={Uri.EscapeDataString(analyzeCode)}";
+                var analyzeResponse = await Http.PostAsync(getAnalysisUrl, analyzeContent);
+
+                analyzeResponse.EnsureSuccessStatusCode();
+                markdownResult = await analyzeResponse.Content.ReadAsStringAsync();
             }
         }
         catch (Exception ex)
