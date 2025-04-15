@@ -1,0 +1,32 @@
+@namespace FeedbackWebApp.Components.Feedback
+@using Markdig
+
+@if (!string.IsNullOrEmpty(Error))
+{
+    <div class="alert alert-danger mt-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        @Error
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(MarkdownResult))
+{
+    <div class="card mt-4 shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="card-title mb-0">Analysis Summary</h5>
+        </div>
+        <div class="card-body">
+            <div class="markdown-body">
+                @((MarkupString)Markdown.ToHtml(MarkdownResult))
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string Error { get; set; } = "";
+
+    [Parameter]
+    public string MarkdownResult { get; set; } = "";
+}

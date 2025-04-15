@@ -1,0 +1,23 @@
+@namespace FeedbackWebApp.Components.Feedback
+@using SharedDump.Utils
+
+<div class="row g-3">
+    <div class="col-12">
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="videoIds" @bind="VideoIds" placeholder="Enter video IDs or URLs" />
+            <label for="videoIds">Video IDs or URLs (comma-separated)</label>
+        </div>
+    </div>
+    <div class="col-12">
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="playlistIds" @bind="PlaylistIds" placeholder="Enter playlist IDs or URLs" />
+            <label for="playlistIds">Playlist IDs or URLs (comma-separated)</label>
+        </div>
+    </div>
+</div>
+
+@code {
+    public string? VideoIds { get; set; }
+
+    public string? PlaylistIds { get; set; }
+}

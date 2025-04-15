@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>FeedbackWebApp</RootNamespace>
+    <NoWarn>RZ10012</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

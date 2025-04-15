@@ -1,0 +1,66 @@
+@namespace FeedbackWebApp.Components.Feedback
+@using Microsoft.Extensions.Configuration
+@inject IConfiguration Configuration
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <h5 class="card-title">Authentication Required</h5>
+        <div class="form-floating mb-3">
+            <input type="password" class="form-control" id="password" @bind="password" @onkeyup="HandleKeyPress" placeholder="Enter password" />
+            <label for="password">Password</label>
+        </div>
+        <button class="btn btn-primary" @onclick="AuthenticateHandler">Login</button>
+        @if (!string.IsNullOrEmpty(authError))
+        {
+            <div class="alert alert-danger mt-3" role="alert">
+                @authError
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string password = "";
+    private string authError = "";
+
+    [Parameter]
+    public EventCallback<bool> OnAuthenticated { get; set; }
+
+    protected override void OnInitialized()
+    {
+        var configuredPassword = Configuration["FeedbackApp:AccessPassword"];
+        if (string.IsNullOrEmpty(configuredPassword))
+        {
+            authError = "System error: Password not configured";
+        }
+    }
+
+    private async void HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await AuthenticateHandler();
+        }
+    }
+
+    private async Task AuthenticateHandler()
+    {
+        var configuredPassword = Configuration["FeedbackApp:AccessPassword"];
+        if (string.IsNullOrEmpty(configuredPassword))
+        {
+            authError = "System error: Password not configured";
+            return;
+        }
+
+        if (password == configuredPassword)
+        {
+            authError = "";
+            await OnAuthenticated.InvokeAsync(true);
+        }
+        else
+        {
+            authError = "Invalid password";
+            password = "";
+        }
+    }
+}
