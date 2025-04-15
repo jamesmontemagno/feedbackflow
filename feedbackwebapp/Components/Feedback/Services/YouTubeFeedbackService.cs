@@ -66,9 +66,49 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
             throw new InvalidOperationException("No comments found for the specified videos/playlists");
         }
 
-        // Analyze the comments
-        var markdownResult = await AnalyzeComments("YouTube", responseContent);
+        var analysisBuilder = new System.Text.StringBuilder();
 
-        return (markdownResult, videos);
+        // If this is a playlist (more than one video), do an overall analysis first
+        if (videos.Count > 1)
+        {
+            UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing overall playlist feedback...");
+            var overallAnalysis = await AnalyzeComments("YouTube", responseContent);
+            analysisBuilder.AppendLine("# Overall Playlist Analysis");
+            analysisBuilder.AppendLine();
+            analysisBuilder.AppendLine(overallAnalysis);
+            analysisBuilder.AppendLine();
+            analysisBuilder.AppendLine("---");
+            analysisBuilder.AppendLine();
+        }
+
+        // If we have a playlist, analyze each video separately
+        if (videos.Count > 1)
+        {
+            UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing individual video feedback...");
+            analysisBuilder.AppendLine("# Individual Video Analyses");
+            analysisBuilder.AppendLine();
+
+            foreach (var video in videos)
+            {
+                var videoJson = JsonSerializer.Serialize(new List<YouTubeOutputVideo> { video });
+                var videoAnalysis = await AnalyzeComments("YouTube", videoJson);
+                
+                analysisBuilder.AppendLine($"## {video.Title}");
+                analysisBuilder.AppendLine($"Video URL: {video.Url}");
+                analysisBuilder.AppendLine();
+                analysisBuilder.AppendLine(videoAnalysis);
+                analysisBuilder.AppendLine();
+                analysisBuilder.AppendLine("---");
+                analysisBuilder.AppendLine();
+            }
+        }
+        // For single video, just use the original analysis
+        else
+        {
+            var singleVideoAnalysis = await AnalyzeComments("YouTube", responseContent);
+            analysisBuilder.Append(singleVideoAnalysis);
+        }
+
+        return (analysisBuilder.ToString(), videos);
     }
 }
