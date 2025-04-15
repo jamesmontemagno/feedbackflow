@@ -79,17 +79,16 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
             analysisBuilder.AppendLine();
             analysisBuilder.AppendLine("---");
             analysisBuilder.AppendLine();
-        }
 
-        // If we have a playlist, analyze each video separately
-        if (videos.Count > 1)
-        {
-            UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing individual video feedback...");
+            // Process individual videos with progress updates
             analysisBuilder.AppendLine("# Individual Video Analyses");
             analysisBuilder.AppendLine();
 
-            foreach (var video in videos)
+            for (int i = 0; i < videos.Count; i++)
             {
+                var video = videos[i];
+                UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing video {i + 1} of {videos.Count}: {video.Title}");
+                
                 var videoJson = JsonSerializer.Serialize(new List<YouTubeOutputVideo> { video });
                 var videoAnalysis = await AnalyzeComments("YouTube", videoJson);
                 

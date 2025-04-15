@@ -1,3 +1,7 @@
+.youtube-input {
+    padding-bottom: 1rem;
+}
+
 .youtube-input .input-type-selector {
     display: flex;
     justify-content: center;

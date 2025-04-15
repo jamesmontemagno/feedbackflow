@@ -5,14 +5,14 @@
     <div class="input-type-selector mb-3">
         <div class="form-check form-check-inline">
             <input class="form-check-input" type="radio" name="inputType" id="videoInput" value="video" 
-                   checked="@(InputType == "video")" @onchange="@(() => InputType = "video")" />
+                   checked="@(InputType == "video")" @onchange="@(() => ChangeInputType("video"))" />
             <label class="form-check-label" for="videoInput">
                 <i class="bi bi-play-btn me-1"></i>Video
             </label>
         </div>
         <div class="form-check form-check-inline">
             <input class="form-check-input" type="radio" name="inputType" id="playlistInput" value="playlist" 
-                   checked="@(InputType == "playlist")" @onchange="@(() => InputType = "playlist")" />
+                   checked="@(InputType == "playlist")" @onchange="@(() => ChangeInputType("playlist"))" />
             <label class="form-check-label" for="playlistInput">
                 <i class="bi bi-collection-play me-1"></i>Playlist
             </label>
@@ -43,4 +43,18 @@
     public string? VideoIds { get; set; }
 
     public string? PlaylistIds { get; set; }
+
+    private void ChangeInputType(string newType)
+    {
+        InputType = newType;
+        // Clear out the values when switching types
+        if (newType == "video")
+        {
+            PlaylistIds = null;
+        }
+        else
+        {
+            VideoIds = null;
+        }
+    }
 }
