@@ -9,7 +9,7 @@
 ## Code Style
 - Prefer async/await over direct Task handling
 - Use nullable reference types
-- Use explicit type declarations over var
+- Use var over explicit type declarations 
 - Always implement IDisposable when dealing with event handlers or subscriptions
 
 ## Component Structure
@@ -44,15 +44,11 @@
 
 ## Security
 - Always validate user input
-- Use proper authentication and authorization
-- Protect against XSS attacks
-- Follow OWASP guidelines
 
 ## Accessibility
 - Use semantic HTML
 - Include ARIA attributes where necessary
 - Ensure keyboard navigation works
-- Test with screen readers
 
 ## File Organization
 - Keep related files together
