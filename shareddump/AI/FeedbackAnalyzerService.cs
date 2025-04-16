@@ -62,28 +62,26 @@ public class FeedbackAnalyzerService : IFeedbackAnalyzerService
 
     public async Task<string> AnalyzeCommentsAsync(string serviceType, string comments)
     {
-        var prompt = BuildAnalysisPrompt(serviceType, comments);
-        var messages = new[] { new ChatMessage(ChatRole.User, prompt) };
+        var servicePrompt = GetServiceSpecificPrompt(serviceType);
+        var prompt = BuildAnalysisPrompt(comments);
+        var messages = new[] { new ChatMessage(ChatRole.System, servicePrompt), new ChatMessage(ChatRole.User, prompt) };
         var response = await _chatClient.GetResponseAsync(messages);
         return response.ToString();
     }
 
     public async IAsyncEnumerable<string> GetStreamingAnalysisAsync(string serviceType, string comments)
     {
-        var prompt = BuildAnalysisPrompt(serviceType, comments);
-        var messages = new[] { new ChatMessage(ChatRole.User, prompt) };
+        var servicePrompt = GetServiceSpecificPrompt(serviceType);
+        var prompt = BuildAnalysisPrompt(comments);
+        var messages = new[] { new ChatMessage(ChatRole.System, servicePrompt), new ChatMessage(ChatRole.User, prompt) };
         await foreach (var update in _chatClient.GetStreamingResponseAsync(messages))
         {
             yield return update.ToString();
         }
     }
 
-    private static string BuildAnalysisPrompt(string serviceType, string comments)
+    private static string BuildAnalysisPrompt(string comments)
     {
-        var servicePrompt = GetServiceSpecificPrompt(serviceType);
-        return $@"{servicePrompt}
-
-            Comments to analyze:
-            {comments}";
+        return $@"Comments to analyze: {comments}";
     }
 }
