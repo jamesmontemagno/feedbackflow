@@ -71,7 +71,15 @@ public class FeedbackAnalyzerService : IFeedbackAnalyzerService
 
     public async IAsyncEnumerable<string> GetStreamingAnalysisAsync(string serviceType, string comments)
     {
-        var servicePrompt = GetServiceSpecificPrompt(serviceType);
+        await foreach (var update in GetStreamingAnalysisAsync(serviceType, comments, null))
+        {
+            yield return update;
+        }
+    }
+
+    public async IAsyncEnumerable<string> GetStreamingAnalysisAsync(string serviceType, string comments, string? customSystemPrompt)
+    {
+        var servicePrompt = customSystemPrompt ?? GetServiceSpecificPrompt(serviceType);
         var prompt = BuildAnalysisPrompt(comments);
         var messages = new[] { new ChatMessage(ChatRole.System, servicePrompt), new ChatMessage(ChatRole.User, prompt) };
         await foreach (var update in _chatClient.GetStreamingResponseAsync(messages))

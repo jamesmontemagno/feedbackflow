@@ -247,6 +247,55 @@ public class FeedbackFunctions
             return response;
         }
     }
+
+    [Function("AnalyzeCommentsBYOK")]
+    public async Task<HttpResponseData> AnalyzeCommentsBYOK(
+        [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
+    {
+        _logger.LogInformation("Processing BYOK comment analysis request");
+
+        try
+        {
+            var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            var request = JsonSerializer.Deserialize(requestBody, FeedbackJsonContext.Default.AnalyzeCommentsBYOKRequest);
+
+            if (string.IsNullOrEmpty(request?.Comments))
+            {
+                var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await badResponse.WriteStringAsync("Comments JSON is required");
+                return badResponse;
+            }
+
+            if (string.IsNullOrEmpty(request.Endpoint) || string.IsNullOrEmpty(request.ApiKey) || string.IsNullOrEmpty(request.Deployment))
+            {
+                var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await badResponse.WriteStringAsync("Azure OpenAI configuration (endpoint, apiKey, deployment) is required");
+                return badResponse;
+            }
+
+            var analyzerService = new FeedbackAnalyzerService(request.Endpoint, request.ApiKey, request.Deployment);
+            
+            var analysisBuilder = new System.Text.StringBuilder();
+            await foreach (var update in analyzerService.GetStreamingAnalysisAsync(
+                request.ServiceType, 
+                request.Comments,
+                request.SystemPrompt))
+            {
+                analysisBuilder.Append(update);
+            }
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            await response.WriteStringAsync(analysisBuilder.ToString());
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing BYOK comment analysis request");
+            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await response.WriteStringAsync("An error occurred processing the request");
+            return response;
+        }
+    }
 }
 
 public class AnalyzeCommentsRequest
@@ -256,4 +305,25 @@ public class AnalyzeCommentsRequest
     
     [JsonPropertyName("serviceType")]
     public string ServiceType { get; set; } = string.Empty;
+}
+
+public class AnalyzeCommentsBYOKRequest
+{
+    [JsonPropertyName("comments")]
+    public string Comments { get; set; } = string.Empty;
+    
+    [JsonPropertyName("serviceType")]
+    public string ServiceType { get; set; } = string.Empty;
+
+    [JsonPropertyName("endpoint")]
+    public string Endpoint { get; set; } = string.Empty;
+
+    [JsonPropertyName("apiKey")]
+    public string ApiKey { get; set; } = string.Empty;
+
+    [JsonPropertyName("deployment")]
+    public string Deployment { get; set; } = string.Empty;
+
+    [JsonPropertyName("systemPrompt")]
+    public string? SystemPrompt { get; set; }
 }
