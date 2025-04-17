@@ -26,7 +26,11 @@ public class Program
             GitHubAccessToken = builder.Configuration["GitHub_ACCESS_TOKEN"] 
                 ?? throw new InvalidOperationException("GitHub access token not configured"),
             YouTubeApiKey = builder.Configuration["YOUTUBE_API_KEY"] 
-                ?? throw new InvalidOperationException("YouTube API key not configured")
+                ?? throw new InvalidOperationException("YouTube API key not configured"),
+            RedditClientId = builder.Configuration["REDDIT_CLIENT_ID"]
+                ?? throw new InvalidOperationException("Reddit client ID not configured"),
+            RedditClientSecret = builder.Configuration["REDDIT_CLIENT_SECRET"]
+                ?? throw new InvalidOperationException("Reddit client secret not configured")
         };
 
         // Register ApiConfiguration and FeedbackFlowTool as singletons

@@ -4,6 +4,10 @@ GET http://localhost:7071/api/GetYouTubeFeedback?videos=MKD-sCZWpZQ
 # GET http://localhost:7071/api/GetYouTubeFeedback?channel=CHANNEL_ID_HERE
 # GET http://localhost:7071/api/GetYouTubeFeedback?playlists=PLAYLIST_ID_HERE
 
+### Get Reddit Comments
+GET {{baseUrl}}/api/GetRedditFeedback?threads=xyz123,abc456
+x-functions-key: {{functionKey}}
+
 ### Analyze YouTube Comments
 POST http://localhost:7071/api/AnalyzeComments
 Content-Type: application/json

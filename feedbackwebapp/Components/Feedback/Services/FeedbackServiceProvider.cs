@@ -26,11 +26,18 @@ public class FeedbackServiceProvider
             ? new MockHackerNewsFeedbackService(_http, _configuration, onStatusUpdate)
             : new HackerNewsFeedbackService(_http, _configuration, storyIds, onStatusUpdate);
     }
-    
+
     public IGitHubFeedbackService CreateGitHubService(string url, FeedbackStatusUpdate? onStatusUpdate = null)
     {
         return _useMocks
             ? new MockGitHubFeedbackService(_http, _configuration, onStatusUpdate)
             : new GitHubSingleItemFeedbackService(_http, _configuration, url, onStatusUpdate);
+    }
+
+    public IRedditFeedbackService CreateRedditService(string[] threadIds, FeedbackStatusUpdate? onStatusUpdate = null)
+    {
+        return _useMocks
+            ? new MockRedditFeedbackService(_http, _configuration, onStatusUpdate)
+            : new RedditFeedbackService(threadIds, _http, _configuration, onStatusUpdate);
     }
 }

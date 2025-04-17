@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Components.Web
 @using SharedDump.Models.YouTube
 @using SharedDump.Models.GitHub
+@using SharedDump.Models.Reddit
 @using FeedbackWebApp.Components.Feedback
 @using FeedbackWebApp.Components.Feedback.Services
 @using SharedDump.Utils
@@ -36,6 +37,7 @@
                             <option value="YouTube">📺 YouTube</option>
                             <option value="HackerNews">💡 Hacker News</option>
                             <option value="GitHub">📝 GitHub</option>
+                            <option value="Reddit">👽 Reddit</option>
                         </select>
                     </div>
 
@@ -50,6 +52,10 @@
                     else if (selectedSource == "GitHub")
                     {
                         <GitHubInputForm @ref="githubInputForm" />
+                    }
+                    else if (selectedSource == "Reddit")
+                    {
+                        <RedditInputForm @ref="redditInputForm" />
                     }
 
                     <SubmitButton ShowWhenSource="@selectedSource" IsLoading="@isLoading" OnSubmit="SubmitFeedbackRequest" />
@@ -74,6 +80,8 @@
                     <YouTubeComments Videos="@youtubeVideos" />
                     
                     <GitHubFeedback Issues="@githubIssues" PullRequests="@githubPullRequests" Discussions="@githubDiscussions" />
+
+                    <RedditComments Threads="@redditThreads" />
                 </div>
             </div>
         }
@@ -84,6 +92,7 @@
     private YouTubeInputForm? youtubeInput;
     private HackerNewsInputForm? hackerNewsInputForm;
     private GitHubInputForm? githubInputForm;
+    private RedditInputForm? redditInputForm;
     private string selectedSource = "";
     private string markdownResult = "";
     private string error = "";
@@ -93,6 +102,7 @@
     private List<GithubIssueModel>? githubIssues;
     private List<GithubIssueModel>? githubPullRequests;
     private List<GithubDiscussionModel>? githubDiscussions;
+    private List<RedditThreadModel>? redditThreads;
     private FeedbackProcessStatus currentStatus;
     private string currentStatusMessage = "";
 
@@ -120,6 +130,7 @@
             githubIssues = null;
             githubPullRequests = null;
             githubDiscussions = null;
+            redditThreads = null;
             isLoading = true;
 
             IFeedbackService service = selectedSource switch
@@ -133,6 +144,9 @@
                     HandleStatusUpdate),
                 "GitHub" => ServiceProvider.CreateGitHubService(
                     githubInputForm?.Url ?? string.Empty,
+                    HandleStatusUpdate),
+                "Reddit" => ServiceProvider.CreateRedditService(
+                    redditInputForm?.ThreadIds ?? Array.Empty<string>(),
                     HandleStatusUpdate),
                 _ => throw new InvalidOperationException("Please select a feedback source")
             };
@@ -152,6 +166,7 @@
                 if (parseResult != null)
                 {
                     var (owner, repo, type, number) = parseResult.Value;
+
                     if (type == "issue" || type == "pull")
                     {
                         githubIssues = new List<GithubIssueModel> 
@@ -184,6 +199,10 @@
                         };
                     }
                 }
+            }
+            else if (additionalData is List<RedditThreadModel> threads)
+            {
+                redditThreads = threads;
             }
         }
         catch (Exception ex)

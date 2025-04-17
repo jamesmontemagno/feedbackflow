@@ -1,0 +1,99 @@
+@namespace FeedbackWebApp.Components.Feedback
+@using SharedDump.Models.Reddit
+
+@if (Threads?.Any() == true)
+{
+    foreach (var thread in Threads)
+    {
+        <div class="card mt-4 shadow-sm">
+            <div class="card-header bg-light">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-reddit text-danger me-2"></i>
+                        @thread.Title
+                    </h5>
+                    <small>
+                        <a href="@thread.Url" target="_blank" class="text-decoration-none">
+                            <i class="bi bi-box-arrow-up-right"></i> View on Reddit
+                        </a>
+                    </small>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Posted by u/@thread.Author</span>
+                        <span class="text-muted">Score: @thread.Score</span>
+                    </div>
+                    <div class="mt-2">@thread.SelfText</div>
+                </div>
+
+                @if (thread.Comments?.Any() == true)
+                {
+                    <div>
+                        <button class="btn btn-sm btn-outline-secondary mb-3" @onclick="() => ToggleComments(thread.Id)">
+                            @(ExpandedThreads.Contains(thread.Id) ? "Hide Comments" : $"Show Comments ({thread.Comments?.Count})")
+                        </button>
+
+                        @if (ExpandedThreads.Contains(thread.Id) && thread.Comments?.Any() == true)
+                        {
+                            <div class="comments-container">
+                                @foreach (var comment in thread.Comments)
+                                {
+                                    <div class="comment-item p-3 mb-2 bg-light rounded @(comment.ParentId != thread?.Id ? "ms-4" : "")">
+                                        <div class="d-flex justify-content-between">
+                                            <strong>u/@comment.Author</strong>
+                                            <div>
+                                                <span class="me-3">Score: @comment.Score</span>
+                                               @*  <small>@comment.CreatedUtc.ToString("MMM dd, yyyy HH:mm")</small> *@
+                                            </div>
+                                        </div>
+                                        <div class="mt-2">@comment.Body</div>
+                                        
+                                        @if (comment.Replies?.Any() == true)
+                                        {
+                                            <div class="mt-3">
+                                                @foreach (var reply in comment.Replies)
+                                                {
+                                                    <div class="comment-item p-3 mb-2 bg-light rounded ms-4">
+                                                        <div class="d-flex justify-content-between">
+                                                            <strong>u/@reply.Author</strong>
+                                                            <div>
+                                                                <span class="me-3">Score: @reply.Score</span>
+                                                               @*  <small>@reply.CreatedUtc.ToString("MMM dd, yyyy HH:mm")</small> *@
+                                                            </div>
+                                                        </div>
+                                                        <div class="mt-2">@reply.Body</div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter]
+    public List<RedditThreadModel>? Threads { get; set; }
+
+    private HashSet<string> ExpandedThreads { get; } = new();
+
+    private void ToggleComments(string threadId)
+    {
+        if (ExpandedThreads.Contains(threadId))
+        {
+            ExpandedThreads.Remove(threadId);
+        }
+        else
+        {
+            ExpandedThreads.Add(threadId);
+        }
+    }
+}

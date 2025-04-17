@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using SharedDump.Models.GitHub;
 using SharedDump.Models.HackerNews;
 using SharedDump.Models.YouTube;
+using SharedDump.Models.Reddit;
 using SharedDump.AI;
 
 namespace FeedbackFunctions;
@@ -20,6 +21,7 @@ public class FeedbackFunctions
     private readonly GitHubService _githubService;
     private readonly HackerNewsService _hnService;
     private readonly YouTubeService _ytService;
+    private readonly RedditService _redditService;
     private readonly IFeedbackAnalyzerService _analyzerService;
 
     public FeedbackFunctions(ILogger<FeedbackFunctions> logger, IConfiguration configuration)
@@ -34,6 +36,12 @@ public class FeedbackFunctions
         
         var ytApiKey = _configuration["YouTube:ApiKey"];
         _ytService = new YouTubeService(ytApiKey ?? throw new InvalidOperationException("YouTube API key not configured"));
+
+        var redditClientId = _configuration["Reddit:ClientId"];
+        var redditClientSecret = _configuration["Reddit:ClientSecret"];
+        _redditService = new RedditService(
+            redditClientId ?? throw new InvalidOperationException("Reddit client ID not configured"),
+            redditClientSecret ?? throw new InvalidOperationException("Reddit client secret not configured"));
 
         var endpoint = _configuration["Azure:OpenAI:Endpoint"] ?? throw new InvalidOperationException("Azure OpenAI endpoint not configured");
         var apiKey = _configuration["Azure:OpenAI:ApiKey"] ?? throw new InvalidOperationException("Azure OpenAI API key not configured");
@@ -205,6 +213,45 @@ public class FeedbackFunctions
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing YouTube feedback request");
+            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await response.WriteStringAsync("An error occurred processing the request");
+            return response;
+        }
+    }
+
+    [Function("GetRedditFeedback")]
+    public async Task<HttpResponseData> GetRedditFeedback(
+        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+    {
+        _logger.LogInformation("Processing Reddit feedback request");
+
+        var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
+        var threadIds = queryParams["threads"]?.Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+        if (threadIds == null || threadIds.Length == 0)
+        {
+            var response = req.CreateResponse(HttpStatusCode.BadRequest);
+            await response.WriteStringAsync("'threads' parameter is required");
+            return response;
+        }
+
+        try
+        {
+            var threadResults = new List<RedditThreadModel>();
+
+            foreach (var threadId in threadIds)
+            {
+                var thread = await _redditService.GetThreadWithComments(threadId);
+                threadResults.Add(thread);
+            }
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            await response.WriteAsJsonAsync(threadResults);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing Reddit feedback request");
             var response = req.CreateResponse(HttpStatusCode.InternalServerError);
             await response.WriteStringAsync("An error occurred processing the request");
             return response;

@@ -1,0 +1,31 @@
+@namespace FeedbackWebApp.Components.Feedback
+
+<div class="mt-4">
+    <div class="form-floating mb-3">
+        <input type="text" 
+               class="form-control" 
+               id="redditThreads" 
+               placeholder="Enter Reddit thread URLs or IDs"
+               @bind="ThreadsInput" />
+        <label for="redditThreads">Reddit Thread URLs or IDs (comma-separated)</label>
+    </div>
+</div>
+
+@code {
+    private string _threadsInput = "";
+
+    public string ThreadsInput
+    {
+        get => _threadsInput;
+        set
+        {
+            if (_threadsInput != value)
+            {
+                _threadsInput = value;
+                ThreadIds = SharedDump.Utils.RedditUrlParser.ParseMultipleIds(value).ToArray();
+            }
+        }
+    }
+
+    public string[] ThreadIds { get; private set; } = Array.Empty<string>();
+}

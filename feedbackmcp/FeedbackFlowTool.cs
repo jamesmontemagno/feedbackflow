@@ -4,16 +4,18 @@ using ModelContextProtocol.Server;
 using SharedDump.Models.GitHub;
 using SharedDump.Models.HackerNews;
 using SharedDump.Models.YouTube;
+using SharedDump.Models.Reddit;
 
 namespace FeedbackMCP;
 
 [McpServerToolType]
 public class FeedbackFlowTool
 {
+    private readonly ApiConfiguration _configuration;
     private readonly GitHubService _githubService;
     private readonly HackerNewsService _hnService;
     private readonly YouTubeService _ytService;
-    private readonly ApiConfiguration _configuration;
+    private readonly RedditService _redditService;
 
     public FeedbackFlowTool(ApiConfiguration configuration)
     {
@@ -21,6 +23,7 @@ public class FeedbackFlowTool
         _githubService = new GitHubService(configuration.GitHubAccessToken);
         _hnService = new HackerNewsService();
         _ytService = new YouTubeService(configuration.YouTubeApiKey);
+        _redditService = new RedditService(configuration.RedditClientId, configuration.RedditClientSecret);
     }
 
     [McpServerTool(Name = "github-comments")]
@@ -116,5 +119,13 @@ public class FeedbackFlowTool
         }
 
         return videos;
+    }
+
+    [McpServerTool(Name = "reddit-comments")]
+    [Description("Get comments from a Reddit thread")]
+    public async Task<RedditThreadModel> GetRedditComments(
+        [Description("The ID of the Reddit thread")] string threadId)
+    {
+        return await _redditService.GetThreadWithComments(threadId);
     }
 }
