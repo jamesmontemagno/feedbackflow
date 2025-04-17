@@ -1,0 +1,22 @@
+.github-input {
+    padding-bottom: 1rem;
+}
+
+.github-input .form-floating {
+    transition: all 0.3s ease-in-out;
+}
+
+.github-input .form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.github-input ul {
+    list-style: none;
+    padding-left: 1rem;
+}
+
+.github-input ul li {
+    font-family: monospace;
+    color: #666;
+}

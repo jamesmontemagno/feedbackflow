@@ -18,6 +18,11 @@ public class Repository
     public DiscussionConnection Discussions { get; set; } = default!;
     public IssueConnection Issues { get; set; } = default!;
     public PullRequestConnection PullRequests { get; set; } = default!;
+    
+    // Single item properties
+    public Discussion? Discussion { get; set; }
+    public Issue? Issue { get; set; }
+    public PullRequest? PullRequest { get; set; }
 }
 
 public class DiscussionConnection

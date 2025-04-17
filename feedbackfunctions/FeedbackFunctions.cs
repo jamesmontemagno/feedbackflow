@@ -27,7 +27,7 @@ public class FeedbackFunctions
         _logger = logger;
         _configuration = configuration;
         
-        var githubToken = _configuration["Github:AccessToken"];
+        var githubToken = _configuration["GitHub:AccessToken"];
         _githubService = new GitHubService(githubToken ?? throw new InvalidOperationException("GitHub access token not configured"));
         
         _hnService = new HackerNewsService();
@@ -294,6 +294,66 @@ public class FeedbackFunctions
             var response = req.CreateResponse(HttpStatusCode.InternalServerError);
             await response.WriteStringAsync("An error occurred processing the request");
             return response;
+        }
+    }
+
+    [Function("GetGitHubItemComments")]
+    public async Task<HttpResponseData> GetGitHubItemComments(
+        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+    {
+        _logger.LogInformation("Processing GitHub item comments request");
+
+        var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
+        var repo = queryParams["repo"];
+        var itemType = queryParams["type"]?.ToLowerInvariant() ?? "issue";
+        
+        if (!int.TryParse(queryParams["number"], out var itemNumber))
+        {
+            var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await badResponse.WriteStringAsync("'number' parameter is required and must be an integer");
+            return badResponse;
+        }
+
+        if (string.IsNullOrEmpty(repo))
+        {
+            var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await badResponse.WriteStringAsync("'repo' parameter is required");
+            return badResponse;
+        }
+
+        try
+        {
+            var (repoOwner, repoName) = repo.Split('/', StringSplitOptions.RemoveEmptyEntries) switch
+            {
+                [var owner, var name] => (owner, name),
+                _ => throw new InvalidOperationException("Invalid repository format, expected owner/repo")
+            };
+
+            if (!await _githubService.CheckRepositoryValid(repoOwner, repoName))
+            {
+                var errorResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await errorResponse.WriteStringAsync("Invalid repository");
+                return errorResponse;
+            }
+
+            List<GithubCommentModel> comments = itemType switch
+            {
+                "issue" => await _githubService.GetIssueCommentsAsync(repoOwner, repoName, itemNumber),
+                "pull" or "pr" => await _githubService.GetPullRequestCommentsAsync(repoOwner, repoName, itemNumber),
+                "discussion" => await _githubService.GetDiscussionCommentsAsync(repoOwner, repoName, itemNumber),
+                _ => throw new ArgumentException($"Invalid item type: {itemType}. Expected 'issue', 'pull', or 'discussion'")
+            };
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            await response.WriteAsJsonAsync(comments);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing GitHub item comments request");
+            var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await errorResponse.WriteStringAsync("An error occurred processing the request");
+            return errorResponse;
         }
     }
 }

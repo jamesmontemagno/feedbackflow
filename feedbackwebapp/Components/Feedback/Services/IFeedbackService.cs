@@ -7,3 +7,4 @@ public interface IFeedbackService
 
 public interface IYouTubeFeedbackService : IFeedbackService { }
 public interface IHackerNewsFeedbackService : IFeedbackService { }
+public interface IGitHubFeedbackService : IFeedbackService { }

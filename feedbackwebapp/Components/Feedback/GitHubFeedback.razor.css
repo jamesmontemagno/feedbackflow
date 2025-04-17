@@ -1,0 +1,52 @@
+.issue-item, .pr-item, .discussion-item {
+    border-left: 4px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.issue-item {
+    border-left-color: #f0ad4e;
+}
+
+.pr-item {
+    border-left-color: #5cb85c;
+}
+
+.discussion-item {
+    border-left-color: #0d6efd;
+}
+
+.issue-item:hover, .pr-item:hover, .discussion-item:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.comments-container {
+    padding: 0.5rem;
+    max-height: 400px;
+    overflow-y: auto;
+    border-radius: 0.25rem;
+    animation: fadeIn 0.3s ease;
+}
+
+.comment-item {
+    border-left: 3px solid #dee2e6;
+    transition: all 0.2s ease;
+}
+
+.comment-item:hover {
+    border-left-color: #0d6efd;
+}
+
+.badge {
+    font-weight: 500;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

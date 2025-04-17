@@ -1,0 +1,46 @@
+@namespace FeedbackWebApp.Components.Feedback
+@using System.ComponentModel.DataAnnotations
+
+<div class="github-input">
+    <div class="form-floating mb-2">
+        <input type="text" 
+               class="form-control @(IsUrlValid ? "" : "is-invalid")" 
+               id="urlInput" 
+               @bind="Url" 
+               @bind:event="oninput"
+               placeholder="Enter GitHub URL" />
+        <label for="urlInput">GitHub Issue, PR, or Discussion URL</label>
+        @if (!IsUrlValid && !string.IsNullOrEmpty(Url))
+        {
+            <div class="invalid-feedback">
+                Please enter a valid GitHub issue, pull request, or discussion URL
+            </div>
+        }
+    </div>
+    <div class="text-muted small mb-3">
+        <i class="bi bi-info-circle me-1"></i>
+        Examples:
+        <ul class="mt-1 mb-0">
+            <li>https://github.com/owner/repo/issues/123</li>
+            <li>https://github.com/owner/repo/pull/456</li>
+            <li>https://github.com/owner/repo/discussions/789</li>
+        </ul>
+    </div>
+</div>
+
+@code {
+    private string? _url;
+
+    public string? Url
+    {
+        get => _url;
+        set
+        {
+            if (_url == value) return;
+            _url = value;
+            IsUrlValid = string.IsNullOrEmpty(_url) || GitHubUrlParser.ParseUrl(_url) != null;
+        }
+    }
+
+    public bool IsUrlValid { get; private set; } = true;
+}

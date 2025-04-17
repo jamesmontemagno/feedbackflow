@@ -236,20 +236,7 @@ public class GitHubService
                                             createdAt
                                             author {
                                                 login
-                                            }
-                                            replies(first: 100) {
-                                                edges {
-                                                    node {
-                                                        id
-                                                        body
-                                                        url
-                                                        createdAt
-                                                        author {
-                                                            login
-                                                        }
-                                                    }
-                                                }
-                                            }
+                                            }                                            
                                         }
                                     }
                                 }
@@ -405,19 +392,6 @@ public class GitHubService
                                             author {
                                                 login
                                             }
-                                            replies(first: 100) {
-                                                edges {
-                                                    node {
-                                                        id
-                                                        body
-                                                        url
-                                                        createdAt
-                                                        author {
-                                                            login
-                                                        }
-                                                    }
-                                                }
-                                            }
                                         }
                                     }
                                 }
@@ -529,6 +503,425 @@ public class GitHubService
         }
 
         return pullsList;
+    }
+
+    /// <summary>
+    /// Gets comments for a specific GitHub issue by its number
+    /// </summary>
+    /// <param name="repoOwner">Repository owner</param>
+    /// <param name="repoName">Repository name</param>
+    /// <param name="issueNumber">Issue number</param>
+    /// <returns>List of comments for the specified issue</returns>
+    public async Task<List<GithubCommentModel>> GetIssueCommentsAsync(string repoOwner, string repoName, int issueNumber)
+    {
+        var commentsList = new List<GithubCommentModel>();
+        var hasMorePages = true;
+        string? endCursor = null;
+        var retryCount = 0;
+
+        while (hasMorePages)
+        {
+            var issueQuery = @"
+            query($owner: String!, $name: String!, $after: String, $issueNumber: Int!) {
+                repository(owner: $owner, name: $name) {
+                    issue(number: $issueNumber) {
+                        id
+                        author {
+                            login
+                        }
+                        title
+                        body
+                        url
+                        createdAt
+                        updatedAt
+                        reactions(content: THUMBS_UP) {
+                            totalCount
+                        }
+                        labels(first: 100) {
+                            nodes {
+                                name
+                            }
+                        }
+                        comments(first: 100, after: $after) {
+                            edges {
+                                node {
+                                    id
+                                    body
+                                    url
+                                    createdAt
+                                    author {
+                                        login
+                                    }                                
+                                }
+                            }
+                            pageInfo {
+                                hasNextPage
+                                endCursor
+                            }
+                        }
+                    }
+                }
+            }";
+
+            while (retryCount < _maxRetries)
+            {
+                var response = await _client.PostAsJsonAsync("https://api.github.com/graphql", new
+                {
+                    Query = issueQuery,
+                    Variables = new { owner = repoOwner, name = repoName, after = endCursor, issueNumber }
+                });
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    await HandleRateLimit(response);
+                    retryCount++;
+                    continue;
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<GraphqlResponse>();
+
+                var issue = result?.Data.Repository?.Issue;
+
+                if (issue == null)
+                {
+                    break;
+                }
+
+                foreach (var commentEdge in issue.Comments.Edges)
+                {
+                    var comment = commentEdge.Node;
+
+                    var commentJson = new GithubCommentModel
+                    {
+                        Id = comment.Id,
+                        Author = comment.Author?.Login ?? "??",
+                        Content = comment.Body,
+                        CreatedAt = comment.CreatedAt,
+                        Url = comment.Url
+                    };
+
+                    commentsList.Add(commentJson);
+
+                    if (comment.Replies is { } replies)
+                    {
+                        // Hoist replies as top-level comments
+                        foreach (var replyEdge in replies.Edges)
+                        {
+                            var reply = replyEdge.Node;
+                            var replyJson = new GithubCommentModel
+                            {
+                                Id = reply.Id,
+                                ParentId = comment.Id,
+                                Author = reply.Author?.Login ?? "??",
+                                Content = reply.Body,
+                                CreatedAt = reply.CreatedAt,
+                                Url = reply.Url
+                            };
+                            commentsList.Add(replyJson);
+                        }
+                    }
+                }
+
+                hasMorePages = issue.Comments?.PageInfo?.HasNextPage ?? false;
+                endCursor = issue.Comments?.PageInfo?.EndCursor;
+
+                if (!hasMorePages)
+                {
+                    break;
+                }
+
+                retryCount = 0;
+            }
+
+            if (retryCount == _maxRetries)
+            {
+                throw new Exception("Max retries exceeded");
+            }
+        }
+
+        return commentsList;
+    }
+
+    /// <summary>
+    /// Gets comments for a specific GitHub pull request by its number
+    /// </summary>
+    /// <param name="repoOwner">Repository owner</param>
+    /// <param name="repoName">Repository name</param>
+    /// <param name="pullNumber">Pull request number</param>
+    /// <returns>List of comments for the specified pull request</returns>
+    public async Task<List<GithubCommentModel>> GetPullRequestCommentsAsync(string repoOwner, string repoName, int pullNumber)
+    {
+        var commentsList = new List<GithubCommentModel>();
+        var hasMorePages = true;
+        string? endCursor = null;
+        var retryCount = 0;
+
+        while(hasMorePages)
+        {
+            var pullQuery = @"
+            query($owner: String!, $name: String!, $after: String, $pullNumber: Int!) {
+                repository(owner: $owner, name: $name) {
+                    pullRequest(number: $pullNumber) {
+                        id
+                        author {
+                            login
+                        }
+                        title
+                        body
+                        url
+                        createdAt
+                        updatedAt
+                        reactions(content: THUMBS_UP) {
+                            totalCount
+                        }
+                        labels(first: 100) {
+                            nodes {
+                                name
+                            }
+                        }
+                        comments(first: 100, after: $after) {
+                            edges {
+                                node {
+                                    id
+                                    body
+                                    url
+                                    createdAt
+                                    author {
+                                        login
+                                    }                               
+                                }
+                            }
+                            pageInfo {
+                                hasNextPage
+                                endCursor
+                            }
+                        }
+                    }
+                }
+            }";
+
+            while (retryCount < _maxRetries)
+            {
+                var response = await _client.PostAsJsonAsync("https://api.github.com/graphql", new
+                {
+                    Query = pullQuery,
+                    Variables = new { owner = repoOwner, name = repoName, after = endCursor, pullNumber }
+                });
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    await HandleRateLimit(response);
+                    retryCount++;
+                    continue;
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<GraphqlResponse>();
+
+                var pullRequest = result?.Data.Repository?.PullRequest;
+
+                if (pullRequest == null)
+                {
+                    break;
+                }
+
+                foreach (var commentEdge in pullRequest.Comments.Edges)
+                {
+                    var comment = commentEdge.Node;
+
+                    var commentJson = new GithubCommentModel
+                    {
+                        Id = comment.Id,
+                        Author = comment.Author?.Login ?? "??",
+                        Content = comment.Body,
+                        CreatedAt = comment.CreatedAt,
+                        Url = comment.Url
+                    };
+
+                    commentsList.Add(commentJson);
+
+                    if (comment.Replies is { } replies)
+                    {
+                        // Hoist replies as top-level comments
+                        foreach (var replyEdge in replies.Edges)
+                        {
+                            var reply = replyEdge.Node;
+                            var replyJson = new GithubCommentModel
+                            {
+                                Id = reply.Id,
+                                ParentId = comment.Id,
+                                Author = reply.Author?.Login ?? "??",
+                                Content = reply.Body,
+                                CreatedAt = reply.CreatedAt,
+                                Url = reply.Url
+                            };
+                            commentsList.Add(replyJson);
+                        }
+                    }
+                }
+
+                hasMorePages = pullRequest.Comments?.PageInfo?.HasNextPage ?? false;
+                endCursor = pullRequest.Comments?.PageInfo?.EndCursor;
+
+                if (!hasMorePages)
+                {
+                    break;
+                }
+
+                retryCount = 0;
+            }
+
+            if (retryCount == _maxRetries)
+            {
+                throw new Exception("Max retries exceeded");
+            }
+        }
+
+        return commentsList;
+    }
+
+    /// <summary>
+    /// Gets comments for a specific GitHub discussion by its number
+    /// </summary>
+    /// <param name="repoOwner">Repository owner</param>
+    /// <param name="repoName">Repository name</param>
+    /// <param name="discussionNumber">Discussion number</param>
+    /// <returns>List of comments for the specified discussion</returns>
+    public async Task<List<GithubCommentModel>> GetDiscussionCommentsAsync(string repoOwner, string repoName, int discussionNumber)
+    {
+        var commentsList = new List<GithubCommentModel>();
+        var hasMorePages = true;
+        string? endCursor = null;
+        var retryCount = 0;
+
+        while (hasMorePages)
+        {
+            var discussionQuery = @"
+            query($owner: String!, $name: String!, $after: String, $discussionNumber: Int!) {
+                repository(owner: $owner, name: $name) {
+                    discussion(number: $discussionNumber) {
+                        id
+                        title
+                        url
+                        createdAt
+                        updatedAt
+                        answer {
+                            id
+                        }
+                        comments(first: 100, after: $after) {
+                            edges {
+                                node {
+                                    id
+                                    body
+                                    url
+                                    createdAt
+                                    author {
+                                        login
+                                    }
+                                    replies(first: 100) {
+                                        edges {
+                                            node {
+                                                id
+                                                body
+                                                url
+                                                createdAt
+                                                author {
+                                                    login
+                                                }
+                                            }
+                                        }
+                                        pageInfo {
+                                            hasNextPage
+                                            endCursor
+                                        }
+                                    }
+                                }
+                            }
+                            pageInfo {
+                                hasNextPage
+                                endCursor
+                            }
+                        }
+                    }
+                }
+            }";
+
+            while (retryCount < _maxRetries)
+            {
+                var response = await _client.PostAsJsonAsync("https://api.github.com/graphql", new
+                {
+                    Query = discussionQuery,
+                    Variables = new { owner = repoOwner, name = repoName, after = endCursor, discussionNumber }
+                });
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    await HandleRateLimit(response);
+                    retryCount++;
+                    continue;
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<GraphqlResponse>();
+
+                var discussion = result?.Data.Repository?.Discussion;
+
+                if (discussion == null)
+                {
+                    break;
+                }
+
+                foreach (var commentEdge in discussion.Comments.Edges)
+                {
+                    var comment = commentEdge.Node;
+
+                    var commentJson = new GithubCommentModel
+                    {
+                        Id = comment.Id,
+                        Author = comment.Author?.Login ?? "??",
+                        Content = comment.Body,
+                        CreatedAt = comment.CreatedAt,
+                        Url = comment.Url
+                    };
+
+                    commentsList.Add(commentJson);
+
+                    if (comment.Replies is { } replies)
+                    {
+                        // Hoist replies as top-level comments
+                        foreach (var replyEdge in replies.Edges)
+                        {
+                            var reply = replyEdge.Node;
+                            var replyJson = new GithubCommentModel
+                            {
+                                Id = reply.Id,
+                                ParentId = comment.Id,
+                                Author = reply.Author?.Login ?? "??",
+                                Content = reply.Body,
+                                CreatedAt = reply.CreatedAt,
+                                Url = reply.Url
+                            };
+                            commentsList.Add(replyJson);
+                        }
+                    }
+                }
+
+                hasMorePages = discussion.Comments?.PageInfo?.HasNextPage ?? false;
+                endCursor = discussion.Comments?.PageInfo?.EndCursor;
+
+                if (!hasMorePages)
+                {
+                    break;
+                }
+
+                retryCount = 0;
+            }
+
+            if (retryCount == _maxRetries)
+            {
+                throw new Exception("Max retries exceeded");
+            }
+        }
+
+        return commentsList;
     }
 
     private static async Task HandleRateLimit(HttpResponseMessage response)

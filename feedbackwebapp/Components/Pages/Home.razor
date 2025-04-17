@@ -3,8 +3,10 @@
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
 @using SharedDump.Models.YouTube
+@using SharedDump.Models.GitHub
 @using FeedbackWebApp.Components.Feedback
 @using FeedbackWebApp.Components.Feedback.Services
+@using SharedDump.Utils
 @inject IConfiguration Configuration
 @inject HttpClient Http
 @inject FeedbackServiceProvider ServiceProvider
@@ -33,7 +35,7 @@
                             <option value="">Choose a source...</option>
                             <option value="YouTube">📺 YouTube</option>
                             <option value="HackerNews">💡 Hacker News</option>
-                            <option value="GitHub" disabled>📝 GitHub (Coming Soon)</option>
+                            <option value="GitHub">📝 GitHub</option>
                         </select>
                     </div>
 
@@ -44,6 +46,10 @@
                     else if (selectedSource == "HackerNews")
                     {
                         <HackerNewsInputForm @ref="hackerNewsInputForm" />
+                    }
+                    else if (selectedSource == "GitHub")
+                    {
+                        <GitHubInputForm @ref="githubInputForm" />
                     }
 
                     <SubmitButton ShowWhenSource="@selectedSource" IsLoading="@isLoading" OnSubmit="SubmitFeedbackRequest" />
@@ -66,6 +72,8 @@
                     <AnalysisResults Error="@error" MarkdownResult="@markdownResult" />
                     
                     <YouTubeComments Videos="@youtubeVideos" />
+                    
+                    <GitHubFeedback Issues="@githubIssues" PullRequests="@githubPullRequests" Discussions="@githubDiscussions" />
                 </div>
             </div>
         }
@@ -75,12 +83,16 @@
 @code {
     private YouTubeInputForm? youtubeInput;
     private HackerNewsInputForm? hackerNewsInputForm;
+    private GitHubInputForm? githubInputForm;
     private string selectedSource = "";
     private string markdownResult = "";
     private string error = "";
     private bool isLoading = false;
     private bool isAuthenticated = false;
     private List<YouTubeOutputVideo>? youtubeVideos;
+    private List<GithubIssueModel>? githubIssues;
+    private List<GithubIssueModel>? githubPullRequests;
+    private List<GithubDiscussionModel>? githubDiscussions;
     private FeedbackProcessStatus currentStatus;
     private string currentStatusMessage = "";
 
@@ -101,9 +113,13 @@
     {
         try
         {
+            // Reset all previous data
             error = "";
             markdownResult = "";
             youtubeVideos = null;
+            githubIssues = null;
+            githubPullRequests = null;
+            githubDiscussions = null;
             isLoading = true;
 
             IFeedbackService service = selectedSource switch
@@ -115,15 +131,59 @@
                 "HackerNews" => ServiceProvider.CreateHackerNewsService(
                     hackerNewsInputForm?.Value ?? string.Empty, 
                     HandleStatusUpdate),
+                "GitHub" => ServiceProvider.CreateGitHubService(
+                    githubInputForm?.Url ?? string.Empty,
+                    HandleStatusUpdate),
                 _ => throw new InvalidOperationException("Please select a feedback source")
             };
 
             var (result, additionalData) = await service.GetFeedback();
             markdownResult = result;
 
+            // Handle specific data formats based on the source type
             if (additionalData is List<YouTubeOutputVideo> videos)
             {
                 youtubeVideos = videos;
+            }
+            else if (selectedSource == "GitHub" && additionalData is List<GithubCommentModel> comments)
+            {
+                // For single GitHub items, we'll construct a minimal model to display the comments
+                var parseResult = GitHubUrlParser.ParseUrl(githubInputForm?.Url ?? string.Empty);
+                if (parseResult != null)
+                {
+                    var (owner, repo, type, number) = parseResult.Value;
+                    if (type == "issue" || type == "pull")
+                    {
+                        githubIssues = new List<GithubIssueModel> 
+                        {
+                            new()
+                            {
+                                Id = "single-item",
+                                Title = "Comments",
+                                Author = "N/A",
+                                Body = "",
+                                URL = githubInputForm?.Url ?? "",
+                                CreatedAt = DateTime.UtcNow,
+                                LastUpdated = DateTime.UtcNow,
+                                Upvotes = 0,
+                                Labels = Array.Empty<string>(),
+                                Comments = comments.ToArray()
+                            }
+                        };
+                    }
+                    else if (type == "discussion")
+                    {
+                        githubDiscussions = new List<GithubDiscussionModel>
+                        {
+                            new()
+                            {
+                                Title = "Comments",
+                                Url = githubInputForm?.Url ?? "",
+                                Comments = comments.ToArray()
+                            }
+                        };
+                    }
+                }
             }
         }
         catch (Exception ex)
