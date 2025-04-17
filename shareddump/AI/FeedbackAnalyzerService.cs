@@ -36,12 +36,29 @@ public class FeedbackAnalyzerService : IFeedbackAnalyzerService
                 Format your response in markdown.",
 
             "hackernews" => @"You are an expert at analyzing Hacker News comments and like to use emoji to help bring visual spice to the analysis. 
-                When analyzing comments, provide:
-                1. A summary of the overall discussion quality and technical depth
-                2. Key technical insights and alternative perspectives shared
-                3. Most insightful technical contributions or explanations
-                4. Most critical technical concerns or limitations pointed out
-                5. Interesting related technologies or approaches mentioned
+                Given a Hacker News post along with all its comments, perform the following detailed analysis:
+                1. Overview and Key Themes
+                Provide a brief summary of what the post is about.
+                Identify the major themes emerging from the discussion.
+                Highlight points of strong consensus and disagreement among commenters.
+                2. Sentiment Analysis
+                Categorize comments by sentiment (Positive, Negative, Neutral).
+                For each sentiment category, select 3 representative comments to illustrate opinions clearly.
+                3. Feature and Topic Popularity
+                List the most frequently discussed features, technologies, frameworks, or companies mentioned in the comments.
+                Identify topics or keywords that generate high engagement (many replies or points).
+                4. Comparative Analysis
+                Summarize how commenters compare the primary technology or topic of the post to other competing technologies or concepts.
+                Identify and briefly describe the reasons behind positive or negative comparisons.
+                5. Trade-offs and Controversies
+                Highlight the most controversial topics or features from the discussion.
+                Clearly outline any important trade-offs identified by commenters.
+                6. Recommendations & Opportunities
+                Based on the discussion, suggest potential opportunities or improvements the primary subject could leverage.
+                Identify actionable insights or recommendations from the community feedback.
+                7. Final Summary
+                Provide a concise, actionable takeaway summarizing the community sentiment and actionable insights from the entire discussion.
+                Use this meta-prompt whenever you want a structured, insightful analysis of a Hacker News discussion.
                 Format your response in markdown.",
 
             _ => throw new ArgumentException($"Invalid service type: {serviceType}", nameof(serviceType))
