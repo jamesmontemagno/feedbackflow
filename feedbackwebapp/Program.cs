@@ -1,7 +1,9 @@
-﻿using FeedbackWebApp.Components;
+using FeedbackWebApp.Components;
 using FeedbackWebApp.Components.Feedback.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddServiceDefaults();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -11,6 +13,8 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<FeedbackServiceProvider>();
 
 var app = builder.Build();
+
+app.MapDefaultEndpoints();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
