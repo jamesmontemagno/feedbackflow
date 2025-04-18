@@ -1,53 +1,55 @@
-.theme-toggle-wrapper {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    position: relative !important;
-    z-index: 10 !important;
+/* Enhanced theme toggle button styling */
+::deep .btn-link {
+    color: white;
+    transition: transform 0.2s, color 0.2s;
+    background-color: var(--bs-primary);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.theme-toggle {
-    width: 40px !important;
-    height: 40px !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border: none !important;
-    border-radius: 50% !important;
-    cursor: pointer !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background-color: transparent !important;
-    color: var(--theme-toggle-color, white) !important;
-    transition: transform 0.3s ease, background-color 0.3s ease !important;
-    overflow: hidden !important;
+::deep .btn-link:hover {
+    transform: scale(1.1);
+    color: white;
+    background-color: var(--bs-primary-bg-subtle);
 }
 
-.theme-toggle:hover, 
-.theme-toggle:focus {
-    transform: scale(1.1) !important;
-    background-color: rgba(255, 255, 255, 0.1) !important;
-    outline: none !important;
+::deep .btn-link:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+    color: white;
 }
 
-.theme-toggle:active {
-    transform: scale(0.95) !important;
-    transition: transform 0.1s ease !important;
+/* Icon color should always be white */
+::deep .bi {
+    color: white;
 }
 
-.theme-toggle i {
-    font-size: 1.5rem !important;
-    color: var(--theme-toggle-color, white) !important;
-    transition: transform 0.3s ease !important;
+/* Theme toggle button styling */
+::deep .theme-toggle-button {
+    background-color: var(--bs-primary);
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
-.theme-toggle:hover i {
-    transform: rotate(15deg) !important;
+::deep .theme-toggle-button:hover {
+    transform: scale(1.1);
+    background-color: var(--bs-primary-emphasis);
 }
 
-/* Responsive adjustments for mobile devices */
-@media (max-width: 768px) {
-    .theme-toggle i {
-        font-size: 1.25rem !important;
-    }
+::deep .theme-toggle-button:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+/* Override Bootstrap's btn-link color */
+::deep .btn.theme-toggle-button:active {
+    color: var(--bs-btn-active-color, white);
 }

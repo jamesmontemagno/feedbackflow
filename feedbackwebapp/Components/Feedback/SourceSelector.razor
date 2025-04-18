@@ -1,39 +1,71 @@
 @namespace FeedbackWebApp.Components.Feedback
 
-<div class="source-selector container py-2">
-    <div class="row justify-content-center">
-        <div class="col-12 col-md-10 col-lg-8">
-            <div class="d-flex flex-wrap justify-content-center gap-3">
-                @foreach (var source in sources)
-                {
-                    <button type="button" 
-                            class="pill-button btn @(SelectedSource == source.Value ? "selected" : "")"
-                            @onclick="() => OnSourceSelected(source.Value)">
-                        <span class="pill-icon">@source.Icon</span>
-                        <span class="pill-text">@source.Name</span>
-                    </button>
-                }
+<div class="container py-3">
+    <div class="row justify-content-center g-3">
+        @foreach (var source in sources)
+        {
+            <div class="col-md-3 col-sm-6">
+                <button type="button" 
+                        class="btn w-100 py-3 source-button @GetButtonClass(source.Value)"
+                        @onclick="() => OnSourceSelectedAsync(source.Value)"
+                        title="@source.Description">
+                    <div class="d-flex align-items-center justify-content-center w-100">
+                        <div class="source-icon me-2">
+                            <i class="bi @source.IconClass fs-4"></i>
+                        </div>
+                        <div class="fw-medium">@source.Name</div>
+                    </div>
+                </button>
             </div>
-        </div>
+        }
     </div>
 </div>
 
 @code {
+    private string? _selectedSource;
+
     [Parameter]
-    public string SelectedSource { get; set; } = "";
+    public string? SelectedSource 
+    { 
+        get => _selectedSource ?? DefaultSource;
+        set => _selectedSource = value;
+    }
 
     [Parameter]
     public EventCallback<string> SelectedSourceChanged { get; set; }
 
+    private const string DefaultSource = "YouTube";
+
     private readonly SourceOption[] sources = new[]
     {
-        new SourceOption("YouTube", "📺", "Analyze feedback from video comments and community discussions", "YouTube"),
-        new SourceOption("Hacker News", "💡", "Gather insights from technical discussions and feedback", "HackerNews"),
-        new SourceOption("GitHub", "📝", "Process feedback from issues, PRs, and discussions", "GitHub"),
-        new SourceOption("Reddit", "👽", "Analyze community feedback and discussions", "Reddit")
+        new SourceOption(
+            "YouTube", 
+            "bi-youtube",
+            "Analyze feedback from video comments and community discussions", 
+            "YouTube"),
+        new SourceOption(
+            "Hacker News", 
+            "bi-braces",
+            "Gather insights from technical discussions and feedback", 
+            "HackerNews"),
+        new SourceOption(
+            "GitHub", 
+            "bi-github",
+            "Process feedback from issues, PRs, and discussions", 
+            "GitHub"),
+        new SourceOption(
+            "Reddit", 
+            "bi-reddit",
+            "Analyze community feedback and discussions", 
+            "Reddit")
     };
 
-    private async Task OnSourceSelected(string value)
+    private string GetButtonClass(string source) => 
+        source == SelectedSource 
+            ? "btn-primary shadow-sm" 
+            : "btn-outline-secondary";
+
+    private async Task OnSourceSelectedAsync(string value)
     {
         if (SelectedSource != value)
         {
@@ -42,5 +74,15 @@
         }
     }
 
-    private record SourceOption(string Name, string Icon, string Description, string Value);
+    protected override async Task OnInitializedAsync()
+    {
+        // If no explicit selection was made, use the default and notify parent components
+        if (_selectedSource == null)
+        {
+            _selectedSource = DefaultSource;
+            await SelectedSourceChanged.InvokeAsync(DefaultSource);
+        }
+    }
+
+    private record SourceOption(string Name, string IconClass, string Description, string Value);
 }

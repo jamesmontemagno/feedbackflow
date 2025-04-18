@@ -1,112 +1,51 @@
-.pill-button {
-    display: inline-flex;
+/* Add subtle hover effect to buttons */
+::deep .btn {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+::deep .btn:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--bs-box-shadow) !important;
+}
+
+/* Button styling for better appearance */
+::deep .source-button {
+    display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 0.75rem 1.5rem;
-    background: var(--bg-secondary);
-    border-radius: 50px;
-    transition: all 0.3s ease;
-    border: 1px solid var(--bs-border-color);
-    box-shadow: var(--card-shadow);
-    min-width: 180px;
+    justify-content: center;
+    min-height: 60px;
+    padding: 0.75rem 1rem;
+}
+
+/* Add focus styling */
+::deep .btn:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+/* Source icons styling */
+::deep .source-icon {
+    display: flex;
+    align-items: center;
     justify-content: center;
 }
 
-.source-selector {
-    padding: 0.5rem 0;
-}
-
-.pill-button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 12px rgba(var(--primary-color-rgb), 0.15);
-    border-color: var(--bs-primary);
-    background-color: var(--bs-primary);
-}
-
-.pill-button:hover .pill-icon {
-    transform: scale(1.1);
-}
-
-.pill-button.selected {
-    background-color: var(--bs-primary);
-    border-color: var(--bs-primary);
-    color: white;
-    box-shadow: 0 8px 16px rgba(var(--primary-color-rgb), 0.25);
-}
-
-.pill-button.selected:hover {
-    filter: brightness(1.1);
-    box-shadow: 0 10px 20px rgba(var(--primary-color-rgb), 0.3);
-}
-
-.pill-button:focus {
-    outline: none;
-    box-shadow: 0 0 0 4px rgba(var(--primary-color-rgb), 0.25);
-}
-
-.pill-button:active {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(var(--primary-color-rgb), 0.2);
-}
-
-.pill-icon {
-    font-size: 1.25rem;
+/* Icon animations */
+::deep .bi {
     transition: transform 0.3s ease;
-    color: var(--text-primary);
 }
 
-.pill-text {
-    font-weight: 500;
-    color: var(--text-primary);
+::deep .btn:hover .bi {
+    transform: scale(1.2);
 }
 
-.pill-button:hover .pill-icon,
-.pill-button:hover .pill-text {
-    opacity: 1;
-    color: var(--primary-color);
-}
-
-.pill-button.selected .pill-icon,
-.pill-button.selected .pill-text {
-    color: #ffffff;
-}
-
-/* Dark mode styles */
-:root[data-bs-theme="dark"] .pill-button {
-    color: white;
-}
-
-:root[data-bs-theme="dark"] .pill-button .pill-text,
-:root[data-bs-theme="dark"] .pill-button .pill-icon {
-    color: white;
-}
-
-:root[data-bs-theme="dark"] .pill-button:hover {
-    background-color: rgba(var(--bs-primary-rgb), 0.1);
-}
-
-:root[data-bs-theme="dark"] .pill-button:hover .pill-text,
-:root[data-bs-theme="dark"] .pill-button:hover .pill-icon {
-    color: var(--bs-primary);
-}
-
-:root[data-bs-theme="dark"] .pill-button.selected,
-:root[data-bs-theme="dark"] .pill-button.selected:hover {
-    background-color: var(--bs-primary);
-}
-
-:root[data-bs-theme="dark"] .pill-button.selected .pill-text,
-:root[data-bs-theme="dark"] .pill-button.selected .pill-icon,
-:root[data-bs-theme="dark"] .pill-button.selected:hover .pill-text,
-:root[data-bs-theme="dark"] .pill-button.selected:hover .pill-icon {
-    color: white;
-}
-
+/* Responsive adjustments - keep horizontal on mobile too */
 @media (max-width: 768px) {
-    .pill-button {
-        width: 100%;
-        min-width: unset;
-        justify-content: center;
-        padding: 0.75rem 1.5rem;
+    ::deep .source-button {
+        padding: 0.5rem 0.75rem;
+        min-height: 50px;
+    }
+    
+    ::deep .bi {
+        font-size: 1.1rem !important;
     }
 }

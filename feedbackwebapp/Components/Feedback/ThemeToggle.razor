@@ -1,16 +1,19 @@
 @using Microsoft.JSInterop
 @namespace FeedbackWebApp.Components.Feedback
 @inject IJSRuntime JSRuntime
+@implements IDisposable
 
-<div class="theme-toggle-wrapper">
-    <button @onclick="ToggleTheme" class="theme-toggle" aria-label="Toggle dark mode">
+<div class="d-inline-block">
+    <button @onclick="ToggleThemeAsync" 
+            class="theme-toggle-button btn rounded-circle" 
+            aria-label="Toggle dark mode">
         @if (IsDarkMode)
         {
-            <i class="bi bi-moon-stars-fill"></i>
+            <i class="bi bi-moon-stars-fill text-white fs-5"></i>
         }
         else
         {
-            <i class="bi bi-sun-fill"></i>
+            <i class="bi bi-sun-fill text-white fs-5"></i>
         }
     </button>
 </div>
@@ -18,6 +21,7 @@
 @code {
     private bool IsDarkMode { get; set; }
     private bool _isInitialized;
+    private DotNetObjectReference<ThemeToggle>? _objectReference;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -25,6 +29,7 @@
         {
             try
             {
+                _objectReference = DotNetObjectReference.Create(this);
                 // Use the global function from app.js
                 IsDarkMode = await JSRuntime.InvokeAsync<bool>("isDarkMode");
                 _isInitialized = true;
@@ -38,7 +43,7 @@
         }
     }
 
-    private async Task ToggleTheme()
+    private async Task ToggleThemeAsync()
     {
         if (!_isInitialized) return;
 
@@ -52,5 +57,10 @@
         {
             // Ignore JS errors and maintain current state
         }
+    }
+
+    public void Dispose()
+    {
+        _objectReference?.Dispose();
     }
 }
