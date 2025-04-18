@@ -1,0 +1,66 @@
+.auth-form {
+    max-width: 500px;
+    margin: 2rem auto;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.form-floating {
+    margin-bottom: 1rem;
+    transition: all 0.3s ease-in-out;
+}
+
+.form-control {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.form-control:focus {
+    background-color: var(--bg-secondary);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
+    color: var(--text-primary);
+}
+
+.btn-primary {
+    width: 100%;
+    padding: 0.75rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    background: var(--primary-gradient);
+    border-color: var(--primary-color);
+    color: #ffffff;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(var(--primary-color-rgb), 0.25);
+    filter: brightness(1.1);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.alert {
+    margin-bottom: 1rem;
+    animation: fadeIn 0.3s ease-in-out;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

@@ -48,37 +48,47 @@ public class RedditService
 
     public async Task<RedditThreadModel> GetThreadWithComments(string threadId)
     {
-        await EnsureAuthenticated();
-        
-        var responseMessage = await _client.GetAsync($"https://oauth.reddit.com/comments/{threadId}?depth=100&limit=500");
-        responseMessage.EnsureSuccessStatusCode();
-        var content = await responseMessage.Content.ReadAsStringAsync();
-
-        
-        var response = System.Text.Json.JsonSerializer.Deserialize(
-            content, RedditJsonContext.Default.RedditListingArray);
-
-        if (response?.Length < 2 || response?[0] == null)
-            throw new InvalidOperationException("Failed to get Reddit thread data");
-
-        var thread = response[0].Data.Children[0].Data;
-        var commentsList = new List<RedditCommentModel>();
-        ProcessComments(response[1].Data.Children, commentsList);
-
-        return new RedditThreadModel
+        for (int attempt = 0; attempt < _maxRetries; attempt++)
         {
-            Id = threadId,
-            Title = thread.Title ?? string.Empty,
-            Author = thread.Author,
-            SelfText = thread.Selftext ?? string.Empty,
-            Url = $"https://www.reddit.com{thread.Permalink}",
-            Subreddit = "dotnet", // This is hardcoded since we only handle r/dotnet for now
-            //CreatedUtc = DateTimeOffset.FromUnixTimeSeconds(thread.CreatedUtc).UtcDateTime,
-            Score = thread.Score,
-            UpvoteRatio = 1.0, // This field isn't available in comments endpoint
-            NumComments = commentsList.Count,
-            Comments = commentsList
-        };
+            try
+            {
+                await EnsureAuthenticated();
+                
+                var responseMessage = await _client.GetAsync($"https://oauth.reddit.com/comments/{threadId}?depth=100&limit=500");
+                responseMessage.EnsureSuccessStatusCode();
+                var content = await responseMessage.Content.ReadAsStringAsync();
+
+                var response = System.Text.Json.JsonSerializer.Deserialize(
+                    content, RedditJsonContext.Default.RedditListingArray);
+
+                if (response?.Length < 2 || response?[0] == null)
+                    throw new InvalidOperationException("Failed to get Reddit thread data");
+
+                var thread = response[0].Data.Children[0].Data;
+                var commentsList = new List<RedditCommentModel>();
+                ProcessComments(response[1].Data.Children, commentsList);
+
+                return new RedditThreadModel
+                {
+                    Id = threadId,
+                    Title = thread.Title ?? string.Empty,
+                    Author = thread.Author,
+                    SelfText = thread.Selftext ?? string.Empty,
+                    Url = $"https://www.reddit.com{thread.Permalink}",
+                    Subreddit = "dotnet", // This is hardcoded since we only handle r/dotnet for now
+                    Score = thread.Score,
+                    UpvoteRatio = 1.0, // This field isn't available in comments endpoint
+                    NumComments = commentsList.Count,
+                    Comments = commentsList
+                };
+            }
+            catch (HttpRequestException) when (attempt < _maxRetries - 1)
+            {
+                await Task.Delay(1000 * (attempt + 1)); // Exponential backoff
+                continue;
+            }
+        }
+        throw new InvalidOperationException($"Failed to get Reddit thread data after {_maxRetries} attempts");
     }
 
     private void ProcessComments(RedditThingData[] comments, List<RedditCommentModel> result, string? parentId = null)
@@ -93,7 +103,6 @@ public class RedditService
                 ParentId = comment.Data.ParentId,
                 Author = comment.Data.Author,
                 Body = comment.Data.Body,
-                //CreatedUtc = DateTimeOffset.FromUnixTimeSeconds(comment.Data.CreatedUtc).UtcDateTime,
                 Score = comment.Data.Score,
                 Replies = null // Will be populated below if there are replies
             };

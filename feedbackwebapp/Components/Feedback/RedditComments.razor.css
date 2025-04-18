@@ -1,13 +1,49 @@
 .comment-item {
     transition: background-color 0.2s ease-in-out;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
 }
 
 .comment-item:hover {
-    background-color: #f1f1f1 !important;
+    background-color: var(--hover-bg) !important;
+}
+
+.comment-item strong {
+    color: var(--text-primary);
+}
+
+.comment-item p, 
+.comment-item div {
+    color: var(--text-primary);
 }
 
 .comments-container {
     animation: fadeIn 0.3s ease-in-out;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    background-color: var(--bg-secondary);
+    padding: 1rem;
+}
+
+.secondary-text {
+    color: var(--text-secondary);
+}
+
+.btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+.btn-outline-primary:active {
+    transform: translateY(0);
 }
 
 @keyframes fadeIn {

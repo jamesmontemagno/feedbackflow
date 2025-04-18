@@ -2,32 +2,43 @@
 @using Microsoft.Extensions.Configuration
 @inject IConfiguration Configuration
 
-<div class="card shadow-sm">
-    <div class="card-body">
-        <h5 class="card-title">Authentication Required</h5>
-        <div class="form-floating mb-3">
-            <input type="password" class="form-control" id="password" @bind="password" @onkeyup="HandleKeyPress" placeholder="Enter password" />
-            <label for="password">Password</label>
-        </div>
-        <button class="btn btn-primary" @onclick="AuthenticateHandler">Login</button>
-        @if (!string.IsNullOrEmpty(authError))
-        {
-            <div class="alert alert-danger mt-3" role="alert">
-                @authError
+@if (!useMockMode)
+{
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h5 class="card-title">Authentication Required</h5>
+            <div class="form-floating mb-3">
+                <input type="password" class="form-control" id="password" @bind="password" @onkeyup="HandleKeyPress" placeholder="Enter password" />
+                <label for="password">Password</label>
             </div>
-        }
+            <button class="btn btn-primary" @onclick="AuthenticateHandler">Login</button>
+            @if (!string.IsNullOrEmpty(authError))
+            {
+                <div class="alert alert-danger mt-3" role="alert">
+                    @authError
+                </div>
+            }
+        </div>
     </div>
-</div>
+}
 
 @code {
     private string password = "";
     private string authError = "";
+    private bool useMockMode;
 
     [Parameter]
     public EventCallback<bool> OnAuthenticated { get; set; }
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        useMockMode = Configuration.GetValue<bool>("FeedbackApi:UseMocks");
+        if (useMockMode)
+        {
+            await OnAuthenticated.InvokeAsync(true);
+            return;
+        }
+
         var configuredPassword = Configuration["FeedbackApp:AccessPassword"];
         if (string.IsNullOrEmpty(configuredPassword))
         {
@@ -35,7 +46,7 @@
         }
     }
 
-    private async void HandleKeyPress(KeyboardEventArgs e)
+    private async Task HandleKeyPress(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
         {

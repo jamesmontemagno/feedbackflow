@@ -1,16 +1,54 @@
 .alert {
     transition: all 0.3s ease-in-out;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: var(--card-shadow);
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
 }
 
 .alert-info {
-    border-left: 4px solid var(--bs-info);
+    border-left: 4px solid var(--info-color);
 }
 
 .spinner-border {
-    color: var(--bs-info);
+    color: var(--info-color);
 }
 
 .small {
     opacity: 0.8;
+    color: var(--text-secondary);
+}
+
+.min-vh-100 {
+    background-color: var(--bg-primary);
+    transition: background-color 0.3s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .card {
+        margin-left: -0.5rem;
+        margin-right: -0.5rem;
+        border-radius: 0;
+    }
+}
+
+/* Animation for status updates */
+.status-update {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }

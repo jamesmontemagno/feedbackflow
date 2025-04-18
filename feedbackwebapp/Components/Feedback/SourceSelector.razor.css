@@ -1,0 +1,81 @@
+.pill-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--bg-secondary);
+    border-radius: 50px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 2px solid var(--border-color);
+    box-shadow: var(--card-shadow);
+    min-width: 180px;
+    justify-content: center;
+}
+
+.source-selector {
+    padding: 1rem 0;
+}
+
+.pill-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(var(--primary-color-rgb), 0.15);
+    border-color: var(--primary-color);
+    background: var(--hover-bg);
+}
+
+.pill-button:hover .pill-icon {
+    transform: scale(1.1);
+}
+
+.pill-button.selected {
+    background: var(--primary-gradient);
+    border-color: var(--primary-color);
+    color: #ffffff;
+    box-shadow: 0 8px 16px rgba(var(--primary-color-rgb), 0.25);
+}
+
+.pill-button.selected:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 10px 20px rgba(var(--primary-color-rgb), 0.3);
+}
+
+.pill-button:focus {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(var(--primary-color-rgb), 0.25);
+}
+
+.pill-button:active {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(var(--primary-color-rgb), 0.2);
+}
+
+.pill-icon {
+    font-size: 1.25rem;
+    transition: transform 0.3s ease;
+    color: var(--text-primary);
+}
+
+.pill-text {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.pill-button:hover .pill-icon,
+.pill-button:hover .pill-text {
+    opacity: 1;
+    color: var(--primary-color);
+}
+
+.pill-button.selected .pill-icon,
+.pill-button.selected .pill-text {
+    color: #ffffff;
+}
+
+@media (max-width: 768px) {
+    .pill-button {
+        width: 100%;
+        min-width: unset;
+        justify-content: center;
+        padding: 0.75rem 1.5rem;
+    }
+}

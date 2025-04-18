@@ -1,0 +1,46 @@
+@namespace FeedbackWebApp.Components.Feedback
+
+<div class="source-selector container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-10 col-lg-8">
+            <div class="d-flex flex-wrap justify-content-center gap-3">
+                @foreach (var source in sources)
+                {
+                    <button type="button" 
+                            class="pill-button btn @(SelectedSource == source.Value ? "selected" : "")"
+                            @onclick="() => OnSourceSelected(source.Value)">
+                        <span class="pill-icon">@source.Icon</span>
+                        <span class="pill-text">@source.Name</span>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string SelectedSource { get; set; } = "";
+
+    [Parameter]
+    public EventCallback<string> SelectedSourceChanged { get; set; }
+
+    private readonly SourceOption[] sources = new[]
+    {
+        new SourceOption("YouTube", "📺", "Analyze feedback from video comments and community discussions", "YouTube"),
+        new SourceOption("Hacker News", "💡", "Gather insights from technical discussions and feedback", "HackerNews"),
+        new SourceOption("GitHub", "📝", "Process feedback from issues, PRs, and discussions", "GitHub"),
+        new SourceOption("Reddit", "👽", "Analyze community feedback and discussions", "Reddit")
+    };
+
+    private async Task OnSourceSelected(string value)
+    {
+        if (SelectedSource != value)
+        {
+            SelectedSource = value;
+            await SelectedSourceChanged.InvokeAsync(value);
+        }
+    }
+
+    private record SourceOption(string Name, string Icon, string Description, string Value);
+}

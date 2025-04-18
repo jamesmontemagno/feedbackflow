@@ -1,9 +1,26 @@
 ﻿@inherits LayoutComponentBase
+@using FeedbackWebApp.Components.Feedback
+@inject IJSRuntime JSRuntime
 
-@Body
+<div class="page">
+    <ThemeToggle />
+    <main>
+        @Body
+    </main>
+</div>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("initTheme");
+        }
+    }
+}

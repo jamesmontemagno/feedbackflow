@@ -45,9 +45,9 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
                     threads.AddRange(response);
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                throw ex;
+                throw; // Properly re-throw the exception without losing stack trace
             }
         }
 

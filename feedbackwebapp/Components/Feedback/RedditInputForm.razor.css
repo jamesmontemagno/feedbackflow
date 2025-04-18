@@ -1,0 +1,42 @@
+.reddit-input {
+    padding-bottom: 1rem;
+}
+
+.form-floating {
+    transition: all 0.3s ease-in-out;
+    margin-bottom: 1.5rem;
+}
+
+.form-control {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.form-control:focus {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--danger-color);
+    box-shadow: 0 0 0 0.25rem rgba(var(--danger-color-rgb), 0.25);
+}
+
+.invalid-feedback {
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    color: var(--danger-color);
+}
+
+.text-muted {
+    color: var(--text-secondary) !important;
+}
+
+.text-muted ul {
+    padding-left: 1.2rem;
+    margin-bottom: 0;
+    color: var(--text-secondary);
+}
+
+.text-muted li {
+    margin-bottom: 0.25rem;
+    color: var(--text-secondary);
+}

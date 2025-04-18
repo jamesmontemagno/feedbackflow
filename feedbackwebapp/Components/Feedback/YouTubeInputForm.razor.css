@@ -8,20 +8,29 @@
     gap: 1.5rem;
 }
 
+.youtube-input .form-check-input {
+    cursor: pointer;
+    width: 1.2em;
+    height: 1.2em;
+    border-color: var(--border-color);
+    background-color: var(--bg-secondary);
+}
+
 .youtube-input .form-check-input:checked {
     background-color: var(--primary-color);
     border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.15rem rgba(var(--primary-color-rgb), 0.25);
 }
 
 .youtube-input .form-check-label {
     font-size: 1.1rem;
     cursor: pointer;
+    color: var(--text-primary);
+    transition: all 0.3s ease;
 }
 
-.youtube-input .form-check-input {
-    cursor: pointer;
-    width: 1.2em;
-    height: 1.2em;
+.youtube-input .form-check-label:hover {
+    color: var(--primary-color);
 }
 
 .youtube-input .form-floating {
@@ -29,7 +38,25 @@
     margin-bottom: 1.5rem;
 }
 
+.youtube-input .form-control {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
 .youtube-input .form-control:focus {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+.text-muted {
+    color: var(--text-secondary) !important;
+}
+
+.invalid-feedback {
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    color: var(--danger-color);
 }

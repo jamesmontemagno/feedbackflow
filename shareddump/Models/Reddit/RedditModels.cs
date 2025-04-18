@@ -2,29 +2,6 @@ using System.Text.Json.Serialization;
 
 namespace SharedDump.Models.Reddit;
 
-    public class Comment
-    {
-        public string Id { get; set; }
-        public object ParentId { get; set; }
-        public string Author { get; set; }
-        public string Body { get; set; }
-        public int? Score { get; set; }
-        public object Replies { get; set; }
-    }
-
-    public class Root
-    {
-        public string Id { get; set; }
-        public string Author { get; set; }
-        public string Title { get; set; }
-        public string SelfText { get; set; }
-        public string Url { get; set; }
-        public string Subreddit { get; set; }
-        public int? Score { get; set; }
-        public int? UpvoteRatio { get; set; }
-        public int? NumComments { get; set; }
-        public List<Comment> Comments { get; set; }
-    }
 
 public class RedditThreadModel
 {

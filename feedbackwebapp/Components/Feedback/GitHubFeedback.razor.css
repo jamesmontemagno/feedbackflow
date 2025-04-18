@@ -4,19 +4,19 @@
 }
 
 .issue-item {
-    border-left-color: #f0ad4e;
+    border-left-color: var(--warning-color);
 }
 
 .pr-item {
-    border-left-color: #5cb85c;
+    border-left-color: var(--success-color);
 }
 
 .discussion-item {
-    border-left-color: #0d6efd;
+    border-left-color: var(--primary-color);
 }
 
 .issue-item:hover, .pr-item:hover, .discussion-item:hover {
-    background-color: rgba(0, 0, 0, 0.02);
+    background-color: var(--hover-bg);
 }
 
 .comments-container {
@@ -28,12 +28,14 @@
 }
 
 .comment-item {
-    border-left: 3px solid #dee2e6;
+    border-left: 3px solid var(--border-color);
     transition: all 0.2s ease;
+    background-color: var(--bg-secondary);
 }
 
 .comment-item:hover {
-    border-left-color: #0d6efd;
+    border-left-color: var(--primary-color);
+    background-color: var(--hover-bg);
 }
 
 .badge {

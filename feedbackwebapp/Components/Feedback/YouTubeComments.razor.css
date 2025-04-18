@@ -1,0 +1,66 @@
+.card {
+    transition: all 0.3s ease-in-out;
+}
+
+.card-header {
+    background-color: var(--bg-secondary) !important;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.card-title {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.list-group-item {
+    transition: background-color 0.2s ease-in-out;
+    border-left: 3px solid transparent;
+    margin-bottom: 0.5rem;
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+.list-group-item:hover {
+    background-color: var(--hover-bg);
+    border-left-color: var(--danger-color);
+}
+
+.list-group-item h6 {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.list-group-item p {
+    color: var(--text-primary);
+}
+
+.card-body {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #ffffff;
+}
+
+.secondary-text {
+    color: var(--text-secondary);
+    opacity: 1;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

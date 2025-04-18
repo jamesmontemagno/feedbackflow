@@ -3,17 +3,30 @@
     font-size: 16px;
     line-height: 1.5;
     word-wrap: break-word;
+    color: var(--text-primary);
     background-color: transparent !important;
-    color: #24292f;
+}
+
+.card-header {
+    background: var(--primary-gradient) !important;
+}
+
+.card-header .card-title {
+    color: #ffffff;
+    margin: 0;
 }
 
 .btn-light {
     transition: all 0.2s ease-in-out;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
 }
 
 .btn-light:hover {
-    background-color: #f8f9fa;
+    background-color: var(--hover-bg);
     transform: scale(1.05);
+    color: var(--text-primary);
 }
 
 .markdown-body h1,
@@ -26,7 +39,7 @@
     margin-bottom: 16px;
     font-weight: 600;
     line-height: 1.25;
-    color: inherit;
+    color: var(--text-primary);
 }
 
 .markdown-body h1 { font-size: 2em; }
@@ -36,6 +49,7 @@
 .markdown-body p {
     margin-top: 0;
     margin-bottom: 16px;
+    color: var(--text-primary);
 }
 
 .markdown-body ul,
@@ -43,14 +57,16 @@
     margin-top: 0;
     margin-bottom: 16px;
     padding-left: 2em;
+    color: var(--text-primary);
 }
 
 .markdown-body code {
     padding: 0.2em 0.4em;
     margin: 0;
     font-size: 85%;
-    background-color: rgba(175, 184, 193, 0.2);
+    background-color: var(--code-bg);
     border-radius: 6px;
+    color: var(--text-primary);
 }
 
 .markdown-body pre {
@@ -58,9 +74,10 @@
     overflow: auto;
     font-size: 85%;
     line-height: 1.45;
-    background-color: #f6f8fa;
+    background-color: var(--bg-secondary);
     border-radius: 6px;
     margin-bottom: 16px;
+    border: 1px solid var(--border-color);
 }
 
 .markdown-body pre code {
@@ -71,15 +88,23 @@
 
 .markdown-body blockquote {
     padding: 0 1em;
-    color: #656d76;
-    border-left: 0.25em solid #d0d7de;
+    color: var(--text-secondary);
+    border-left: 0.25em solid var(--border-color);
     margin: 0 0 16px 0;
+}
+
+.markdown-body a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.markdown-body a:hover {
+    text-decoration: underline;
 }
 
 .markdown-body table {
     display: block;
     width: 100%;
-    width: max-content;
     max-width: 100%;
     overflow: auto;
     margin-top: 0;
@@ -91,48 +116,15 @@
 .markdown-body table th,
 .markdown-body table td {
     padding: 6px 13px;
-    border: 1px solid #d0d7de;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
 }
 
 .markdown-body table tr {
-    background-color: #ffffff;
-    border-top: 1px solid #d0d7de;
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
 }
 
 .markdown-body table tr:nth-child(2n) {
-    background-color: #f6f8fa;
-}
-
-/* Dark mode styles */
-@media (prefers-color-scheme: dark) {
-    .markdown-body {
-        color: #c9d1d9;
-    }
-
-    .markdown-body code {
-        background-color: rgba(110, 118, 129, 0.4);
-    }
-
-    .markdown-body pre {
-        background-color: #161b22;
-    }
-
-    .markdown-body blockquote {
-        color: #8b949e;
-        border-left-color: #30363d;
-    }
-
-    .markdown-body table th,
-    .markdown-body table td {
-        border-color: #30363d;
-    }
-
-    .markdown-body table tr {
-        background-color: #0d1117;
-        border-color: #30363d;
-    }
-
-    .markdown-body table tr:nth-child(2n) {
-        background-color: #161b22;
-    }
+    background-color: var(--hover-bg);
 }

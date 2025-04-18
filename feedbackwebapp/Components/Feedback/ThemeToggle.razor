@@ -1,0 +1,57 @@
+@namespace FeedbackWebApp.Components.Feedback
+@inject IJSRuntime JSRuntime
+
+<div class="theme-toggle-wrapper">
+    <button @onclick="ToggleTheme" class="theme-toggle" aria-label="Toggle theme">
+        <div class="toggle-track">
+            <div class="toggle-indicator">
+                @if (IsDarkMode)
+                {
+                    <i class="bi bi-moon-stars-fill"></i>
+                }
+                else
+                {
+                    <i class="bi bi-sun-fill"></i>
+                }
+            </div>
+        </div>
+    </button>
+</div>
+
+@code {
+    private bool IsDarkMode { get; set; }
+    private bool _isInitialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                IsDarkMode = await JSRuntime.InvokeAsync<bool>("isDarkMode");
+                _isInitialized = true;
+                StateHasChanged();
+            }
+            catch
+            {
+                // Ignore any JS initialization errors
+                _isInitialized = true;
+            }
+        }
+    }
+
+    private async Task ToggleTheme()
+    {
+        if (!_isInitialized) return;
+
+        try
+        {
+            IsDarkMode = !IsDarkMode;
+            await JSRuntime.InvokeVoidAsync("setTheme", IsDarkMode ? "dark" : "light");
+        }
+        catch
+        {
+            // Ignore JS errors and maintain current state
+        }
+    }
+}
