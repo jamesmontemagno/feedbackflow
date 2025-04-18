@@ -1,51 +1,53 @@
 .theme-toggle-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    z-index: 10 !important;
 }
 
 .theme-toggle {
-    width: 40px;
-    height: 40px;
-    padding: 0;
-    margin: 0;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: transparent;
-    color: white;
-    transition: transform 0.3s ease, background-color 0.3s ease;
-    overflow: hidden;
+    width: 40px !important;
+    height: 40px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 50% !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background-color: transparent !important;
+    color: var(--theme-toggle-color, white) !important;
+    transition: transform 0.3s ease, background-color 0.3s ease !important;
+    overflow: hidden !important;
 }
 
 .theme-toggle:hover, 
 .theme-toggle:focus {
-    transform: scale(1.1);
-    background-color: rgba(255, 255, 255, 0.1);
-    outline: none;
+    transform: scale(1.1) !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    outline: none !important;
 }
 
 .theme-toggle:active {
-    transform: scale(0.95);
-    transition: transform 0.1s ease;
+    transform: scale(0.95) !important;
+    transition: transform 0.1s ease !important;
 }
 
 .theme-toggle i {
-    font-size: 1.5rem;
-    color: white;
-    transition: transform 0.3s ease;
+    font-size: 1.5rem !important;
+    color: var(--theme-toggle-color, white) !important;
+    transition: transform 0.3s ease !important;
 }
 
 .theme-toggle:hover i {
-    transform: rotate(15deg);
+    transform: rotate(15deg) !important;
 }
 
 /* Responsive adjustments for mobile devices */
 @media (max-width: 768px) {
     .theme-toggle i {
-        font-size: 1.25rem;
+        font-size: 1.25rem !important;
     }
 }

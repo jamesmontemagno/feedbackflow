@@ -25,6 +25,7 @@
         {
             try
             {
+                // Use the global function from app.js
                 IsDarkMode = await JSRuntime.InvokeAsync<bool>("isDarkMode");
                 _isInitialized = true;
                 StateHasChanged();
@@ -44,6 +45,7 @@
         try
         {
             IsDarkMode = !IsDarkMode;
+            // Use the global function from app.js
             await JSRuntime.InvokeVoidAsync("setTheme", IsDarkMode ? "dark" : "light");
         }
         catch

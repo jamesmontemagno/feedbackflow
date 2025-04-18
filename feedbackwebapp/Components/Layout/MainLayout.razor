@@ -19,7 +19,15 @@
     {
         if (firstRender)
         {
-            await JSRuntime.InvokeVoidAsync("initTheme");
+            try 
+            {
+                // Use the global function from app.js
+                await JSRuntime.InvokeVoidAsync("initTheme");
+            }
+            catch
+            {
+                // Silently ignore any JavaScript errors
+            }
         }
     }
 }
