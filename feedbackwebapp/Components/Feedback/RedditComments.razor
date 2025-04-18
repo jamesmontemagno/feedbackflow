@@ -35,40 +35,12 @@
                             @(ExpandedThreads.Contains(thread.Id) ? "Hide Comments" : $"Show Comments ({thread.Comments?.Count})")
                         </button>
 
-                        @if (ExpandedThreads.Contains(thread.Id) && thread.Comments?.Any() == true)
+                        @if (ExpandedThreads.Contains(thread.Id))
                         {
                             <div class="comments-container">
                                 @foreach (var comment in thread.Comments)
                                 {
-                                    <div class="comment-item p-3 mb-2 rounded @(comment.ParentId != thread?.Id ? "ms-4" : "")">
-                                        <div class="d-flex justify-content-between">
-                                            <strong>u/@comment.Author</strong>
-                                            <div>
-                                                <span class="me-3">Score: @comment.Score</span>
-                                               @*  <small>@comment.CreatedUtc.ToString("MMM dd, yyyy HH:mm")</small> *@
-                                            </div>
-                                        </div>
-                                        <div class="mt-2">@comment.Body</div>
-                                        
-                                        @if (comment.Replies?.Any() == true)
-                                        {
-                                            <div class="mt-3">
-                                                @foreach (var reply in comment.Replies)
-                                                {
-                                                    <div class="comment-item p-3 mb-2 rounded ms-4">
-                                                        <div class="d-flex justify-content-between">
-                                                            <strong>u/@reply.Author</strong>
-                                                            <div>
-                                                                <span class="me-3">Score: @reply.Score</span>
-                                                               @*  <small>@reply.CreatedUtc.ToString("MMM dd, yyyy HH:mm")</small> *@
-                                                            </div>
-                                                        </div>
-                                                        <div class="mt-2">@reply.Body</div>
-                                                    </div>
-                                                }
-                                            </div>
-                                        }
-                                    </div>
+                                    <RedditComment Comment="comment" />
                                 }
                             </div>
                         }

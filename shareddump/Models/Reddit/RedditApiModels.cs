@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace SharedDump.Models.Reddit;
@@ -42,7 +43,31 @@ public class RedditCommentData
     [JsonIgnore]
     public RedditListing? RepliesDisplay
     {
-        get => Replies as RedditListing;
-        set => Replies = value;
+        get
+        {
+            try
+            {
+                if (Replies is JsonElement jsonElement && jsonElement.ValueKind != JsonValueKind.String)
+                {
+                    try
+                    {
+                        return jsonElement.Deserialize<RedditListing>(new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        });
+                    }
+                    catch (JsonException)
+                    {
+                        // Handle the case where deserialization fails
+                    }
+                }
+            }
+            catch
+            {
+                // Log the exception if necessary
+            }
+
+            return null;
+        }
     }
 }

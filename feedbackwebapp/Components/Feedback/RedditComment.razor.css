@@ -1,0 +1,8 @@
+.comment-item {
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+}
+
+.comment-item:hover {
+    background-color: var(--bs-tertiary-bg);
+}
