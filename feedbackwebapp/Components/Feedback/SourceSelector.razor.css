@@ -5,22 +5,22 @@
     padding: 0.75rem 1.5rem;
     background: var(--bg-secondary);
     border-radius: 50px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 2px solid var(--border-color);
+    transition: all 0.3s ease;
+    border: 1px solid var(--bs-border-color);
     box-shadow: var(--card-shadow);
     min-width: 180px;
     justify-content: center;
 }
 
 .source-selector {
-    padding: 1rem 0;
+    padding: 0.5rem 0;
 }
 
 .pill-button:hover {
     transform: translateY(-3px);
     box-shadow: 0 6px 12px rgba(var(--primary-color-rgb), 0.15);
-    border-color: var(--primary-color);
-    background: var(--hover-bg);
+    border-color: var(--bs-primary);
+    background-color: var(--bs-primary);
 }
 
 .pill-button:hover .pill-icon {
@@ -28,9 +28,9 @@
 }
 
 .pill-button.selected {
-    background: var(--primary-gradient);
-    border-color: var(--primary-color);
-    color: #ffffff;
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+    color: white;
     box-shadow: 0 8px 16px rgba(var(--primary-color-rgb), 0.25);
 }
 
@@ -69,6 +69,37 @@
 .pill-button.selected .pill-icon,
 .pill-button.selected .pill-text {
     color: #ffffff;
+}
+
+/* Dark mode styles */
+:root[data-bs-theme="dark"] .pill-button {
+    color: white;
+}
+
+:root[data-bs-theme="dark"] .pill-button .pill-text,
+:root[data-bs-theme="dark"] .pill-button .pill-icon {
+    color: white;
+}
+
+:root[data-bs-theme="dark"] .pill-button:hover {
+    background-color: rgba(var(--bs-primary-rgb), 0.1);
+}
+
+:root[data-bs-theme="dark"] .pill-button:hover .pill-text,
+:root[data-bs-theme="dark"] .pill-button:hover .pill-icon {
+    color: var(--bs-primary);
+}
+
+:root[data-bs-theme="dark"] .pill-button.selected,
+:root[data-bs-theme="dark"] .pill-button.selected:hover {
+    background-color: var(--bs-primary);
+}
+
+:root[data-bs-theme="dark"] .pill-button.selected .pill-text,
+:root[data-bs-theme="dark"] .pill-button.selected .pill-icon,
+:root[data-bs-theme="dark"] .pill-button.selected:hover .pill-text,
+:root[data-bs-theme="dark"] .pill-button.selected:hover .pill-icon {
+    color: white;
 }
 
 @media (max-width: 768px) {
