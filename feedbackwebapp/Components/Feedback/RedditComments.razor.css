@@ -1,65 +1,22 @@
+/* Component-specific styles for RedditComments */
+
+/* Uses CSS variables for theme support instead of hard-coded colors */
+.secondary-text {
+    color: var(--bs-secondary-color);
+}
+
 .comment-item {
+    background-color: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
     transition: background-color 0.2s ease-in-out;
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
 }
 
 .comment-item:hover {
-    background-color: var(--hover-bg) !important;
-}
-
-.comment-item strong {
-    color: var(--text-primary);
-}
-
-.comment-item p, 
-.comment-item div {
-    color: var(--text-primary);
+    background-color: var(--bs-secondary-bg);
 }
 
 .comments-container {
     animation: fadeIn 0.3s ease-in-out;
-    border: 1px solid var(--border-color);
-    border-radius: 0.5rem;
-    background-color: var(--bg-secondary);
-    padding: 1rem;
-}
-
-.secondary-text {
-    color: var(--text-secondary);
-}
-
-.external-link {
-    color: var(--text-primary) !important;
-    text-decoration: none !important;
-    transition: opacity 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-}
-
-.external-link i {
-    margin-right: 0.25rem;
-}
-
-.external-link:hover {
-    opacity: 0.8;
-}
-
-.btn-outline-primary {
-    color: var(--primary-color) !important;
-    border-color: var(--primary-color) !important;
-    transition: all 0.2s ease-in-out !important;
-}
-
-.btn-outline-primary:hover {
-    background-color: var(--primary-color) !important;
-    border-color: var(--primary-color) !important;
-    color: #ffffff !important;
-    transform: translateY(-1px) !important;
-}
-
-.btn-outline-primary:active {
-    transform: translateY(0) !important;
 }
 
 @keyframes fadeIn {
