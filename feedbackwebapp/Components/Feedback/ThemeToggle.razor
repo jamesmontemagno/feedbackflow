@@ -1,20 +1,17 @@
+@using Microsoft.JSInterop
 @namespace FeedbackWebApp.Components.Feedback
 @inject IJSRuntime JSRuntime
 
 <div class="theme-toggle-wrapper">
-    <button @onclick="ToggleTheme" class="theme-toggle" aria-label="Toggle theme">
-        <div class="toggle-track">
-            <div class="toggle-indicator">
-                @if (IsDarkMode)
-                {
-                    <i class="bi bi-moon-stars-fill"></i>
-                }
-                else
-                {
-                    <i class="bi bi-sun-fill"></i>
-                }
-            </div>
-        </div>
+    <button @onclick="ToggleTheme" class="theme-toggle" aria-label="Toggle dark mode">
+        @if (IsDarkMode)
+        {
+            <i class="bi bi-moon-stars-fill"></i>
+        }
+        else
+        {
+            <i class="bi bi-sun-fill"></i>
+        }
     </button>
 </div>
 

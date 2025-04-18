@@ -5,7 +5,7 @@
 - When creating a new component, automatically create a matching .razor.css file
 - Ignore warnings in Blazor components (they are often false positives)
 - Use scoped CSS through the .razor.css pattern instead of global styles
-- Make sure light and dark theme are respected throughout
+- Make sure light and dark theme are respected throughout by never using hard coded rgb or hex but that they are always defined in the main css
 
 ## Code Style
 - Prefer async/await over direct Task handling
