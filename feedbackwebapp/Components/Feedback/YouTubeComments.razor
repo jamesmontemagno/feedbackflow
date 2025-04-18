@@ -12,9 +12,14 @@
                         <i class="bi bi-youtube text-danger me-2"></i>
                         @video.Title
                     </h5>
-                    <button class="btn btn-sm btn-outline-primary" @onclick="@(() => ToggleComments(video.Id))">
-                        @(ExpandedVideos.Contains(video.Id) ? "Hide Comments" : "Show Comments")
-                    </button>
+                    <div>
+                        <a href="https://www.youtube.com/watch?v=@video.Id" target="_blank" class="external-link me-3">
+                            <i class="bi bi-box-arrow-up-right"></i> View on YouTube
+                        </a>
+                        <button class="btn btn-sm btn-outline-primary" @onclick="@(() => ToggleComments(video.Id))">
+                            @(ExpandedVideos.Contains(video.Id) ? "Hide Comments" : "Show Comments")
+                        </button>
+                    </div>
                 </div>
             </div>
             @if (ExpandedVideos.Contains(video.Id))

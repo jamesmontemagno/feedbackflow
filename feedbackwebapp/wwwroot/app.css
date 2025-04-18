@@ -184,6 +184,13 @@ h1:focus {
     transform: translateY(-2px);
 }
 
+.card-header {
+    background-color: var(--primary-color) !important;
+    color: #ffffff !important;
+    border-bottom: none !important;
+    font-weight: 500 !important;
+}
+
 /* List Groups */
 .list-group-item {
     background-color: var(--bg-secondary);

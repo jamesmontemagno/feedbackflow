@@ -38,6 +38,22 @@
     animation: fadeIn 0.3s ease-in-out;
 }
 
+.external-link {
+    color: var(--text-primary) !important;
+    text-decoration: none !important;
+    transition: opacity 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+}
+
+.external-link i {
+    margin-right: 0.25rem;
+}
+
+.external-link:hover {
+    opacity: 0.8;
+}
+
 .btn-outline-primary {
     color: var(--primary-color);
     border-color: var(--primary-color);
