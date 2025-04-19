@@ -93,4 +93,32 @@ public class HackerNewsService
 
         return results;
     }
+
+    public async Task<List<HackerNewsItem>> SearchByTitleBasicInfo(IEnumerable<string> keywords)
+    {
+        var topStories = await GetTopStories();
+        var results = new List<HackerNewsItem>();
+
+        foreach (var storyId in topStories)
+        {
+            var item = await GetItemData(storyId);
+            if (item?.Title != null && keywords.Any(k => 
+                item.Title.Contains(k, StringComparison.OrdinalIgnoreCase)))
+            {
+                // Create a new item with only the essential data
+                results.Add(new HackerNewsItem
+                {
+                    Id = item.Id,
+                    Title = item.Title,
+                    By = item.By ?? string.Empty,
+                    Time = item.Time,
+                    Url = item.Url,
+                    Score = item.Score ?? 0,
+                    Descendants = item.Descendants ?? 0
+                });
+            }
+        }
+
+        return results;
+    }
 }

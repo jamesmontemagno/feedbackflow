@@ -63,37 +63,38 @@ public class RedditCommentData
                         return null;
                     }
                 }
+                return null;
             }
             catch
             {
-                // Log the exception if necessary
+                return null;
             }
-
-            return null;
         }
     }
 }
 
 public class RedditThreadModel
 {
-    public string Id { get; set; } = "";
-    public string Title { get; set; } = "";
-    public string Author { get; set; } = "";
+    public required string Id { get; set; }
+    public required string Title { get; set; }
+    public required string Author { get; set; }
     public string SelfText { get; set; } = "";
-    public string Url { get; set; } = "";
+    public required string Url { get; set; }
     public string Subreddit { get; set; } = "";
     public int Score { get; set; }
     public double UpvoteRatio { get; set; }
     public int NumComments { get; set; }
-    public List<RedditCommentModel> Comments { get; set; } = new();
+    public List<RedditCommentModel> Comments { get; set; } = [];
+    public DateTimeOffset CreatedUtc { get; set; }
+    public string Permalink { get; set; } = "";
 }
 
 public class RedditCommentModel
 {
-    public string Id { get; set; } = "";
+    public required string Id { get; set; }
     public string? ParentId { get; set; }
-    public string Author { get; set; } = "";
-    public string Body { get; set; } = "";
+    public required string Author { get; set; }
+    public required string Body { get; set; }
     public int Score { get; set; }
-    public List<RedditCommentModel>? Replies { get; set; }
+    public List<RedditCommentModel> Replies { get; set; } = [];
 }

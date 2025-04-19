@@ -63,7 +63,7 @@ public class ContentFeedFunctions
             }
 
             var cutoffDate = DateTimeOffset.UtcNow.AddDays(-days);
-            var videos = await _ytService.SearchVideos(topic ?? "", tag ?? "", cutoffDate);
+            var videos = await _ytService.SearchVideosBasicInfo(topic ?? "", tag ?? "", cutoffDate); // Changed method name
             
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(videos);
@@ -110,7 +110,7 @@ public class ContentFeedFunctions
             }
 
             var cutoffDate = DateTimeOffset.UtcNow.AddDays(-days);
-            var threads = await _redditService.GetSubredditThreads(subreddit, sortBy, cutoffDate);
+            var threads = await _redditService.GetSubredditThreadsBasicInfo(subreddit, sortBy, cutoffDate); // Changed method name
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(threads);
@@ -144,7 +144,7 @@ public class ContentFeedFunctions
             }
 
             var keywordsList = keywords.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            var matchingItems = await _hnService.SearchByTitle(keywordsList);
+            var matchingItems = await _hnService.SearchByTitleBasicInfo(keywordsList); // Changed method name
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(matchingItems);

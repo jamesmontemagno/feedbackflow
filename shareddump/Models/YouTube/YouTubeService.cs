@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using SharedDump.Json;
 
 namespace SharedDump.Models.YouTube;
@@ -245,5 +246,78 @@ public class YouTubeService
         }
 
         return videos;
+    }
+
+    public async Task<List<YouTubeOutputVideo>> SearchVideosBasicInfo(string searchQuery, string tag, DateTimeOffset publishedAfter)
+    {
+        var videos = new List<YouTubeOutputVideo>();
+        var pageToken = "";
+        
+        while (true)
+        {
+            var searchUrl = $"https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=50&q={Uri.EscapeDataString(searchQuery)}";
+            if (!string.IsNullOrEmpty(tag))
+            {
+                searchUrl += $"&topicId={Uri.EscapeDataString(tag)}";
+            }
+            searchUrl += $"&publishedAfter={publishedAfter:yyyy-MM-dd}T00:00:00Z";
+            if (!string.IsNullOrEmpty(pageToken))
+            {
+                searchUrl += $"&pageToken={pageToken}";
+            }
+            searchUrl += $"&key={_apiKey}";
+
+            var searchResponse = await _client.GetFromJsonAsync<JsonElement>(searchUrl);
+            if (searchResponse.TryGetProperty("items", out var items))
+            {
+                foreach (var item in items.EnumerateArray())
+                {
+                    var snippet = item.GetProperty("snippet");
+                    var videoId = item.GetProperty("id").GetProperty("videoId").GetString();
+                    
+                    if (videoId == null) continue;
+
+                    // Get just basic video stats without comments
+                    var videoUrl = $"https://www.googleapis.com/youtube/v3/videos?part=statistics&id={videoId}&key={_apiKey}";
+                    var videoResponse = await _client.GetFromJsonAsync<JsonElement>(videoUrl);
+                    
+                    if (!videoResponse.TryGetProperty("items", out var videoItems) || 
+                        !videoItems.EnumerateArray().Any()) continue;
+
+                    var statistics = videoItems[0].GetProperty("statistics");
+                    var publishedAt = DateTimeOffset.Parse(snippet.GetProperty("publishedAt").GetString() ?? string.Empty);
+
+                    videos.Add(new YouTubeOutputVideo
+                    {
+                        Id = videoId,
+                        Title = snippet.GetProperty("title").GetString() ?? string.Empty,
+                        Description = snippet.GetProperty("description").GetString() ?? string.Empty,
+                        PublishedAt = publishedAt,
+                        UploadDate = publishedAt.DateTime,
+                        ChannelId = snippet.GetProperty("channelId").GetString() ?? string.Empty,
+                        ChannelTitle = snippet.GetProperty("channelTitle").GetString() ?? string.Empty,
+                        Url = $"https://www.youtube.com/watch?v={videoId}",
+                        ViewCount = ParseStatistic(statistics, "viewCount"),
+                        LikeCount = ParseStatistic(statistics, "likeCount"),
+                        CommentCount = ParseStatistic(statistics, "commentCount")
+                    });
+                }
+            }
+
+            if (!searchResponse.TryGetProperty("nextPageToken", out var nextPageToken))
+                break;
+
+            pageToken = nextPageToken.GetString() ?? string.Empty;
+            if (string.IsNullOrEmpty(pageToken))
+                break;
+        }
+
+        return videos;
+    }
+
+    private static long ParseStatistic(JsonElement statistics, string propertyName)
+    {
+        return statistics.TryGetProperty(propertyName, out var property) && 
+               property.TryGetInt64(out var value) ? value : 0;
     }
 }
