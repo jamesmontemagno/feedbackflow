@@ -11,12 +11,12 @@
     <div class="form-floating mb-3">
         <input type="text" class="form-control" id="tag" placeholder="Tag" 
                @bind="Tag" @bind:event="oninput" />
-        <label for="tag">Category ID (optional)</label>
-        <div class="form-text">Enter a YouTube category ID (e.g., 20 for Gaming, 27 for Education)</div>
+        <label for="tag">Tag (optional)</label>
+        <div class="form-text">Enter a tag to filter videos</div>
     </div>
 
-    <div class="form-floating mb-3">
-        <input type="number" class="form-control" id="days" placeholder="Days" min="1" max="30"
+    <div class="form-floating">
+        <input type="number" class="form-control" id="days" min="1" max="30" 
                @bind="Days" @bind:event="oninput" />
         <label for="days">Days</label>
         <div class="form-text">Number of days to look back (1-30)</div>
@@ -25,6 +25,6 @@
 
 @code {
     public string Topic { get; set; } = "";
-    public string Tag { get; set; } = "";
+    public string? Tag { get; set; }
     public int Days { get; set; } = 7;
 }

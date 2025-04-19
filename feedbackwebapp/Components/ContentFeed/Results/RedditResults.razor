@@ -28,42 +28,19 @@
                     {
                         <div class="thread-content mt-3">@thread.SelfText</div>
                     }
-                    
-                    @if (thread.Comments?.Any() == true)
-                    {
-                        <div class="mt-3">
-                            <button class="btn btn-sm btn-outline-light" @onclick="() => ToggleComments(thread.Id)">
-                                @(ExpandedThreads.Contains(thread.Id) ? "Hide" : "Show") Comments (@thread.Comments.Count)
-                            </button>
-
-                            @if (ExpandedThreads.Contains(thread.Id))
-                            {
-                                <div class="comments-container mt-3">
-                                    @foreach (var comment in thread.Comments)
-                                    {
-                                        <FeedbackWebApp.Components.ContentFeed.Results.RedditComment Comment="comment" />
-                                    }
-                                </div>
-                            }
-                        </div>
-                    }
                 </div>
             </div>
         }
     </div>
 }
+else
+{
+    <div class="text-center text-muted">
+        <p>No threads found.</p>
+    </div>
+}
 
 @code {
-    [Parameter]
+    [Parameter, EditorRequired]
     public List<RedditThreadModel>? Threads { get; set; }
-
-    private HashSet<string> ExpandedThreads { get; } = new();
-
-    private void ToggleComments(string threadId)
-    {
-        if (ExpandedThreads.Contains(threadId))
-            ExpandedThreads.Remove(threadId);
-        else
-            ExpandedThreads.Add(threadId);
-    }
 }

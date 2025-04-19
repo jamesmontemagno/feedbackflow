@@ -18,47 +18,24 @@
                         </a>
                     </div>
                     
-                    @if (video.Comments?.Any() == true)
-                    {
-                        <div class="mt-3">
-                            <button class="btn btn-sm btn-outline-light" @onclick="() => ToggleComments(video.Id)">
-                                @(ExpandedVideos.Contains(video.Id) ? "Hide" : "Show") Comments (@video.Comments.Count)
-                            </button>
-
-                            @if (ExpandedVideos.Contains(video.Id))
-                            {
-                                <div class="comments-container mt-3">
-                                    @foreach (var comment in video.Comments)
-                                    {
-                                        <div class="comment-item p-3 mb-2 rounded">
-                                            <div class="d-flex justify-content-between">
-                                                <strong>@comment.Author</strong>
-                                                <small class="text-muted">@comment.PublishedAt.ToLocalTime().ToString("g")</small>
-                                            </div>
-                                            <div class="mt-2">@comment.Text</div>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    }
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            Published: @video.UploadDate.ToString("MMM dd, yyyy")
+                        </small>
+                    </div>
                 </div>
             </div>
         }
     </div>
 }
+else
+{
+    <div class="text-center text-muted">
+        <p>No videos found.</p>
+    </div>
+}
 
 @code {
-    [Parameter]
+    [Parameter, EditorRequired]
     public List<YouTubeOutputVideo>? Videos { get; set; }
-
-    private HashSet<string> ExpandedVideos { get; } = new();
-
-    private void ToggleComments(string videoId)
-    {
-        if (ExpandedVideos.Contains(videoId))
-            ExpandedVideos.Remove(videoId);
-        else
-            ExpandedVideos.Add(videoId);
-    }
 }

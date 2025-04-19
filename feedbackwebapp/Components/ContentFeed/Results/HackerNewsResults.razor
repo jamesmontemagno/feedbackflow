@@ -1,98 +1,49 @@
 @namespace FeedbackWebApp.Components.ContentFeed.Results
 @using SharedDump.Models.HackerNews
 
-<div class="search-results">
-    @if (Items?.Any() == true)
-    {
+@if (Items?.Any() == true)
+{
+    <div class="hackernews-results">
         @foreach (var item in Items)
         {
-            <div class="result-item p-3 mb-3 rounded">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h5 class="mb-1">
-                            <a href="@item.Url" target="_blank" class="text-decoration-none">@item.Title</a>
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h5 class="card-title mb-1">
+                            <i class="bi bi-newspaper text-warning me-2"></i>
+                            @item.Title
                         </h5>
-                        <p class="mb-2 text-muted">
-                            Posted by @item.By | @item.Score points | @DateTimeOffset.FromUnixTimeSeconds(item.Time).ToLocalTime().ToString("g")
-                        </p>
-                    </div>
-                </div>
-                
-                @if (item.Kids?.Any() == true)
-                {
-                    <div class="mt-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <button class="btn btn-sm btn-outline-light" @onclick="() => ToggleComments(item.Id)">
-                                @(ExpandedItems.Contains(item.Id) ? "Hide" : "Show") Comments (@item.Kids.Count)
-                            </button>
-                        </div>
-                        
-                        @if (ExpandedItems.Contains(item.Id))
+                        @if (!string.IsNullOrEmpty(item.Url))
                         {
-                            <div class="comments-section mt-3">
-                                @if (loadedComments.TryGetValue(item.Id, out var comments) && comments.Any())
-                                {
-                                    @foreach (var comment in comments)
-                                    {
-                                        <HackerNewsComment Comment="comment" />
-                                    }
-                                }
-                                else
-                                {
-                                    <div class="text-muted">Loading comments...</div>
-                                }
-                            </div>
+                            <a href="@item.Url" target="_blank" class="btn btn-sm btn-outline-light">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
                         }
                     </div>
-                }
+                    
+                    <div class="item-meta mt-2">
+                        <small class="text-muted">
+                            By @item.By | Score: @item.Score | @DateTimeOffset.FromUnixTimeSeconds(item.Time).ToLocalTime().ToString("g")
+                        </small>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(item.Text))
+                    {
+                        <div class="item-content mt-3">@((MarkupString)item.Text)</div>
+                    }
+                </div>
             </div>
         }
-    }
-    else
-    {
-        <div class="text-center text-muted">
-            <p>No results found.</p>
-        </div>
-    }
-</div>
+    </div>
+}
+else
+{
+    <div class="text-center text-muted">
+        <p>No articles found.</p>
+    </div>
+}
 
 @code {
     [Parameter, EditorRequired]
-    public List<HackerNewsItem> Items { get; set; } = null!;
-
-    private HashSet<int> ExpandedItems { get; set; } = new();
-    private Dictionary<int, List<HackerNewsItem>> loadedComments = new();
-
-    [Inject]
-    private HackerNewsService HnService { get; set; } = null!;
-
-    private async Task ToggleComments(int itemId)
-    {
-        if (ExpandedItems.Contains(itemId))
-        {
-            ExpandedItems.Remove(itemId);
-        }
-        else
-        {
-            ExpandedItems.Add(itemId);
-            if (!loadedComments.ContainsKey(itemId))
-            {
-                var comments = new List<HackerNewsItem>();
-                var item = Items.FirstOrDefault(i => i.Id == itemId);
-                if (item?.Kids != null)
-                {
-                    foreach (var kidId in item.Kids)
-                    {
-                        var comment = await HnService.GetItemData(kidId);
-                        if (comment != null)
-                        {
-                            comments.Add(comment);
-                        }
-                    }
-                }
-                loadedComments[itemId] = comments;
-                StateHasChanged();
-            }
-        }
-    }
+    public List<HackerNewsItem>? Items { get; set; }
 }

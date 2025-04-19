@@ -7,6 +7,7 @@
 @using FeedbackWebApp.Components.ContentFeed.Services
 @using FeedbackWebApp.Components.ContentFeed.Forms
 @using FeedbackWebApp.Components.ContentFeed.Results
+@using FeedbackWebApp.Components.Feedback
 
 @inject IConfiguration Configuration
 @inject HttpClient Http
@@ -17,7 +18,7 @@
 <div class="container">
     @if (!isAuthenticated)
     {
-        <FeedbackWebApp.Components.Feedback.AuthenticationForm OnAuthenticated="HandleAuthenticated" />
+        <AuthenticationForm OnAuthenticated="HandleAuthenticated" />
     }
     else
     {
@@ -51,13 +52,13 @@
                             @switch (selectedSource)
                             {
                                 case "youtube":
-                                    <FeedbackWebApp.Components.ContentFeed.Forms.YouTubeFeedForm @ref="youtubeFeedForm" />
+                                    <YouTubeFeedForm @ref="youtubeFeedForm" />
                                     break;
                                 case "reddit":
-                                    <FeedbackWebApp.Components.ContentFeed.Forms.RedditFeedForm @ref="redditFeedForm" />
+                                    <RedditFeedForm @ref="redditFeedForm" />
                                     break;
                                 case "hackernews":
-                                    <FeedbackWebApp.Components.ContentFeed.Forms.HackerNewsFeedForm @ref="hackerNewsFeedForm" />
+                                    <HackerNewsFeedForm @ref="hackerNewsFeedForm" />
                                     break;
                             }
 
@@ -91,13 +92,13 @@
                             @switch (selectedSource)
                             {
                                 case "youtube":
-                                    <FeedbackWebApp.Components.ContentFeed.Results.YouTubeResults Videos="youtubeVideos" />
+                                    <YouTubeResults Videos="youtubeVideos" />
                                     break;
                                 case "reddit":
-                                    <FeedbackWebApp.Components.ContentFeed.Results.RedditResults Threads="redditThreads" />
+                                    <RedditResults Threads="redditThreads" />
                                     break;
                                 case "hackernews":
-                                    <FeedbackWebApp.Components.ContentFeed.Results.HackerNewsResults StoryItems="hackerNewsItems" />
+                                    <HackerNewsResults Items="hackerNewsItems" />
                                     break;
                             }
                         </div>
@@ -114,13 +115,14 @@
     private string error = "";
     private string selectedSource = "";
 
-    private FeedbackWebApp.Components.ContentFeed.Forms.YouTubeFeedForm? youtubeFeedForm;
-    private FeedbackWebApp.Components.ContentFeed.Forms.RedditFeedForm? redditFeedForm;
-    private FeedbackWebApp.Components.ContentFeed.Forms.HackerNewsFeedForm? hackerNewsFeedForm;
+    private YouTubeFeedForm? youtubeFeedForm;
+    private RedditFeedForm? redditFeedForm;
+    private HackerNewsFeedForm? hackerNewsFeedForm;
 
     private List<YouTubeOutputVideo>? youtubeVideos;
     private List<RedditThreadModel>? redditThreads;
     private List<HackerNewsItem>? hackerNewsItems;
+
 
     private readonly List<(string Name, string IconClass, string Value)> contentSources = new()
     {
@@ -169,9 +171,9 @@
                     redditThreads = await redditService.FetchContent();
                     break;
 
-                case "hackernews" when hackerNewsFeedForm is not null:
+                case "hackernews" when hackerNewsFeedForm is not null && hackerNewsFeedForm.Keywords is not null:
                     var hnService = ContentFeedProvider.CreateHackerNewsService(
-                        hackerNewsFeedForm.Keywords ?? Array.Empty<string>());
+                        hackerNewsFeedForm.Keywords);
                     hackerNewsItems = await hnService.FetchContent();
                     break;
             }

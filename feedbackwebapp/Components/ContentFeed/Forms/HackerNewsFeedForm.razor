@@ -1,7 +1,7 @@
 @namespace FeedbackWebApp.Components.ContentFeed.Forms
 
 <div class="hackernews-feed-form">
-    <div class="form-floating mb-3">
+    <div class="form-floating">
         <input type="text" class="form-control" id="keywords" placeholder="Keywords" 
                @bind="@KeywordsInput" @bind:event="oninput" />
         <label for="keywords">Keywords</label>
@@ -20,13 +20,12 @@
             if (_keywordsInput != value)
             {
                 _keywordsInput = value;
-                Keywords = value.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .Select(k => k.Trim())
+                Keywords = value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .Where(k => !string.IsNullOrWhiteSpace(k))
                     .ToArray();
             }
         }
     }
 
-    public string[]? Keywords { get; private set; }
+    public string[] Keywords { get; private set; } = Array.Empty<string>();
 }

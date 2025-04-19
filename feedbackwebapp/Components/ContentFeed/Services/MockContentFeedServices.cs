@@ -40,8 +40,8 @@ public class MockRedditContentFeedService : ContentFeedService, IRedditContentFe
         await Task.Delay(500); // Simulate network delay
         return new List<RedditThreadModel>
         {
-            new() { Id = "mock1", Title = "Mock Reddit Thread 1", Author = "user1" },
-            new() { Id = "mock2", Title = "Mock Reddit Thread 2", Author = "user2" }
+            new() { Id = "mock1", Title = "Mock Reddit Thread 1", Author = "user1", Url = "http://dot.net" },
+            new() { Id = "mock2", Title = "Mock Reddit Thread 2", Author = "user2", Url = "http://dot.net" }
         };
     }
 }
