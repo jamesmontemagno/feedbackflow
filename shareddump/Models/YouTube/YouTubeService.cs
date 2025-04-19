@@ -191,7 +191,7 @@ public class YouTubeService
                 $"maxResults=50",
                 $"type=video",
                 $"key={_apiKey}",
-                $"publishedAfter={cutoffDate:o}"
+                $"publishedAfter={cutoffDate.UtcDateTime:yyyy-MM-dd'T'HH:mm:ss'Z'}"
             };
 
             if (!string.IsNullOrEmpty(topic))

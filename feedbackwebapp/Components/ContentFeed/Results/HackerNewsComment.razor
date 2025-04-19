@@ -1,19 +1,23 @@
 @namespace FeedbackWebApp.Components.ContentFeed.Results
 @using SharedDump.Models.HackerNews
+@inject HackerNewsService HnService
 
 <div class="comment-item p-3 mb-2 rounded @(IsReply ? "ms-4" : "")">
     <div class="d-flex justify-content-between align-items-center">
         <strong>@Comment.By</strong>
         <small class="text-muted">@DateTimeOffset.FromUnixTimeSeconds(Comment.Time).ToLocalTime().ToString("g")</small>
     </div>
-    <div class="comment-body mt-2">@((MarkupString)Comment.Text)</div>
+    <div class="comment-body mt-2">@((MarkupString)(Comment.Text ?? string.Empty))</div>
     
     @if (Comment.Kids?.Any() == true)
     {
         <div class="replies mt-3">
-            @foreach (var child in Comment.Kids)
+            @foreach (var kidId in Comment.Kids)
             {
-                <FeedbackWebApp.Components.ContentFeed.Results.HackerNewsComment Comment="child" IsReply="true" />
+                @if (childComments.TryGetValue(kidId, out var child))
+                {
+                    <HackerNewsComment Comment="child" IsReply="true" />
+                }
             }
         </div>
     }
@@ -21,8 +25,27 @@
 
 @code {
     [Parameter, EditorRequired]
-    public Models.HackerNews.HackerNewsComment Comment { get; set; } = null!;
+    public HackerNewsItem Comment { get; set; } = null!;
 
     [Parameter]
     public bool IsReply { get; set; }
+
+    private Dictionary<int, HackerNewsItem> childComments = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Comment.Kids?.Any() == true)
+        {
+            foreach (var kidId in Comment.Kids)
+            {
+                var child = await HnService.GetItemData(kidId);
+                if (child != null)
+                {
+                    childComments[kidId] = child;
+                }
+            }
+            StateHasChanged();
+        }
+        await base.OnInitializedAsync();
+    }
 }
