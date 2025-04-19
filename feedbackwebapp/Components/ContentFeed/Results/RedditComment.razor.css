@@ -1,0 +1,42 @@
+.comment-item {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    transition: background-color 0.2s ease;
+}
+
+.comment-item:hover {
+    background-color: var(--bg-secondary);
+}
+
+.comment-item.ms-4 {
+    border-left: 2px solid var(--danger-color);
+}
+
+.comment-body {
+    color: var(--text-primary);
+    white-space: pre-wrap;
+}
+
+.score {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+strong {
+    color: var(--text-primary);
+}
+
+.replies {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}

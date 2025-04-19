@@ -1,0 +1,50 @@
+.comment-item {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    transition: background-color 0.2s ease;
+}
+
+.comment-item:hover {
+    background-color: var(--bg-secondary);
+}
+
+.comment-item.ms-4 {
+    border-left: 2px solid var(--warning-color);
+}
+
+.comment-body {
+    color: var(--text-primary);
+    white-space: pre-wrap;
+}
+
+.comment-body :deep(a) {
+    color: var(--warning-color);
+    text-decoration: none;
+}
+
+.comment-body :deep(a:hover) {
+    text-decoration: underline;
+}
+
+strong {
+    color: var(--text-primary);
+}
+
+.text-muted {
+    color: var(--text-secondary) !important;
+}
+
+.replies {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}

@@ -1,0 +1,27 @@
+.reddit-feed-form {
+    padding-bottom: 1rem;
+}
+
+.form-floating {
+    transition: all 0.3s ease-in-out;
+    margin-bottom: 1.5rem;
+}
+
+.form-control,
+.form-select {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--danger-color);
+    box-shadow: 0 0 0 0.25rem rgba(var(--danger-color-rgb), 0.25);
+}
+
+.form-text {
+    color: var(--text-secondary);
+}

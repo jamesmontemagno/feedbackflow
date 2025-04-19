@@ -1,14 +1,31 @@
+# YouTube Feedback APIs
 ### Get YouTube Comments
 GET http://localhost:7071/api/GetYouTubeFeedback?videos=MKD-sCZWpZQ
 # You can also use channel or playlists parameters:
 # GET http://localhost:7071/api/GetYouTubeFeedback?channel=CHANNEL_ID_HERE
 # GET http://localhost:7071/api/GetYouTubeFeedback?playlists=PLAYLIST_ID_HERE
 
-### Get Reddit Comments
-GET {{baseUrl}}/api/GetRedditFeedback?threads=xyz123,abc456
-x-functions-key: {{functionKey}}
+### Get Recent YouTube Videos
+GET http://localhost:7071/api/GetRecentYouTubeVideos?topic=dotnet&days=7
+# You can also filter by tag:
+# GET http://localhost:7071/api/GetRecentYouTubeVideos?tag=20&days=7
 
-### Analyze YouTube Comments
+# Reddit Feedback APIs
+### Get Reddit Comments
+GET http://localhost:7071/api/GetRedditFeedback?threads=xyz123,abc456
+
+### Get Trending Reddit Threads
+GET http://localhost:7071/api/GetTrendingRedditThreads?subreddit=dotnet&days=7&sort=hot
+# Sort can be: hot, top, or new
+
+# Hacker News Feedback APIs
+### Get Hacker News Comments
+GET http://localhost:7071/api/GetHackerNewsFeedback?ids=37902023,37901505
+
+### Search Hacker News Articles
+GET http://localhost:7071/api/SearchHackerNewsArticles?keywords=dotnet,aspnet,blazor
+
+### Analyze Comments
 POST http://localhost:7071/api/AnalyzeComments
 Content-Type: application/json
 

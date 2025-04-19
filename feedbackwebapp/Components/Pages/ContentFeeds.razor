@@ -1,0 +1,188 @@
+@page "/content-feeds"
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using SharedDump.Models.YouTube
+@using SharedDump.Models.HackerNews
+@using SharedDump.Models.Reddit
+@using FeedbackWebApp.Components.ContentFeed.Services
+@using FeedbackWebApp.Components.ContentFeed.Forms
+@using FeedbackWebApp.Components.ContentFeed.Results
+
+@inject IConfiguration Configuration
+@inject HttpClient Http
+@inject ContentFeedServiceProvider ContentFeedProvider
+
+<PageTitle>Content Feeds - FeedbackFlow</PageTitle>
+
+<div class="container">
+    @if (!isAuthenticated)
+    {
+        <FeedbackWebApp.Components.Feedback.AuthenticationForm OnAuthenticated="HandleAuthenticated" />
+    }
+    else
+    {
+        <div class="row justify-content-center">
+            <div class="col-md-10 col-lg-8">
+                <div class="mb-4">
+                    <h1 class="h3 mb-3">Content Feeds</h1>
+                    <p class="text-muted">
+                        Search and monitor content across different platforms. Select a source and configure your search parameters.
+                    </p>
+                </div>
+
+                <div class="mb-4">
+                    <h2 class="h4 mb-3">Select Content Source</h2>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var source in contentSources)
+                        {
+                            <button class="btn @(selectedSource == source.Value ? "btn-primary" : "btn-outline-primary") source-button"
+                                    @onclick="() => SelectSource(source.Value)">
+                                <i class="@source.IconClass me-2"></i>
+                                @source.Name
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(selectedSource))
+                {
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            @switch (selectedSource)
+                            {
+                                case "youtube":
+                                    <FeedbackWebApp.Components.ContentFeed.Forms.YouTubeFeedForm @ref="youtubeFeedForm" />
+                                    break;
+                                case "reddit":
+                                    <FeedbackWebApp.Components.ContentFeed.Forms.RedditFeedForm @ref="redditFeedForm" />
+                                    break;
+                                case "hackernews":
+                                    <FeedbackWebApp.Components.ContentFeed.Forms.HackerNewsFeedForm @ref="hackerNewsFeedForm" />
+                                    break;
+                            }
+
+                            <div class="mt-4">
+                                <button class="btn btn-primary w-100" disabled="@isLoading" @onclick="FetchContent">
+                                    @if (isLoading)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        <span>Loading...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Fetch Content</span>
+                                    }
+                                </button>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(error))
+                            {
+                                <div class="alert alert-danger mt-3">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                    @error
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    @if (youtubeVideos?.Any() == true || redditThreads?.Any() == true || hackerNewsItems?.Any() == true)
+                    {
+                        <div class="mt-4">
+                            @switch (selectedSource)
+                            {
+                                case "youtube":
+                                    <FeedbackWebApp.Components.ContentFeed.Results.YouTubeResults Videos="youtubeVideos" />
+                                    break;
+                                case "reddit":
+                                    <FeedbackWebApp.Components.ContentFeed.Results.RedditResults Threads="redditThreads" />
+                                    break;
+                                case "hackernews":
+                                    <FeedbackWebApp.Components.ContentFeed.Results.HackerNewsResults StoryItems="hackerNewsItems" />
+                                    break;
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isAuthenticated;
+    private bool isLoading;
+    private string error = "";
+    private string selectedSource = "";
+
+    private FeedbackWebApp.Components.ContentFeed.Forms.YouTubeFeedForm? youtubeFeedForm;
+    private FeedbackWebApp.Components.ContentFeed.Forms.RedditFeedForm? redditFeedForm;
+    private FeedbackWebApp.Components.ContentFeed.Forms.HackerNewsFeedForm? hackerNewsFeedForm;
+
+    private List<YouTubeOutputVideo>? youtubeVideos;
+    private List<RedditThreadModel>? redditThreads;
+    private List<HackerNewsItem>? hackerNewsItems;
+
+    private readonly List<(string Name, string IconClass, string Value)> contentSources = new()
+    {
+        ("YouTube", "bi bi-youtube", "youtube"),
+        ("Reddit", "bi bi-reddit", "reddit"),
+        ("Hacker News", "bi bi-newspaper", "hackernews")
+    };
+
+    private void HandleAuthenticated(bool success)
+    {
+        isAuthenticated = success;
+        StateHasChanged();
+    }
+
+    private void SelectSource(string source)
+    {
+        selectedSource = source;
+        youtubeVideos = null;
+        redditThreads = null;
+        hackerNewsItems = null;
+        error = "";
+    }
+
+    private async Task FetchContent()
+    {
+        try
+        {
+            error = "";
+            isLoading = true;
+
+            switch (selectedSource)
+            {
+                case "youtube" when youtubeFeedForm is not null:
+                    var youtubeService = ContentFeedProvider.CreateYouTubeService(
+                        youtubeFeedForm.Topic,
+                        youtubeFeedForm.Days,
+                        youtubeFeedForm.Tag);
+                    youtubeVideos = await youtubeService.FetchContent();
+                    break;
+
+                case "reddit" when redditFeedForm is not null:
+                    var redditService = ContentFeedProvider.CreateRedditService(
+                        redditFeedForm.Subreddit,
+                        redditFeedForm.Days,
+                        redditFeedForm.SortBy);
+                    redditThreads = await redditService.FetchContent();
+                    break;
+
+                case "hackernews" when hackerNewsFeedForm is not null:
+                    var hnService = ContentFeedProvider.CreateHackerNewsService(
+                        hackerNewsFeedForm.Keywords ?? Array.Empty<string>());
+                    hackerNewsItems = await hnService.FetchContent();
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Error fetching content: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

@@ -13,81 +13,69 @@
 @inject FeedbackServiceProvider ServiceProvider
 @inject IJSRuntime JSRuntime
 
-<PageTitle>FeedbackFlow</PageTitle>
+<PageTitle>Feedback Analysis - FeedbackFlow</PageTitle>
 
-<div class="min-vh-100">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
-        <div class="container">
-            <span class="navbar-brand">🔄 FeedbackFlow</span>
-            <div class="ms-auto">
-                <ThemeToggle />
-            </div>
+<div class="container">
+    @if (!isAuthenticated)
+    {
+        <AuthenticationForm OnAuthenticated="HandleAuthenticated" />
+    }
+    else
+    {
+        <div class="mb-3">
+            <h2 class="h4 mb-2 text-center">Select Feedback Source</h2>
+            <SourceSelector @bind-SelectedSource="selectedSource" />
         </div>
-    </nav>
 
-    <div class="container">
-        @if (!isAuthenticated)
+        @if (!string.IsNullOrEmpty(selectedSource))
         {
-            <AuthenticationForm OnAuthenticated="HandleAuthenticated" />
-        }
-        else
-        {
-            <div class="mb-3">
-                <h2 class="h4 mb-2 text-center">Select Feedback Source</h2>
-                <SourceSelector @bind-SelectedSource="selectedSource" />
-            </div>
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    @if (selectedSource == "YouTube")
+                    {
+                        <YouTubeInputForm @ref="youtubeInput"/>
+                    }
+                    else if (selectedSource == "HackerNews")
+                    {
+                        <HackerNewsInputForm @ref="hackerNewsInputForm" />
+                    }
+                    else if (selectedSource == "GitHub")
+                    {
+                        <GitHubInputForm @ref="githubInputForm" />
+                    }
+                    else if (selectedSource == "Reddit")
+                    {
+                        <RedditInputForm @ref="redditInputForm" />
+                    }
 
-            @if (!string.IsNullOrEmpty(selectedSource))
-            {
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        @if (selectedSource == "YouTube")
-                        {
-                            <YouTubeInputForm @ref="youtubeInput"/>
-                        }
-                        else if (selectedSource == "HackerNews")
-                        {
-                            <HackerNewsInputForm @ref="hackerNewsInputForm" />
-                        }
-                        else if (selectedSource == "GitHub")
-                        {
-                            <GitHubInputForm @ref="githubInputForm" />
-                        }
-                        else if (selectedSource == "Reddit")
-                        {
-                            <RedditInputForm @ref="redditInputForm" />
-                        }
-
-                        <SubmitButton ShowWhenSource="@selectedSource" IsLoading="@isLoading" OnSubmit="SubmitFeedbackRequest" />
-                        
-                        @if (isLoading)
-                        {
-                            <div class="alert alert-info mt-3">
-                                <div class="d-flex align-items-center">
-                                    <div class="spinner-border spinner-border-sm me-2" role="status">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                    <div>
-                                        <strong>@currentStatus</strong>
-                                        <div class="small">@currentStatusMessage</div>
-                                    </div>
+                    <SubmitButton ShowWhenSource="@selectedSource" IsLoading="@isLoading" OnSubmit="SubmitFeedbackRequest" />
+                    
+                    @if (isLoading)
+                    {
+                        <div class="alert alert-info mt-3">
+                            <div class="d-flex align-items-center">
+                                <div class="spinner-border spinner-border-sm me-2" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <div>
+                                    <strong>@currentStatus</strong>
+                                    <div class="small">@currentStatusMessage</div>
                                 </div>
                             </div>
-                        }
+                        </div>
+                    }
 
-                        <AnalysisResults Error="@error" MarkdownResult="@markdownResult" />
-                        
-                        <YouTubeComments Videos="@youtubeVideos" />
-                        
-                        <GitHubFeedback Issues="@githubIssues" PullRequests="@githubPullRequests" Discussions="@githubDiscussions" />
+                    <AnalysisResults Error="@error" MarkdownResult="@markdownResult" />
+                    
+                    <YouTubeComments Videos="@youtubeVideos" />
+                    
+                    <GitHubFeedback Issues="@githubIssues" PullRequests="@githubPullRequests" Discussions="@githubDiscussions" />
 
-                        <RedditComments Threads="@redditThreads" />
-                    </div>
+                    <RedditComments Threads="@redditThreads" />
                 </div>
-            }
+            </div>
         }
-    </div>
-
+    }
 </div>
 
 @code {

@@ -1,0 +1,99 @@
+.card {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+.card-header {
+    background-color: var(--bg-secondary);
+    border-bottom-color: var(--border-color);
+}
+
+.card-title {
+    color: var(--text-primary);
+}
+
+.thread-item {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+}
+
+.thread-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.thread-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.thread-link:hover {
+    color: var(--primary-hover);
+    text-decoration: underline;
+}
+
+.thread-text {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.thread-stats .badge {
+    transition: transform 0.2s ease;
+}
+
+.thread-stats .badge:hover {
+    transform: translateY(-1px);
+}
+
+.btn-outline-secondary {
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--hover-bg);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.comment-item {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+}
+
+.comment-item:hover {
+    background-color: var(--hover-bg);
+    transform: translateX(2px);
+}
+
+.reply-item {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    font-size: 0.9rem;
+}
+
+.reply-item:hover {
+    background-color: var(--hover-bg);
+}
+
+.comments-container {
+    animation: slideDown 0.3s ease-out;
+}
+
+.replies-container {
+    border-left: 2px solid var(--border-color);
+    padding-left: 1rem;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

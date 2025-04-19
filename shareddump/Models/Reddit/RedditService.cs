@@ -4,17 +4,18 @@ using SharedDump.Json;
 
 namespace SharedDump.Models.Reddit;
 
-public class RedditService
+public sealed class RedditService : IDisposable
 {
     private readonly HttpClient _client;
     private readonly string _clientId;
     private readonly string _clientSecret;
     private readonly int _maxRetries = 5;
+    private bool _disposed;
 
     public RedditService(string clientId, string clientSecret, HttpClient? client = null)
     {
-        _clientId = clientId;
-        _clientSecret = clientSecret;
+        _clientId = clientId ?? throw new ArgumentNullException(nameof(clientId));
+        _clientSecret = clientSecret ?? throw new ArgumentNullException(nameof(clientSecret));
         _client = client ?? new HttpClient();
         _client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("FeedbackFlow", "1.0.0"));
     }
@@ -38,7 +39,7 @@ public class RedditService
             var response = await _client.SendAsync(request);
             response.EnsureSuccessStatusCode();
             
-            var token = await response.Content.ReadFromJsonAsync<RedditTokenResponse>(RedditJsonContext.Default.RedditTokenResponse);
+            var token = await response.Content.ReadFromJsonAsync<RedditTokenResponse>();
             if (token?.AccessToken == null)
                 throw new InvalidOperationException("Failed to get Reddit access token");
 
@@ -48,7 +49,9 @@ public class RedditService
 
     public async Task<RedditThreadModel> GetThreadWithComments(string threadId)
     {
-        for (int attempt = 0; attempt < _maxRetries; attempt++)
+        ArgumentNullException.ThrowIfNull(threadId);
+
+        for (var attempt = 0; attempt < _maxRetries; attempt++)
         {
             try
             {
@@ -61,41 +64,51 @@ public class RedditService
                 var response = System.Text.Json.JsonSerializer.Deserialize(
                     content, RedditJsonContext.Default.RedditListingArray);
 
-                if (response?.Length < 2 || response?[0] == null)
-                    throw new InvalidOperationException("Failed to get Reddit thread data");
+                if (response == null || response.Length < 2)
+                    throw new InvalidOperationException("Failed to get Reddit thread data - invalid response");
 
-                var thread = response[0].Data.Children[0].Data;
+                var threadListing = response[0];
+                if (threadListing?.Data?.Children == null || threadListing.Data.Children.Length == 0)
+                    throw new InvalidOperationException("Failed to get Reddit thread data - missing thread data");
+
+                var thread = threadListing.Data.Children[0].Data;
                 var commentsList = new List<RedditCommentModel>();
-                ProcessComments(response[1].Data.Children, commentsList);
+                
+                var commentListing = response[1];
+                if (commentListing?.Data?.Children is { Length: > 0 } comments)
+                {
+                    ProcessComments(comments, commentsList);
+                }
 
                 return new RedditThreadModel
                 {
                     Id = threadId,
-                    Title = thread.Title ?? string.Empty,
+                    Title = thread.Title ?? "[No Title]",
                     Author = thread.Author,
                     SelfText = thread.Selftext ?? string.Empty,
                     Url = $"https://www.reddit.com{thread.Permalink}",
                     Subreddit = "dotnet", // This is hardcoded since we only handle r/dotnet for now
                     Score = thread.Score,
-                    UpvoteRatio = 1.0, // This field isn't available in comments endpoint
+                    UpvoteRatio = 1.0,
                     NumComments = commentsList.Count,
                     Comments = commentsList
                 };
             }
             catch (HttpRequestException) when (attempt < _maxRetries - 1)
             {
-                await Task.Delay(1000 * (attempt + 1)); // Exponential backoff
+                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt))); // Exponential backoff
                 continue;
             }
         }
+
         throw new InvalidOperationException($"Failed to get Reddit thread data after {_maxRetries} attempts");
     }
 
-    private void ProcessComments(RedditThingData[] comments, List<RedditCommentModel> result, string? parentId = null)
+    private static void ProcessComments(RedditThingData[] comments, List<RedditCommentModel> result)
     {
         foreach (var comment in comments)
         {
-            if (comment.Data.Body == null) continue; // Skip non-comment entries
+            if (string.IsNullOrEmpty(comment.Data?.Body)) continue;
 
             var model = new RedditCommentModel
             {
@@ -104,18 +117,69 @@ public class RedditService
                 Author = comment.Data.Author,
                 Body = comment.Data.Body,
                 Score = comment.Data.Score,
-                Replies = null // Will be populated below if there are replies
+                Replies = new List<RedditCommentModel>()
             };
 
             result.Add(model);
 
-            // Process replies if they exist
             if (comment.Data.RepliesDisplay?.Data?.Children is { Length: > 0 } replies)
             {
-                var repliesList = new List<RedditCommentModel>();
-                ProcessComments(replies, repliesList, comment.Data.Id);
-                model.Replies = repliesList;
+                ProcessComments(replies, model.Replies);
             }
         }
+    }
+
+    public async Task<List<RedditThreadModel>> GetSubredditThreads(string subreddit, string sortBy, DateTimeOffset cutoffDate)
+    {
+        ArgumentNullException.ThrowIfNull(subreddit);
+        ArgumentNullException.ThrowIfNull(sortBy);
+
+        var threads = new List<RedditThreadModel>();
+        
+        for (var attempt = 0; attempt < _maxRetries; attempt++)
+        {
+            try
+            {
+                await EnsureAuthenticated();
+
+                var url = $"https://oauth.reddit.com/r/{subreddit}/{sortBy}?limit=100";
+                var responseMessage = await _client.GetAsync(url);
+                responseMessage.EnsureSuccessStatusCode();
+
+                var response = await responseMessage.Content.ReadFromJsonAsync<RedditListing>();
+                if (response?.Data?.Children == null)
+                {
+                    throw new InvalidOperationException("Failed to get subreddit data");
+                }
+
+                foreach (var child in response.Data.Children)
+                {
+                    var threadData = child.Data;
+                    var createdUtc = DateTimeOffset.FromUnixTimeSeconds((long)threadData.CreatedUtc);
+                    
+                    if (createdUtc < cutoffDate) continue;
+
+                    var fullThread = await GetThreadWithComments(threadData.Id);
+                    threads.Add(fullThread);
+                }
+
+                break;
+            }
+            catch (HttpRequestException) when (attempt < _maxRetries - 1)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt))); // Exponential backoff
+                continue;
+            }
+        }
+
+        return threads;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        
+        _client.Dispose();
+        _disposed = true;
     }
 }

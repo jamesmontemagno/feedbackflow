@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Threading.Channels;
 using SharedDump.Json;
+using System.Text.Json;
 
 namespace SharedDump.Models.HackerNews;
 
@@ -58,5 +59,38 @@ public class HackerNewsService
 
             await Task.WhenAll(tasks);
         }
+    }
+
+    private async Task<int[]> GetTopStoriesIds()
+    {
+        var response = await _client.GetAsync("https://hacker-news.firebaseio.com/v0/topstories.json");
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+        return JsonSerializer.Deserialize<int[]>(content) ?? Array.Empty<int>();
+    }
+
+    public async Task<int[]> GetTopStories()
+    {
+        return await _client.GetFromJsonAsync<int[]>(
+            "https://hacker-news.firebaseio.com/v0/topstories.json",
+            HackerNewsJsonContext.Default.Int32Array) ?? Array.Empty<int>();
+    }
+
+    public async Task<List<HackerNewsItem>> SearchByTitle(IEnumerable<string> keywords)
+    {
+        var topStories = await GetTopStories();
+        var results = new List<HackerNewsItem>();
+
+        foreach (var storyId in topStories)
+        {
+            var item = await GetItemData(storyId);
+            if (item?.Title != null && keywords.Any(k => 
+                item.Title.Contains(k, StringComparison.OrdinalIgnoreCase)))
+            {
+                results.Add(item);
+            }
+        }
+
+        return results;
     }
 }

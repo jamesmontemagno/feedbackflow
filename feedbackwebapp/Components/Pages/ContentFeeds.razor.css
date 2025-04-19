@@ -1,0 +1,67 @@
+.source-button {
+    transition: all 0.2s ease;
+    min-width: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+}
+
+.source-button:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--card-shadow);
+}
+
+.source-button:active {
+    transform: translateY(0);
+}
+
+.source-button.btn-primary {
+    background: var(--primary-gradient);
+    border-color: var(--primary-color);
+}
+
+.source-button.btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.source-button.btn-outline-primary:hover {
+    background: var(--primary-gradient);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+:deep(.card) {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+:deep(.card-body) {
+    color: var(--text-primary);
+}
+
+:deep(.text-muted) {
+    color: var(--text-secondary) !important;
+}
+
+:deep(.alert-danger) {
+    background-color: rgba(var(--danger-color-rgb), 0.1);
+    border-color: var(--danger-color);
+    color: var(--text-primary);
+}
+
+h1, h2 {
+    color: var(--text-primary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .source-button {
+        min-width: 100px;
+        font-size: 0.9rem;
+        padding: 0.5rem 0.75rem;
+    }
+}

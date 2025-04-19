@@ -1,0 +1,64 @@
+@namespace FeedbackWebApp.Components.ContentFeed.Results
+@using SharedDump.Models.YouTube
+
+@if (Videos?.Any() == true)
+{
+    <div class="youtube-results">
+        @foreach (var video in Videos)
+        {
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h5 class="card-title mb-1">
+                            <i class="bi bi-youtube text-danger me-2"></i>
+                            @video.Title
+                        </h5>
+                        <a href="@video.Url" target="_blank" class="btn btn-sm btn-outline-light">
+                            <i class="bi bi-box-arrow-up-right"></i>
+                        </a>
+                    </div>
+                    
+                    @if (video.Comments?.Any() == true)
+                    {
+                        <div class="mt-3">
+                            <button class="btn btn-sm btn-outline-light" @onclick="() => ToggleComments(video.Id)">
+                                @(ExpandedVideos.Contains(video.Id) ? "Hide" : "Show") Comments (@video.Comments.Count)
+                            </button>
+
+                            @if (ExpandedVideos.Contains(video.Id))
+                            {
+                                <div class="comments-container mt-3">
+                                    @foreach (var comment in video.Comments)
+                                    {
+                                        <div class="comment-item p-3 mb-2 rounded">
+                                            <div class="d-flex justify-content-between">
+                                                <strong>@comment.Author</strong>
+                                                <small class="text-muted">@comment.PublishedAt.ToLocalTime().ToString("g")</small>
+                                            </div>
+                                            <div class="mt-2">@comment.Text</div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public List<YouTubeOutputVideo>? Videos { get; set; }
+
+    private HashSet<string> ExpandedVideos { get; } = new();
+
+    private void ToggleComments(string videoId)
+    {
+        if (ExpandedVideos.Contains(videoId))
+            ExpandedVideos.Remove(videoId);
+        else
+            ExpandedVideos.Add(videoId);
+    }
+}

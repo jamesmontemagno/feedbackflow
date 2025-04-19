@@ -1,0 +1,52 @@
+.hackernews-results {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--card-shadow);
+}
+
+.card-title {
+    color: var(--text-primary);
+}
+
+.btn-outline-light {
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.btn-outline-light:hover {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    border-color: var(--warning-color);
+}
+
+.item-meta {
+    font-size: 0.9rem;
+}
+
+.comments-container {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.text-muted {
+    color: var(--text-secondary) !important;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

@@ -1,0 +1,28 @@
+@namespace FeedbackWebApp.Components.ContentFeed.Results
+@using SharedDump.Models.Reddit
+
+<div class="comment-item p-3 mb-2 rounded @(IsReply ? "ms-4" : "")">
+    <div class="d-flex justify-content-between align-items-center">
+        <strong>u/@Comment.Author</strong>
+        <span class="score">Score: @Comment.Score</span>
+    </div>
+    <div class="comment-body mt-2">@Comment.Body</div>
+    
+    @if (Comment.Replies?.Any() == true)
+    {
+        <div class="replies mt-3">
+            @foreach (var reply in Comment.Replies)
+            {
+                <FeedbackWebApp.Components.ContentFeed.Results.RedditComment Comment="reply" IsReply="true" />
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public RedditCommentModel Comment { get; set; } = null!;
+
+    [Parameter]
+    public bool IsReply { get; set; }
+}

@@ -177,4 +177,73 @@ public class YouTubeService
 
         return video;
     }
+
+    public async Task<List<YouTubeOutputVideo>> SearchVideos(string topic, string tag, DateTimeOffset cutoffDate)
+    {
+        var videoIds = new List<string>();
+        string? pageToken = null;
+
+        do
+        {
+            var queryParams = new List<string>
+            {
+                $"part=snippet",
+                $"maxResults=50",
+                $"type=video",
+                $"key={_apiKey}",
+                $"publishedAfter={cutoffDate:o}"
+            };
+
+            if (!string.IsNullOrEmpty(topic))
+            {
+                queryParams.Add($"q={Uri.EscapeDataString(topic)}");
+            }
+
+            if (!string.IsNullOrEmpty(tag))
+            {
+                queryParams.Add($"videoCategoryId={Uri.EscapeDataString(tag)}");
+            }
+
+            if (pageToken is not null)
+            {
+                queryParams.Add($"pageToken={pageToken}");
+            }
+
+            var url = $"https://youtube.googleapis.com/youtube/v3/search?{string.Join("&", queryParams)}";
+
+            try
+            {
+                var response = await _client.GetFromJsonAsync<YouTubeVideoResponse>(url, YouTubeJsonContext.Default.YouTubeVideoResponse);
+
+                if (response is null)
+                {
+                    break;
+                }
+
+                foreach (var item in response.Items)
+                {
+                    if (item.ContentDetails?.VideoId is { } videoId)
+                    {
+                        videoIds.Add(videoId);
+                    }
+                }
+
+                pageToken = response.NextPageToken;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred searching videos: {ex.Message}");
+                break;
+            }
+        } while (!string.IsNullOrEmpty(pageToken));
+
+        var videos = new List<YouTubeOutputVideo>();
+        foreach (var videoId in videoIds)
+        {
+            var video = await ProcessVideo(videoId);
+            videos.Add(video);
+        }
+
+        return videos;
+    }
 }
