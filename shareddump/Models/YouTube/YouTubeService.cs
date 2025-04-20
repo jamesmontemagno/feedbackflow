@@ -277,7 +277,7 @@ public class YouTubeService
             if (videoIds.Any())
             {
                 // Make a single batch request for all video statistics
-                var videoUrl = $"https://www.googleapis.com/youtube/v3/videos?part=statistics&id={string.Join(",", videoIds)}&key={_apiKey}";
+                var videoUrl = $"https://www.googleapis.com/youtube/v3/videos?part=statistics&maxResults=50&id={string.Join(",", videoIds)}&key={_apiKey}";
                 var statsResponse = await _client.GetFromJsonAsync<YouTubeVideoStatisticsResponse>(videoUrl, YouTubeJsonContext.Default.YouTubeVideoStatisticsResponse);
 
                 if (statsResponse?.Items != null)
