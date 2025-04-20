@@ -76,7 +76,7 @@ async Task<int> RunAsync(string threadId, string? clientId, string? clientSecret
             JsonSerializer.Serialize(thread, RedditJsonContext.Default.RedditThreadModel));
 
         Console.WriteLine($"Output written to: {outputPath}");
-        Console.WriteLine($"Found {thread.Comments.Length} comments");
+        Console.WriteLine($"Found {thread.Comments.Count} comments");
 
         return 0;
     }

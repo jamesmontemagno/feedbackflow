@@ -1,0 +1,134 @@
+.youtube-results {
+    animation: fadeIn 0.3s ease-in-out;
+    padding: 1rem;
+}
+
+.search-container {
+    max-width: 500px;
+}
+
+::deep .input-group {
+    border-color: var(--bs-border-color);
+}
+
+::deep .input-group-text {
+    background-color: var(--bs-body-bg);
+    border-color: var(--bs-border-color);
+    color: var(--bs-body-color);
+}
+
+::deep .form-control {
+    border-color: var(--bs-border-color);
+    background-color: var(--bs-body-bg);
+    color: var(--bs-body-color);
+}
+
+::deep .form-control:focus {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+::deep .card {
+    transition: transform 0.2s ease-in-out;
+    border-color: var(--bs-border-color);
+    background-color: var(--bs-body-bg);
+}
+
+::deep .card:hover {
+    transform: translateY(-2px);
+}
+
+::deep .card-title {
+    color: var(--bs-body-color);
+}
+
+::deep .text-muted {
+    color: var(--bs-secondary-color) !important;
+}
+
+::deep .btn-outline-secondary {
+    border-color: var(--bs-border-color);
+    color: var(--bs-body-color);
+}
+
+::deep .btn-outline-secondary:hover {
+    background-color: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+}
+
+::deep .video-title {
+    color: var(--bs-body-color);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    transition: color 0.2s ease-in-out;
+}
+
+::deep .video-title:hover {
+    color: var(--bs-primary);
+}
+
+::deep .video-title .bi {
+    font-size: 0.8em;
+    opacity: 0.7;
+}
+
+.gap-3 > div {
+    display: flex;
+    align-items: center;
+}
+
+.card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--card-shadow);
+}
+
+.card-title {
+    color: var(--text-primary);
+}
+
+.btn-outline-light {
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.btn-outline-light:hover {
+    background-color: var(--bg-primary);
+    color: var (--text-primary);
+    border-color: var(--primary-color);
+}
+
+.comments-container {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.comment-item {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    transition: background-color 0.2s ease;
+}
+
+.comment-item:hover {
+    background-color: var(--bg-secondary);
+}
+
+.text-muted {
+    color: var(--text-secondary) !important;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

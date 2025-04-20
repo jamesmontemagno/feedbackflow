@@ -18,4 +18,6 @@ namespace SharedDump.Json;
 [JsonSerializable(typeof(YouTubeCommentReplies))]
 [JsonSerializable(typeof(YouTubeComment))]
 [JsonSerializable(typeof(YouTubeCommentDetails))]
+[JsonSerializable(typeof(YouTubeSearchResponse))]
+[JsonSerializable(typeof(YouTubeVideoStatisticsResponse))]
 public partial class YouTubeJsonContext : JsonSerializerContext { }

@@ -25,11 +25,7 @@
     private string? _selectedSource;
 
     [Parameter]
-    public string? SelectedSource 
-    { 
-        get => _selectedSource ?? DefaultSource;
-        set => _selectedSource = value;
-    }
+    public string? SelectedSource {get;set;} = "YouTube";
 
     [Parameter]
     public EventCallback<string> SelectedSourceChanged { get; set; }

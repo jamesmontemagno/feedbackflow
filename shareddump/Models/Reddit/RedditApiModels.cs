@@ -96,5 +96,5 @@ public class RedditCommentModel
     public required string Author { get; set; }
     public required string Body { get; set; }
     public int Score { get; set; }
-    public List<RedditCommentModel> Replies { get; set; } = [];
+    public List<RedditCommentModel>? Replies { get; set; } = [];
 }

@@ -252,7 +252,7 @@ public class YouTubeService
     {
         var videos = new List<YouTubeOutputVideo>();
         var pageToken = "";
-        
+
         while (true)
         {
             var searchUrl = $"https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=50&q={Uri.EscapeDataString(searchQuery)}";
@@ -267,48 +267,55 @@ public class YouTubeService
             }
             searchUrl += $"&key={_apiKey}";
 
-            var searchResponse = await _client.GetFromJsonAsync<JsonElement>(searchUrl);
-            if (searchResponse.TryGetProperty("items", out var items))
+            var searchResponse = await _client.GetFromJsonAsync<YouTubeSearchResponse>(searchUrl, YouTubeJsonContext.Default.YouTubeSearchResponse);
+
+            if (searchResponse?.Items == null) break;
+
+            // Collect all video IDs from this page
+            var videoIds = searchResponse.Items.Select(item => item.Id.VideoId).ToList();
+
+            if (videoIds.Any())
             {
-                foreach (var item in items.EnumerateArray())
+                // Make a single batch request for all video statistics
+                var videoUrl = $"https://www.googleapis.com/youtube/v3/videos?part=statistics&id={string.Join(",", videoIds)}&key={_apiKey}";
+                var statsResponse = await _client.GetFromJsonAsync<YouTubeVideoStatisticsResponse>(videoUrl, YouTubeJsonContext.Default.YouTubeVideoStatisticsResponse);
+
+                if (statsResponse?.Items != null)
                 {
-                    var snippet = item.GetProperty("snippet");
-                    var videoId = item.GetProperty("id").GetProperty("videoId").GetString();
-                    
-                    if (videoId == null) continue;
+                    // Create a lookup dictionary for quick access to statistics
+                    var statsLookup = statsResponse.Items.ToDictionary(v => v.Id, v => v.Statistics);
 
-                    // Get just basic video stats without comments
-                    var videoUrl = $"https://www.googleapis.com/youtube/v3/videos?part=statistics&id={videoId}&key={_apiKey}";
-                    var videoResponse = await _client.GetFromJsonAsync<JsonElement>(videoUrl);
-                    
-                    if (!videoResponse.TryGetProperty("items", out var videoItems) || 
-                        !videoItems.EnumerateArray().Any()) continue;
-
-                    var statistics = videoItems[0].GetProperty("statistics");
-                    var publishedAt = DateTimeOffset.Parse(snippet.GetProperty("publishedAt").GetString() ?? string.Empty);
-
-                    videos.Add(new YouTubeOutputVideo
+                    // Process each search result with its corresponding statistics
+                    foreach (var item in searchResponse.Items)
                     {
-                        Id = videoId,
-                        Title = snippet.GetProperty("title").GetString() ?? string.Empty,
-                        Description = snippet.GetProperty("description").GetString() ?? string.Empty,
-                        PublishedAt = publishedAt,
-                        UploadDate = publishedAt.DateTime,
-                        ChannelId = snippet.GetProperty("channelId").GetString() ?? string.Empty,
-                        ChannelTitle = snippet.GetProperty("channelTitle").GetString() ?? string.Empty,
-                        Url = $"https://www.youtube.com/watch?v={videoId}",
-                        ViewCount = ParseStatistic(statistics, "viewCount"),
-                        LikeCount = ParseStatistic(statistics, "likeCount"),
-                        CommentCount = ParseStatistic(statistics, "commentCount")
-                    });
+                        var videoId = item.Id.VideoId;
+                        var snippet = item.Snippet;
+
+                        if (statsLookup.TryGetValue(videoId, out var statistics))
+                        {
+                            var publishedAt = DateTimeOffset.Parse(snippet.PublishedAt);
+
+                            videos.Add(new YouTubeOutputVideo
+                            {
+                                Id = videoId,
+                                Title = snippet.Title,
+                                Description = snippet.Description,
+                                PublishedAt = publishedAt,
+                                UploadDate = publishedAt.DateTime,
+                                ChannelId = snippet.ChannelId,
+                                ChannelTitle = snippet.ChannelTitle,
+                                Url = $"https://www.youtube.com/watch?v={videoId}",
+                                ViewCount = string.IsNullOrEmpty(statistics.ViewCount) ? 0 : long.Parse(statistics.ViewCount),
+                                LikeCount = string.IsNullOrEmpty(statistics.LikeCount) ? 0 : long.Parse(statistics.LikeCount),
+                                CommentCount = string.IsNullOrEmpty(statistics.CommentCount) ? 0 : long.Parse(statistics.CommentCount)
+                            });
+                        }
+                    }
                 }
             }
 
-            if (!searchResponse.TryGetProperty("nextPageToken", out var nextPageToken))
-                break;
-
-            pageToken = nextPageToken.GetString() ?? string.Empty;
-            if (string.IsNullOrEmpty(pageToken))
+            pageToken = searchResponse.NextPageToken ?? string.Empty;
+            if (string.IsNullOrEmpty(pageToken) || videos.Count > 100)
                 break;
         }
 
