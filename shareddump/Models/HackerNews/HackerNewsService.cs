@@ -102,8 +102,8 @@ public class HackerNewsService
         foreach (var storyId in topStories)
         {
             var item = await GetItemData(storyId);
-            if (item?.Title != null && keywords.Any(k => 
-                item.Title.Contains(k, StringComparison.OrdinalIgnoreCase)))
+            if (item?.Title != null && (keywords.Count() == 0 || keywords.Any(k => 
+                item.Title.Contains(k, StringComparison.OrdinalIgnoreCase))))
             {
                 // Create a new item with only the essential data
                 results.Add(new HackerNewsItem

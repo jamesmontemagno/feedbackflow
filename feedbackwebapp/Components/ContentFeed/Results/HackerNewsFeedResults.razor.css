@@ -1,11 +1,12 @@
 .hackernews-results {
     animation: fadeIn 0.3s ease-in-out;
+    --hn-accent-color: var(--bs-warning);
 }
 
 .card {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
+    transition: transform 0.2s ease-in-out;
 }
 
 .card:hover {
@@ -15,6 +16,8 @@
 
 .card-title {
     color: var(--text-primary);
+    font-size: 1.1rem;
+    line-height: 1.4;
 }
 
 .btn-outline-light {
@@ -28,8 +31,23 @@
     border-color: var(--warning-color);
 }
 
+.btn-outline-secondary {
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    border-color: var(--warning-color);
+}
+
+.search-container {
+    max-width: 500px;
+}
+
 .item-meta {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
 }
 
 .comments-container {
@@ -38,6 +56,41 @@
 
 .text-muted {
     color: var(--text-secondary) !important;
+}
+
+.item-content {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.date-filter {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.date-filter input[type="date"] {
+    min-width: 150px;
+}
+
+.date-filter .btn {
+    position: absolute;
+    right: 0.5rem;
+    padding: 0.125rem 0.25rem;
+    line-height: 1;
+}
+
+.title-link {
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: color 0.2s ease-in-out;
+}
+
+.title-link:hover {
+    color: var(--warning-color);
+    text-decoration: underline;
 }
 
 @keyframes fadeIn {

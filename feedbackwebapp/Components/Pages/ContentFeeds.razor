@@ -1,6 +1,9 @@
 @page "/content-feeds"
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.JSInterop
 @using SharedDump.Models.YouTube
 @using SharedDump.Models.HackerNews
 @using SharedDump.Models.Reddit
@@ -8,11 +11,11 @@
 @using FeedbackWebApp.Components.ContentFeed.Forms
 @using FeedbackWebApp.Components.ContentFeed.Results
 @using FeedbackWebApp.Components.Feedback
-@using Microsoft.AspNetCore.Components.Web.Infrastructure
-
+@using FeedbackWebApp.Services
 @inject IConfiguration Configuration
 @inject HttpClient Http
 @inject ContentFeedServiceProvider ContentFeedProvider
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Content Feeds - FeedbackFlow</PageTitle>
 
@@ -114,7 +117,7 @@
     private bool isAuthenticated;
     private bool isLoading;
     private string error = "";
-    private string selectedSource = "";
+    private string selectedSource = "youtube";
 
     private YouTubeFeedForm? youtubeFeedForm;
     private RedditFeedForm? redditFeedForm;
@@ -123,7 +126,6 @@
     private List<YouTubeOutputVideo>? youtubeVideos;
     private List<RedditThreadModel>? redditThreads;
     private List<HackerNewsItem>? hackerNewsItems;
-
 
     private readonly List<(string Name, string IconClass, string Value)> contentSources = new()
     {
@@ -147,8 +149,49 @@
         error = "";
     }
 
+    private bool ValidateForm()
+    {
+        error = "";
+        
+        switch (selectedSource)
+        {
+            case "youtube" when youtubeFeedForm is not null:
+                if (string.IsNullOrWhiteSpace(youtubeFeedForm.Topic))
+                {
+                    error = "Please enter a topic to search for";
+                    return false;
+                }
+                if (youtubeFeedForm.Days < 1 || youtubeFeedForm.Days > 30)
+                {
+                    error = "Days must be between 1 and 30";
+                    return false;
+                }
+                break;
+
+            case "reddit" when redditFeedForm is not null:
+                if (string.IsNullOrWhiteSpace(redditFeedForm.Subreddit))
+                {
+                    error = "Please enter a subreddit name";
+                    return false;
+                }
+                if (redditFeedForm.Days < 1 || redditFeedForm.Days > 30)
+                {
+                    error = "Days must be between 1 and 30";
+                    return false;
+                }
+                break;
+        }
+
+        return true;
+    }
+
     private async Task FetchContent()
     {
+        if (!ValidateForm())
+        {
+            return;
+        }
+
         try
         {
             error = "";
@@ -174,10 +217,8 @@
                     redditThreads = await redditService.FetchContent();
                     break;
 
-                case "hackernews" when hackerNewsFeedForm is not null && hackerNewsFeedForm.Keywords is not null:
-                    await hackerNewsFeedForm.SaveToLocalStorageAsync();
-                    var hnService = ContentFeedProvider.CreateHackerNewsService(
-                        hackerNewsFeedForm.Keywords);
+                case "hackernews" when hackerNewsFeedForm is not null:
+                    var hnService = ContentFeedProvider.CreateHackerNewsService();
                     hackerNewsItems = await hnService.FetchContent();
                     break;
             }

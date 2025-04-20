@@ -1,8 +1,10 @@
 @namespace FeedbackWebApp.Components.Feedback
 @using Microsoft.Extensions.Configuration
+@using FeedbackWebApp.Services
 @inject IConfiguration Configuration
+@inject AuthenticationService AuthService
 
-@if (!useMockMode)
+@if (!useMockMode && !isAuthenticated)
 {
     <div class="card shadow-sm">
         <div class="card-body">
@@ -11,7 +13,9 @@
                 <input type="password" class="form-control" id="password" @bind="password" @onkeyup="HandleKeyPress" placeholder="Enter password" />
                 <label for="password">Password</label>
             </div>
-            <button class="btn btn-primary" @onclick="AuthenticateHandler">Login</button>
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary" @onclick="AuthenticateHandler">Login</button>
+            </div>
             @if (!string.IsNullOrEmpty(authError))
             {
                 <div class="alert alert-danger mt-3" role="alert">
@@ -26,16 +30,29 @@
     private string password = "";
     private string authError = "";
     private bool useMockMode;
+    private bool isAuthenticated;
 
     [Parameter]
     public EventCallback<bool> OnAuthenticated { get; set; }
 
-    protected override async Task OnInitializedAsync()
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if(!firstRender) 
+            return;
+            
         useMockMode = Configuration.GetValue<bool>("FeedbackApi:UseMocks");
         if (useMockMode)
         {
-            await OnAuthenticated.InvokeAsync(true);
+            await HandleAuthenticated(true);
+            return;
+        }
+
+        // Check if already authenticated
+        isAuthenticated = await AuthService.IsAuthenticatedAsync();
+        if (isAuthenticated)
+        {
+            await HandleAuthenticated(true);
             return;
         }
 
@@ -54,6 +71,13 @@
         }
     }
 
+    private async Task HandleAuthenticated(bool success)
+    {
+        isAuthenticated = success;
+        await AuthService.SetAuthenticatedAsync(success);
+        await OnAuthenticated.InvokeAsync(success);
+    }
+
     private async Task AuthenticateHandler()
     {
         var configuredPassword = Configuration["FeedbackApp:AccessPassword"];
@@ -66,7 +90,7 @@
         if (password == configuredPassword)
         {
             authError = "";
-            await OnAuthenticated.InvokeAsync(true);
+            await HandleAuthenticated(true);
         }
         else
         {

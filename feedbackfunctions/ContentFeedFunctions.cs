@@ -136,11 +136,9 @@ public class ContentFeedFunctions
             var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
             
             var keywords = queryParams["keywords"];
-            if (string.IsNullOrEmpty(keywords))
+            if (string.IsNullOrWhiteSpace(keywords))
             {
-                var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await badResponse.WriteStringAsync("'keywords' parameter is required");
-                return badResponse;
+                keywords = "";
             }
 
             var keywordsList = keywords.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

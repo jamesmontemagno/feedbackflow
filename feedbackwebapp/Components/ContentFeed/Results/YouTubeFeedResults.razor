@@ -205,7 +205,12 @@
             }
             else
             {
-                IsAscending = true;
+                // Set initial sort direction based on the type of data
+                IsAscending = option switch
+                {
+                    SortOption.Views or SortOption.Likes or SortOption.Comments => false,
+                    _ => true
+                };
             }
         }
     }
