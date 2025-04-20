@@ -1,31 +1,52 @@
+@using Microsoft.JSInterop
 @namespace FeedbackWebApp.Components.ContentFeed.Forms
+@inject IJSRuntime JSRuntime
 
 <div class="hackernews-feed-form">
     <div class="form-floating">
         <input type="text" class="form-control" id="keywords" placeholder="Keywords" 
-               @bind="@KeywordsInput" @bind:event="oninput" />
+               @bind="KeywordsInput" @bind:event="oninput" />
         <label for="keywords">Keywords</label>
         <div class="form-text">Enter keywords to search for (comma-separated)</div>
     </div>
 </div>
 
 @code {
-    private string _keywordsInput = "";
+    private const string StorageKey = "HackerNewsFormState";
 
-    public string KeywordsInput
+    [Parameter]
+    public string KeywordsInput { get; set; } = "";
+
+    [Parameter]
+    public string[] Keywords { get; set; } = Array.Empty<string>();
+
+    protected override async Task OnInitializedAsync()
     {
-        get => _keywordsInput;
-        set
-        {
-            if (_keywordsInput != value)
-            {
-                _keywordsInput = value;
-                Keywords = value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                    .Where(k => !string.IsNullOrWhiteSpace(k))
-                    .ToArray();
-            }
-        }
+        await LoadFromLocalStorageAsync();
     }
 
-    public string[] Keywords { get; private set; } = Array.Empty<string>();
+    private async Task HandleSubmitAsync()
+    {
+        Keywords = KeywordsInput.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .ToArray();
+        await SaveToLocalStorageAsync();
+    }
+
+    public async Task SaveToLocalStorageAsync()
+    {
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", StorageKey, KeywordsInput);
+    }
+
+    private async Task LoadFromLocalStorageAsync()
+    {
+        var savedValue = await JSRuntime.InvokeAsync<string>("localStorage.getItem", StorageKey);
+        if (!string.IsNullOrEmpty(savedValue))
+        {
+            KeywordsInput = savedValue;
+            Keywords = KeywordsInput.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(k => !string.IsNullOrWhiteSpace(k))
+                .ToArray();
+        }
+    }
 }

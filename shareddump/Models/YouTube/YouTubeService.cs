@@ -315,7 +315,7 @@ public class YouTubeService
             }
 
             pageToken = searchResponse.NextPageToken ?? string.Empty;
-            if (string.IsNullOrEmpty(pageToken) || videos.Count > 100)
+            if (string.IsNullOrEmpty(pageToken) || videos.Count > 50)
                 break;
         }
 

@@ -8,6 +8,7 @@
 @using FeedbackWebApp.Components.ContentFeed.Forms
 @using FeedbackWebApp.Components.ContentFeed.Results
 @using FeedbackWebApp.Components.Feedback
+@using Microsoft.AspNetCore.Components.Web.Infrastructure
 
 @inject IConfiguration Configuration
 @inject HttpClient Http
@@ -156,6 +157,7 @@
             switch (selectedSource)
             {
                 case "youtube" when youtubeFeedForm is not null:
+                    await youtubeFeedForm.SaveToLocalStorageAsync();
                     var youtubeService = ContentFeedProvider.CreateYouTubeService(
                         youtubeFeedForm.Topic,
                         youtubeFeedForm.Days,
@@ -164,6 +166,7 @@
                     break;
 
                 case "reddit" when redditFeedForm is not null:
+                    await redditFeedForm.SaveToLocalStorageAsync();
                     var redditService = ContentFeedProvider.CreateRedditService(
                         redditFeedForm.Subreddit,
                         redditFeedForm.Days,
@@ -172,6 +175,7 @@
                     break;
 
                 case "hackernews" when hackerNewsFeedForm is not null && hackerNewsFeedForm.Keywords is not null:
+                    await hackerNewsFeedForm.SaveToLocalStorageAsync();
                     var hnService = ContentFeedProvider.CreateHackerNewsService(
                         hackerNewsFeedForm.Keywords);
                     hackerNewsItems = await hnService.FetchContent();
