@@ -38,6 +38,7 @@ public class RedditCommentData
 
     [JsonPropertyName("created_utc")]
     public double CreatedUtc { get; set; }
+
     public int Score { get; set; }
     
     public object? Replies { get; set; }

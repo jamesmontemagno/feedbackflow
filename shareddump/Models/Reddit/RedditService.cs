@@ -158,83 +158,44 @@ public sealed class RedditService : IDisposable
         }
     }
 
-    public async Task<List<RedditThreadModel>> GetSubredditThreads(string subreddit, string sortBy, DateTimeOffset cutoffDate)
-    {
-        ArgumentNullException.ThrowIfNull(subreddit);
-        ArgumentNullException.ThrowIfNull(sortBy);
-
-        var threads = new List<RedditThreadModel>();
-        
-        for (var attempt = 0; attempt < _maxRetries; attempt++)
-        {
-            try
-            {
-                await EnsureAuthenticated();
-
-                var url = $"https://oauth.reddit.com/r/{subreddit}/{sortBy}?limit=100";
-                var responseMessage = await _client.GetAsync(url);
-                responseMessage.EnsureSuccessStatusCode();
-
-                var response = await responseMessage.Content.ReadFromJsonAsync<RedditListing>();
-                if (response?.Data?.Children == null)
-                {
-                    throw new InvalidOperationException("Failed to get subreddit data");
-                }
-
-                foreach (var child in response.Data.Children)
-                {
-                    var threadData = child.Data;
-                    var createdUtc = DateTimeOffset.FromUnixTimeSeconds((long)threadData.CreatedUtc);
-                    
-                    if (createdUtc < cutoffDate) continue;
-
-                    var fullThread = await GetThreadWithComments(threadData.Id);
-                    threads.Add(fullThread);
-                }
-
-                break;
-            }
-            catch (HttpRequestException) when (attempt < _maxRetries - 1)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt))); // Exponential backoff
-                continue;
-            }
-        }
-
-        return threads;
-    }
-
     public async Task<List<RedditThreadModel>> GetSubredditThreadsBasicInfo(string subreddit, string sortBy = "hot", DateTimeOffset? cutoffDate = null)
     {
         await EnsureValidTokenAsync();
 
-        var request = new HttpRequestMessage(HttpMethod.Get, $"https://oauth.reddit.com/r/{subreddit}/{sortBy}");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
 
-        var response = await _client.SendAsync(request);
-        response.EnsureSuccessStatusCode();
+        var url = $"https://oauth.reddit.com/r/{subreddit}/{sortBy}";
+        var response = await _client.GetStringAsync(url);
+        
+        var listing = JsonSerializer.Deserialize(response, RedditJsonContext.Default.RedditListing);
+        if (listing?.Data?.Children == null)
+            return [];
 
-        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
         var threads = new List<RedditThreadModel>();
-
-        foreach (var child in content.GetProperty("data").GetProperty("children").EnumerateArray())
+        foreach (var child in listing.Data.Children)
         {
-            var threadData = child.GetProperty("data");
-            var created = DateTimeOffset.FromUnixTimeSeconds(threadData.GetProperty("created_utc").GetInt64());
-
+            if (child.Data == null) continue;
+            
+            var created = DateTimeOffset.FromUnixTimeSeconds((long)child.Data.CreatedUtc);
             if (cutoffDate.HasValue && created < cutoffDate.Value)
                 continue;
 
             threads.Add(new RedditThreadModel
             {
-                Id = threadData.GetProperty("id").GetString() ?? string.Empty,
-                Title = threadData.GetProperty("title").GetString() ?? string.Empty,
-                Author = threadData.GetProperty("author").GetString() ?? string.Empty,
+                Id = child.Data.Id,
+                Title = child.Data.Title ?? "[No Title]",
+                Author = child.Data.Author,
+                SelfText = child.Data.Selftext ?? string.Empty,
                 CreatedUtc = created,
-                Score = threadData.GetProperty("score").GetInt32(),
-                NumComments = threadData.GetProperty("num_comments").GetInt32(),
-                Url = threadData.GetProperty("url").GetString() ?? string.Empty,
-                Permalink = threadData.GetProperty("permalink").GetString() ?? string.Empty
+                Score = child.Data.Score,
+                NumComments = child.Data.Replies != null ? 1 : 0, // This will be populated when getting full thread
+                Url = child.Data.Permalink.StartsWith("http") 
+                    ? child.Data.Permalink 
+                    : $"https://www.reddit.com{child.Data.Permalink}",
+                Permalink = child.Data.Permalink,
+                Subreddit = subreddit,
+                UpvoteRatio = 1.0, // This isn't available in the listing response
+                Comments = [] // Comments are only populated when getting full thread details
             });
         }
 
