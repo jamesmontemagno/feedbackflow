@@ -29,7 +29,10 @@ public class YouTubeContentFeedService : ContentFeedService, IYouTubeContentFeed
 
     async Task<List<YouTubeOutputVideo>> IYouTubeContentFeedService.FetchContent()
     {
-        var query = $"{BaseUrl}/api/GetRecentYouTubeVideos?topic={Uri.EscapeDataString(_topic)}&days={_days}";
+        var youtubeCode = Configuration["FeedbackApi:GetYouTubeContentFeedCode"] 
+            ?? throw new InvalidOperationException("YouTube API code not configured");
+
+        var query = $"{BaseUrl}/api/GetRecentYouTubeVideos?code={Uri.EscapeDataString(youtubeCode)}&topic={Uri.EscapeDataString(_topic)}&days={_days}";
         if (!string.IsNullOrEmpty(_tag))
         {
             query += $"&tag={Uri.EscapeDataString(_tag)}";

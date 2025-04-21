@@ -37,10 +37,13 @@ public class HackerNewsContentFeedService : ContentFeedService, IHackerNewsConte
                 : cachedArticles;
         }
 
+        var hackerNewsCode = Configuration["FeedbackApi:GetHackerNewsContentFeedCode"] 
+            ?? throw new InvalidOperationException("HackerNews API code not configured");
+
         var articles = await Http.GetFromJsonAsync<List<HackerNewsItem>>(
             _keywords != null && _keywords.Length > 0
-                ? $"{BaseUrl}/api/SearchHackerNewsArticles?keywords={Uri.EscapeDataString(string.Join(",", _keywords))}"
-                : $"{BaseUrl}/api/SearchHackerNewsArticles") 
+                ? $"{BaseUrl}/api/SearchHackerNewsArticles?code={Uri.EscapeDataString(hackerNewsCode)}&keywords={Uri.EscapeDataString(string.Join(",", _keywords))}"
+                : $"{BaseUrl}/api/SearchHackerNewsArticles?code={Uri.EscapeDataString(hackerNewsCode)}") 
             ?? new List<HackerNewsItem>();
 
         _cache.CacheArticles(articles);
