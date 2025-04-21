@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using SharedDump.Models.HackerNews;
 using SharedDump.Models.YouTube;
 using SharedDump.Models.Reddit;
+using System.Collections.Concurrent;
 
 namespace FeedbackFunctions;
 
@@ -16,6 +17,8 @@ public class ContentFeedFunctions
     private readonly HackerNewsService _hnService;
     private readonly YouTubeService _ytService;
     private readonly RedditService _redditService;
+    private static readonly ConcurrentDictionary<string, (List<HackerNewsItemBasicInfo> Items, DateTime ExpirationTime)> _hnSearchCache = new();
+    private static readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(30);
 
     public ContentFeedFunctions(
         ILogger<ContentFeedFunctions> logger,
@@ -125,6 +128,24 @@ public class ContentFeedFunctions
         }
     }
 
+    private string GetCacheKey(string[] keywords) => 
+        string.Join("-", keywords.OrderBy(k => k));
+
+    private bool TryGetFromCache(string cacheKey, out List<HackerNewsItemBasicInfo>? items)
+    {
+        items = null;
+        if (_hnSearchCache.TryGetValue(cacheKey, out var cacheEntry))
+        {
+            if (DateTime.UtcNow <= cacheEntry.ExpirationTime)
+            {
+                items = cacheEntry.Items;
+                return true;
+            }
+            _hnSearchCache.TryRemove(cacheKey, out _);
+        }
+        return false;
+    }
+
     [Function("SearchHackerNewsArticles")]
     public async Task<HttpResponseData> SearchHackerNewsArticles(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
@@ -142,7 +163,20 @@ public class ContentFeedFunctions
             }
 
             var keywordsList = keywords.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            var matchingItems = await _hnService.SearchByTitleBasicInfo(keywordsList); // Changed method name
+            var cacheKey = GetCacheKey(keywordsList);
+
+            List<HackerNewsItemBasicInfo> matchingItems;
+            if (!TryGetFromCache(cacheKey, out var cachedItems))
+            {
+                matchingItems = await _hnService.SearchByTitleBasicInfo(keywordsList);
+                _hnSearchCache.TryAdd(cacheKey, (matchingItems, DateTime.UtcNow.Add(_cacheDuration)));
+                _logger.LogInformation("Cache miss for key: {CacheKey}", cacheKey);
+            }
+            else
+            {
+                matchingItems = cachedItems!;
+                _logger.LogInformation("Cache hit for key: {CacheKey}", cacheKey);
+            }
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(matchingItems);

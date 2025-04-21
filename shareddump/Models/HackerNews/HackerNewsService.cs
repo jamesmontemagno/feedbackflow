@@ -76,28 +76,10 @@ public class HackerNewsService
             HackerNewsJsonContext.Default.Int32Array) ?? Array.Empty<int>();
     }
 
-    public async Task<List<HackerNewsItem>> SearchByTitle(IEnumerable<string> keywords)
+    public async Task<List<HackerNewsItemBasicInfo>> SearchByTitleBasicInfo(IEnumerable<string> keywords)
     {
         var topStories = await GetTopStories();
-        var results = new List<HackerNewsItem>();
-
-        foreach (var storyId in topStories)
-        {
-            var item = await GetItemData(storyId);
-            if (item?.Title != null && keywords.Any(k => 
-                item.Title.Contains(k, StringComparison.OrdinalIgnoreCase)))
-            {
-                results.Add(item);
-            }
-        }
-
-        return results;
-    }
-
-    public async Task<List<HackerNewsItem>> SearchByTitleBasicInfo(IEnumerable<string> keywords)
-    {
-        var topStories = await GetTopStories();
-        var results = new List<HackerNewsItem>();
+        var results = new List<HackerNewsItemBasicInfo>();
 
         foreach (var storyId in topStories)
         {
@@ -105,8 +87,7 @@ public class HackerNewsService
             if (item?.Title != null && (keywords.Count() == 0 || keywords.Any(k => 
                 item.Title.Contains(k, StringComparison.OrdinalIgnoreCase))))
             {
-                // Create a new item with only the essential data
-                results.Add(new HackerNewsItem
+                results.Add(new HackerNewsItemBasicInfo
                 {
                     Id = item.Id,
                     Title = item.Title,
