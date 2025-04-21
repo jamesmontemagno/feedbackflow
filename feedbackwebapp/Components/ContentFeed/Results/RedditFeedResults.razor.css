@@ -1,39 +1,44 @@
 .reddit-results {
     animation: fadeIn 0.3s ease-in-out;
+    padding: 1rem;
 }
 
 .card {
-    background-color: var(--bg-secondary);
+    background-color: var(--card-bg);
     border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
+    transition: transform 0.2s ease-in-out;
 }
 
 .card:hover {
     transform: translateY(-2px);
-    box-shadow: var(--card-shadow);
 }
 
 .card-title {
-    color: var(--text-primary);
+    color: var(--heading-color);
+    font-size: 1.1rem;
+    line-height: 1.4;
 }
 
 .btn-outline-light {
-    color: var(--text-primary);
     border-color: var(--border-color);
+    color: var(--text-muted);
 }
 
 .btn-outline-light:hover {
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
-    border-color: var(--danger-color);
+    background-color: var(--hover-bg);
+    color: var(--text-color);
+    border-color: var(--border-color);
 }
 
 .thread-meta {
-    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-size: 0.85rem;
 }
 
 .thread-content {
-    color: var(--text-primary);
+    color: var(--text-color);
+    font-size: 0.95rem;
+    line-height: 1.5;
     white-space: pre-wrap;
 }
 
@@ -43,6 +48,38 @@
 
 .text-muted {
     color: var(--text-secondary) !important;
+}
+
+.controls .input-group-text {
+    background-color: var(--input-group-bg);
+    border-color: var(--border-color);
+    color: var(--text-muted);
+}
+
+.controls .form-control {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+.controls .form-control:focus {
+    background-color: var(--input-focus-bg);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem var(--focus-shadow);
+}
+
+.btn-group .btn {
+    border-color: var(--border-color);
+}
+
+.btn-link {
+    color: var(--link-color);
+    text-decoration: none;
+}
+
+.btn-link:hover {
+    color: var(--link-hover-color);
+    text-decoration: underline;
 }
 
 @keyframes fadeIn {
