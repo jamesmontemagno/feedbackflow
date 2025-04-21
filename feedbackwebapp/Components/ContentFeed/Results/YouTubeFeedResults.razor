@@ -51,11 +51,17 @@
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <h5 class="card-title mb-0">
                                 <i class="bi bi-youtube text-danger me-2"></i>
-                                <a href="@video.Url" target="_blank" class="video-title">
-                                    @video.Title
-                                    <i class="bi bi-box-arrow-up-right ms-1"></i>
-                                </a>
+                                @video.Title
                             </h5>
+                            
+                            <div class="btn-group">
+                                <a href="@video.Url" target="_blank" class="btn btn-sm btn-outline-light" title="Open thread">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                                <a href="javascript:void(0)" class="btn btn-sm btn-outline-light" @onclick="() => NavigateToAnalyze(video.Id.ToString())" title="Analyze thread">
+                                    <i class="bi bi-graph-up"></i>
+                                </a>
+                            </div>
                         </div>
 
                         <div class="text-muted mb-2">
@@ -84,9 +90,6 @@
                                 <i class="bi bi-chat-text me-1"></i>
                                 @FormatNumber(video.CommentCount)
                             </div>
-                            <button class="btn btn-sm btn-primary" @onclick="() => NavigateToAnalyze(video.Id)">
-                                <i class="bi bi-graph-up me-1"></i> Analyze
-                            </button>
                         </div>
                     </div>
                 </div>

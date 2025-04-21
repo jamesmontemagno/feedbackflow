@@ -71,6 +71,11 @@
     gap: 0.5rem;
 }
 
+.btn-group .btn {
+    border-color: var(--border-color);
+}
+
+
 .date-filter input[type="date"] {
     min-width: 150px;
 }

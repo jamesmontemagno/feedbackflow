@@ -63,13 +63,6 @@
                         </div>
                     </div>
                     
-                    <div class="thread-meta mt-2">
-                        <small class="text-muted">
-                            Posted by u/@thread.Author | Score: @thread.Score | Comments: @thread.NumComments | 
-                            Posted @thread.CreatedUtc.LocalDateTime.ToString("MMM dd, yyyy HH:mm")
-                        </small>
-                    </div>
-
                     @if (!string.IsNullOrWhiteSpace(thread.SelfText))
                     {
                         <div class="thread-content mt-3">
@@ -82,6 +75,27 @@
                             }
                         </div>
                     }
+
+                    <div class="thread-meta mt-3">
+                        <div class="d-flex gap-3 text-muted small">
+                            <span>
+                                <i class="bi bi-person me-1"></i>
+                                u/@thread.Author
+                            </span>
+                            <span>
+                                <i class="bi bi-arrow-up-circle me-1"></i>
+                                @thread.Score
+                            </span>
+                            <span>
+                                <i class="bi bi-chat-left-text me-1"></i>
+                                @thread.NumComments comments
+                            </span>
+                            <span>
+                                <i class="bi bi-clock me-1"></i>
+                                @thread.CreatedUtc.LocalDateTime.ToString("MMM dd, yyyy HH:mm")
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
         }

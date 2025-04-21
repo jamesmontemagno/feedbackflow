@@ -21,5 +21,6 @@
 }
 
 .form-text {
-    color: var(--text-secondary);
+    color: var(--text-muted);
+    opacity: 0.8;
 }

@@ -104,6 +104,11 @@
     border-color: var(--primary-color);
 }
 
+.btn-group .btn {
+    border-color: var(--border-color);
+}
+
+
 .comments-container {
     animation: fadeIn 0.3s ease-in-out;
 }

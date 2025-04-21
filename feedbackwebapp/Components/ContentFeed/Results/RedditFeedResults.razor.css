@@ -33,6 +33,17 @@
 .thread-meta {
     color: var(--text-muted);
     font-size: 0.85rem;
+    border-top: 1px solid var(--bs-border-color);
+    padding-top: 0.75rem;
+}
+
+.thread-meta span {
+    display: inline-flex;
+    align-items: center;
+}
+
+.thread-meta i {
+    font-size: 0.9em;
 }
 
 .thread-content {
