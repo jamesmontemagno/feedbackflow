@@ -188,7 +188,7 @@ public sealed class RedditService : IDisposable
                 SelfText = child.Data.Selftext ?? string.Empty,
                 CreatedUtc = created,
                 Score = child.Data.Score,
-                NumComments = child.Data.Replies != null ? 1 : 0, // This will be populated when getting full thread
+                NumComments = child.Data.NumComments,
                 Url = child.Data.Permalink.StartsWith("http") 
                     ? child.Data.Permalink 
                     : $"https://www.reddit.com{child.Data.Permalink}",

@@ -39,6 +39,9 @@ public class RedditCommentData
     [JsonPropertyName("created_utc")]
     public double CreatedUtc { get; set; }
 
+    [JsonPropertyName("num_comments")]
+    public int NumComments { get; set; }
+
     public int Score { get; set; }
     
     public object? Replies { get; set; }
@@ -84,7 +87,6 @@ public class RedditThreadModel
     public string Subreddit { get; set; } = "";
     public int Score { get; set; }
     public double UpvoteRatio { get; set; }
-    [JsonPropertyName("num_comments")]
     public int NumComments { get; set; }
     public List<RedditCommentModel> Comments { get; set; } = [];
     public DateTimeOffset CreatedUtc { get; set; }
