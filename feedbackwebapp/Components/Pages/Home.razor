@@ -218,7 +218,7 @@
     {
         var uri = new Uri(NavigationManager.Uri);
         var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
-        
+
         initialSource = query["source"];
         initialId = query["id"];
 
@@ -231,7 +231,7 @@
         if (firstRender && !string.IsNullOrEmpty(initialSource) && !string.IsNullOrEmpty(initialId))
         {
             isFirstRender = false;
-            
+
             // Set the selected source first
             selectedSource = initialSource.ToLower() switch
             {
@@ -242,26 +242,30 @@
                 _ => selectedSource
             };
             StateHasChanged();
-            
+
             // Allow time for the component to render
             await Task.Delay(200);
-            
+
             // Now handle the specific source
             if (selectedSource == "HackerNews" && hackerNewsInputForm != null)
             {
                 hackerNewsInputForm.Value = initialId;
+                hackerNewsInputForm.RefreshUI();
             }
             else if (selectedSource == "YouTube" && youtubeInput != null)
             {
                 youtubeInput.VideoIds = initialId;
+                youtubeInput.RefreshUI();
             }
             else if (selectedSource == "GitHub" && githubInputForm != null)
             {
                 githubInputForm.Url = initialId;
+                githubInputForm.RefreshUI();
             }
             else if (selectedSource == "Reddit" && redditInputForm != null)
             {
                 redditInputForm.ThreadsInput = initialId;
+                redditInputForm.RefreshUI();
             }
 
             StateHasChanged();
