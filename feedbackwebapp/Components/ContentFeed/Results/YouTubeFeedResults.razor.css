@@ -108,6 +108,16 @@
     border-color: var(--border-color);
 }
 
+.btn-outline-secondary {
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
 
 .comments-container {
     animation: fadeIn 0.3s ease-in-out;

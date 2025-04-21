@@ -20,7 +20,7 @@
     box-shadow: 0 0 0 0.25rem rgba(var(--warning-color-rgb), 0.25);
 }
 
-.form-text {
-    color: var(--text-muted);
-    opacity: 0.8;
+.text-muted {
+    color: var(--text-secondary) !important;
+    opacity: 0.9;
 }

@@ -1,10 +1,10 @@
 .reddit-results {
     animation: fadeIn 0.3s ease-in-out;
-    padding: 1rem;
+    padding: 1rem 0;
 }
 
 .card {
-    background-color: var(--card-bg);
+    background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
     transition: transform 0.2s ease-in-out;
 }
@@ -14,19 +14,30 @@
 }
 
 .card-title {
-    color: var(--heading-color);
+    color: var(--text-primary);
     font-size: 1.1rem;
     line-height: 1.4;
 }
 
 .btn-outline-light {
     border-color: var(--border-color);
-    color: var(--text-muted);
+    color: var(--text-secondary);
 }
 
 .btn-outline-light:hover {
-    background-color: var(--hover-bg);
-    color: var(--text-color);
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.btn-outline-secondary {
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
     border-color: var(--border-color);
 }
 
@@ -47,7 +58,7 @@
 }
 
 .thread-content {
-    color: var(--text-color);
+    color: var(--text-secondary);
     font-size: 0.95rem;
     line-height: 1.5;
     white-space: pre-wrap;
@@ -84,12 +95,12 @@
 }
 
 .btn-link {
-    color: var(--link-color);
+    color: var(--danger-color);
     text-decoration: none;
 }
 
 .btn-link:hover {
-    color: var(--link-hover-color);
+    color: var(--danger-hover-color);
     text-decoration: underline;
 }
 

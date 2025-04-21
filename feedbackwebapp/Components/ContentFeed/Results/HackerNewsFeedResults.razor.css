@@ -32,14 +32,14 @@
 }
 
 .btn-outline-secondary {
-    color: var(--text-primary);
+    color: var(--text-secondary);
     border-color: var(--border-color);
 }
 
 .btn-outline-secondary:hover {
-    background-color: var(--bg-primary);
+    background-color: var(--bg-hover);
     color: var(--text-primary);
-    border-color: var(--warning-color);
+    border-color: var(--border-color);
 }
 
 .search-container {
@@ -74,7 +74,6 @@
 .btn-group .btn {
     border-color: var(--border-color);
 }
-
 
 .date-filter input[type="date"] {
     min-width: 150px;

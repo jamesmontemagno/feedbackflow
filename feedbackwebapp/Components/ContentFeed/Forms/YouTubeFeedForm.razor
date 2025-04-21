@@ -11,7 +11,7 @@
                @bind="Topic" 
                @bind:event="oninput" />
         <label for="topic">Topic</label>
-        <div class="form-text">Enter a topic to search for in video titles and descriptions</div>
+        <div class="text-muted">Enter a topic to search for in video titles and descriptions</div>
         @if (showValidation && string.IsNullOrWhiteSpace(Topic))
         {
             <div class="invalid-feedback">
@@ -24,7 +24,7 @@
         <input type="text" class="form-control" id="tag" placeholder="Tag" 
                @bind="Tag" @bind:event="oninput" />
         <label for="tag">Tag (optional)</label>
-        <div class="form-text">Enter a tag to filter videos</div>
+        <div class="text-muted">Enter a tag to filter videos</div>
     </div>
 
     <div class="form-floating mb-3">
@@ -36,7 +36,7 @@
                @bind="Days" 
                @bind:event="oninput" />
         <label for="days">Days</label>
-        <div class="form-text">Number of days to look back (1-30)</div>
+        <div class="text-muted">Number of days to look back (1-30)</div>
         @if (showValidation && (Days < 1 || Days > 30))
         {
             <div class="invalid-feedback">

@@ -11,7 +11,7 @@
                @bind="Subreddit" 
                @bind:event="oninput" />
         <label for="subreddit">Subreddit</label>
-        <div class="form-text">Enter a subreddit name (without r/)</div>
+        <div class="text-muted">Enter a subreddit name (without r/)</div>
         @if (showValidation && string.IsNullOrWhiteSpace(Subreddit))
         {
             <div class="invalid-feedback">
@@ -39,7 +39,7 @@
                @bind="Days" 
                @bind:event="oninput" />
         <label for="days">Days</label>
-        <div class="form-text">Number of days to look back (1-30)</div>
+        <div class="text-muted">Number of days to look back (1-30)</div>
         @if (showValidation && (Days < 1 || Days > 30))
         {
             <div class="invalid-feedback">
