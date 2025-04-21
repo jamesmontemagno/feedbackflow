@@ -1,5 +1,6 @@
 @namespace FeedbackWebApp.Components.ContentFeed.Results
 @using SharedDump.Models.HackerNews
+@inject NavigationManager NavigationManager
 
 <div class="hackernews-results">
     @if (Items?.Any() == true)
@@ -87,6 +88,9 @@
                             <small class="text-muted">
                                 <i class="bi bi-clock"></i> @DateTimeOffset.FromUnixTimeSeconds(item.Time).LocalDateTime.ToString("g")
                             </small>
+                            <button class="btn btn-sm btn-primary" @onclick="() => NavigateToAnalyze(item.Id.ToString())">
+                                <i class="bi bi-graph-up me-1"></i> Analyze
+                            </button>
                         </div>
 
                         @if (!string.IsNullOrEmpty(item.Text))
@@ -168,9 +172,6 @@
             // Apply sorting
             IEnumerable<HackerNewsItem> query = CurrentSort switch
             {
-                SortOption.Default => IsAscending 
-                    ? InitialOrder ?? baseQuery
-                    : (InitialOrder ?? baseQuery).ToList().AsEnumerable().Reverse(),
                 SortOption.Date => IsAscending 
                     ? baseQuery.OrderBy(item => item.Time)
                     : baseQuery.OrderByDescending(item => item.Time),
@@ -243,6 +244,11 @@
             await InvokeAsync(StateHasChanged);
             _debounceTimer.Stop();
         };
+    }
+
+    private void NavigateToAnalyze(string id)
+    {
+        NavigationManager.NavigateTo($"/?source=hackernews&id={id}");
     }
 
     public void Dispose()

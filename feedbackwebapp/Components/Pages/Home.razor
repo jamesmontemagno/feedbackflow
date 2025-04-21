@@ -1,17 +1,22 @@
 ﻿@page "/"
 @using System.Text.Json
+@using System.Web
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Infrastructure
+@using Microsoft.JSInterop
 @using SharedDump.Models.YouTube
 @using SharedDump.Models.GitHub
 @using SharedDump.Models.Reddit
+@using SharedDump.Utils
+@using FeedbackWebApp.Components.Layout
 @using FeedbackWebApp.Components.Feedback
 @using FeedbackWebApp.Components.Feedback.Services
-@using SharedDump.Utils
 @inject IConfiguration Configuration
 @inject HttpClient Http
 @inject FeedbackServiceProvider ServiceProvider
 @inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
 
 <PageTitle>Feedback Analysis - FeedbackFlow</PageTitle>
 
@@ -31,19 +36,19 @@
         {
             <div class="card shadow-sm">
                 <div class="card-body">
-                    @if (selectedSource == "YouTube")
+                    @if (selectedSource.Equals("YouTube", StringComparison.OrdinalIgnoreCase))
                     {
                         <YouTubeInputForm @ref="youtubeInput"/>
                     }
-                    else if (selectedSource == "HackerNews")
+                    else if (selectedSource.Equals("HackerNews", StringComparison.OrdinalIgnoreCase))
                     {
                         <HackerNewsInputForm @ref="hackerNewsInputForm" />
                     }
-                    else if (selectedSource == "GitHub")
+                    else if (selectedSource.Equals("GitHub", StringComparison.OrdinalIgnoreCase))
                     {
                         <GitHubInputForm @ref="githubInputForm" />
                     }
-                    else if (selectedSource == "Reddit")
+                    else if (selectedSource.Equals("Reddit", StringComparison.OrdinalIgnoreCase))
                     {
                         <RedditInputForm @ref="redditInputForm" />
                     }
@@ -95,6 +100,9 @@
     private List<RedditThreadModel>? redditThreads;
     private FeedbackProcessStatus currentStatus;
     private string currentStatusMessage = "";
+    private string? initialSource;
+    private string? initialId;
+    private bool isFirstRender = true;
 
     private void HandleAuthenticated(bool success)
     {
@@ -125,17 +133,17 @@
 
             IFeedbackService service = selectedSource switch
             {
-                "YouTube" => ServiceProvider.CreateYouTubeService(
+                "YouTube" or "youtube" => ServiceProvider.CreateYouTubeService(
                     youtubeInput?.VideoIds ?? string.Empty, 
                     youtubeInput?.PlaylistIds ?? string.Empty, 
                     HandleStatusUpdate),
-                "HackerNews" => ServiceProvider.CreateHackerNewsService(
+                "HackerNews" or "hackernews" => ServiceProvider.CreateHackerNewsService(
                     hackerNewsInputForm?.Value ?? string.Empty, 
                     HandleStatusUpdate),
-                "GitHub" => ServiceProvider.CreateGitHubService(
+                "GitHub" or "github" => ServiceProvider.CreateGitHubService(
                     githubInputForm?.Url ?? string.Empty,
                     HandleStatusUpdate),
-                "Reddit" => ServiceProvider.CreateRedditService(
+                "Reddit" or "reddit" => ServiceProvider.CreateRedditService(
                     redditInputForm?.ThreadIds ?? Array.Empty<string>(),
                     HandleStatusUpdate),
                 _ => throw new InvalidOperationException("Please select a feedback source")
@@ -204,5 +212,61 @@
             isLoading = false;
             currentStatusMessage = "";
         }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        
+        initialSource = query["source"];
+        initialId = query["id"];
+
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await Task.Delay(100); // Allow the UI to settle before executing the logic
+        if (firstRender && !string.IsNullOrEmpty(initialSource) && !string.IsNullOrEmpty(initialId))
+        {
+            isFirstRender = false;
+            
+            // Set the selected source first
+            selectedSource = initialSource.ToLower() switch
+            {
+                "youtube" => "YouTube",
+                "hackernews" => "HackerNews",
+                "github" => "GitHub",
+                "reddit" => "Reddit",
+                _ => selectedSource
+            };
+            StateHasChanged();
+            
+            // Allow time for the component to render
+            await Task.Delay(200);
+            
+            // Now handle the specific source
+            if (selectedSource == "HackerNews" && hackerNewsInputForm != null)
+            {
+                hackerNewsInputForm.Value = initialId;
+            }
+            else if (selectedSource == "YouTube" && youtubeInput != null)
+            {
+                youtubeInput.VideoIds = initialId;
+            }
+            else if (selectedSource == "GitHub" && githubInputForm != null)
+            {
+                githubInputForm.Url = initialId;
+            }
+            else if (selectedSource == "Reddit" && redditInputForm != null)
+            {
+                redditInputForm.ThreadsInput = initialId;
+            }
+
+            StateHasChanged();
+        }
+        
+        await base.OnAfterRenderAsync(firstRender);
     }
 }

@@ -41,7 +41,8 @@
                         @foreach (var source in contentSources)
                         {
                             <button class="btn @(selectedSource == source.Value ? "btn-primary" : "btn-outline-primary") source-button"
-                                    @onclick="() => SelectSource(source.Value)">
+                                    @onclick="() => SelectSource(source.Value)"
+                                    disabled="@isLoading">
                                 <i class="@source.IconClass me-2"></i>
                                 @source.Name
                             </button>
