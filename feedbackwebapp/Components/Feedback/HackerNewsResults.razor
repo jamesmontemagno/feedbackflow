@@ -1,6 +1,7 @@
 @namespace FeedbackWebApp.Components.Feedback
 @using FeedbackWebApp.Components.Feedback.Services
 @using SharedDump.Models.HackerNews
+@using Microsoft.AspNetCore.Components
 
 @if (Analyses?.Any() == true)
 {
@@ -31,21 +32,16 @@
                 </div>
             </div>
             <div class="card-body">
-              
                 @if (ExpandedArticles.Contains(story.Id))
                 {
                     <div class="comments-container mt-4">
                         <h6 class="mb-3">Comments (@(analysis.Stories.Count - 1))</h6>
-                        @foreach (var comment in analysis.Stories.Skip(1))
-                        {
-                            <div class="comment-item p-3 mb-2 rounded">
-                                <div class="d-flex justify-content-between">
-                                    <strong>@comment.By</strong>
-                                    <small>@DateTimeOffset.FromUnixTimeSeconds(comment.Time).ToString("MMM dd, yyyy")</small>
-                                </div>
-                                <div class="mt-2">@((MarkupString)(comment?.Text ?? ""))</div>
-                            </div>
-                        }
+                        <CascadingValue Value="@analysis.Stories">
+                            @foreach (var comment in analysis.Stories.Where(s => s.Parent == story.Id || s.Parent == s.MainStoryId || s.Parent == null))
+                            {
+                                <HackerNewsComment Comment="comment" Level="0" />
+                            }
+                        </CascadingValue>
                     </div>
                 }
             </div>

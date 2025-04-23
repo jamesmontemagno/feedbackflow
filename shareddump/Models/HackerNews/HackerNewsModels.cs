@@ -2,6 +2,7 @@ namespace SharedDump.Models.HackerNews;
 
 public class HackerNewsItem
 {
+    public int? MainStoryId { get; set; }
     public required int Id { get; set; }
     public bool? Deleted { get; set; }
     public string? Type { get; set; }

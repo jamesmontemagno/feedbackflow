@@ -1,0 +1,18 @@
+.comment-item {
+    background-color: var(--bs-dark-bg-subtle);
+    border-left: 3px solid var(--bs-primary);
+    transition: all 0.2s ease-in-out;
+}
+
+.comment-item:hover {
+    border-left-color: var(--bs-warning);
+}
+
+.nested-comments {
+    margin-left: calc(var(--bs-gutter-x) * 0.5);
+    border-left: 1px solid var(--bs-border-color);
+}
+
+::deep small {
+    color: var(--bs-secondary-color);
+}

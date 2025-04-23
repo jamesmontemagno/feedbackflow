@@ -22,37 +22,46 @@ public class GitHubSingleItemFeedbackService : FeedbackService, IGitHubFeedbackS
 
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
-        var parsedUrl = GitHubUrlParser.ParseUrl(_url);
-        if (parsedUrl == null)
+        UpdateStatus(FeedbackProcessStatus.GatheringComments, "Parsing GitHub URL...");
+
+        var parseResult = GitHubUrlParser.ParseUrl(_url);
+        if (parseResult == null)
         {
-            throw new InvalidOperationException("Please enter a valid GitHub issue, pull request, or discussion URL");
+            throw new InvalidOperationException("Invalid GitHub URL. Please provide a valid issue, pull request, or discussion URL.");
         }
+
+        var (owner, repo, type, number) = parseResult.Value;
 
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching GitHub comments...");
 
-        var githubCode = Configuration["FeedbackApi:GetGitHubFeedbackCode"]
+        var getFeedbackCode = Configuration["FeedbackApi:GetGitHubFeedbackCode"]
             ?? throw new InvalidOperationException("GitHub API code not configured");
 
-        var maxComments = await GetMaxCommentsToAnalyze();
-
-        // Get comments from the GitHub API
-        var getFeedbackUrl = $"{BaseUrl}/api/GetGitHubFeedback?code={Uri.EscapeDataString(githubCode)}&url={Uri.EscapeDataString(_url)}&maxComments={maxComments}";
-        var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
-        feedbackResponse.EnsureSuccessStatusCode();
-        var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
-
-        // Handle the response based on the item type
-        var content = parsedUrl.Value.type switch
+        var queryParams = new List<string>
         {
-            "issue" or "pull" => HandleIssueContent(responseContent),
-            "discussion" => HandleDiscussionContent(responseContent),
-            _ => throw new InvalidOperationException("Unsupported GitHub URL type")
+            $"code={Uri.EscapeDataString(getFeedbackCode)}",
+            $"repo={Uri.EscapeDataString($"{owner}/{repo}")}",
+            $"type={Uri.EscapeDataString(type)}",
+            $"number={number}"
         };
 
-        // Analyze the comments
-        var markdownResult = await AnalyzeComments("github", content);
+        var getFeedbackUrl = $"{BaseUrl}/api/GetGitHubItemComments?{string.Join("&", queryParams)}";
+        var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
+        feedbackResponse.EnsureSuccessStatusCode();
 
-        return (markdownResult, content);
+        var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
+        var comments = JsonSerializer.Deserialize<List<GithubCommentModel>>(responseContent);
+
+        if (comments == null || !comments.Any())
+        {
+            throw new InvalidOperationException("No comments found for the specified item");
+        }
+
+        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing comments...");
+
+        // Analyze the comments and return both the markdown result and the comments list
+        var markdown = await AnalyzeComments("github", responseContent);
+        return (markdown, comments);
     }
 
     private static string HandleIssueContent(string responseContent)

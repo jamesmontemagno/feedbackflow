@@ -25,7 +25,13 @@ public class HackerNewsService
         {
             try
             {
-                await GetComments(itemId, commentsChannel.Writer);
+                var story = await GetItemData(itemId);
+                if (story != null)
+                {
+                    story.MainStoryId = itemId;
+                    await commentsChannel.Writer.WriteAsync(story);
+                    await GetComments(itemId, commentsChannel.Writer, itemId);
+                }
                 commentsChannel.Writer.TryComplete();
             }
             catch (Exception ex)
@@ -37,7 +43,7 @@ public class HackerNewsService
         return commentsChannel.Reader.ReadAllAsync();
     }
 
-    private async Task GetComments(int itemId, ChannelWriter<HackerNewsItem> writer)
+    private async Task GetComments(int itemId, ChannelWriter<HackerNewsItem> writer, int mainStoryId)
     {
         HackerNewsItem? itemData = await GetItemData(itemId);
 
@@ -48,13 +54,13 @@ public class HackerNewsService
             foreach (var kidId in kids)
             {
                 var commentData = await GetItemData(kidId);
-
                 if (commentData is not null)
                 {
+                    commentData.MainStoryId = mainStoryId;
                     await writer.WriteAsync(commentData);
                 }
 
-                tasks.Add(GetComments(kidId, writer));
+                tasks.Add(GetComments(kidId, writer, mainStoryId));
             }
 
             await Task.WhenAll(tasks);
