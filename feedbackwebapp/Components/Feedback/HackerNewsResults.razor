@@ -1,8 +1,3 @@
-@namespace FeedbackWebApp.Components.Feedback
-@using FeedbackWebApp.Components.Feedback.Services
-@using SharedDump.Models.HackerNews
-@using Microsoft.AspNetCore.Components
-
 @if (Analyses?.Any() == true)
 {
     @foreach (var (analysis, index) in Analyses.Select((a, i) => (a, i)))

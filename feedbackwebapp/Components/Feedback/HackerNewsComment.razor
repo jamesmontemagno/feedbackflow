@@ -1,7 +1,3 @@
-@using Microsoft.AspNetCore.Components
-@using SharedDump.Models.HackerNews
-@using FeedbackWebApp.Components.Feedback
-
 <div class="comment-item p-3 mb-2 rounded @(Level > 0 ? "ms-4" : "")">
     <div class="d-flex justify-content-between">
         <strong>@Comment.By</strong>
@@ -28,8 +24,8 @@
     public int Level { get; set; }
 
     private List<HackerNewsItem>? ChildComments => 
-        Stories?.Where(s => s.Parent == Comment.Id).ToList();
+        CascadedStories?.Where(s => s.Parent == Comment.Id).ToList();
 
     [CascadingParameter]
-    public List<HackerNewsItem>? Stories { get; set; }
+    private List<HackerNewsItem>? CascadedStories { get; set; }
 }
