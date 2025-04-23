@@ -1,77 +1,61 @@
 @namespace FeedbackWebApp.Components.Feedback
+@using FeedbackWebApp.Components.Feedback.Services
 @using SharedDump.Models.HackerNews
 
-@if (Items?.Any() == true)
+@if (Analyses?.Any() == true)
 {
-    <div class="card shadow-sm">
-        <div class="card-header">
-            <div class="d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-newspaper text-warning me-2"></i>
-                    Found Articles (@Items.Count)
-                </h5>
-            </div>
-        </div>
-        <div class="card-body">
-            <div class="article-list">
-                @foreach (var item in Items)
-                {
-                    <div class="article-item mb-4">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h6 class="mb-0">
-                                <a href="@item.Url" target="_blank" class="article-link">
-                                    @item.Title
-                                </a>
-                            </h6>
-                            <div class="article-stats ms-2">
-                                <span class="badge bg-primary me-1">
-                                    <i class="bi bi-arrow-up-short"></i>
-                                    @item.Score
-                                </span>
-                                <span class="badge bg-secondary">
-                                    <i class="bi bi-chat-dots"></i>
-                                    @(item.Kids?.Count ?? 0)
-                                </span>
-                            </div>
-                        </div>
-                        <div class="article-meta">
-                            <small class="text-muted">
-                                by @item.By • @DateTimeOffset.FromUnixTimeSeconds(item.Time).ToString("MMM dd, yyyy")
-                            </small>
-                            @if (!string.IsNullOrEmpty(item.Text))
-                            {
-                                <p class="article-text mt-2 mb-0">@item.Text</p>
-                            }
-                        </div>
-                        @if (item.Kids?.Any() == true)
+    @foreach (var (analysis, index) in Analyses.Select((a, i) => (a, i)))
+    {
+        var story = analysis.Stories.FirstOrDefault();
+        if (story == null) continue;
+
+        <div class="card mt-4 shadow-sm">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-newspaper text-warning me-2"></i>
+                        Article @(index + 1): @story.Title
+                    </h5>
+                    <div>
+                        @if (!string.IsNullOrEmpty(story.Url))
                         {
-                            <div class="mt-2">
-                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => ToggleComments(item.Id)">
-                                    @(ExpandedArticles.Contains(item.Id) ? "Hide Comments" : $"Show Comments ({item.Kids.Count})")
-                                </button>
-                                @if (ExpandedArticles.Contains(item.Id))
-                                {
-                                    <div class="comments-container mt-2">
-                                        @foreach (var commentId in item.Kids)
-                                        {
-                                            <div class="comment-item p-3 mb-2 rounded">
-                                                <strong>Comment ID: @commentId</strong>
-                                            </div>
-                                        }
-                                    </div>
-                                }
+                            <a href="@story.Url" target="_blank" class="btn btn-sm btn-outline-light me-2">
+                                <i class="bi bi-box-arrow-up-right"></i> View Article
+                            </a>
+                        }
+                        <button class="btn btn-sm btn-outline-light" @onclick="() => ToggleComments(story.Id)">
+                            <i class="bi bi-chat-text me-1"></i>
+                            @(ExpandedArticles.Contains(story.Id) ? "Hide Comments" : $"Show Comments ({analysis.Stories.Count - 1})")
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+              
+                @if (ExpandedArticles.Contains(story.Id))
+                {
+                    <div class="comments-container mt-4">
+                        <h6 class="mb-3">Comments (@(analysis.Stories.Count - 1))</h6>
+                        @foreach (var comment in analysis.Stories.Skip(1))
+                        {
+                            <div class="comment-item p-3 mb-2 rounded">
+                                <div class="d-flex justify-content-between">
+                                    <strong>@comment.By</strong>
+                                    <small>@DateTimeOffset.FromUnixTimeSeconds(comment.Time).ToString("MMM dd, yyyy")</small>
+                                </div>
+                                <div class="mt-2">@((MarkupString)(comment?.Text ?? ""))</div>
                             </div>
                         }
                     </div>
                 }
             </div>
         </div>
-    </div>
+    }
 }
 
 @code {
     [Parameter]
-    public List<HackerNewsItem>? Items { get; set; }
+    public List<HackerNewsAnalysis>? Analyses { get; set; }
 
     private HashSet<int> ExpandedArticles { get; } = new();
 

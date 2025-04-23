@@ -5,6 +5,8 @@ using FeedbackWebApp.Services;
 
 namespace FeedbackWebApp.Components.Feedback.Services;
 
+public record HackerNewsAnalysis(string MarkdownResult, List<HackerNewsItem> Stories);
+
 public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackService
 {
     private readonly string _storyIds;
@@ -42,26 +44,43 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
         feedbackResponse.EnsureSuccessStatusCode();
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
 
-        // Parse the Hacker News response
-        var stories = JsonSerializer.Deserialize<List<HackerNewsItem>>(responseContent);
-        
-        if (stories == null || !stories.Any())
+        // Parse the Hacker News response as List<List<HackerNewsItem>>
+        var articleThreads = JsonSerializer.Deserialize<List<List<HackerNewsItem>>>(responseContent)
+            ?? throw new InvalidOperationException("Failed to deserialize Hacker News response");
+
+        if (!articleThreads.Any() || articleThreads.All(thread => !thread.Any()))
         {
             throw new InvalidOperationException("No comments found for the specified stories");
         }
 
-        var totalComments = stories.Sum(s => s.Kids?.Count ?? 0);
-        UpdateStatus(FeedbackProcessStatus.GatheringComments, $"Found {totalComments} comments across {stories.Count} Hacker News stories...");
-
-        // Build our analysis request with all comments
-        var allComments = string.Join("\n\n", stories.Select(story =>
+        var analyses = new List<HackerNewsAnalysis>();
+        var totalArticles = articleThreads.Count;
+        
+        for (var i = 0; i < articleThreads.Count; i++)
         {
-            var kids = story.Kids ?? new List<int>();
-            return $"Story: {story.Title}\n" + string.Join("\n", kids.Select(c => $"Comment by {story.By}: {story.Text ?? ""}"));
-        }));
+            var thread = articleThreads[i];
+            var story = thread.FirstOrDefault();
+            if (story == null) continue;
 
-        // Analyze the comments
-        var markdownResult = await AnalyzeComments("hackernews", allComments);
-        return (markdownResult, stories);
+            UpdateStatus(
+                FeedbackProcessStatus.GatheringComments, 
+                $"Analyzing article {i + 1} of {totalArticles}: {story.Title}"
+            );
+
+            var threadComments = string.Join("\n", thread.Skip(1).Select(comment => 
+                $"Comment by {comment.By}: {comment.Text ?? ""}"
+            ));
+
+            var analysisText = $"Story: {story.Title}\n{threadComments}";
+            var markdownResult = await AnalyzeComments("hackernews", analysisText);
+            analyses.Add(new HackerNewsAnalysis(markdownResult, thread));
+        }
+
+        // Combine all analyses into a single markdown document with headers for each article
+        var combinedMarkdown = string.Join("\n\n", analyses.Select((analysis, index) => 
+            $"# Article {index + 1}: {analysis.Stories.FirstOrDefault()?.Title}\n\n{analysis.MarkdownResult}"
+        ));
+
+        return (combinedMarkdown, analyses);
     }
 }

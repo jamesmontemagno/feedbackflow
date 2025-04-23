@@ -20,7 +20,7 @@ GET http://localhost:7071/api/GetTrendingRedditThreads?subreddit=dotnet&days=7&s
 
 # Hacker News Feedback APIs
 ### Get Hacker News Comments
-GET http://localhost:7204/api/GetHackerNewsFeedback?ids=37902023
+GET http://localhost:7204/api/GetHackerNewsFeedback?ids=43772311
 
 ### Search Hacker News Articles
 GET http://localhost:7071/api/SearchHackerNewsArticles?keywords=dotnet,aspnet,blazor

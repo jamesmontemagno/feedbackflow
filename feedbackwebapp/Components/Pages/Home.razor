@@ -12,6 +12,7 @@
 @using FeedbackWebApp.Components.Layout
 @using FeedbackWebApp.Components.Feedback
 @using FeedbackWebApp.Components.Feedback.Services
+
 @inject IConfiguration Configuration
 @inject HttpClient Http
 @inject FeedbackServiceProvider ServiceProvider
@@ -71,7 +72,9 @@
                     }
 
                     <AnalysisResults Error="@error" MarkdownResult="@markdownResult" />
-                    
+
+                    <HackerNewsResults Analyses="@hackerNewsAnalyses" />
+
                     <YouTubeComments Videos="@youtubeVideos" />
                     
                     <GitHubFeedback Issues="@githubIssues" PullRequests="@githubPullRequests" Discussions="@githubDiscussions" />
@@ -98,6 +101,7 @@
     private List<GithubIssueModel>? githubPullRequests;
     private List<GithubDiscussionModel>? githubDiscussions;
     private List<RedditThreadModel>? redditThreads;
+    private List<HackerNewsAnalysis>? hackerNewsAnalyses;
     private FeedbackProcessStatus currentStatus;
     private string currentStatusMessage = "";
     private string? initialSource;
@@ -128,6 +132,7 @@
             githubPullRequests = null;
             githubDiscussions = null;
             redditThreads = null;
+            hackerNewsAnalyses = null;
             isLoading = true;
 
             IFeedbackService service = selectedSource switch
@@ -155,6 +160,10 @@
             if (additionalData is List<YouTubeOutputVideo> videos)
             {
                 youtubeVideos = videos;
+            }
+            else if (selectedSource == "HackerNews" && additionalData is List<HackerNewsAnalysis> analyses)
+            {
+                hackerNewsAnalyses = analyses;
             }
             else if (selectedSource == "GitHub" && additionalData is List<GithubCommentModel> comments)
             {

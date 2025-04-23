@@ -4,8 +4,12 @@
 }
 
 .card-header {
-    background-color: var(--bg-secondary);
-    border-bottom-color: var(--border-color);
+    background: var(--primary-gradient) !important;
+}
+
+.card-header .card-title {
+    color: #ffffff;
+    margin: 0;
 }
 
 .card-title {
@@ -61,6 +65,17 @@
     border-color: var(--border-color);
 }
 
+.btn-outline-light {
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.btn-outline-light:hover {
+    background-color: var(--hover-bg);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
 .comment-item {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
@@ -74,6 +89,30 @@
 
 .comments-container {
     animation: slideDown 0.3s ease-out;
+}
+
+.markdown-body {
+    color: var(--text-primary);
+    background-color: transparent !important;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.markdown-body p {
+    color: var(--text-primary);
+}
+
+.markdown-body ul,
+.markdown-body ol {
+    color: var(--text-primary);
 }
 
 @keyframes slideDown {
