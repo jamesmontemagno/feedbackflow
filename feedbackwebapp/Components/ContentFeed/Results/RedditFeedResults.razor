@@ -1,0 +1,234 @@
+@namespace FeedbackWebApp.Components.ContentFeed.Results
+@using SharedDump.Models.Reddit
+@inject NavigationManager NavigationManager
+
+<div class="reddit-results">
+    <div class="controls mb-3">
+        <div class="row g-2">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" class="form-control" placeholder="Search threads..."
+                           @bind="SearchText" @bind:event="oninput" @onkeyup="HandleSearch" />
+                    @if (!string.IsNullOrWhiteSpace(SearchText))
+                    {
+                        <button class="btn btn-outline-secondary" @onclick="ClearSearch">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="btn-group w-100">
+                    <button class="btn @(CurrentSort == SortOption.Default ? "btn-primary" : "btn-outline-primary")"
+                            @onclick="() => Sort(SortOption.Default)">
+                        Relevance
+                    </button>
+                    <button class="btn @(CurrentSort == SortOption.Score ? "btn-primary" : "btn-outline-primary")"
+                            @onclick="() => Sort(SortOption.Score)">
+                        Score @(CurrentSort == SortOption.Score ? (IsAscending ? "↑" : "↓") : "")
+                    </button>
+                    <button class="btn @(CurrentSort == SortOption.Comments ? "btn-primary" : "btn-outline-primary")"
+                            @onclick="() => Sort(SortOption.Comments)">
+                        Comments @(CurrentSort == SortOption.Comments ? (IsAscending ? "↑" : "↓") : "")
+                    </button>
+                    <button class="btn @(CurrentSort == SortOption.Date ? "btn-primary" : "btn-outline-primary")"
+                            @onclick="() => Sort(SortOption.Date)">
+                        Date @(CurrentSort == SortOption.Date ? (IsAscending ? "↑" : "↓") : "")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (FilteredAndSortedThreads?.Any() == true)
+    {
+        @foreach (var thread in FilteredAndSortedThreads)
+        {
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h5 class="card-title mb-1">
+                            <i class="bi bi-reddit text-danger me-2"></i>
+                            @thread.Title
+                        </h5>
+                        <div class="btn-group">
+                            <a href="@thread.Url" target="_blank" class="btn btn-sm btn-outline-secondary" title="Open thread">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                            <a href="javascript:void(0)" class="btn btn-sm btn-outline-secondary" @onclick="() => OnAnalyzeClick(thread)" title="Analyze thread">
+                                <i class="bi bi-graph-up"></i>
+                            </a>
+                        </div>
+                    </div>
+                    
+                    @if (!string.IsNullOrWhiteSpace(thread.SelfText))
+                    {
+                        <div class="thread-content mt-3">
+                            @((thread.SelfText.Length > 300) ? $"{thread.SelfText[..300]}..." : thread.SelfText)
+                            @if (thread.SelfText.Length > 300)
+                            {
+                                <button class="btn btn-link p-0" @onclick="() => ToggleFullText(thread)">
+                                    Read more
+                                </button>
+                            }
+                        </div>
+                    }
+
+                    <div class="thread-meta mt-3">
+                        <div class="d-flex gap-3 text-muted small">
+                            <span>
+                                <i class="bi bi-person me-1"></i>
+                                u/@thread.Author
+                            </span>
+                            <span>
+                                <i class="bi bi-arrow-up-circle me-1"></i>
+                                @thread.Score
+                            </span>
+                            <span>
+                                <i class="bi bi-chat-left-text me-1"></i>
+                                @thread.NumComments comments
+                            </span>
+                            <span>
+                                <i class="bi bi-clock me-1"></i>
+                                @thread.CreatedUtc.LocalDateTime.ToString("MMM dd, yyyy HH:mm")
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="text-center text-muted">
+            <p>No threads found.</p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public List<RedditThreadModel>? Threads { get; set; }
+
+    [Parameter]
+    public EventCallback<RedditThreadModel> OnAnalyze { get; set; }
+
+    private string SearchText { get; set; } = string.Empty;
+    private System.Timers.Timer? _debounceTimer;
+    private SortOption CurrentSort { get; set; } = SortOption.Default;
+    private bool IsAscending { get; set; }
+    private List<RedditThreadModel>? _originalThreads;
+    private HashSet<string> _expandedThreadIds = new();
+
+    private enum SortOption
+    {
+        Default,
+        Score,
+        Comments,
+        Date
+    }
+
+    protected override void OnInitialized()
+    {
+        _debounceTimer = new System.Timers.Timer(300);
+        _debounceTimer.Elapsed += async (sender, e) => await InvokeAsync(StateHasChanged);
+        base.OnInitialized();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_originalThreads == null && Threads != null)
+        {
+            _originalThreads = Threads.ToList();
+        }
+        base.OnParametersSet();
+    }
+
+    private IEnumerable<RedditThreadModel> FilteredAndSortedThreads
+    {
+        get
+        {
+            var baseQuery = Threads ?? new List<RedditThreadModel>();
+
+            // Apply search filter
+            if (!string.IsNullOrWhiteSpace(SearchText))
+            {
+                var searchTerm = SearchText.Trim().ToLowerInvariant();
+                baseQuery = baseQuery.Where(t => 
+                    (t.Title?.ToLowerInvariant().Contains(searchTerm) ?? false) ||
+                    (t.SelfText?.ToLowerInvariant().Contains(searchTerm) ?? false)
+                ).ToList();
+            }
+
+            // Apply sorting
+            return CurrentSort switch
+            {
+                SortOption.Score => IsAscending 
+                    ? baseQuery.OrderBy(t => t.Score)
+                    : baseQuery.OrderByDescending(t => t.Score),
+                SortOption.Comments => IsAscending 
+                    ? baseQuery.OrderBy(t => t.NumComments)
+                    : baseQuery.OrderByDescending(t => t.NumComments),
+                SortOption.Date => IsAscending 
+                    ? baseQuery.OrderBy(t => t.CreatedUtc)
+                    : baseQuery.OrderByDescending(t => t.CreatedUtc),
+                _ => baseQuery
+            };
+        }
+    }
+
+    private void HandleSearch()
+    {
+        _debounceTimer?.Stop();
+        _debounceTimer?.Start();
+    }
+
+    private void ClearSearch()
+    {
+        SearchText = string.Empty;
+        StateHasChanged();
+    }
+
+    private void Sort(SortOption option)
+    {
+        if (CurrentSort == option)
+        {
+            if (option != SortOption.Default)
+            {
+                IsAscending = !IsAscending;
+            }
+        }
+        else
+        {
+            CurrentSort = option;
+            IsAscending = false;
+        }
+        StateHasChanged();
+    }
+
+    private void OnAnalyzeClick(RedditThreadModel thread)
+    {
+        NavigationManager.NavigateTo($"/?source=reddit&id={thread.Id}");
+    }
+
+    private void ToggleFullText(RedditThreadModel thread)
+    {
+        if (_expandedThreadIds.Contains(thread.Id))
+        {
+            _expandedThreadIds.Remove(thread.Id);
+        }
+        else
+        {
+            _expandedThreadIds.Add(thread.Id);
+        }
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        _debounceTimer?.Dispose();
+    }
+}

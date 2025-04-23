@@ -41,7 +41,7 @@ public class MockRedditFeedbackService(HttpClient http, IConfiguration configura
                                 Author = "zerquet",
                                 Body = "Thanks, will try that. Any recommended profiling tools?",
                                 Score = 5,
-                                Replies = null
+                                Replies = null!
                             }
                         }
                     },
@@ -52,7 +52,7 @@ public class MockRedditFeedbackService(HttpClient http, IConfiguration configura
                         Author = "wllmsaccnt",
                         Body = "ASP.NET Core pulls its thread from the thread pool. You might want to review that you are not doing any blocking IO...",
                         Score = 32,
-                        Replies = null
+                        Replies = null!
                     }
                 }
             }

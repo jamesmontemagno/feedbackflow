@@ -1,0 +1,116 @@
+.reddit-results {
+    animation: fadeIn 0.3s ease-in-out;
+    padding: 1rem 0;
+}
+
+.card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.card-title {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    line-height: 1.4;
+}
+
+.btn-outline-light {
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.btn-outline-light:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.btn-outline-secondary {
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.thread-meta {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    border-top: 1px solid var(--bs-border-color);
+    padding-top: 0.75rem;
+}
+
+.thread-meta span {
+    display: inline-flex;
+    align-items: center;
+}
+
+.thread-meta i {
+    font-size: 0.9em;
+}
+
+.thread-content {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.comments-container {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.text-muted {
+    color: var(--text-secondary) !important;
+}
+
+.controls .input-group-text {
+    background-color: var(--input-group-bg);
+    border-color: var(--border-color);
+    color: var(--text-muted);
+}
+
+.controls .form-control {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+.controls .form-control:focus {
+    background-color: var(--input-focus-bg);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem var(--focus-shadow);
+}
+
+.btn-group .btn {
+    border-color: var(--border-color);
+}
+
+.btn-link {
+    color: var(--danger-color);
+    text-decoration: none;
+}
+
+.btn-link:hover {
+    color: var(--danger-hover-color);
+    text-decoration: underline;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

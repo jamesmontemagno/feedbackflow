@@ -18,3 +18,14 @@ public class HackerNewsItem
     public List<int> Parts { get; set; } = [];
     public int? Descendants { get; set; }
 }
+
+public class HackerNewsItemBasicInfo
+{
+    public required int Id { get; set; }
+    public required string Title { get; set; }
+    public required string By { get; set; }
+    public required long Time { get; set; }
+    public string? Url { get; set; }
+    public int Score { get; set; }
+    public int Descendants { get; set; }
+}

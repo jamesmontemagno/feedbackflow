@@ -35,7 +35,7 @@
                             @(ExpandedThreads.Contains(thread.Id) ? "Hide Comments" : $"Show Comments ({thread.Comments?.Count})")
                         </button>
 
-                        @if (ExpandedThreads.Contains(thread.Id))
+                        @if (ExpandedThreads.Contains(thread.Id) && thread?.Comments?.Any() == true)
                         {
                             <div class="comments-container">
                                 @foreach (var comment in thread.Comments)

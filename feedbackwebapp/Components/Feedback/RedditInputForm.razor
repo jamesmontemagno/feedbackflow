@@ -28,4 +28,11 @@
     }
 
     public string[] ThreadIds { get; private set; } = Array.Empty<string>();
+
+    public void RefreshUI()
+    {
+        // This method can be used to trigger a UI refresh if needed.
+        // For example, you might want to call StateHasChanged() here if this component is part of a larger UI.
+        StateHasChanged();
+    }
 }

@@ -1,5 +1,7 @@
 using FeedbackWebApp.Components;
 using FeedbackWebApp.Components.Feedback.Services;
+using FeedbackWebApp.Components.ContentFeed.Services;
+using FeedbackWebApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,8 +11,11 @@ builder.AddServiceDefaults();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddHttpClient();
+builder.Services.AddScoped<HttpClient>();
 builder.Services.AddScoped<FeedbackServiceProvider>();
+builder.Services.AddScoped<ContentFeedServiceProvider>();
+builder.Services.AddScoped<AuthenticationService>();
+builder.Services.AddMemoryCache(); // Add this line for caching support
 
 var app = builder.Build();
 

@@ -11,35 +11,41 @@ public class RedditTokenResponse
 
 public class RedditListing
 {
-    public required string Kind { get; set; }
-    public required RedditListingData Data { get; set; }
+    public string Kind { get; set; } = "";
+    public RedditListingData Data { get; set; } = new();
 }
 
 public class RedditListingData
 {
-    public required RedditThingData[] Children { get; set; }
+    public RedditThingData[] Children { get; set; } = Array.Empty<RedditThingData>();
 }
 
 public class RedditThingData
 {
-    public required string Kind { get; set; }
-    public required RedditCommentData Data { get; set; }
+    public string Kind { get; set; } = "";
+    public RedditCommentData Data { get; set; } = new();
 }
 
 public class RedditCommentData
 {
-    public required string Id { get; set; }
+    public string Id { get; set; } = "";
     public string? ParentId { get; set; }
-    public required string Author { get; set; }
+    public string Author { get; set; } = "";
     public string? Body { get; set; }
-    public required string Permalink { get; set; }
-
-    //[JsonPropertyName("created_utc")]
-    //public long CreatedUtc { get; set; }
-    public required int Score { get; set; }
+    public string Permalink { get; set; } = "";
     public string? Title { get; set; }
     public string? Selftext { get; set; }
+
+    [JsonPropertyName("created_utc")]
+    public double CreatedUtc { get; set; }
+
+    [JsonPropertyName("num_comments")]
+    public int NumComments { get; set; }
+
+    public int Score { get; set; }
+    
     public object? Replies { get; set; }
+
     [JsonIgnore]
     public RedditListing? RepliesDisplay
     {
@@ -58,16 +64,41 @@ public class RedditCommentData
                     }
                     catch (JsonException)
                     {
-                        // Handle the case where deserialization fails
+                        return null;
                     }
                 }
+                return null;
             }
             catch
             {
-                // Log the exception if necessary
+                return null;
             }
-
-            return null;
         }
     }
+}
+
+public class RedditThreadModel
+{
+    public required string Id { get; set; }
+    public required string Title { get; set; }
+    public required string Author { get; set; }
+    public string SelfText { get; set; } = "";
+    public required string Url { get; set; }
+    public string Subreddit { get; set; } = "";
+    public int Score { get; set; }
+    public double UpvoteRatio { get; set; }
+    public int NumComments { get; set; }
+    public List<RedditCommentModel> Comments { get; set; } = [];
+    public DateTimeOffset CreatedUtc { get; set; }
+    public string Permalink { get; set; } = "";
+}
+
+public class RedditCommentModel
+{
+    public required string Id { get; set; }
+    public string? ParentId { get; set; }
+    public required string Author { get; set; }
+    public required string Body { get; set; }
+    public int Score { get; set; }
+    public List<RedditCommentModel>? Replies { get; set; } = [];
 }
