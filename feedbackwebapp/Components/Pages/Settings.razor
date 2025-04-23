@@ -23,7 +23,7 @@
                                    id="maxComments" 
                                    min="100" 
                                    max="5000"
-                                   @bind="settings.MaxCommentsToAnalyze" 
+                                   @bind="MaxCommentsToAnalyze" 
                                    @bind:event="oninput" />
                             <label for="maxComments">Maximum Comments to Analyze</label>
                             <div class="text-muted small">
@@ -35,7 +35,7 @@
                             <input class="form-check-input" 
                                    type="checkbox" 
                                    id="useCustomPrompts"
-                                   @bind="settings.UseCustomPrompts"
+                                   @bind="UseCustomPrompts"
                                    @bind:event="oninput">
                             <label class="form-check-label" for="useCustomPrompts">
                                 Use Custom Analysis Prompts
@@ -51,20 +51,20 @@
 
         <div class="row">
             <div class="col-12 mb-4">
-                <div class="card shadow-sm @(!settings.UseCustomPrompts ? "opacity-50" : "")">
+                <div class="card shadow-sm @(!UseCustomPrompts ? "opacity-50" : "")">
                     <div class="card-header">
                         <h5 class="card-title mb-0">Analysis Prompts</h5>
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
-                            @if (!settings.UseCustomPrompts)
+                            @if (!UseCustomPrompts)
                             {
                                 <div class="alert alert-info">
                                     Enable custom prompts in the settings above to modify these values.
                                 </div>
                             }
                         </div>
-                        <fieldset disabled="@(!settings.UseCustomPrompts)">
+                        <fieldset disabled="@(!UseCustomPrompts)">
                             <div class="mb-4">
                                 <label class="form-label d-flex justify-content-between">
                                     <span>YouTube Analysis Prompt</span>
@@ -151,6 +151,32 @@
     private UserSettingsService.UserSettings? settings;
     private bool isSaving;
     private bool hasUnsavedChanges;
+
+    private bool UseCustomPrompts
+    {
+        get => settings?.UseCustomPrompts ?? false;
+        set
+        {
+            if (settings != null)
+            {
+                settings.UseCustomPrompts = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
+    private int MaxCommentsToAnalyze
+    {
+        get => settings?.MaxCommentsToAnalyze ?? 1200;
+        set
+        {
+            if (settings != null)
+            {
+                settings.MaxCommentsToAnalyze = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
 
     private string YouTubePrompt
     {
