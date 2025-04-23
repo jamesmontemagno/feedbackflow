@@ -1,0 +1,65 @@
+@namespace FeedbackWebApp.Components.Feedback.Results
+@inject IJSRuntime JSRuntime
+
+@if (!string.IsNullOrEmpty(Error))
+{
+    <div class="alert alert-danger mt-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        @Error
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(MarkdownResult))
+{
+    <div class="card mt-4 shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Analysis Summary</h5>
+            <button class="btn btn-sm btn-outline-light" @onclick="CopyToClipboard">
+                <i class="bi bi-clipboard me-1"></i>
+                Copy
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="markdown-body">
+                @((MarkupString)Markdown.ToHtml(MarkdownResult))
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string? Error { get; set; }
+
+    [Parameter]
+    public string? MarkdownResult { get; set; }
+
+    private string? _previousMarkdown;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(MarkdownResult) && MarkdownResult != _previousMarkdown)
+        {
+            _previousMarkdown = MarkdownResult;
+            await TriggerConfetti();
+        }
+    }
+
+    private async Task TriggerConfetti()
+    {
+        await JSRuntime.InvokeVoidAsync("confetti", new
+        {
+            particleCount = 100,
+            spread = 70,
+            origin = new { y = 0.6 }
+        });
+    }
+
+    private async Task CopyToClipboard()
+    {
+        if (!string.IsNullOrEmpty(MarkdownResult))
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", MarkdownResult);
+        }
+    }
+}

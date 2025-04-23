@@ -1,7 +1,8 @@
 using FeedbackWebApp.Components;
-using FeedbackWebApp.Components.Feedback.Services;
-using FeedbackWebApp.Components.ContentFeed.Services;
 using FeedbackWebApp.Services;
+using FeedbackWebApp.Services.Authentication;
+using FeedbackWebApp.Services.ContentFeed;
+using FeedbackWebApp.Services.Feedback;
 
 var builder = WebApplication.CreateBuilder(args);
 

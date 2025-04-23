@@ -1,0 +1,19 @@
+@namespace FeedbackWebApp.Components.Feedback.Forms
+
+<div class="form-floating mb-3">
+    <input type="text" class="form-control" id="hnIds" @bind="Value" />
+    <label for="hnIds">Story IDs or URLs (comma-separated)</label>
+</div>
+
+@code {
+
+    public string? Value { get; set; }
+
+    public void RefreshUI()
+    {
+        // This method can be used to trigger a UI refresh if needed.
+        // For example, you might want to call StateHasChanged() here if this component is part of a larger UI.
+        StateHasChanged();
+    }
+
+}
