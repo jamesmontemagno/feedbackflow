@@ -36,6 +36,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FeedbackFlow.ServiceDefault
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "rddump", "rddump\rddump.csproj", "{1D58404B-10D9-47C1-B289-F01B76292317}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "feedbackflow.tests", "feedbackflow.tests\feedbackflow.tests.csproj", "{3E8D639A-8903-42DB-80F6-41306EA7FC07}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -166,6 +168,18 @@ Global
 		{1D58404B-10D9-47C1-B289-F01B76292317}.Release|x64.Build.0 = Release|Any CPU
 		{1D58404B-10D9-47C1-B289-F01B76292317}.Release|x86.ActiveCfg = Release|Any CPU
 		{1D58404B-10D9-47C1-B289-F01B76292317}.Release|x86.Build.0 = Release|Any CPU
+		{3E8D639A-8903-42DB-80F6-41306EA7FC07}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3E8D639A-8903-42DB-80F6-41306EA7FC07}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3E8D639A-8903-42DB-80F6-41306EA7FC07}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3E8D639A-8903-42DB-80F6-41306EA7FC07}.Debug|x64.Build.0 = Debug|Any CPU
+		{3E8D639A-8903-42DB-80F6-41306EA7FC07}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3E8D639A-8903-42DB-80F6-41306EA7FC07}.Debug|x86.Build.0 = Debug|Any CPU
+		{3E8D639A-8903-42DB-80F6-41306EA7FC07}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3E8D639A-8903-42DB-80F6-41306EA7FC07}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3E8D639A-8903-42DB-80F6-41306EA7FC07}.Release|x64.ActiveCfg = Release|Any CPU
+		{3E8D639A-8903-42DB-80F6-41306EA7FC07}.Release|x64.Build.0 = Release|Any CPU
+		{3E8D639A-8903-42DB-80F6-41306EA7FC07}.Release|x86.ActiveCfg = Release|Any CPU
+		{3E8D639A-8903-42DB-80F6-41306EA7FC07}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

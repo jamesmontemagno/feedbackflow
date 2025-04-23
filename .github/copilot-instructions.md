@@ -32,10 +32,10 @@
 - Use virtualization for large lists
 
 ## Testing
-- Write unit tests for complex component logic
+- Write unit tests for complex component logic only if i ask for tests
 - Test error scenarios
 - Mock external dependencies
-- Use bUnit for component testing
+- Use MSTest for component testing
 
 ## Documentation
 - Document public APIs

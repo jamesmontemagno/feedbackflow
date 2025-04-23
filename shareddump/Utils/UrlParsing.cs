@@ -24,6 +24,11 @@ public static class UrlParsing
                     var id = query["v"];
                     if (!string.IsNullOrEmpty(id)) results.Add(id);
                 }
+                else if (uri.Host.Contains("youtube.com") && uri.AbsolutePath.StartsWith("/live/"))
+                {
+                    var id = uri.AbsolutePath.Substring("/live/".Length);
+                    if (!string.IsNullOrEmpty(id)) results.Add(id);
+                }
                 // Handle youtu.be/ format
                 else if (uri.Host == "youtu.be")
                 {
