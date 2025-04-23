@@ -1,0 +1,67 @@
+::deep textarea.form-control {
+    font-size: 0.875rem;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+::deep textarea.form-control:focus {
+    background-color: var(--bg-secondary);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+::deep .form-floating > .form-control:focus::placeholder,
+::deep .form-floating > .form-control:not(:placeholder-shown)::placeholder {
+    color: var(--text-secondary);
+}
+
+::deep .form-floating > .form-control:focus ~ label,
+::deep .form-floating > .form-control:not(:placeholder-shown) ~ label {
+    color: var(--primary-color);
+    opacity: 1;
+}
+
+::deep .card {
+    transition: transform 0.2s ease;
+}
+
+::deep .card:hover {
+    transform: translateY(-2px);
+}
+
+::deep .btn-outline-secondary:hover {
+    background-color: var(--hover-bg);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.form-floating textarea.form-control {
+    height: auto;
+    min-height: 150px;
+}
+
+.form-control:has-changes {
+    border-color: var(--bs-primary);
+}
+
+.font-monospace {
+    font-size: 0.875rem;
+}
+
+.card {
+    transition: all 0.2s ease-in-out;
+}
+
+.card:has(.form-control:focus) {
+    box-shadow: var(--bs-box-shadow-sm) !important;
+}
+
+.btn:disabled {
+    cursor: not-allowed;
+}
+
+.spinner-border {
+    width: 1rem;
+    height: 1rem;
+}

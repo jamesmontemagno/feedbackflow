@@ -105,4 +105,72 @@ public static class UrlParsing
 
         return results.Count > 0 ? string.Join(",", results) : null;
     }
+
+    public static string ExtractRedditId(string[] urls)
+    {
+        if (urls == null || urls.Length == 0)
+            return string.Empty;
+
+        var processedIds = new List<string>();
+
+        foreach (var url in urls)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                continue;
+
+            // Handle direct thread IDs
+            if (url.StartsWith("t3_"))
+            {
+                processedIds.Add(url[3..]);
+                continue;
+            }
+
+            // Handle full Reddit URLs
+            if (TryParseRedditUrl(url, out var threadId))
+            {
+                processedIds.Add(threadId);
+            }
+            else if (IsValidRedditId(url))
+            {
+                processedIds.Add(url);
+            }
+        }
+
+        return string.Join(",", processedIds);
+    }
+
+    private static bool TryParseRedditUrl(string url, out string threadId)
+    {
+        threadId = string.Empty;
+        try
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                return false;
+
+            var uri = new Uri(url);
+            if (!uri.Host.Contains("reddit.com", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            var segments = uri.Segments;
+            var commentsIndex = Array.IndexOf(segments, "comments/");
+            if (commentsIndex == -1 || commentsIndex + 1 >= segments.Length)
+                return false;
+
+            threadId = segments[commentsIndex + 1].Trim('/');
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsValidRedditId(string id)
+    {
+        // Reddit IDs are 5-7 characters of base36 (alphanumeric)
+        return !string.IsNullOrWhiteSpace(id) && 
+               id.Length >= 5 && 
+               id.Length <= 7 && 
+               id.All(c => char.IsLetterOrDigit(c));
+    }
 }

@@ -1,6 +1,7 @@
 using SharedDump.Models.YouTube;
 using SharedDump.Utils;
 using System.Text.Json;
+using FeedbackWebApp.Services;
 
 namespace FeedbackWebApp.Components.Feedback.Services;
 
@@ -12,10 +13,11 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
     public YouTubeFeedbackService(
         HttpClient http, 
         IConfiguration configuration,
+        UserSettingsService userSettings,
         string videoIds,
         string playlistIds,
         FeedbackStatusUpdate? onStatusUpdate = null) 
-        : base(http, configuration, onStatusUpdate)
+        : base(http, configuration, userSettings, onStatusUpdate)
     {
         _videoIds = videoIds;
         _playlistIds = playlistIds;
@@ -36,10 +38,13 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         var youTubeCode = Configuration["FeedbackApi:GetYouTubeFeedbackCode"]
             ?? throw new InvalidOperationException("YouTube API code not configured");
 
+        var maxComments = await GetMaxCommentsToAnalyze();
+
         // Get comments from the YouTube API
         var queryParams = new List<string>
         {
-            $"code={Uri.EscapeDataString(youTubeCode)}"
+            $"code={Uri.EscapeDataString(youTubeCode)}",
+            $"maxComments={maxComments}"
         };
         
         if (!string.IsNullOrWhiteSpace(processedVideoIds))
@@ -56,8 +61,6 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         feedbackResponse.EnsureSuccessStatusCode();
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
         
-        UpdateStatus(FeedbackProcessStatus.GatheringComments, "Processing video data...");
-        
         // Parse the YouTube response
         var videos = JsonSerializer.Deserialize<List<YouTubeOutputVideo>>(responseContent);
         
@@ -66,56 +69,15 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
             throw new InvalidOperationException("No comments found for the specified videos/playlists");
         }
 
-        // Sort and limit comments for each video
-        foreach (var video in videos)
-        {
-            if (video.Comments != null)
-                video.Comments = video.Comments.OrderBy(c => c.PublishedAt).Take(MaxCommentsToAnalyze).ToList();
-        }
+        var totalComments = videos.Sum(v => v.Comments.Count);
+        UpdateStatus(FeedbackProcessStatus.GatheringComments, $"Found {totalComments} comments across {videos.Count} videos...");
 
-        var limitedJson = JsonSerializer.Serialize(videos);
-        var analysisBuilder = new System.Text.StringBuilder();
+        // Build our analysis request with all comments
+        var allComments = string.Join("\n\n", videos.SelectMany(v => 
+            v.Comments.Select(c => $"Video: {v.Title}\nComment by {c.Author}: {c.Text}")));
 
-        // If this is a playlist (more than one video), do an overall analysis first
-        if (videos.Count > 1)
-        {
-            UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing overall playlist feedback...");
-            var overallAnalysis = await AnalyzeComments("YouTube", limitedJson);
-            analysisBuilder.AppendLine("# Overall Playlist Analysis");
-            analysisBuilder.AppendLine();
-            analysisBuilder.AppendLine(overallAnalysis);
-            analysisBuilder.AppendLine();
-            analysisBuilder.AppendLine("---");
-            analysisBuilder.AppendLine();
-
-            // Process individual videos with progress updates
-            analysisBuilder.AppendLine("# Individual Video Analyses");
-            analysisBuilder.AppendLine();
-
-            for (int i = 0; i < videos.Count; i++)
-            {
-                var video = videos[i];
-                UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing video {i + 1} of {videos.Count}: {video.Title}");
-                
-                var videoJson = JsonSerializer.Serialize(new List<YouTubeOutputVideo> { video });
-                var videoAnalysis = await AnalyzeComments("YouTube", videoJson);
-                
-                analysisBuilder.AppendLine($"## {video.Title}");
-                analysisBuilder.AppendLine($"Video URL: {video.Url}");
-                analysisBuilder.AppendLine();
-                analysisBuilder.AppendLine(videoAnalysis);
-                analysisBuilder.AppendLine();
-                analysisBuilder.AppendLine("---");
-                analysisBuilder.AppendLine();
-            }
-        }
-        // For single video, just use the original analysis
-        else
-        {
-            var singleVideoAnalysis = await AnalyzeComments("YouTube", limitedJson);
-            analysisBuilder.Append(singleVideoAnalysis);
-        }
-
-        return (analysisBuilder.ToString(), videos);
+        // Analyze the comments
+        var markdownResult = await AnalyzeComments("YouTube", allComments);
+        return (markdownResult, videos);
     }
 }

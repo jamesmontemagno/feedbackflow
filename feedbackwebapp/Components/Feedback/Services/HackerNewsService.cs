@@ -1,6 +1,7 @@
 using SharedDump.Utils;
 using System.Text.Json;
 using System.Text;
+using FeedbackWebApp.Services;
 
 namespace FeedbackWebApp.Components.Feedback.Services;
 
@@ -10,10 +11,11 @@ public class HackerNewsService : FeedbackService, IHackerNewsFeedbackService
 
     public HackerNewsService(
         HttpClient http, 
-        IConfiguration configuration, 
+        IConfiguration configuration,
+        UserSettingsService userSettings,
         string itemId,
         FeedbackStatusUpdate? onStatusUpdate = null) 
-        : base(http, configuration, onStatusUpdate)
+        : base(http, configuration, userSettings, onStatusUpdate)
     {
         _itemId = itemId;
     }

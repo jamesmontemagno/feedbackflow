@@ -11,10 +11,15 @@ builder.AddServiceDefaults();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddScoped<HttpClient>();
+builder.Services.AddHttpClient("DefaultClient")
+    .ConfigureHttpClient(client =>
+    {
+        client.Timeout = TimeSpan.FromMinutes(3); // Adjust timeout value as needed
+    });
 builder.Services.AddScoped<FeedbackServiceProvider>();
 builder.Services.AddScoped<ContentFeedServiceProvider>();
 builder.Services.AddScoped<AuthenticationService>();
+builder.Services.AddScoped<UserSettingsService>();
 builder.Services.AddMemoryCache(); // Add this line for caching support
 
 var app = builder.Build();

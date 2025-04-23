@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SharedDump.Models.GitHub;
 using SharedDump.Utils;
+using FeedbackWebApp.Services;
 
 namespace FeedbackWebApp.Components.Feedback.Services;
 
@@ -11,19 +12,29 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
     private readonly bool _includeIssues;
     private readonly bool _includePullRequests;
     private readonly bool _includeDiscussions;
+    private readonly string _url;
+
+    private class GitHubResponse
+    {
+        public List<GithubIssueModel>? Issues { get; set; }
+        public List<GithubIssueModel>? PullRequests { get; set; }
+        public List<GithubDiscussionModel>? Discussions { get; set; }
+    }
 
     public GitHubFeedbackService(
         HttpClient http,
         IConfiguration configuration,
-        string repository,
+        UserSettingsService userSettings,
+        string url,
         string? labels = null,
         bool includeIssues = true,
         bool includePullRequests = false,
         bool includeDiscussions = false,
         FeedbackStatusUpdate? onStatusUpdate = null)
-        : base(http, configuration, onStatusUpdate)
+        : base(http, configuration, userSettings, onStatusUpdate)
     {
-        _repository = repository;
+        _url = url;
+        _repository = "";  // Will be parsed from URL
         _labels = labels;
         _includeIssues = includeIssues;
         _includePullRequests = includePullRequests;
@@ -32,53 +43,68 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
 
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
-        if (string.IsNullOrWhiteSpace(_repository))
+        var maxComments = await GetMaxCommentsToAnalyze();
+
+        var parseResult = GitHubUrlParser.ParseUrl(_url);
+        if (parseResult == null)
         {
-            throw new InvalidOperationException("Please enter a valid GitHub repository in the format owner/repository");
+            throw new InvalidOperationException("Please enter a valid GitHub URL");
         }
 
-        UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching GitHub feedback...");
+        var (owner, repo, type, number) = parseResult.Value;
 
-        var githubCode = Configuration["FeedbackApi:GetGitHubFeedbackCode"] 
+        UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching GitHub comments...");
+
+        var githubCode = Configuration["FeedbackApi:GetGitHubFeedbackCode"]
             ?? throw new InvalidOperationException("GitHub API code not configured");
 
-        // Build the query parameters
+        // Get comments from the GitHub API
         var queryParams = new List<string>
         {
-            $"repo={Uri.EscapeDataString(_repository)}",
-            $"issues={_includeIssues}",
-            $"pulls={_includePullRequests}",
-            $"discussions={_includeDiscussions}"
+            $"code={Uri.EscapeDataString(githubCode)}",
+            $"maxComments={maxComments}"
         };
 
-        // Add labels if specified
-        if (!string.IsNullOrWhiteSpace(_labels))
+        if (!string.IsNullOrEmpty(owner) && !string.IsNullOrEmpty(repo))
         {
-            queryParams.Add($"labels={Uri.EscapeDataString(_labels)}");
+            queryParams.Add($"repo={Uri.EscapeDataString($"{owner}/{repo}")}");
         }
 
-        // Get feedback from GitHub API
-        var getFeedbackUrl = $"{BaseUrl}/api/GetGitHubFeedback?code={Uri.EscapeDataString(githubCode)}&{string.Join("&", queryParams)}";
+        var getFeedbackUrl = $"{BaseUrl}/api/GetGitHubFeedback?{string.Join("&", queryParams)}";
         var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
         feedbackResponse.EnsureSuccessStatusCode();
-
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
-        
-        // Parse the JSON to extract GitHub data for potential additional display
-        var githubData = JsonDocument.Parse(responseContent).RootElement;
-        
-        // Create a data structure for additional GitHub data display if needed
-        var issues = JsonSerializer.Deserialize<List<GithubIssueModel>>(githubData.GetProperty("Issues").GetRawText());
-        var pulls = JsonSerializer.Deserialize<List<GithubIssueModel>>(githubData.GetProperty("PullRequests").GetRawText());
-        var discussions = JsonSerializer.Deserialize<List<GithubDiscussionModel>>(githubData.GetProperty("Discussions").GetRawText());
 
-        // Sort and limit comments for each issue, pull, and discussion
+        var response = JsonSerializer.Deserialize<GitHubResponse>(responseContent);
+
+        var issues = response?.Issues;
+        var pulls = response?.PullRequests;
+        var discussions = response?.Discussions;
+
+        if ((issues == null || !issues.Any()) && 
+            (pulls == null || !pulls.Any()) && 
+            (discussions == null || !discussions.Any()))
+        {
+            throw new InvalidOperationException("No comments found in the specified GitHub items");
+        }
+
+        // Calculate total comments across all items
+        var totalIssueComments = issues?.Sum(i => i.Comments?.Length ?? 0) ?? 0;
+        var totalPRComments = pulls?.Sum(p => p.Comments?.Length ?? 0) ?? 0;
+        var totalDiscussionComments = discussions?.Sum(d => d.Comments?.Length ?? 0) ?? 0;
+        var totalComments = totalIssueComments + totalPRComments + totalDiscussionComments;
+        var totalItems = (issues?.Count ?? 0) + (pulls?.Count ?? 0) + (discussions?.Count ?? 0);
+
+        UpdateStatus(FeedbackProcessStatus.GatheringComments, 
+            $"Found {totalComments} comments across {totalItems} items ({issues?.Count ?? 0} issues, {pulls?.Count ?? 0} PRs, {discussions?.Count ?? 0} discussions)...");
+
+        // Sort and limit comments for each item type
         if (issues != null)
         {
             foreach (var issue in issues)
             {
                 if (issue.Comments != null)
-                    issue.Comments = issue.Comments.OrderBy(c => c.CreatedAt).Take(MaxCommentsToAnalyze).ToArray();
+                    issue.Comments = issue.Comments.OrderBy(c => c.CreatedAt).Take(maxComments).ToArray();
             }
         }
         if (pulls != null)
@@ -86,7 +112,7 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
             foreach (var pr in pulls)
             {
                 if (pr.Comments != null)
-                    pr.Comments = pr.Comments.OrderBy(c => c.CreatedAt).Take(MaxCommentsToAnalyze).ToArray();
+                    pr.Comments = pr.Comments.OrderBy(c => c.CreatedAt).Take(maxComments).ToArray();
             }
         }
         if (discussions != null)
@@ -94,7 +120,7 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
             foreach (var disc in discussions)
             {
                 if (disc.Comments != null)
-                    disc.Comments = disc.Comments.OrderBy(c => c.CreatedAt).Take(MaxCommentsToAnalyze).ToArray();
+                    disc.Comments = disc.Comments.OrderBy(c => c.CreatedAt).Take(maxComments).ToArray();
             }
         }
 
@@ -105,10 +131,9 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
         });
 
         // Analyze the comments
-        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing GitHub feedback...");
         var markdownResult = await AnalyzeComments("GitHub", limitedJson);
 
-        // Create a data structure for additional GitHub data display if needed
+        // Create a data structure for additional GitHub data display
         var additionalData = new
         {
             Issues = issues,

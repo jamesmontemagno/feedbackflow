@@ -102,7 +102,6 @@
     private string currentStatusMessage = "";
     private string? initialSource;
     private string? initialId;
-    private bool isFirstRender = true;
 
     private void HandleAuthenticated(bool success)
     {
@@ -230,8 +229,6 @@
         await Task.Delay(100); // Allow the UI to settle before executing the logic
         if (firstRender && !string.IsNullOrEmpty(initialSource) && !string.IsNullOrEmpty(initialId))
         {
-            isFirstRender = false;
-
             // Set the selected source first
             selectedSource = initialSource.ToLower() switch
             {

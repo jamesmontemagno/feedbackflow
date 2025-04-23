@@ -1,102 +1,94 @@
 using SharedDump.Models.YouTube;
+using FeedbackWebApp.Services;
 
 namespace FeedbackWebApp.Components.Feedback.Services;
 
-public class MockYouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
+public class MockYouTubeFeedbackService(
+    HttpClient http,
+    IConfiguration configuration,
+    UserSettingsService userSettings,
+    FeedbackStatusUpdate? onStatusUpdate = null)
+    : FeedbackService(http, configuration, userSettings, onStatusUpdate), IYouTubeFeedbackService
 {
-    public MockYouTubeFeedbackService(
-        HttpClient http,
-        IConfiguration configuration,
-        FeedbackStatusUpdate? onStatusUpdate = null) 
-        : base(http, configuration, onStatusUpdate)
-    {
-    }
-
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
-        UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching YouTube comments...");
-        await Task.Delay(1500); // Simulate network delay
+        UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock YouTube comments...");
+        await Task.Delay(1000); // Simulate network delay
 
         var mockVideos = new List<YouTubeOutputVideo>
         {
             new()
             {
-                Id = "mock1",
-                Title = "Mock Video 1",
-                Url = "https://youtube.com/watch?v=mock1",
-                Comments = new List<YouTubeOutputComment>
-                {
-                    new() { Id = "c1", Author = "User1", Text = "Great video!", PublishedAt = DateTime.Now.AddDays(-1) },
-                    new() { Id = "c2", Author = "User2", Text = "Could you explain X more?", PublishedAt = DateTime.Now.AddDays(-2) }
-                }
+                Id = "abc123",
+                Title = "Sample Video 1",
+                Comments =
+                [
+                    new()
+                    { 
+                        Id = "comment1",
+                        Author = "User1",
+                        Text = "Great video! Very informative.",
+                        PublishedAt = DateTime.UtcNow.AddDays(-1)
+                    },
+                    new()
+                    { 
+                        Id = "comment2",
+                        Author = "User2",
+                        Text = "Could you make a follow-up on this topic?",
+                        PublishedAt = DateTime.UtcNow.AddDays(-2)
+                    }
+                ]
             },
             new()
             {
-                Id = "mock2",
-                Title = "Mock Video 2",
-                Url = "https://youtube.com/watch?v=mock2",
-                Comments = new List<YouTubeOutputComment>
-                {
-                    new() { Id = "c3", Author = "User3", Text = "This helped a lot!", PublishedAt = DateTime.Now.AddDays(-3) }
-                }
+                Id = "xyz789",
+                Title = "Sample Video 2",
+                Comments =
+                [
+                    new()
+                    { 
+                        Id = "comment3",
+                        Author = "User3",
+                        Text = "Excellent explanation, helped me understand the concept.",
+                        PublishedAt = DateTime.UtcNow.AddDays(-3)
+                    },
+                    new()
+                    { 
+                        Id = "comment4",
+                        Author = "User4",
+                        Text = "The examples at 5:30 were really helpful.",
+                        PublishedAt = DateTime.UtcNow.AddDays(-4)
+                    }
+                ]
             }
         };
 
-        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing YouTube comments...");
-        await Task.Delay(2000); // Simulate AI analysis time
+        var allComments = string.Join("\n\n", mockVideos.SelectMany(v => 
+            v.Comments.Select(c => $"Video: {v.Title}\nComment by {c.Author}: {c.Text}")));
 
-        const string mockMarkdown = @"# Analysis Summary
-
-## Overall Sentiment
-Very positive engagement with constructive feedback.
-
-## Key Points
-- Users found the content helpful
-- Some requests for more detailed explanations
-- High engagement rate
-
-## Suggestions
-- Consider creating follow-up videos
-- More in-depth explanations requested";
-
-        UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed");
-        return (mockMarkdown, mockVideos);
+        var markdownResult = await AnalyzeComments("youtube", allComments);
+        return (markdownResult, mockVideos);
     }
 }
 
-public class MockHackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackService
+public class MockHackerNewsFeedbackService(
+    HttpClient http,
+    IConfiguration configuration,
+    UserSettingsService userSettings,
+    FeedbackStatusUpdate? onStatusUpdate = null)
+    : FeedbackService(http, configuration, userSettings, onStatusUpdate), IHackerNewsFeedbackService
 {
-    public MockHackerNewsFeedbackService(
-        HttpClient http,
-        IConfiguration configuration,
-        FeedbackStatusUpdate? onStatusUpdate = null) 
-        : base(http, configuration, onStatusUpdate)
-    {
-    }
-
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
-        UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching Hacker News comments...");
-        await Task.Delay(1500); // Simulate network delay
+        UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock Hacker News comments...");
+        await Task.Delay(1000);
 
-        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing Hacker News discussion...");
-        await Task.Delay(2000); // Simulate AI analysis time
+        var mockComments = "Story: Understanding TypeScript's Type System\n" +
+            "Comment by user1: TypeScript has been a game changer for our team's productivity.\n" +
+            "Comment by user2: The strict mode is essential for catching potential issues early.\n" +
+            "Comment by user3: Great write-up, but I think you missed covering mapped types.";
 
-        const string mockMarkdown = @"# HackerNews Discussion Analysis
-
-## Overview
-High quality technical discussion with valuable insights.
-
-## Key Technical Points
-- Discussion of scalability approaches
-- Security considerations raised
-- Performance optimization suggestions
-
-## Notable Insights
-- Several users shared real-world implementation experiences
-- Good balance of theoretical and practical perspectives";
-
-        UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed");
-        return (mockMarkdown, null);
+        var markdownResult = await AnalyzeComments("hackernews", mockComments);
+        return (markdownResult, null);
     }
 }

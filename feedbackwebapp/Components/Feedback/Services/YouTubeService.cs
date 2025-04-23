@@ -2,6 +2,7 @@ using SharedDump.Models.YouTube;
 using SharedDump.Utils;
 using System.Text.Json;
 using System.Text;
+using FeedbackWebApp.Services;
 
 namespace FeedbackWebApp.Components.Feedback.Services;
 
@@ -12,11 +13,12 @@ public class YouTubeService : FeedbackService, IYouTubeFeedbackService
 
     public YouTubeService(
         HttpClient http, 
-        IConfiguration configuration, 
+        IConfiguration configuration,
+        UserSettingsService userSettings,
         string videoIds, 
         string playlistIds,
         FeedbackStatusUpdate? onStatusUpdate = null) 
-        : base(http, configuration, onStatusUpdate)
+        : base(http, configuration, userSettings, onStatusUpdate)
     {
         _videoIds = videoIds;
         _playlistIds = playlistIds;

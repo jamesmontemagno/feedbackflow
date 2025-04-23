@@ -1,10 +1,19 @@
 using SharedDump.Models.Reddit;
+using FeedbackWebApp.Services;
 
 namespace FeedbackWebApp.Components.Feedback.Services;
 
-public class MockRedditFeedbackService(HttpClient http, IConfiguration configuration, FeedbackStatusUpdate? onStatusUpdate = null) 
-    : FeedbackService(http, configuration, onStatusUpdate), IRedditFeedbackService
+public class MockRedditFeedbackService : FeedbackService, IRedditFeedbackService
 {
+    public MockRedditFeedbackService(
+        HttpClient http, 
+        IConfiguration configuration, 
+        UserSettingsService userSettings,
+        FeedbackStatusUpdate? onStatusUpdate = null) 
+        : base(http, configuration, userSettings, onStatusUpdate)
+    {
+    }
+
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock Reddit data...");

@@ -277,7 +277,10 @@ public class FeedbackFunctions
             }
 
             var analysisBuilder = new System.Text.StringBuilder();
-            await foreach (var update in _analyzerService.GetStreamingAnalysisAsync(request.ServiceType, request.Comments))
+            await foreach (var update in _analyzerService.GetStreamingAnalysisAsync(
+                request.ServiceType, 
+                request.Comments,
+                request.CustomPrompt))
             {
                 analysisBuilder.Append(update);
             }
@@ -412,6 +415,9 @@ public class AnalyzeCommentsRequest
     
     [JsonPropertyName("serviceType")]
     public string ServiceType { get; set; } = string.Empty;
+
+    [JsonPropertyName("customPrompt")]
+    public string? CustomPrompt { get; set; }
 }
 
 public class AnalyzeCommentsBYOKRequest

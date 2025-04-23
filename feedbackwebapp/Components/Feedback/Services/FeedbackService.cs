@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using FeedbackWebApp.Services;
 
 namespace FeedbackWebApp.Components.Feedback.Services;
 
@@ -14,16 +15,21 @@ public delegate void FeedbackStatusUpdate(FeedbackProcessStatus status, string m
 
 public abstract class FeedbackService
 {
-    public const int MaxCommentsToAnalyze = 1200;
+    private readonly UserSettingsService _userSettings;
     protected readonly HttpClient Http;
     protected readonly IConfiguration Configuration;
     protected readonly string BaseUrl;
     protected readonly FeedbackStatusUpdate? OnStatusUpdate;
 
-    protected FeedbackService(HttpClient http, IConfiguration configuration, FeedbackStatusUpdate? onStatusUpdate = null)
+    protected FeedbackService(
+        HttpClient http, 
+        IConfiguration configuration, 
+        UserSettingsService userSettings,
+        FeedbackStatusUpdate? onStatusUpdate = null)
     {
         Http = http;
         Configuration = configuration;
+        _userSettings = userSettings;
         BaseUrl = configuration["FeedbackApi:BaseUrl"] 
             ?? throw new InvalidOperationException("API base URL not configured");
         OnStatusUpdate = onStatusUpdate;
@@ -36,15 +42,48 @@ public abstract class FeedbackService
 
     protected async Task<string> AnalyzeComments(string serviceType, string comments)
     {
-        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing gathered comments...");
+        var maxComments = await GetMaxCommentsToAnalyze();
+
+        // Count the number of comments by counting newlines since each comment is on a new line
+        var commentCount = comments.Count(c => c == '\n') + 1;
+        
+        // Calculate estimated analysis time (20 seconds per 100 comments)
+        var estimatedSeconds = (int)Math.Ceiling(commentCount * 20.0 / 100);
+        
+        if (commentCount > maxComments)
+        {
+            UpdateStatus(
+                FeedbackProcessStatus.AnalyzingComments, 
+                $"Analyzing {maxComments} comments out of {commentCount} total (analysis limited for performance). " +
+                $"Estimated time: {estimatedSeconds} seconds..."
+            );
+        }
+        else
+        {
+            UpdateStatus(
+                FeedbackProcessStatus.AnalyzingComments, 
+                $"Analyzing {commentCount} comments. Estimated time: {estimatedSeconds} seconds..."
+            );
+        }
 
         var analyzeCode = Configuration["FeedbackApi:AnalyzeCommentsCode"]
             ?? throw new InvalidOperationException("Analyze API code not configured");
 
+        var settings = await _userSettings.GetSettingsAsync();
+        var customPrompt = settings.UseCustomPrompts 
+            ? settings.ServicePrompts.GetValueOrDefault(serviceType.ToLower())
+            : null;
+
+        if (customPrompt != null)
+        {
+            customPrompt = customPrompt.TrimEnd() + " Format your response in markdown.";
+        }
+
         var analyzeRequestBody = JsonSerializer.Serialize(new
         {
             serviceType,
-            comments
+            comments,
+            customPrompt
         });
 
         var analyzeContent = new StringContent(
@@ -54,11 +93,17 @@ public abstract class FeedbackService
 
         var getAnalysisUrl = $"{BaseUrl}/api/AnalyzeComments?code={Uri.EscapeDataString(analyzeCode)}";
         var analyzeResponse = await Http.PostAsync(getAnalysisUrl, analyzeContent);
-
         analyzeResponse.EnsureSuccessStatusCode();
+        
         UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed");
         return await analyzeResponse.Content.ReadAsStringAsync();
     }
 
     public abstract Task<(string markdownResult, object? additionalData)> GetFeedback();
+
+    protected async Task<int> GetMaxCommentsToAnalyze()
+    {
+        var settings = await _userSettings.GetSettingsAsync();
+        return settings.MaxCommentsToAnalyze;
+    }
 }

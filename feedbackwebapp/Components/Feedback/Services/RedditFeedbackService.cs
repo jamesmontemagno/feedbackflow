@@ -1,5 +1,8 @@
 using System.Net.Http.Json;
 using SharedDump.Models.Reddit;
+using FeedbackWebApp.Services;
+using System.Text.Json;
+using SharedDump.Utils;
 
 namespace FeedbackWebApp.Components.Feedback.Services;
 
@@ -11,63 +14,55 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
         string[] threadIds,
         HttpClient http,
         IConfiguration configuration,
+        UserSettingsService userSettings,
         FeedbackStatusUpdate? onStatusUpdate = null)
-        : base(http, configuration, onStatusUpdate)
+        : base(http, configuration, userSettings, onStatusUpdate)
     {
         _threadIds = threadIds;
     }
 
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
-        if (_threadIds.Length == 0)
+        var processedIds = UrlParsing.ExtractRedditId(_threadIds);
+
+        if (string.IsNullOrWhiteSpace(processedIds))
         {
-            throw new InvalidOperationException("No thread IDs provided");
+            throw new InvalidOperationException("Please enter at least one valid Reddit thread ID or URL");
         }
 
-        UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching Reddit threads...");
+        UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching Reddit comments...");
 
-        var threads = new List<RedditThreadModel>();
-        var getRedditCode = Configuration["FeedbackApi:GetRedditFeedbackCode"] 
+        var redditCode = Configuration["FeedbackApi:GetRedditFeedbackCode"]
             ?? throw new InvalidOperationException("Reddit API code not configured");
 
-        foreach (var threadId in _threadIds)
+        var maxComments = await GetMaxCommentsToAnalyze();
+
+        // Get comments from the Reddit API
+        var getFeedbackUrl = $"{BaseUrl}/api/GetRedditFeedback?code={Uri.EscapeDataString(redditCode)}&threads={Uri.EscapeDataString(processedIds)}&maxComments={maxComments}";
+        var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
+        feedbackResponse.EnsureSuccessStatusCode();
+        var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
+
+        // Parse the Reddit response
+        var threads = JsonSerializer.Deserialize<List<RedditThreadModel>>(responseContent);
+
+        if (threads == null || !threads.Any())
         {
-            try
-            {
-                var getFeedbackUrl = $"{BaseUrl}/api/GetRedditFeedback?code={Uri.EscapeDataString(getRedditCode)}&threads={Uri.EscapeDataString(threadId)}";
-
-                var stringResponse = await Http.GetStringAsync(getFeedbackUrl);
-                var response = System.Text.Json.JsonSerializer.Deserialize<RedditThreadModel[]>(stringResponse);
-
-                
-                if (response != null && response.Length > 0)
-                {
-                    threads.AddRange(response);
-                }
-            }
-            catch (Exception)
-            {
-                throw; // Properly re-throw the exception without losing stack trace
-            }
+            throw new InvalidOperationException("No comments found in the specified threads");
         }
 
-        if (!threads.Any())
+        var totalComments = threads.Sum(t => t.NumComments);
+        UpdateStatus(FeedbackProcessStatus.GatheringComments, $"Found {totalComments} comments across {threads.Count} Reddit threads...");
+
+        // Build our analysis request with all threads and comments
+        var allComments = string.Join("\n\n", threads.Select(thread =>
         {
-            throw new InvalidOperationException("No Reddit threads found");
-        }
+            var comments = thread.Comments.Select(c => $"Comment by {c.Author}: {c.Body}");
+            return $"Thread: {thread.Title}\n{string.Join("\n", comments)}";
+        }));
 
-        // Sort and limit comments for each thread
-        foreach (var thread in threads)
-        {
-            if (thread.Comments != null)
-                thread.Comments = thread.Comments.OrderBy(c => c.CreatedUtc).Take(MaxCommentsToAnalyze).ToList();
-        }
-
-        var limitedJson = System.Text.Json.JsonSerializer.Serialize(threads);
-        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing Reddit comments...");
-        
-        var analysis = await AnalyzeComments("reddit", limitedJson);
-
-        return (analysis, threads);
+        // Analyze the comments
+        var markdownResult = await AnalyzeComments("reddit", allComments);
+        return (markdownResult, threads);
     }
 }

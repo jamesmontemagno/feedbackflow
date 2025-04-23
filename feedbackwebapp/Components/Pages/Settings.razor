@@ -1,0 +1,264 @@
+@page "/settings"
+@using FeedbackWebApp.Services
+@inject UserSettingsService UserSettings
+@implements IDisposable
+
+<PageTitle>Settings - FeedbackFlow</PageTitle>
+
+<div class="container py-4">
+    <h1 class="mb-4">Settings</h1>
+
+    @if (settings != null)
+    {
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Analysis Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-floating mb-3">
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="maxComments" 
+                                   min="100" 
+                                   max="5000"
+                                   @bind="settings.MaxCommentsToAnalyze" 
+                                   @bind:event="oninput" />
+                            <label for="maxComments">Maximum Comments to Analyze</label>
+                            <div class="text-muted small">
+                                Default: 1200. Analyzing more comments will take longer but provide more comprehensive results.
+                            </div>
+                        </div>
+
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="useCustomPrompts"
+                                   @bind="settings.UseCustomPrompts"
+                                   @bind:event="oninput">
+                            <label class="form-check-label" for="useCustomPrompts">
+                                Use Custom Analysis Prompts
+                            </label>
+                            <div class="text-muted small">
+                                Enable to use custom prompts instead of the default ones.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12 mb-4">
+                <div class="card shadow-sm @(!settings.UseCustomPrompts ? "opacity-50" : "")">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Analysis Prompts</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            @if (!settings.UseCustomPrompts)
+                            {
+                                <div class="alert alert-info">
+                                    Enable custom prompts in the settings above to modify these values.
+                                </div>
+                            }
+                        </div>
+                        <fieldset disabled="@(!settings.UseCustomPrompts)">
+                            <div class="mb-4">
+                                <label class="form-label d-flex justify-content-between">
+                                    <span>YouTube Analysis Prompt</span>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("youtube"))">Reset to Default</button>
+                                </label>
+                                <textarea class="form-control font-monospace" 
+                                        rows="6" 
+                                        @bind="YouTubePrompt"
+                                        @bind:event="oninput"></textarea>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label d-flex justify-content-between">
+                                    <span>GitHub Analysis Prompt</span>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("github"))">Reset to Default</button>
+                                </label>
+                                <textarea class="form-control font-monospace" 
+                                        rows="6" 
+                                        @bind="GitHubPrompt"
+                                        @bind:event="oninput"></textarea>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label d-flex justify-content-between">
+                                    <span>Hacker News Analysis Prompt</span>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("hackernews"))">Reset to Default</button>
+                                </label>
+                                <textarea class="form-control font-monospace" 
+                                        rows="6" 
+                                        @bind="HackerNewsPrompt"
+                                        @bind:event="oninput"></textarea>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label d-flex justify-content-between">
+                                    <span>Reddit Analysis Prompt</span>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("reddit"))">Reset to Default</button>
+                                </label>
+                                <textarea class="form-control font-monospace" 
+                                        rows="6" 
+                                        @bind="RedditPrompt"
+                                        @bind:event="oninput"></textarea>
+                            </div>
+                        </fieldset>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-end gap-2">
+                    <button class="btn btn-primary" 
+                            @onclick="SaveSettings" 
+                            disabled="@(isSaving || !hasUnsavedChanges)">
+                        @if (isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            <span>Saving...</span>
+                        }
+                        else
+                        {
+                            <span>Save Changes</span>
+                        }
+                    </button>
+                    <button class="btn btn-outline-secondary" 
+                            @onclick="LoadSettings"
+                            disabled="@(!hasUnsavedChanges)">Reset Changes</button>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private UserSettingsService.UserSettings? settings;
+    private bool isSaving;
+    private bool hasUnsavedChanges;
+
+    private string YouTubePrompt
+    {
+        get => settings?.ServicePrompts.GetValueOrDefault("youtube") ?? "";
+        set
+        {
+            if (settings != null)
+            {
+                settings.ServicePrompts["youtube"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
+    private string GitHubPrompt
+    {
+        get => settings?.ServicePrompts.GetValueOrDefault("github") ?? "";
+        set
+        {
+            if (settings != null)
+            {
+                settings.ServicePrompts["github"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
+    private string HackerNewsPrompt
+    {
+        get => settings?.ServicePrompts.GetValueOrDefault("hackernews") ?? "";
+        set
+        {
+            if (settings != null)
+            {
+                settings.ServicePrompts["hackernews"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
+    private string RedditPrompt
+    {
+        get => settings?.ServicePrompts.GetValueOrDefault("reddit") ?? "";
+        set
+        {
+            if (settings != null)
+            {
+                settings.ServicePrompts["reddit"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadSettings();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadSettings()
+    {
+        settings = await UserSettings.GetSettingsAsync();
+        hasUnsavedChanges = false;
+        StateHasChanged();
+    }
+
+    private async Task SaveSettings()
+    {
+        if (settings == null) return;
+
+        try
+        {
+            isSaving = true;
+            await UserSettings.SaveSettingsAsync(settings);
+            hasUnsavedChanges = false;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void ResetPrompt(string serviceType)
+    {
+        if (settings == null) return;
+
+        settings.ServicePrompts[serviceType] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt(serviceType);
+        hasUnsavedChanges = true;
+        StateHasChanged();
+    }
+
+    private void ResetAllPrompts()
+    {
+        if (settings == null) return;
+
+        foreach (var serviceType in settings.ServicePrompts.Keys.ToList())
+        {
+            settings.ServicePrompts[serviceType] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt(serviceType);
+        }
+        hasUnsavedChanges = true;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        // Cleanup if needed
+    }
+}
