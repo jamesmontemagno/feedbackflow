@@ -56,10 +56,17 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
             throw new InvalidOperationException("No Reddit threads found");
         }
 
+        // Sort and limit comments for each thread
+        foreach (var thread in threads)
+        {
+            if (thread.Comments != null)
+                thread.Comments = thread.Comments.OrderBy(c => c.CreatedUtc).Take(MaxCommentsToAnalyze).ToList();
+        }
+
+        var limitedJson = System.Text.Json.JsonSerializer.Serialize(threads);
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing Reddit comments...");
         
-        var commentsJson = System.Text.Json.JsonSerializer.Serialize(threads);
-        var analysis = await AnalyzeComments("reddit", commentsJson);
+        var analysis = await AnalyzeComments("reddit", limitedJson);
 
         return (analysis, threads);
     }

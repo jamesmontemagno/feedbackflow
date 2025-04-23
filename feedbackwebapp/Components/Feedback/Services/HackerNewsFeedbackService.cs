@@ -1,3 +1,4 @@
+using SharedDump.Models.HackerNews;
 using SharedDump.Utils;
 
 namespace FeedbackWebApp.Components.Feedback.Services;
@@ -37,7 +38,10 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
 
         // Analyze the comments
-        var markdownResult = await AnalyzeComments("HackerNews", responseContent);
+        var items = System.Text.Json.JsonSerializer.Deserialize<List<HackerNewsItem>>(responseContent) ?? new();
+        items = items.OrderBy(k => k.Time).ToList();
+        var limitedJson = System.Text.Json.JsonSerializer.Serialize(items);
+        var markdownResult = await AnalyzeComments("HackerNews", limitedJson);
 
         return (markdownResult, null);
     }

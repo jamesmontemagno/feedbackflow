@@ -66,13 +66,21 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
             throw new InvalidOperationException("No comments found for the specified videos/playlists");
         }
 
+        // Sort and limit comments for each video
+        foreach (var video in videos)
+        {
+            if (video.Comments != null)
+                video.Comments = video.Comments.OrderBy(c => c.PublishedAt).Take(MaxCommentsToAnalyze).ToList();
+        }
+
+        var limitedJson = JsonSerializer.Serialize(videos);
         var analysisBuilder = new System.Text.StringBuilder();
 
         // If this is a playlist (more than one video), do an overall analysis first
         if (videos.Count > 1)
         {
             UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing overall playlist feedback...");
-            var overallAnalysis = await AnalyzeComments("YouTube", responseContent);
+            var overallAnalysis = await AnalyzeComments("YouTube", limitedJson);
             analysisBuilder.AppendLine("# Overall Playlist Analysis");
             analysisBuilder.AppendLine();
             analysisBuilder.AppendLine(overallAnalysis);
@@ -104,7 +112,7 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         // For single video, just use the original analysis
         else
         {
-            var singleVideoAnalysis = await AnalyzeComments("YouTube", responseContent);
+            var singleVideoAnalysis = await AnalyzeComments("YouTube", limitedJson);
             analysisBuilder.Append(singleVideoAnalysis);
         }
 

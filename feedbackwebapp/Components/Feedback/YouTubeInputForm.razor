@@ -22,16 +22,14 @@
     @if (InputType == "video")
     {
         <div class="form-floating">
-            <input type="text" class="form-control" id="videoIds" @bind="VideoIds" 
-                   placeholder="Enter video IDs or URLs" />
+            <input type="text" class="form-control" id="videoIds" @bind="VideoIds"  />
             <label for="videoIds">Video IDs or URLs (comma-separated)</label>
         </div>
     }
     else
     {
         <div class="form-floating">
-            <input type="text" class="form-control" id="playlistIds" @bind="PlaylistIds" 
-                   placeholder="Enter playlist IDs or URLs" />
+            <input type="text" class="form-control" id="playlistIds" @bind="PlaylistIds" />
             <label for="playlistIds">Playlist IDs or URLs (comma-separated)</label>
         </div>
     }

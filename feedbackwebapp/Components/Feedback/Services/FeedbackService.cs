@@ -14,6 +14,7 @@ public delegate void FeedbackStatusUpdate(FeedbackProcessStatus status, string m
 
 public abstract class FeedbackService
 {
+    public const int MaxCommentsToAnalyze = 1200;
     protected readonly HttpClient Http;
     protected readonly IConfiguration Configuration;
     protected readonly string BaseUrl;

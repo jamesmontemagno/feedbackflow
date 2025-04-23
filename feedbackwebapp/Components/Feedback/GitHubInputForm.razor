@@ -8,8 +8,7 @@
                class="form-control @(IsUrlValid ? "" : "is-invalid")" 
                id="urlInput" 
                @bind="Url" 
-               @bind:event="oninput"
-               placeholder="Enter GitHub URL" />
+               @bind:event="oninput"/>
         <label for="urlInput">GitHub Issue, PR, or Discussion URL</label>
         @if (!IsUrlValid && !string.IsNullOrEmpty(Url))
         {

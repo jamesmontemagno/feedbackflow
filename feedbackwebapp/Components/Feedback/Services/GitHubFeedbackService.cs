@@ -64,19 +64,56 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
 
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
         
-        // Analyze the comments
-        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing GitHub feedback...");
-        var markdownResult = await AnalyzeComments("GitHub", responseContent);
-
         // Parse the JSON to extract GitHub data for potential additional display
         var githubData = JsonDocument.Parse(responseContent).RootElement;
         
         // Create a data structure for additional GitHub data display if needed
+        var issues = JsonSerializer.Deserialize<List<GithubIssueModel>>(githubData.GetProperty("Issues").GetRawText());
+        var pulls = JsonSerializer.Deserialize<List<GithubIssueModel>>(githubData.GetProperty("PullRequests").GetRawText());
+        var discussions = JsonSerializer.Deserialize<List<GithubDiscussionModel>>(githubData.GetProperty("Discussions").GetRawText());
+
+        // Sort and limit comments for each issue, pull, and discussion
+        if (issues != null)
+        {
+            foreach (var issue in issues)
+            {
+                if (issue.Comments != null)
+                    issue.Comments = issue.Comments.OrderBy(c => c.CreatedAt).Take(MaxCommentsToAnalyze).ToArray();
+            }
+        }
+        if (pulls != null)
+        {
+            foreach (var pr in pulls)
+            {
+                if (pr.Comments != null)
+                    pr.Comments = pr.Comments.OrderBy(c => c.CreatedAt).Take(MaxCommentsToAnalyze).ToArray();
+            }
+        }
+        if (discussions != null)
+        {
+            foreach (var disc in discussions)
+            {
+                if (disc.Comments != null)
+                    disc.Comments = disc.Comments.OrderBy(c => c.CreatedAt).Take(MaxCommentsToAnalyze).ToArray();
+            }
+        }
+
+        var limitedJson = JsonSerializer.Serialize(new {
+            Issues = issues,
+            PullRequests = pulls,
+            Discussions = discussions
+        });
+
+        // Analyze the comments
+        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing GitHub feedback...");
+        var markdownResult = await AnalyzeComments("GitHub", limitedJson);
+
+        // Create a data structure for additional GitHub data display if needed
         var additionalData = new
         {
-            Issues = JsonSerializer.Deserialize<List<GithubIssueModel>>(githubData.GetProperty("Issues").GetRawText()),
-            PullRequests = JsonSerializer.Deserialize<List<GithubIssueModel>>(githubData.GetProperty("PullRequests").GetRawText()),
-            Discussions = JsonSerializer.Deserialize<List<GithubDiscussionModel>>(githubData.GetProperty("Discussions").GetRawText())
+            Issues = issues,
+            PullRequests = pulls,
+            Discussions = discussions
         };
 
         return (markdownResult, additionalData);
