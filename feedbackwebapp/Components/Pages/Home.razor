@@ -93,10 +93,12 @@
     private string? initialSource;
     private string? initialId;
 
-    private void HandleAuthenticated(bool success)
+    private async Task HandleAuthenticated(bool success)
     {
         isAuthenticated = success;
         StateHasChanged();
+
+        await HandleQueryNav();
     }
 
     private void HandleStatusUpdate(FeedbackProcessStatus status, string message)
@@ -219,10 +221,11 @@
         await base.OnInitializedAsync();
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+
+    private async Task HandleQueryNav()
     {
-        await Task.Delay(100); // Allow the UI to settle before executing the logic
-        if (firstRender && !string.IsNullOrEmpty(initialSource) && !string.IsNullOrEmpty(initialId))
+        await Task.Delay(400); // Allow the UI to settle before executing the logic
+        if (!string.IsNullOrEmpty(initialSource) && !string.IsNullOrEmpty(initialId))
         {
             // Set the selected source first
             selectedSource = initialSource.ToLower() switch
@@ -236,7 +239,7 @@
             StateHasChanged();
 
             // Allow time for the component to render
-            await Task.Delay(200);
+            await Task.Delay(400);
 
             // Now handle the specific source
             if (selectedSource == "HackerNews" && hackerNewsInputForm != null)
@@ -262,7 +265,5 @@
 
             StateHasChanged();
         }
-        
-        await base.OnAfterRenderAsync(firstRender);
     }
 }

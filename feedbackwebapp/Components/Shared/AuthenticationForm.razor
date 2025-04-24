@@ -2,7 +2,7 @@
 @inject IConfiguration Configuration
 @inject AuthenticationService AuthService
 
-@if (!useMockMode && !isAuthenticated)
+@if (!useMockMode && !isAuthenticated && !isLoading)
 {
     <div class="card shadow-sm">
         <div class="card-body">
@@ -29,35 +29,49 @@
     private string authError = "";
     private bool useMockMode;
     private bool isAuthenticated;
+    private bool isLoading = true;
 
     [Parameter]
     public EventCallback<bool> OnAuthenticated { get; set; }
 
-    
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if(!firstRender) 
             return;
-            
-        useMockMode = Configuration.GetValue<bool>("FeedbackApi:UseMocks");
-        if (useMockMode)
+        try
         {
-            await HandleAuthenticated(true);
-            return;
-        }
 
-        // Check if already authenticated
-        isAuthenticated = await AuthService.IsAuthenticatedAsync();
-        if (isAuthenticated)
-        {
-            await HandleAuthenticated(true);
-            return;
-        }
 
-        var configuredPassword = Configuration["FeedbackApp:AccessPassword"];
-        if (string.IsNullOrEmpty(configuredPassword))
+            useMockMode = Configuration.GetValue<bool>("FeedbackApi:UseMocks");
+            if (useMockMode)
+            {
+                await HandleAuthenticated(true);
+                return;
+            }
+
+            // Check if already authenticated
+            isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (isAuthenticated)
+            {
+                await HandleAuthenticated(true);
+                return;
+            }
+
+            var configuredPassword = Configuration["FeedbackApp:AccessPassword"];
+            if (string.IsNullOrEmpty(configuredPassword))
+            {
+                authError = "System error: Password not configured";
+            }
+        }
+        catch (Exception ex)
         {
-            authError = "System error: Password not configured";
+            authError = $"System error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
         }
     }
 
