@@ -16,6 +16,14 @@ public class RedditUrlParserTests
     }
 
     [TestMethod]
+    public void ParseUrl_ValidShortlinkUrl_ReturnsThreadId()
+    {
+        var url = "https://www.reddit.com/r/dotnet/s/RwaAQyhfSu";
+        var id = RedditUrlParser.ParseUrl(url);
+        Assert.AreEqual("RwaAQyhfSu", id);
+    }
+
+    [TestMethod]
     public void ParseUrl_InvalidUrl_ReturnsNull()
     {
         var url = "https://www.reddit.com/r/test/other/abc123/";

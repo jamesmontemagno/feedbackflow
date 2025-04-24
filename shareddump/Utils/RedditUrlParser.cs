@@ -7,6 +7,9 @@ public static class RedditUrlParser
     private static readonly Regex ThreadRegex = new(
         @"(?:https?://)?(?:www\.)?reddit\.com/r/[^/]+/comments/([a-z0-9]+)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex ShortlinkRegex = new(
+        @"(?:https?://)?(?:www\.)?reddit\.com/r/[^/]+/s/([a-zA-Z0-9]+)",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public static string? ParseUrl(string url)
     {
@@ -14,6 +17,11 @@ public static class RedditUrlParser
             return null;
 
         var match = ThreadRegex.Match(url);
+        if (match.Success)
+            return match.Groups[1].Value;
+
+        // Check for shortlink format
+        match = ShortlinkRegex.Match(url);
         return match.Success ? match.Groups[1].Value : null;
     }
 
