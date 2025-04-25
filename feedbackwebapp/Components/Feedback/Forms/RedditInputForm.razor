@@ -1,17 +1,50 @@
 @namespace FeedbackWebApp.Components.Feedback.Forms
+@inject IJSRuntime JSRuntime
 
 <div class="mt-4">
     <div class="form-floating mb-3">
         <input type="text" 
                class="form-control" 
                id="redditThreads" 
-               @bind="ThreadsInput" />
+               @bind="ThreadsInput" 
+               @bind:event="oninput" />
         <label for="redditThreads">Reddit Thread URLs or IDs (comma-separated)</label>
     </div>
 </div>
 
+@if (showShortlinkDialog)
+{
+    <div class="dialog-overlay">
+        <div class="dialog-card">
+            <div class="dialog-title">
+                Reddit Shortlink Detected
+            </div>
+            <div class="dialog-content">
+                @if (isProcessingShortlink)
+                {
+                    <div class="d-flex align-items-center">
+                        <div class="spinner"></div>
+                        Converting shortlink to full URL...
+                    </div>
+                }
+                else
+                {
+                    <p>Would you like to convert the shortlink to a full Reddit URL?</p>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary" @onclick="ProcessShortlink">Convert</button>
+                        <button class="btn btn-outline-secondary" @onclick="CloseShortlinkDialog">Cancel</button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private string _threadsInput = "";
+    private bool showShortlinkDialog;
+    private bool isProcessingShortlink;
+    private string? currentShortlink;
 
     public string ThreadsInput
     {
@@ -21,17 +54,60 @@
             if (_threadsInput != value)
             {
                 _threadsInput = value;
-                ThreadIds = SharedDump.Utils.RedditUrlParser.ParseMultipleIds(value).ToArray();
+                
+                // Check if any part contains a shortlink
+                var parts = value.Split(',').Select(p => p.Trim());
+                var shortlink = parts.FirstOrDefault(SharedDump.Utils.RedditUrlParser.IsRedditShortUrl);
+                
+                if (shortlink != null)
+                {
+                    currentShortlink = shortlink;
+                    showShortlinkDialog = true;
+                }
+                else
+                {
+                    ThreadIds = SharedDump.Utils.RedditUrlParser.ParseMultipleIds(value).ToArray();
+                }
             }
         }
     }
 
     public string[] ThreadIds { get; private set; } = Array.Empty<string>();
 
+    private async Task ProcessShortlink()
+    {
+        if (currentShortlink == null) return;
+
+        try
+        {
+            isProcessingShortlink = true;
+            var fullId = await SharedDump.Utils.RedditUrlParser.GetShortlinkIdAsync(currentShortlink);
+            
+            if (!string.IsNullOrWhiteSpace(fullId))
+            {
+                // Replace the shortlink with the full URL in the input
+                var fullUrl = $"{fullId}";
+                _threadsInput = _threadsInput.Replace(currentShortlink, fullUrl);
+                ThreadIds = SharedDump.Utils.RedditUrlParser.ParseMultipleIds(_threadsInput).ToArray();
+            }
+        }
+        finally
+        {
+            isProcessingShortlink = false;
+            showShortlinkDialog = false;
+            currentShortlink = null;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseShortlinkDialog()
+    {
+        showShortlinkDialog = false;
+        currentShortlink = null;
+    }
+
     public void RefreshUI()
     {
-        // This method can be used to trigger a UI refresh if needed.
-        // For example, you might want to call StateHasChanged() here if this component is part of a larger UI.
         StateHasChanged();
     }
 }

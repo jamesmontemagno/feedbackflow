@@ -1,42 +1,73 @@
-.reddit-input {
-    padding-bottom: 1rem;
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(var(--bg-primary-rgb), 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease-in-out;
 }
 
-.form-floating {
-    transition: all 0.3s ease-in-out;
+.dialog-card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    padding: 1.5rem;
+    max-width: 400px;
+    width: 90%;
+    animation: slideIn 0.3s ease-out;
+}
+
+.dialog-title {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.dialog-content {
     margin-bottom: 1.5rem;
-}
-
-.form-control {
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
-    border-color: var(--border-color);
-}
-
-.form-control:focus {
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
-    border-color: var(--danger-color);
-    box-shadow: 0 0 0 0.25rem rgba(var(--danger-color-rgb), 0.25);
-}
-
-.invalid-feedback {
-    font-size: 0.875rem;
-    margin-top: 0.25rem;
-    color: var(--danger-color);
-}
-
-.text-muted {
-    color: var(--text-secondary) !important;
-}
-
-.text-muted ul {
-    padding-left: 1.2rem;
-    margin-bottom: 0;
     color: var(--text-secondary);
 }
 
-.text-muted li {
-    margin-bottom: 0.25rem;
-    color: var(--text-secondary);
+.spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    margin-right: 0.5rem;
+    border: 2px solid var(--primary-color);
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
