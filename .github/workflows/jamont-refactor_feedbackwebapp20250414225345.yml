@@ -33,16 +33,16 @@ jobs:
           dotnet-version: '9.0.x'
 
       - name: Build with dotnet
-        run: dotnet build {{ env.WEB_APP_PATH }} --configuration Release
+        run: dotnet build "${{env.WEB_APP_PATH}}" --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish {{ env.WEB_APP_PATH }} -c Release -o "${{env.DOTNET_ROOT}}/${{ env.WEB_APP_NAME }}"
+        run: dotnet publish "${{env.WEB_APP_PATH}}" -c Release -o "${{env.DOTNET_ROOT}}/${{env.WEB_APP_NAME}}"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: .net-app
-          path: ${{env.DOTNET_ROOT}}/${{ env.WEB_APP_NAME }}
+          path: ${{env.DOTNET_ROOT}}/${{env.WEB_APP_NAME}}
 
   deploy:
     runs-on: windows-latest
