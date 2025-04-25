@@ -70,14 +70,12 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         }
 
         var totalComments = videos.Sum(v => v.Comments.Count);
-        UpdateStatus(FeedbackProcessStatus.GatheringComments, $"Found {totalComments} comments across {videos.Count} videos...");
-
-        // Build our analysis request with all comments
+        UpdateStatus(FeedbackProcessStatus.GatheringComments, $"Found {totalComments} comments across {videos.Count} videos...");        // Build our analysis request with all comments
         var allComments = string.Join("\n\n", videos.SelectMany(v => 
             v.Comments.Select(c => $"Video: {v.Title}\nComment by {c.Author}: {c.Text}")));
 
         // Analyze the comments
-        var markdownResult = await AnalyzeComments("YouTube", allComments);
+        var markdownResult = await AnalyzeComments("YouTube", allComments, totalComments);
         return (markdownResult, videos);
     }
 }

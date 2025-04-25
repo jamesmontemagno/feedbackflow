@@ -1,10 +1,10 @@
 <div class="container py-3">
-    <div class="row justify-content-center g-3">
+    <div class="row justify-content-center g-2">
         @foreach (var source in sources)
         {
-            <div class="col-md-3 col-sm-6">
+            <div class="col-lg-auto col-md-4 col-sm-6">
                 <button type="button" 
-                        class="btn w-100 py-3 source-button @GetButtonClass(source.Value)"
+                        class="btn w-100 py-2 source-button @GetButtonClass(source.Value)"
                         @onclick="() => OnSourceSelectedAsync(source.Value)"
                         title="@source.Description">
                     <div class="d-flex align-items-center justify-content-center w-100">
@@ -51,7 +51,12 @@
             "Reddit", 
             "bi-reddit",
             "Analyze community feedback and discussions", 
-            "Reddit")
+            "Reddit"),
+        new SourceOption(
+            "DevBlogs", 
+            "bi-journal-richtext",
+            "Analyze comments and feedback from Microsoft DevBlogs articles", 
+            "DevBlogs")
     };
 
     private string GetButtonClass(string source) => 

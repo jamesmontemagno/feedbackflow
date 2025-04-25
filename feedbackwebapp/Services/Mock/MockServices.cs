@@ -67,7 +67,7 @@ public class MockYouTubeFeedbackService(
         var allComments = string.Join("\n\n", mockVideos.SelectMany(v => 
             v.Comments.Select(c => $"Video: {v.Title}\nComment by {c.Author}: {c.Text}")));
 
-        var markdownResult = await AnalyzeComments("youtube", allComments);
+        var markdownResult = await AnalyzeComments("youtube", allComments, mockVideos.Count);
         return (markdownResult, mockVideos);
     }
 }
@@ -89,7 +89,7 @@ public class MockHackerNewsFeedbackService(
             "Comment by user2: The strict mode is essential for catching potential issues early.\n" +
             "Comment by user3: Great write-up, but I think you missed covering mapped types.";
 
-        var markdownResult = await AnalyzeComments("hackernews", mockComments);
+        var markdownResult = await AnalyzeComments("hackernews", mockComments, mockComments.Count());
         return (markdownResult, null);
     }
 }

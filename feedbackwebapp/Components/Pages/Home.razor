@@ -1,5 +1,9 @@
 ﻿@page "/"
 
+@using SharedDump.Models.DevBlogs
+@using FeedbackWebApp.Components.Feedback.Forms
+@using FeedbackWebApp.Components.Feedback.Results
+
 @inject IConfiguration Configuration
 @inject FeedbackServiceProvider ServiceProvider
 @inject IJSRuntime JSRuntime
@@ -39,6 +43,10 @@
                     {
                         <RedditInputForm @ref="redditInputForm" />
                     }
+                    else if (selectedSource.Equals("DevBlogs", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <DevBlogsFeedbackForm @ref="devBlogsInputForm"  />
+                    }
 
                     <SubmitButton ShowWhenSource="@selectedSource" IsLoading="@isLoading" OnSubmit="SubmitFeedbackRequest" />
                     
@@ -66,6 +74,8 @@
                     <GitHubFeedback Issues="@githubIssues" PullRequests="@githubPullRequests" Discussions="@githubDiscussions" />
 
                     <RedditComments Threads="@redditThreads" />
+
+                    <DevBlogsFeedbackResults Article="devBlogsArticle" />
                 </div>
             </div>
         }
@@ -77,6 +87,8 @@
     private HackerNewsInputForm? hackerNewsInputForm;
     private GitHubInputForm? githubInputForm;
     private RedditInputForm? redditInputForm;
+    private DevBlogsFeedbackForm? devBlogsInputForm;
+    private DevBlogsArticleModel? devBlogsArticle;
     private string selectedSource = "YouTube";
     private string markdownResult = "";
     private string error = "";
@@ -121,6 +133,7 @@
             githubDiscussions = null;
             redditThreads = null;
             hackerNewsAnalyses = null;
+            devBlogsArticle = null;
             isLoading = true;
 
             IFeedbackService service = selectedSource switch
@@ -138,6 +151,9 @@
                 "Reddit" or "reddit" => ServiceProvider.CreateRedditService(
                     redditInputForm?.ThreadIds ?? Array.Empty<string>(),
                     HandleStatusUpdate),
+                "DevBlogs" or "devblogs" => ServiceProvider.CreateDevBlogsService(
+                    devBlogsInputForm?.ArticleUrl ?? string.Empty,
+                    HandleStatusUpdate),
                 _ => throw new InvalidOperationException("Please select a feedback source")
             };
 
@@ -145,7 +161,11 @@
             markdownResult = result;
 
             // Handle specific data formats based on the source type
-            if (additionalData is List<YouTubeOutputVideo> videos)
+            if (selectedSource == "DevBlogs" && additionalData is DevBlogsArticleModel article)
+            {
+                devBlogsArticle = article;
+            }
+            else if (additionalData is List<YouTubeOutputVideo> videos)
             {
                 youtubeVideos = videos;
             }

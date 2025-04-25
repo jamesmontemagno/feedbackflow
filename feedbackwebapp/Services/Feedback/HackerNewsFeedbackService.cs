@@ -65,14 +65,13 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
             UpdateStatus(
                 FeedbackProcessStatus.GatheringComments, 
                 $"Analyzing article {i + 1} of {totalArticles}: {story.Title}"
-            );
-
-            var threadComments = string.Join("\n", thread.Skip(1).Select(comment => 
+            );            var threadComments = string.Join("\n", thread.Skip(1).Select(comment => 
                 $"Comment by {comment.By}: {comment.Text ?? ""}"
             ));
 
             var analysisText = $"Story: {story.Title}\n{threadComments}";
-            var markdownResult = await AnalyzeComments("hackernews", analysisText);
+            var commentCount = thread.Count - 1; // Subtract 1 to exclude the story itself
+            var markdownResult = await AnalyzeComments("hackernews", analysisText, commentCount);
             analyses.Add(new HackerNewsAnalysis(markdownResult, thread));
         }
 

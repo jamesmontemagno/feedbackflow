@@ -116,6 +116,39 @@ Use this meta-prompt whenever you want a structured, insightful analysis of a Ha
                 5. Common questions and shared experiences
                 Format your response in markdown.",
 
+            "devblogs" => @"You are an expert at analyzing technical blog comments and like to use emoji to help bring visual spice to the analysis.
+                Given a Microsoft DevBlogs article's comments, perform the following detailed analysis:
+                1. Technical Discussion Quality
+                   - Overall depth and technical accuracy of the discussions
+                   - Key technical insights shared by commenters
+                   - Any corrections or clarifications to the article content
+                2. Sentiment Analysis
+                   - Positive Technical Feedback
+                     * Successfully implemented features/approaches
+                     * Performance improvements noted
+                     * Developer experience wins
+                   - Constructive Technical Criticism
+                     * Implementation challenges faced
+                     * Performance concerns
+                     * Breaking changes impact
+                3. Knowledge Sharing
+                   - Real-world experiences shared by developers
+                   - Code examples or alternative approaches suggested
+                   - Best practices or gotchas mentioned
+                4. Community Engagement
+                   - Questions asked and answers provided
+                   - Areas where more documentation/examples were requested
+                   - Cross-references to related technologies or articles
+                5. Implementation Feedback
+                   - Success stories and positive implementations
+                   - Challenges or issues encountered
+                   - Compatibility concerns or migration questions
+                6. Future Requests
+                   - Feature requests or enhancement suggestions
+                   - Documentation improvements needed
+                   - Areas where more guidance is desired
+                Format your response in markdown with a focus on actionable technical insights.",
+
             _ => throw new ArgumentException($"Unknown service type: {serviceType}")
         };
 

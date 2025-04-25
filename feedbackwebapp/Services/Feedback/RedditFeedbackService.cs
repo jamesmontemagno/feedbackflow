@@ -61,8 +61,8 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
             return $"Thread: {thread.Title}\n{string.Join("\n", comments)}";
         }));
 
-        // Analyze the comments
-        var markdownResult = await AnalyzeComments("reddit", allComments);
+        // Analyze the comments        
+        var markdownResult = await AnalyzeComments("reddit", allComments, totalComments);
         return (markdownResult, threads);
     }
 }

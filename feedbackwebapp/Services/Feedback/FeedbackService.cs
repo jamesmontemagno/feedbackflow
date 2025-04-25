@@ -37,17 +37,12 @@ public abstract class FeedbackService
     protected void UpdateStatus(FeedbackProcessStatus status, string message)
     {
         OnStatusUpdate?.Invoke(status, message);
-    }
-
-    protected async Task<string> AnalyzeComments(string serviceType, string comments)
+    }    protected async Task<string> AnalyzeComments(string serviceType, string comments, int commentCount)
     {
         var maxComments = await GetMaxCommentsToAnalyze();
-
-        // Count the number of comments by counting newlines since each comment is on a new line
-        var commentCount = comments.Count(c => c == '\n') + 1;
         
         // Calculate estimated analysis time (20 seconds per 100 comments)
-        var estimatedSeconds = (int)Math.Ceiling(commentCount * 20.0 / 100);
+        var estimatedSeconds = Math.Max(5, (int)Math.Ceiling(commentCount * 20.0 / 100));
         
         if (commentCount > maxComments)
         {
