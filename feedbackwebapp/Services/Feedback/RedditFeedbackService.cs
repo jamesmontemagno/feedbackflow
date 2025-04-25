@@ -51,8 +51,14 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
             throw new InvalidOperationException("No comments found in the specified threads");
         }
 
-        var totalComments = threads.Sum(t => t.NumComments);
-        UpdateStatus(FeedbackProcessStatus.GatheringComments, $"Found {totalComments} comments across {threads.Count} Reddit threads...");
+        int CountCommentsAndReplies(List<RedditCommentModel>? comments)
+        {
+            if (comments == null || !comments.Any()) return 0;
+            return comments.Count + comments.Sum(c => CountCommentsAndReplies(c.Replies));
+        }
+
+        var totalComments = threads.Sum(t => CountCommentsAndReplies(t.Comments));
+        UpdateStatus(FeedbackProcessStatus.GatheringComments, $"Found {totalComments} comments and replies across {threads.Count} Reddit threads...");
 
         // Build our analysis request with all threads and comments
         var allComments = string.Join("\n\n", threads.Select(thread =>
