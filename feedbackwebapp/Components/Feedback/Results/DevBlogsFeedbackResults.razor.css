@@ -1,11 +1,34 @@
-.devblogs-feedback-results {
-    animation: fadeIn 0.3s ease-in-out;
+.card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
 }
 
-.comments-container {
-    background-color: var(--bs-body-bg);
-    padding: 1rem;
-    border-radius: 0.5rem;
+.card-header {
+    background-color: var(--bg-secondary);
+    border-bottom-color: var(--border-color);
+}
+
+.card-title {
+    color: var(--text-primary);
+}
+
+.btn-outline-light {
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.btn-outline-light:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.article-info {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.comments-list {
     animation: fadeIn 0.3s ease-in-out;
 }
 

@@ -34,7 +34,9 @@ public class DevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackService
         var article = JsonSerializer.Deserialize<DevBlogsArticleModel>(responseContent);
 
         if (article == null)
-            throw new InvalidOperationException("No comments found or failed to parse article.");        // Count total comments including replies recursively
+            throw new InvalidOperationException("No comments found or failed to parse article.");
+
+        // Count total comments including replies recursively
         int CountComments(List<DevBlogsCommentModel> comments)
         {
             return comments.Sum(c => 1 + (c.Replies?.Count > 0 ? CountComments(c.Replies) : 0));

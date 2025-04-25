@@ -42,7 +42,7 @@ public abstract class FeedbackService
         var maxComments = await GetMaxCommentsToAnalyze();
         
         // Calculate estimated analysis time (20 seconds per 100 comments)
-        var estimatedSeconds = Math.Max(5, (int)Math.Ceiling(commentCount * 20.0 / 100));
+        var estimatedSeconds = Math.Max(10, (int)Math.Ceiling(commentCount * 20.0 / 100));
         
         if (commentCount > maxComments)
         {

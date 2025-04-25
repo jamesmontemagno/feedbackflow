@@ -1,57 +1,35 @@
 @using SharedDump.Models.DevBlogs
 @using Microsoft.AspNetCore.Components
 
-<div class="devblogs-feedback-results">
-    @if (Article == null)
-    {
-    }
-    else
-    {
-        <article class="card mb-4">
-            <header class="card-header d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-journal-text me-2" aria-hidden="true"></i>
-                    <h2 class="h5 mb-0 fw-bold">@Article.Title</h2>
-                </div>
-                <div class="actions">
-                    <a href="@Article.Url" 
-                       target="_blank" 
-                       rel="noopener noreferrer" 
-                       class="btn btn-sm btn-outline-primary"
-                       aria-label="View article in new tab">
-                        <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>
-                        View Article
-                    </a>
-                </div>
-            </header>
-            <div class="card-body">
-                @if (Article.Comments?.Count > 0)
+@if (Article?.Comments?.Any() == true)
+{
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-microsoft text-primary me-2"></i>
+                    DevBlogs Comments (@Article.Comments.Count)
+                </h5>
+                <a href="@Article.Url" target="_blank" class="btn btn-sm btn-outline-light">
+                    <i class="bi bi-box-arrow-up-right"></i> View Article
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="article-info mb-4">
+                <h6 class="mb-2">@Article.Title</h6>
+            </div>
+            <div class="comments-list">
+                @foreach (var comment in Article.Comments)
                 {
-                    <section class="comments-section" aria-label="Article comments">
-                        <h3 class="h6 text-muted mb-3">
-                            <i class="bi bi-chat-square-text me-2" aria-hidden="true"></i>
-                            Comments (@Article.Comments.Count)
-                        </h3>
-                        <div class="comments-container">
-                            @foreach (var comment in Article.Comments)
-                            {
-                                <DevBlogsCommentTree CommentData="comment" />
-                            }
-                        </div>
-                    </section>
-                }
-                else
-                {
-                    <div class="text-center text-muted py-4" role="status">
-                        <i class="bi bi-chat-square me-2" aria-hidden="true"></i>
-                        No comments found for this article
-                    </div>
+                    <DevBlogsCommentCard Comment="comment" />
                 }
             </div>
-        </article>
-    }
-</div>
+        </div>
+    </div>
+}
 
 @code {
-    [Parameter] public DevBlogsArticleModel? Article { get; set; }
+    [Parameter]
+    public DevBlogsArticleModel? Article { get; set; }
 }
