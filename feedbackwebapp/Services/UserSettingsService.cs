@@ -44,6 +44,24 @@ public class UserSettingsService
         try
         {
             _cachedSettings = JsonSerializer.Deserialize<UserSettings>(stored) ?? new UserSettings();
+
+            // Validate and reset any empty prompts to defaults
+            bool hasEmptyPrompts = false;
+            foreach (var serviceType in _cachedSettings.ServicePrompts.Keys.ToList())
+            {
+                if (string.IsNullOrWhiteSpace(_cachedSettings.ServicePrompts[serviceType]))
+                {
+                    _cachedSettings.ServicePrompts[serviceType] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt(serviceType);
+                    hasEmptyPrompts = true;
+                }
+            }
+
+            // Save if any prompts were reset
+            if (hasEmptyPrompts)
+            {
+                await SaveSettingsAsync(_cachedSettings);
+            }
+
             return _cachedSettings;
         }
         catch

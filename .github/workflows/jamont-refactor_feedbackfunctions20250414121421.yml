@@ -7,6 +7,11 @@ on:
   push:
     branches:
       - jamont-refactor
+    paths:
+      - 'feedbackfunctions/**'
+      - 'shareddump/**'
+      - '.github/workflows/jamont-refactor_feedbackfunctions20250414121421.yml'
+      - 'FeedbackFlow.ServiceDefaults/**'
   workflow_dispatch:
 
 env:
