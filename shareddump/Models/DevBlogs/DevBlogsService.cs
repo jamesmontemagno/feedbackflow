@@ -153,8 +153,9 @@ public class DevBlogsService
         {
             Title = articleTitle,
             Url = articleLink,
-            Comments = comments.Where(c => string.IsNullOrEmpty(c.ParentId))
-                     .OrderByDescending(c => c.PublishedUtc)
+            Comments = comments
+                    .Where(c => string.IsNullOrWhiteSpace(c.ParentId) || !comments.Any(p => p.Id == c.ParentId || p.Replies.Any(r => r.Id == c.ParentId)))
+                    .OrderByDescending(c => c.PublishedUtc)
                      .ToList()
         };
     }
