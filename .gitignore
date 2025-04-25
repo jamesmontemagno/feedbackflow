@@ -488,3 +488,6 @@ $RECYCLE.BIN/
 /feedbackfunctions/Properties/serviceDependencies.feedbackfunctions20250414121421 - Zip Deploy.json
 /feedbackwebapp/Properties/ServiceDependencies/feedbackwebapp20250414225345 - Zip Deploy/profile.arm.json
 /data
+/feedbackfunctions/Properties/ServiceDependencies/feedbackfunctions20250414121421
+/feedbackfunctions/Properties/serviceDependencies.feedbackfunctions20250414121421.json
+/feedbackfunctions/Properties/serviceDependencies.json
