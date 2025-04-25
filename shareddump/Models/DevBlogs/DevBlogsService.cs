@@ -57,17 +57,17 @@ public class DevBlogsService
                 var pubDateStr = item.Element("pubDate")?.Value?.Trim();
                 DateTimeOffset? published = null;
                 if (DateTimeOffset.TryParse(pubDateStr, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var dt))
-                    published = dt;
-                var bodyHtml = item.Element(XName.Get("encoded", "http://purl.org/rss/1.0/modules/content/"))?.Value?.Trim()
-                    ?? item.Element("description")?.Value?.Trim();
-
-                // Try to extract parent comment from description ("In reply to <a href=...#comment-xxxxx">...")
-                var description = item.Element("description")?.Value;
+                    published = dt;                var bodyHtml = item.Element(XName.Get("encoded", "http://purl.org/rss/1.0/modules/content/"))?.Value?.Trim()
+                    ?? item.Element("description")?.Value?.Trim();                // Try to extract parent comment from content:encoded ("In reply to <a href=...#comment-xxxxx">...")
+                var contentEncoded = item.Element(XName.Get("encoded", "http://purl.org/rss/1.0/modules/content/"))?.Value;
                 string? parentId = null;
-                if (!string.IsNullOrEmpty(description))
+                if (!string.IsNullOrEmpty(contentEncoded))
                 {
-                    // Use more robust regex pattern to extract comment ID
-                    var commentMatch = System.Text.RegularExpressions.Regex.Match(description, @"#comment-(\d+)");
+                    // Use more robust regex pattern to match the full comment URL format
+                    // Matches any devblogs.microsoft.com URL with a comment ID
+                    var commentMatch = System.Text.RegularExpressions.Regex.Match(
+                        contentEncoded, 
+                        @"<a href=""https?://devblogs\.microsoft\.com/[^""]*?#comment-(\d+)""[^>]*>([^<]+)</a>");
                     if (commentMatch.Success && commentMatch.Groups.Count > 1)
                     {
                         parentId = commentMatch.Groups[1].Value;
