@@ -1,0 +1,63 @@
+@using SharedDump.Utils
+@namespace FeedbackWebApp.Components.Feedback.Forms
+
+<div class="devblogs-feedback-form">
+    <div class="form-floating mb-2">
+        <input type="text"
+               class="form-control @(IsUrlValid ? "" : "is-invalid")"
+               id="devblogsUrl"
+               @bind="RawInput"
+               @bind:event="oninput" />
+        <label for="devblogsUrl">DevBlogs Article URL</label>
+        @if (!IsUrlValid && !string.IsNullOrEmpty(RawInput))
+        {
+            <div class="invalid-feedback">
+                Please enter a valid DevBlogs article URL
+            </div>
+        }
+    </div>
+    <div class="devblogs-input-help mb-3">
+        <i class="bi bi-info-circle me-1"></i>
+        Example:
+        <ul class="mt-1 mb-0">
+            <li>https://devblogs.microsoft.com/dotnet/rewriting-nuget-restore-in-dotnet-9</li>
+        </ul>
+    </div>
+</div>
+
+@code {
+    private string? _rawInput;
+    private string? _articleUrl;
+
+    public string RawInput
+    {
+        get => _rawInput ?? string.Empty;
+        set
+        {
+            if (_rawInput == value) return;
+            _rawInput = value;
+            _articleUrl = ExtractMainDevBlogsUrl(_rawInput);
+            IsUrlValid = string.IsNullOrEmpty(_rawInput) || DevBlogsUrlValidator.IsValidDevBlogsUrl(_articleUrl);
+        }
+    }
+
+    public string ArticleUrl => _articleUrl ?? string.Empty;
+    public bool IsUrlValid { get; private set; } = true;
+
+    private static string? ExtractMainDevBlogsUrl(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return null;
+        if (!input.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            input = "https://" + input.Trim();
+        if (!Uri.TryCreate(input, UriKind.Absolute, out var uri))
+            return null;
+        // Remove query and fragment
+        var baseUrl = $"{uri.Scheme}://{uri.Host}{uri.AbsolutePath.TrimEnd('/')}";
+        // Remove trailing /feed if present
+        if (baseUrl.EndsWith("/feed", StringComparison.OrdinalIgnoreCase))
+            baseUrl = baseUrl[..^5];
+        return baseUrl;
+    }
+
+    public void RefreshUI() => StateHasChanged();
+}

@@ -106,6 +106,17 @@
                                         @bind="RedditPrompt"
                                         @bind:event="oninput"></textarea>
                             </div>
+
+                            <div class="mb-4">
+                                <label class="form-label d-flex justify-content-between">
+                                    <span>DevBlogs Analysis Prompt</span>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("devblogs"))">Reset to Default</button>
+                                </label>
+                                <textarea class="form-control font-monospace" 
+                                        rows="6" 
+                                        @bind="DevBlogsPrompt"
+                                        @bind:event="oninput"></textarea>
+                            </div>
                         </fieldset>
                     </div>
                 </div>
@@ -223,6 +234,19 @@
             if (settings != null)
             {
                 settings.ServicePrompts["reddit"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
+    private string DevBlogsPrompt
+    {
+        get => settings?.ServicePrompts.GetValueOrDefault("devblogs") ?? "";
+        set
+        {
+            if (settings != null)
+            {
+                settings.ServicePrompts["devblogs"] = value;
                 hasUnsavedChanges = true;
             }
         }

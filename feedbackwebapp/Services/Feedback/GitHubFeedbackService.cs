@@ -50,18 +50,18 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
         var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
         feedbackResponse.EnsureSuccessStatusCode();
 
-        var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
-        var comments = JsonSerializer.Deserialize<List<GithubCommentModel>>(responseContent);
+        var responseContent = await feedbackResponse.Content.ReadAsStringAsync();        var comments = JsonSerializer.Deserialize<List<GithubCommentModel>>(responseContent);
 
         if (comments == null || !comments.Any())
         {
             throw new InvalidOperationException("No comments found for the specified item");
         }
 
+        var totalComments = comments.Count;
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing comments...");
 
         // Analyze the comments and return both the markdown result and the comments list
-        var markdown = await AnalyzeComments("github", responseContent);
+        var markdown = await AnalyzeComments("github", responseContent, totalComments);
         return (markdown, comments);
     }
 

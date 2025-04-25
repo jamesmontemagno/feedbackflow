@@ -10,6 +10,7 @@ using SharedDump.Models.GitHub;
 using SharedDump.Models.HackerNews;
 using SharedDump.Models.YouTube;
 using SharedDump.Models.Reddit;
+using SharedDump.Models.DevBlogs;
 using SharedDump.AI;
 
 namespace FeedbackFunctions;
@@ -22,6 +23,7 @@ public class FeedbackFunctions
     private readonly HackerNewsService _hnService;
     private readonly YouTubeService _ytService;
     private readonly RedditService _redditService;
+    private readonly DevBlogsService _devBlogsService = new();
     private readonly IFeedbackAnalyzerService _analyzerService;
 
     public FeedbackFunctions(ILogger<FeedbackFunctions> logger, IConfiguration configuration)
@@ -252,6 +254,43 @@ public class FeedbackFunctions
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing Reddit feedback request");
+            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await response.WriteStringAsync("An error occurred processing the request");
+            return response;
+        }
+    }
+
+    [Function("GetDevBlogsFeedback")]
+    public async Task<HttpResponseData> GetDevBlogsFeedback(
+        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+    {
+        _logger.LogInformation("Processing DevBlogs feedback request");
+        try
+        {
+            var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
+            var articleUrl = queryParams["articleUrl"];
+            if (string.IsNullOrWhiteSpace(articleUrl))
+            {
+                var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await badResponse.WriteStringAsync("'articleUrl' parameter is required");
+                return badResponse;
+            }
+
+            var result = await _devBlogsService.FetchArticleWithCommentsAsync(articleUrl);
+            if (result == null)
+            {
+                var notFound = req.CreateResponse(HttpStatusCode.NotFound);
+                await notFound.WriteStringAsync("Could not fetch or parse DevBlogs article or comments.");
+                return notFound;
+            }
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            await response.WriteAsJsonAsync(result);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing DevBlogs feedback request");
             var response = req.CreateResponse(HttpStatusCode.InternalServerError);
             await response.WriteStringAsync("An error occurred processing the request");
             return response;

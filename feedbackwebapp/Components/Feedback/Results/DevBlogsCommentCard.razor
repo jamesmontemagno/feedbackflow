@@ -1,0 +1,77 @@
+@using SharedDump.Models.DevBlogs
+
+<div class="card mt-4 shadow-sm">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">
+                @Comment.Author's Comment
+            </h5>
+            @if (Comment.Replies.Any())
+            {
+                <button class="btn btn-sm btn-outline-light" @onclick="ToggleReplies">
+                    <i class="bi bi-chat-text me-1"></i>
+                    @(ShowReplies ? "Hide Replies" : $"Show Replies ({Comment.Replies.Count})")
+                </button>
+            }
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="comment-content">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-person-circle text-muted me-2"></i>
+                    <strong>@Comment.Author</strong>
+                </div>
+                @if (Comment.PublishedUtc.HasValue)
+                {
+                    <small class="text-muted">@Comment.PublishedUtc.Value.LocalDateTime.ToString("g")</small>
+                }
+            </div>
+            @if (!string.IsNullOrEmpty(Comment.BodyHtml))
+            {
+                <div class="comment-text mb-3">
+                    @((MarkupString)Comment.BodyHtml)
+                </div>
+            }
+        </div>
+
+        @if (ShowReplies && Comment.Replies.Any())
+        {
+            <div class="replies-container mt-3">
+                @foreach (var reply in Comment.Replies)
+                {
+                    <div class="reply-item p-3 mb-2 rounded">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-person-circle text-muted me-2"></i>
+                                <strong>@reply.Author</strong>
+                            </div>
+                            @if (reply.PublishedUtc.HasValue)
+                            {
+                                <small class="text-muted">@reply.PublishedUtc.Value.LocalDateTime.ToString("g")</small>
+                            }
+                        </div>
+                        @if (!string.IsNullOrEmpty(reply.BodyHtml))
+                        {
+                            <div class="reply-text">
+                                @((MarkupString)reply.BodyHtml)
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public DevBlogsCommentModel Comment { get; set; } = null!;
+
+    private bool ShowReplies { get; set; } = false;
+
+    private void ToggleReplies()
+    {
+        ShowReplies = !ShowReplies;
+    }
+}

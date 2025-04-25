@@ -45,4 +45,11 @@ public class FeedbackServiceProvider
             ? new MockRedditFeedbackService(_http, _configuration, _userSettings, onStatusUpdate)
             : new RedditFeedbackService(threadIds, _http, _configuration, _userSettings, onStatusUpdate);
     }
+
+    public IDevBlogsFeedbackService CreateDevBlogsService(string articleUrl, FeedbackStatusUpdate? onStatusUpdate = null)
+    {
+        return _useMocks
+            ? new MockDevBlogsFeedbackService(_http, _configuration, _userSettings, onStatusUpdate) { ArticleUrl = articleUrl }
+            : new DevBlogsFeedbackService(_http, _configuration, _userSettings, articleUrl, onStatusUpdate);
+    }
 }
