@@ -14,6 +14,7 @@ namespace FeedbackFunctions;
 public class ContentFeedFunctions
 {
     private readonly ILogger<ContentFeedFunctions> _logger;
+    private readonly IConfiguration _configuration;
     private readonly HackerNewsService _hnService;
     private readonly YouTubeService _ytService;
     private readonly RedditService _redditService;
@@ -22,20 +23,30 @@ public class ContentFeedFunctions
 
     public ContentFeedFunctions(
         ILogger<ContentFeedFunctions> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        HttpClient httpClient)
     {
+#if DEBUG
+
+        _configuration = new ConfigurationBuilder()
+                    .AddUserSecrets<Program>()
+                    .Build();
+#else
+
+        _configuration = configuration;
+#endif
         _logger = logger;
         
-        _hnService = new HackerNewsService();
+        _hnService = new HackerNewsService(httpClient);
         
-        var ytApiKey = configuration["YouTube:ApiKey"];
-        _ytService = new YouTubeService(ytApiKey ?? throw new InvalidOperationException("YouTube API key not configured"));
+        var ytApiKey = _configuration["YouTube:ApiKey"];
+        _ytService = new YouTubeService(ytApiKey ?? throw new InvalidOperationException("YouTube API key not configured"), httpClient);
 
-        var redditClientId = configuration["Reddit:ClientId"];
-        var redditClientSecret = configuration["Reddit:ClientSecret"];
+        var redditClientId = _configuration["Reddit:ClientId"];
+        var redditClientSecret = _configuration["Reddit:ClientSecret"];
         _redditService = new RedditService(
             redditClientId ?? throw new InvalidOperationException("Reddit client ID not configured"),
-            redditClientSecret ?? throw new InvalidOperationException("Reddit client secret not configured"));
+            redditClientSecret ?? throw new InvalidOperationException("Reddit client secret not configured"), httpClient);
     }
 
     [Function("GetRecentYouTubeVideos")]

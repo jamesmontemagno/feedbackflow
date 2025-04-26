@@ -99,7 +99,8 @@ async Task<int> RunAsync(string? repo, string[] labels, bool? includeIssues, boo
         Console.WriteLine($"Including discussions: {(discussionsIncluded ? "yes" : "no")}");
         Console.WriteLine($"Results directory: {outputDirectory}");
 
-        var githubService = new GitHubService(accessToken!);
+        using var httpClient = new HttpClient();
+        var githubService = new GitHubService(accessToken!, httpClient);
 
         if (!await githubService.CheckRepositoryValid(repoOwner, repoName))
         {

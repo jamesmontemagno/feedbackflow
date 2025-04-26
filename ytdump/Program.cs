@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using SharedDump.Models.YouTube;
 using SharedDump.Json;
+using System.Net.Http;
 
 var userInput = new Option<FileInfo?>(["--input", "-i"], "The input file with video/playlist IDs.");
 var channelId = new Option<string?>(["--channel", "-c"], "The ID of the channel.");
@@ -33,7 +34,8 @@ static async Task<int> RunAsync(FileInfo? input, string? channelId, string? outp
         return 1;
     }
 
-    var youtubeService = new YouTubeService(apiKey);
+    using var httpClient = new HttpClient();
+    var youtubeService = new YouTubeService(apiKey, httpClient);
     var videoIds = new List<string>();
 
     if (input is not null)

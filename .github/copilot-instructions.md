@@ -12,6 +12,13 @@
 - Use nullable reference types
 - Use var over explicit type declarations 
 - Always implement IDisposable when dealing with event handlers or subscriptions
+- Prefer using async/await for asynchronous operations
+- use latest C# features (e.g., records, pattern matching)
+- Use consistent naming conventions (PascalCase for public members, camelCase for private members)
+- use meaningful names for variables, methods, and classes
+- Use dependency injection for services and components
+- Use interfaces for service contracts
+- use file scoped namespaces in c# and are pascal cased
 
 ## Component Structure
 - Keep components small and focused

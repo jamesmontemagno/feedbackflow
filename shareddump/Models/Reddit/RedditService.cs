@@ -15,11 +15,11 @@ public sealed class RedditService : IDisposable
     private string? _accessToken;
     private DateTimeOffset _tokenExpiry;
 
-    public RedditService(string clientId, string clientSecret, HttpClient? client = null)
+    public RedditService(string clientId, string clientSecret, HttpClient client)
     {
         _clientId = clientId ?? throw new ArgumentNullException(nameof(clientId));
         _clientSecret = clientSecret ?? throw new ArgumentNullException(nameof(clientSecret));
-        _client = client ?? new HttpClient();
+        _client = client ?? throw new ArgumentNullException(nameof(client));
         _client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("FeedbackFlow", "1.0.0"));
     }
 

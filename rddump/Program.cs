@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using SharedDump.Models.Reddit;
 using SharedDump.Json;
+using System.Net.Http;
 
 var threadId = new Option<string>(
     ["--thread", "-t"],
@@ -66,7 +67,8 @@ async Task<int> RunAsync(string threadId, string? clientId, string? clientSecret
 
         outputDirectory ??= Environment.CurrentDirectory;
 
-        var redditService = new RedditService(clientId, clientSecret);
+        using var httpClient = new HttpClient();
+        var redditService = new RedditService(clientId, clientSecret, httpClient);
         Console.WriteLine($"Processing Reddit thread: {threadId}");
 
         var thread = await redditService.GetThreadWithComments(threadId);

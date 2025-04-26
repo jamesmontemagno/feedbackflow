@@ -9,9 +9,9 @@ public class HackerNewsService
 {
     private readonly HttpClient _client;
 
-    public HackerNewsService(HttpClient? client = null)
+    public HackerNewsService(HttpClient client)
     {
-        _client = client ?? new HttpClient();
+        _client = client ?? throw new ArgumentNullException(nameof(client));
     }
 
     public async Task<HackerNewsItem?> GetItemData(int itemId) =>
