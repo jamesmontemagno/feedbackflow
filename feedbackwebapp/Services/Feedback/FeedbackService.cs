@@ -37,7 +37,7 @@ public abstract class FeedbackService
     protected void UpdateStatus(FeedbackProcessStatus status, string message)
     {
         OnStatusUpdate?.Invoke(status, message);
-    }    protected async Task<string> AnalyzeComments(string serviceType, string comments, int commentCount)
+    }    protected async Task<string> AnalyzeComments(string serviceType, string comments, int commentCount, string? explicitCustomPrompt = null)
     {
         var maxComments = await GetMaxCommentsToAnalyze();
         
@@ -58,15 +58,22 @@ public abstract class FeedbackService
                 FeedbackProcessStatus.AnalyzingComments, 
                 $"Analyzing {commentCount} comments. Estimated time: {estimatedSeconds} seconds..."
             );
-        }
-
-        var analyzeCode = Configuration["FeedbackApi:AnalyzeCommentsCode"]
+        }        var analyzeCode = Configuration["FeedbackApi:AnalyzeCommentsCode"]
             ?? throw new InvalidOperationException("Analyze API code not configured");
 
         var settings = await _userSettings.GetSettingsAsync();
-        var customPrompt = settings.UseCustomPrompts 
-            ? settings.ServicePrompts.GetValueOrDefault(serviceType.ToLower())
-            : null;
+        string? customPrompt = null;
+        
+        // If an explicit custom prompt is provided, use it (for manual mode)
+        if (!string.IsNullOrEmpty(explicitCustomPrompt))
+        {
+            customPrompt = explicitCustomPrompt;
+        }
+        // Otherwise, check user settings for custom prompts (for other service types)
+        else if (settings.UseCustomPrompts)
+        {
+            customPrompt = settings.ServicePrompts.GetValueOrDefault(serviceType.ToLower());
+        }
 
         if (customPrompt != null)
         {

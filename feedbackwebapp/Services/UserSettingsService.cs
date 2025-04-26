@@ -20,7 +20,8 @@ public class UserSettingsService
             ["hackernews"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("hackernews"),
             ["reddit"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("reddit"),
             ["devblogs"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("devblogs"),
-            ["twitter"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("twitter")
+            ["twitter"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("twitter"),
+            ["manual"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("manual")
         };
     }
 

@@ -59,4 +59,15 @@ public class FeedbackServiceProvider
             ? new MockTwitterFeedbackService(_http, _configuration, _userSettings, onStatusUpdate)
             : new TwitterFeedbackService(_http, _configuration, _userSettings, tweetUrlOrId, onStatusUpdate);
     }
+
+    public IManualFeedbackService CreateManualService(string content, string? customPrompt = null, FeedbackStatusUpdate? onStatusUpdate = null)
+    {
+        return _useMocks
+            ? new MockManualFeedbackService(_http, _configuration, _userSettings, onStatusUpdate) 
+              { 
+                  Content = content,
+                  CustomPrompt = customPrompt ?? string.Empty
+              }
+            : new ManualFeedbackService(_http, _configuration, _userSettings, content, customPrompt, onStatusUpdate);
+    }
 }

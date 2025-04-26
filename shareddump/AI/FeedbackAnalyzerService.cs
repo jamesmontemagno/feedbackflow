@@ -158,6 +158,16 @@ Use this meta-prompt whenever you want a structured, insightful analysis of a Ha
                 5. Common questions, suggestions, or requests
                 Format your response in markdown.",
 
+            "manual" => @"You are an expert at analyzing content and providing structured insights. 
+                When analyzing the provided text, please:
+                1. Summarize the key points and themes
+                2. Identify the sentiment and tone
+                3. Extract any noteworthy information or insights
+                4. Highlight questions, concerns, or areas needing clarification
+                5. Provide actionable recommendations if applicable
+                
+                Format your response in markdown with clear sections and bullet points where appropriate.",
+
             _ => throw new ArgumentException($"Unknown service type: {serviceType}")
         };
 

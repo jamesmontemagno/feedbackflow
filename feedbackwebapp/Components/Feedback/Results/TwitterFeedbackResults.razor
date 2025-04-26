@@ -56,7 +56,6 @@
     private ITwitterFeedbackService? _service;
     private TwitterFeedbackResponse? _feedback;
     private string? _error;
-    private bool _loading;
 
     
     private int GetTotalCommentCount(List<TwitterFeedbackItem> items)
@@ -80,7 +79,6 @@
         {
             return;
         }
-        _loading = true;
         _error = null;
         try
         {
@@ -94,7 +92,6 @@
         }
         finally
         {
-            _loading = false;
         }
     }
 }

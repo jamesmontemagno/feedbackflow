@@ -1,0 +1,47 @@
+/* Manual feedback input styles */
+.manual-feedback-form {
+    margin-bottom: 1rem;
+}
+
+.prompt-textarea, .content-textarea {
+    resize: vertical;
+    min-height: 175px !important;
+    height: 175px !important;
+}
+
+.content-textarea {
+    min-height: 250px !important;
+    height: 250px !important;
+}
+
+/* Highlight required fields */
+.form-floating label::after {
+    content: " *";
+    color: var(--bs-danger);
+}
+
+::deep .source-button {
+    transition: all 0.2s ease-in-out;
+}
+
+::deep .source-button:hover {
+    transform: translateY(-2px);
+}
+
+::deep .btn-primary {
+    border-color: var(--bs-primary);
+}
+
+::deep .btn-outline-secondary {
+    border-color: var(--bs-border-color);
+}
+
+.form-floating textarea.form-control {
+    padding-top: 1.625rem;
+    padding-bottom: 0.625rem;
+}
+
+.form-text {
+    font-size: 0.875rem;
+    opacity: 0.8;
+}
