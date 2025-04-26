@@ -13,6 +13,7 @@ using SharedDump.Models.Reddit;
 using SharedDump.Models.DevBlogs;
 using SharedDump.AI;
 using SharedDump.Models.TwitterFeedback;
+using SharedDump.Models.BlueSkyFeedback;
 using SharedDump.Json;
 
 namespace FeedbackFunctions;
@@ -28,6 +29,7 @@ public class FeedbackFunctions
     private readonly DevBlogsService _devBlogsService = new();
     private readonly IFeedbackAnalyzerService _analyzerService;
     private readonly TwitterFeedbackFetcher _twitterService;
+    private readonly BlueSkyFeedbackFetcher _blueSkyService;
     private readonly HttpClient _httpClient;
 
     public FeedbackFunctions(ILogger<FeedbackFunctions> logger, IConfiguration configuration, HttpClient httpClient)
@@ -71,6 +73,12 @@ public class FeedbackFunctions
         var twitterBearerToken = _configuration["Twitter:BearerToken"] ?? throw new InvalidOperationException("Twitter Bearer token not configured");
         _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", twitterBearerToken);
         _twitterService = new TwitterFeedbackFetcher(_httpClient, Microsoft.Extensions.Logging.Abstractions.NullLogger<TwitterFeedbackFetcher>.Instance);
+        
+        // Initialize BlueSky service with authentication
+        var blueSkyUsername = _configuration["BlueSky:Username"] ?? throw new InvalidOperationException("BlueSky username not configured");
+        var blueSkyAppPassword = _configuration["BlueSky:AppPassword"] ?? throw new InvalidOperationException("BlueSky app password not configured");
+        _blueSkyService = new BlueSkyFeedbackFetcher(_httpClient, Microsoft.Extensions.Logging.Abstractions.NullLogger<BlueSkyFeedbackFetcher>.Instance);
+        _blueSkyService.SetCredentials(blueSkyUsername, blueSkyAppPassword);
     }
 
     [Function("GetGitHubFeedback")]
@@ -501,6 +509,107 @@ public class FeedbackFunctions
             await response.WriteStringAsync("An error occurred processing the request");
             return response;
         }
+    }
+
+    [Function("GetBlueSkyFeedback")]
+    public async Task<HttpResponseData> GetBlueSkyFeedback(
+        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+    {
+        _logger.LogInformation("Processing BlueSky feedback request");
+        var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
+        var postUrlOrId = queryParams["post"];
+        var maxCommentsStr = queryParams["maxComments"];
+        
+        if (string.IsNullOrWhiteSpace(postUrlOrId))
+        {
+            var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await badResponse.WriteStringAsync("'post' parameter is required");
+            return badResponse;
+        }
+        
+        try
+        {
+            var result = await _blueSkyService.FetchFeedbackAsync(postUrlOrId);
+            if (result == null)
+            {
+                var notFound = req.CreateResponse(HttpStatusCode.NotFound);
+                await notFound.WriteStringAsync("Could not fetch or parse BlueSky feedback.");
+                return notFound;
+            }
+            
+            // Limit comments if maxComments parameter is provided
+            if (!string.IsNullOrWhiteSpace(maxCommentsStr) && int.TryParse(maxCommentsStr, out var maxComments) && maxComments > 0)
+            {
+                _logger.LogInformation("Limiting BlueSky feedback to {MaxComments} comments", maxComments);
+                
+                // Count current total comments
+                int totalComments = CountComments(result.Items);
+                if (totalComments > maxComments)
+                {
+                    result.MayBeIncomplete = true;
+                    result.RateLimitInfo = $"Results limited to {maxComments} comments (out of {totalComments} total).";
+                    
+                    // Trim excess comments (a simplistic approach - could be more sophisticated)
+                    TrimComments(result.Items, maxComments);
+                }
+            }
+            
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            var json = System.Text.Json.JsonSerializer.Serialize(result, BlueSkyFeedbackJsonContext.Default.BlueSkyFeedbackResponse);
+            await response.WriteStringAsync(json);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing BlueSky feedback request");
+            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await response.WriteStringAsync("An error occurred processing the request");
+            return response;
+        }
+    }
+    
+    private int CountComments(List<BlueSkyFeedbackItem> items)
+    {
+        if (items == null || items.Count == 0) return 0;
+        
+        int count = items.Count;
+        foreach (var item in items)
+        {
+            if (item.Replies != null)
+            {
+                count += CountComments(item.Replies);
+            }
+        }
+        return count;
+    }
+    
+    private void TrimComments(List<BlueSkyFeedbackItem> items, int maxComments, ref int currentCount)
+    {
+        if (items == null || items.Count == 0 || currentCount >= maxComments) return;
+        
+        // Preserve as many top-level items as possible
+        for (int i = items.Count - 1; i >= 0; i--)
+        {
+            if (currentCount >= maxComments)
+            {
+                // Remove excess items
+                items.RemoveAt(i);
+                continue;
+            }
+              currentCount++;
+            
+            // Process replies recursively
+            if (items[i].Replies != null && items[i].Replies.Count > 0)
+            {
+                TrimComments(items[i].Replies, maxComments, ref currentCount);
+            }
+        }
+    }
+    
+    private void TrimComments(List<BlueSkyFeedbackItem> items, int maxComments)
+    {
+        int currentCount = 0;
+        TrimComments(items, maxComments, ref currentCount);
     }
 }
 

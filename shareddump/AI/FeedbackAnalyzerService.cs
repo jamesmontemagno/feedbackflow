@@ -151,6 +151,14 @@ Use this meta-prompt whenever you want a structured, insightful analysis of a Ha
 
             "twitter" => @"You are an expert at analyzing Twitter/X conversations and like to use emoji to help bring visual spice to the analysis.
                 When analyzing a tweet and its replies, provide:
+                    1. A summary of the overall sentiment and engagement
+                    2. Key topics, hashtags, or themes discussed
+                    3. Most liked or insightful replies
+                    4. Notable debates, disagreements, or controversies
+                    5. Common questions, suggestions, or requests
+                    Format your response in markdown.",
+            "bluesky" => @"You are an expert at analyzing BlueSky conversations and like to use emoji to help bring visual spice to the analysis.
+                When analyzing a BlueSky post and its replies, provide:
                 1. A summary of the overall sentiment and engagement
                 2. Key topics, hashtags, or themes discussed
                 3. Most liked or insightful replies

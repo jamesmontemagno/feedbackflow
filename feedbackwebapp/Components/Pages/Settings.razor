@@ -128,6 +128,17 @@
                                         @bind="TwitterPrompt"
                                         @bind:event="oninput"></textarea>
                             </div>
+
+                            <div class="mb-4">
+                                <label class="form-label d-flex justify-content-between">
+                                    <span>BlueSky Analysis Prompt</span>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("bluesky"))">Reset to Default</button>
+                                </label>
+                                <textarea class="form-control font-monospace" 
+                                        rows="6" 
+                                        @bind="BlueSkyPrompt"
+                                        @bind:event="oninput"></textarea>
+                            </div>
                         </fieldset>
                     </div>
                 </div>
@@ -271,6 +282,19 @@
             if (settings != null)
             {
                 settings.ServicePrompts["twitter"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
+    private string BlueSkyPrompt
+    {
+        get => settings?.ServicePrompts.GetValueOrDefault("bluesky") ?? "";
+        set
+        {
+            if (settings != null)
+            {
+                settings.ServicePrompts["bluesky"] = value;
                 hasUnsavedChanges = true;
             }
         }

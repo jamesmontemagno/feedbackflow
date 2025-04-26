@@ -51,6 +51,10 @@
                     {
                         <TwitterInputForm @ref="twitterInputForm" />
                     }
+                    else if (selectedSource.Equals("BlueSky", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <BlueSkyInputForm @ref="blueSkyInputForm" />
+                    }
                     else if (selectedSource.Equals("Manual", StringComparison.OrdinalIgnoreCase))
                     {
                         <ManualFeedbackInput @ref="manualInputForm" />
@@ -99,6 +103,10 @@
                     {
                         <TwitterFeedbackResults TweetUrlOrId="@twitterTweetUrlOrId" />
                     }
+                    else if (selectedSource.Equals("BlueSky", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <BlueSkyFeedbackResults PostUrlOrId="@blueSkyPostUrlOrId" />
+                    }
                 </div>
             </div>
         }
@@ -112,6 +120,7 @@
     private RedditInputForm? redditInputForm;
     private DevBlogsFeedbackForm? devBlogsInputForm;
     private TwitterInputForm? twitterInputForm;
+    private BlueSkyInputForm? blueSkyInputForm;
     private ManualFeedbackInput? manualInputForm;
     private DevBlogsArticleModel? devBlogsArticle;
     private string selectedSource = "YouTube";
@@ -130,6 +139,7 @@
     private string? initialSource;
     private string? initialId;
     private string? twitterTweetUrlOrId;
+    private string? blueSkyPostUrlOrId;
 
     private async Task HandleAuthenticated(bool success)
     {
@@ -161,6 +171,7 @@
             hackerNewsAnalyses = null;
             devBlogsArticle = null;
             twitterTweetUrlOrId = null;
+            blueSkyPostUrlOrId = null;
             isLoading = true;
 
             IFeedbackService service = selectedSource switch
@@ -180,9 +191,11 @@
                     HandleStatusUpdate),
                 "DevBlogs" or "devblogs" => ServiceProvider.CreateDevBlogsService(
                     devBlogsInputForm?.ArticleUrl ?? string.Empty,
-                    HandleStatusUpdate),
-                "Twitter" or "twitter" => ServiceProvider.CreateTwitterService(
+                    HandleStatusUpdate),                "Twitter" or "twitter" => ServiceProvider.CreateTwitterService(
                     twitterInputForm?.TweetId ?? string.Empty,
+                    HandleStatusUpdate),
+                "BlueSky" or "bluesky" => ServiceProvider.CreateBlueSkyService(
+                    blueSkyInputForm?.PostId ?? string.Empty,
                     HandleStatusUpdate),
                 "Manual" or "manual" => ServiceProvider.CreateManualService(
                     manualInputForm?.GetContent() ?? string.Empty,
@@ -250,10 +263,12 @@
             }            else if (additionalData is List<RedditThreadModel> threads)
             {
                 redditThreads = threads;
-            }
-            else if (selectedSource == "Twitter" && additionalData != null)
+            }            else if (selectedSource == "Twitter" && additionalData != null)
             {
                 twitterTweetUrlOrId = twitterInputForm?.TweetId ?? string.Empty;
+            }            else if (selectedSource == "BlueSky" && additionalData != null)
+            {
+                blueSkyPostUrlOrId = blueSkyInputForm?.PostId ?? string.Empty;
             }
         }
         catch (Exception ex)
@@ -292,6 +307,7 @@
                 "github" => "GitHub",
                 "reddit" => "Reddit",
                 "twitter" => "Twitter",
+                "bluesky" => "BlueSky",
                 "manual" => "Manual",
                 _ => selectedSource
             };
@@ -318,11 +334,15 @@
             {
                 redditInputForm.ThreadsInput = initialId;
                 redditInputForm.RefreshUI();
-            }
-            else if (selectedSource == "Twitter" && twitterInputForm != null)
+            }            else if (selectedSource == "Twitter" && twitterInputForm != null)
             {
                 twitterInputForm.TweetId = initialId;
                 twitterInputForm.RefreshUI();
+            }
+            else if (selectedSource == "BlueSky" && blueSkyInputForm != null)
+            {
+                blueSkyInputForm.PostId = initialId;
+                blueSkyInputForm.RefreshUI();
             }
             else if (selectedSource == "Manual" && manualInputForm != null)
             {

@@ -21,6 +21,7 @@ public class UserSettingsService
             ["reddit"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("reddit"),
             ["devblogs"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("devblogs"),
             ["twitter"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("twitter"),
+            ["bluesky"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("bluesky"),
             ["manual"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("manual")
         };
     }
@@ -52,6 +53,22 @@ public class UserSettingsService
             foreach (var serviceType in _cachedSettings.ServicePrompts.Keys.ToList())
             {
                 if (string.IsNullOrWhiteSpace(_cachedSettings.ServicePrompts[serviceType]))
+                {
+                    _cachedSettings.ServicePrompts[serviceType] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt(serviceType);
+                    hasEmptyPrompts = true;
+                }
+            }
+
+            // Add any missing service prompts for new services
+            var defaultPrompts = new[]
+            {
+                "youtube", "github", "hackernews", "reddit", "devblogs", 
+                "twitter", "bluesky", "manual"
+            };
+
+            foreach (var serviceType in defaultPrompts)
+            {
+                if (!_cachedSettings.ServicePrompts.ContainsKey(serviceType))
                 {
                     _cachedSettings.ServicePrompts[serviceType] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt(serviceType);
                     hasEmptyPrompts = true;

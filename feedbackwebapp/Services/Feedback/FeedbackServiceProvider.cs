@@ -60,6 +60,13 @@ public class FeedbackServiceProvider
             : new TwitterFeedbackService(_http, _configuration, _userSettings, tweetUrlOrId, onStatusUpdate);
     }
 
+    public IBlueSkyFeedbackService CreateBlueSkyService(string postUrlOrId, FeedbackStatusUpdate? onStatusUpdate = null)
+    {
+        return _useMocks
+            ? new MockBlueSkyFeedbackService(_http, _configuration, _userSettings, onStatusUpdate)
+            : new BlueSkyFeedbackService(_http, _configuration, _userSettings, postUrlOrId, onStatusUpdate);
+    }
+
     public IManualFeedbackService CreateManualService(string content, string? customPrompt = null, FeedbackStatusUpdate? onStatusUpdate = null)
     {
         return _useMocks

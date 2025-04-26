@@ -1,0 +1,34 @@
+@using SharedDump.Models.BlueSkyFeedback
+@namespace FeedbackWebApp.Components.Feedback.Results
+@using FeedbackWebApp.Services.Interfaces
+
+<div class="post-container @(IsReply ? "reply" : "main-post") mb-3">
+    <div class="post-content p-3 rounded">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <div class="author-info">
+                <strong>@Comment?.AuthorName</strong>
+                <span class="text-muted">@@@Comment?.AuthorUsername</span>
+            </div>
+            <span class="text-muted small">@(Comment?.TimestampUtc.ToString("g"))</span>
+        </div>
+        <p class="mb-2">@Comment?.Content</p>
+        
+        @if (Comment?.Replies?.Any() == true)
+        {
+            <div class="post-replies mt-3">
+                @foreach (var reply in Comment.Replies)
+                {
+                    <BlueSkyComment Comment="reply" IsReply="true" />
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public BlueSkyFeedbackItem? Comment { get; set; }
+
+    [Parameter]
+    public bool IsReply { get; set; }
+}
