@@ -1,0 +1,15 @@
+.twitter-feedback-results {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.loading {
+    color: var(--bs-secondary, #6c757d);
+    font-style: italic;
+}
+
+.text-danger {
+    color: var(--bs-danger, #dc3545);
+}

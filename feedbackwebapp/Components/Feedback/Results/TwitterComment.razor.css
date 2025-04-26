@@ -1,0 +1,30 @@
+.twitter-comment {
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+}
+
+.twitter-comment:hover {
+    background-color: var(--bs-tertiary-bg);
+}
+
+.twitter-reply {
+    border-left: 3px solid var(--bs-border-color);
+}
+
+.tweet-author .author-name {
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.tweet-author .author-username {
+    font-size: 0.875rem;
+}
+
+.tweet-content {
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.tweet-date {
+    font-size: 0.875rem;
+}

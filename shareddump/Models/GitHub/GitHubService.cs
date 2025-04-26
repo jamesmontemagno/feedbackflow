@@ -10,10 +10,10 @@ public class GitHubService
     private readonly string _accessToken;
     private readonly int _maxRetries = 5;
 
-    public GitHubService(string accessToken, HttpClient? client = null)
+    public GitHubService(string accessToken, HttpClient client)
     {
-        _accessToken = accessToken;
-        _client = client ?? new HttpClient();
+        _accessToken = accessToken ?? throw new ArgumentNullException(nameof(accessToken));
+        _client = client ?? throw new ArgumentNullException(nameof(client));
         _client.DefaultRequestHeaders.Authorization = new("Bearer", accessToken);
         _client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("ghdump", "1.0.0"));
     }

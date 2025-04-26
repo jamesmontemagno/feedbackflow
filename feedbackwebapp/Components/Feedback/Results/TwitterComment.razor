@@ -1,0 +1,36 @@
+@using SharedDump.Models.TwitterFeedback
+@namespace FeedbackWebApp.Components.Feedback.Results
+
+@if (Comment is not null)
+{
+    <div class="@($"twitter-comment {(IsReply ? "twitter-reply" : "")} p-3 mb-2 rounded {(IsReply ? "ms-4" : "")}")">
+        <div class="d-flex justify-content-between align-items-start">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-person-circle text-muted me-2"></i>
+                <div class="tweet-author">
+                    <div class="author-name">@Comment.AuthorName</div>
+                    <div class="author-username text-muted">@($"@{Comment.AuthorUsername}")</div>
+                </div>
+            </div>
+            <small class="tweet-date text-muted">@Comment.TimestampUtc.ToLocalTime().ToString("g")</small>
+        </div>
+        <div class="tweet-content mt-2">@Comment.Content</div>
+        @if (Comment.Replies is not null && Comment.Replies.Count > 0)
+        {
+            <div class="tweet-replies mt-3">
+                @foreach (var reply in Comment.Replies)
+                {
+                    <TwitterComment Comment="reply" IsReply="true" />
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public TwitterFeedbackItem? Comment { get; set; }
+
+    [Parameter]
+    public bool IsReply { get; set; }
+}

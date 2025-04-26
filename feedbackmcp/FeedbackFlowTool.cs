@@ -1,10 +1,13 @@
 using System;
 using System.ComponentModel;
+using System.Net.Http;
 using ModelContextProtocol.Server;
 using SharedDump.Models.GitHub;
 using SharedDump.Models.HackerNews;
 using SharedDump.Models.YouTube;
 using SharedDump.Models.Reddit;
+using SharedDump.Models.TwitterFeedback;
+using Microsoft.Extensions.Logging;
 
 namespace FeedbackMCP;
 
@@ -16,14 +19,18 @@ public class FeedbackFlowTool
     private readonly HackerNewsService _hnService;
     private readonly YouTubeService _ytService;
     private readonly RedditService _redditService;
+    private readonly HttpClient _httpClient;
+    private readonly TwitterFeedbackFetcher _twitterService;
 
-    public FeedbackFlowTool(ApiConfiguration configuration)
+    public FeedbackFlowTool(ApiConfiguration configuration, HttpClient httpClient, ILogger<TwitterFeedbackFetcher> twitterLogger)
     {
         _configuration = configuration;
-        _githubService = new GitHubService(configuration.GitHubAccessToken);
-        _hnService = new HackerNewsService();
-        _ytService = new YouTubeService(configuration.YouTubeApiKey);
-        _redditService = new RedditService(configuration.RedditClientId, configuration.RedditClientSecret);
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _githubService = new GitHubService(configuration.GitHubAccessToken, _httpClient);
+        _hnService = new HackerNewsService(_httpClient);
+        _ytService = new YouTubeService(configuration.YouTubeApiKey, _httpClient);
+        _redditService = new RedditService(configuration.RedditClientId, configuration.RedditClientSecret, _httpClient);
+        _twitterService = new TwitterFeedbackFetcher(_httpClient, twitterLogger ?? throw new ArgumentNullException(nameof(twitterLogger)));
     }
 
     [McpServerTool(Name = "github-comments")]
@@ -127,5 +134,17 @@ public class FeedbackFlowTool
         [Description("The ID of the Reddit thread")] string threadId)
     {
         return await _redditService.GetThreadWithComments(threadId);
+    }
+
+    /// <summary>
+    /// Get feedback (tweet and replies) from a Twitter/X post.
+    /// Usage: Pass a tweet URL or ID. Returns the main tweet and its replies.
+    /// </summary>
+    [McpServerTool(Name = "twitter-feedback")]
+    [Description("Get feedback (tweet and replies) from a Twitter/X post")]
+    public async Task<TwitterFeedbackResponse?> GetTwitterFeedback(
+        [Description("The tweet URL or ID")] string tweetUrlOrId)
+    {
+        return await _twitterService.FetchFeedbackAsync(tweetUrlOrId);
     }
 }

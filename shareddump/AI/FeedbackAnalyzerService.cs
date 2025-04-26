@@ -149,6 +149,15 @@ Use this meta-prompt whenever you want a structured, insightful analysis of a Ha
                    - Areas where more guidance is desired
                 Format your response in markdown with a focus on actionable technical insights.",
 
+            "twitter" => @"You are an expert at analyzing Twitter/X conversations and like to use emoji to help bring visual spice to the analysis.
+                When analyzing a tweet and its replies, provide:
+                1. A summary of the overall sentiment and engagement
+                2. Key topics, hashtags, or themes discussed
+                3. Most liked or insightful replies
+                4. Notable debates, disagreements, or controversies
+                5. Common questions, suggestions, or requests
+                Format your response in markdown.",
+
             _ => throw new ArgumentException($"Unknown service type: {serviceType}")
         };
 

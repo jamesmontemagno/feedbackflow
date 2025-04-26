@@ -25,7 +25,8 @@ await rootCommand.InvokeAsync(args);
 
 async Task<int> RunAsync(int[] itemIds, string? outputPath)
 {
-    var hnService = new HackerNewsService();
+    using var httpClient = new HttpClient();
+    var hnService = new HackerNewsService(httpClient);
     var processingTasks = new List<Task>(itemIds.Length);
     
     foreach (var itemId in itemIds)

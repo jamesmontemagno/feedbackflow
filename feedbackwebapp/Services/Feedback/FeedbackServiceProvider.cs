@@ -52,4 +52,11 @@ public class FeedbackServiceProvider
             ? new MockDevBlogsFeedbackService(_http, _configuration, _userSettings, onStatusUpdate) { ArticleUrl = articleUrl }
             : new DevBlogsFeedbackService(_http, _configuration, _userSettings, articleUrl, onStatusUpdate);
     }
+
+    public ITwitterFeedbackService CreateTwitterService(string tweetUrlOrId, FeedbackStatusUpdate? onStatusUpdate = null)
+    {
+        return _useMocks
+            ? new MockTwitterFeedbackService(_http, _configuration, _userSettings, onStatusUpdate)
+            : new TwitterFeedbackService(_http, _configuration, _userSettings, tweetUrlOrId, onStatusUpdate);
+    }
 }

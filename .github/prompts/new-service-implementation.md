@@ -36,7 +36,7 @@ This guide outlines the steps needed to implement a new service feature across t
 
 ## 5. Web Application Components
 ### 5.1 Service Layer
-- [ ] Add a service interface in `feedbackwebapp/Services/Interfaces/` (e.g., `I{ServiceName}FeedbackService`).
+- [ ] Add a service interface in `feedbackwebapp/Services/Interfaces/` into `IFeedbackService`
 - [ ] Implement the real service in `feedbackwebapp/Services/Feedback/` or `ContentFeed/` as appropriate.
 - [ ] Implement a mock service in `feedbackwebapp/Services/Mock/`.
 - [ ] Register the service in `FeedbackServiceProvider` or `ContentFeedServiceProvider`.

@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
 using SharedDump.Json;
@@ -9,10 +10,10 @@ public class YouTubeService
     private readonly HttpClient _client;
     private readonly string _apiKey;
 
-    public YouTubeService(string apiKey, HttpClient? client = null)
+    public YouTubeService(string apiKey, HttpClient client)
     {
-        _apiKey = apiKey;
-        _client = client ?? new HttpClient();
+        _apiKey = apiKey ?? throw new ArgumentNullException(nameof(apiKey));
+        _client = client ?? throw new ArgumentNullException(nameof(client));
     }
 
     public async Task<IEnumerable<string>> GetPlaylistVideos(string playlistId)

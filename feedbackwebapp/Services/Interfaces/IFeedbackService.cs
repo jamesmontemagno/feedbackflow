@@ -8,3 +8,5 @@ public interface IFeedbackService
 public interface IYouTubeFeedbackService : IFeedbackService { }
 public interface IHackerNewsFeedbackService : IFeedbackService { }
 public interface IGitHubFeedbackService : IFeedbackService { }
+public interface IRedditFeedbackService : IFeedbackService { }
+public interface ITwitterFeedbackService : IFeedbackService { }

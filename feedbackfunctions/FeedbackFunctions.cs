@@ -12,6 +12,8 @@ using SharedDump.Models.YouTube;
 using SharedDump.Models.Reddit;
 using SharedDump.Models.DevBlogs;
 using SharedDump.AI;
+using SharedDump.Models.TwitterFeedback;
+using SharedDump.Json;
 
 namespace FeedbackFunctions;
 
@@ -25,31 +27,50 @@ public class FeedbackFunctions
     private readonly RedditService _redditService;
     private readonly DevBlogsService _devBlogsService = new();
     private readonly IFeedbackAnalyzerService _analyzerService;
+    private readonly TwitterFeedbackFetcher _twitterService;
+    private readonly HttpClient _httpClient;
 
-    public FeedbackFunctions(ILogger<FeedbackFunctions> logger, IConfiguration configuration)
+    public FeedbackFunctions(ILogger<FeedbackFunctions> logger, IConfiguration configuration, HttpClient httpClient)
     {
-        _logger = logger;
+#if DEBUG
+
+        _configuration = new ConfigurationBuilder()
+                    .AddUserSecrets<Program>()
+                    .Build();
+#else
+
         _configuration = configuration;
+#endif
+        _logger = logger;
+        _httpClient = httpClient;
+
         
         var githubToken = _configuration["GitHub:AccessToken"];
-        _githubService = new GitHubService(githubToken ?? throw new InvalidOperationException("GitHub access token not configured"));
+        _githubService = new GitHubService(githubToken ?? throw new InvalidOperationException("GitHub access token not configured"), _httpClient);
         
-        _hnService = new HackerNewsService();
+        _hnService = new HackerNewsService(_httpClient);
         
         var ytApiKey = _configuration["YouTube:ApiKey"];
-        _ytService = new YouTubeService(ytApiKey ?? throw new InvalidOperationException("YouTube API key not configured"));
+        _ytService = new YouTubeService(ytApiKey ?? throw new InvalidOperationException("YouTube API key not configured"), _httpClient);
 
         var redditClientId = _configuration["Reddit:ClientId"];
         var redditClientSecret = _configuration["Reddit:ClientSecret"];
         _redditService = new RedditService(
             redditClientId ?? throw new InvalidOperationException("Reddit client ID not configured"),
-            redditClientSecret ?? throw new InvalidOperationException("Reddit client secret not configured"));
+            redditClientSecret ?? throw new InvalidOperationException("Reddit client secret not configured"),
+            _httpClient);
+
+        _devBlogsService = new DevBlogsService(_httpClient);
 
         var endpoint = _configuration["Azure:OpenAI:Endpoint"] ?? throw new InvalidOperationException("Azure OpenAI endpoint not configured");
         var apiKey = _configuration["Azure:OpenAI:ApiKey"] ?? throw new InvalidOperationException("Azure OpenAI API key not configured");
         var deployment = _configuration["Azure:OpenAI:Deployment"] ?? throw new InvalidOperationException("Azure OpenAI deployment name not configured");
 
         _analyzerService = new FeedbackAnalyzerService(endpoint, apiKey, deployment);
+
+        var twitterBearerToken = _configuration["Twitter:BearerToken"] ?? throw new InvalidOperationException("Twitter Bearer token not configured");
+        _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", twitterBearerToken);
+        _twitterService = new TwitterFeedbackFetcher(_httpClient, Microsoft.Extensions.Logging.Abstractions.NullLogger<TwitterFeedbackFetcher>.Instance);
     }
 
     [Function("GetGitHubFeedback")]
@@ -443,6 +464,42 @@ public class FeedbackFunctions
             var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
             await errorResponse.WriteStringAsync("An error occurred processing the request");
             return errorResponse;
+        }
+    }
+
+    [Function("GetTwitterFeedback")]
+    public async Task<HttpResponseData> GetTwitterFeedback(
+        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+    {
+        _logger.LogInformation("Processing Twitter/X feedback request");
+        var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
+        var tweetUrlOrId = queryParams["tweet"];
+        if (string.IsNullOrWhiteSpace(tweetUrlOrId))
+        {
+            var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await badResponse.WriteStringAsync("'tweet' parameter is required");
+            return badResponse;
+        }
+        try
+        {
+            var result = await _twitterService.FetchFeedbackAsync(tweetUrlOrId);
+            if (result == null)
+            {
+                var notFound = req.CreateResponse(HttpStatusCode.NotFound);
+                await notFound.WriteStringAsync("Could not fetch or parse Twitter feedback.");
+                return notFound;
+            }
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            var json = System.Text.Json.JsonSerializer.Serialize(result, TwitterFeedbackJsonContext.Default.TwitterFeedbackResponse);
+            await response.WriteStringAsync(json);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing Twitter feedback request");
+            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await response.WriteStringAsync("An error occurred processing the request");
+            return response;
         }
     }
 }

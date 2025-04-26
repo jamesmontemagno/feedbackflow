@@ -117,6 +117,17 @@
                                         @bind="DevBlogsPrompt"
                                         @bind:event="oninput"></textarea>
                             </div>
+
+                            <div class="mb-4">
+                                <label class="form-label d-flex justify-content-between">
+                                    <span>Twitter Analysis Prompt</span>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("twitter"))">Reset to Default</button>
+                                </label>
+                                <textarea class="form-control font-monospace" 
+                                        rows="6" 
+                                        @bind="TwitterPrompt"
+                                        @bind:event="oninput"></textarea>
+                            </div>
                         </fieldset>
                     </div>
                 </div>
@@ -247,6 +258,19 @@
             if (settings != null)
             {
                 settings.ServicePrompts["devblogs"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
+    private string TwitterPrompt
+    {
+        get => settings?.ServicePrompts.GetValueOrDefault("twitter") ?? "";
+        set
+        {
+            if (settings != null)
+            {
+                settings.ServicePrompts["twitter"] = value;
                 hasUnsavedChanges = true;
             }
         }

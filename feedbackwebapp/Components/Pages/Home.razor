@@ -47,6 +47,10 @@
                     {
                         <DevBlogsFeedbackForm @ref="devBlogsInputForm"  />
                     }
+                    else if (selectedSource.Equals("Twitter", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <TwitterInputForm @ref="twitterInputForm" />
+                    }
 
                     <SubmitButton ShowWhenSource="@selectedSource" IsLoading="@isLoading" OnSubmit="SubmitFeedbackRequest" />
                     
@@ -76,6 +80,8 @@
                     <RedditComments Threads="@redditThreads" />
 
                     <DevBlogsFeedbackResults Article="devBlogsArticle"  />
+
+                    <TwitterFeedbackResults TweetUrlOrId="@twitterTweetUrlOrId" />
                 </div>
             </div>
         }
@@ -88,6 +94,7 @@
     private GitHubInputForm? githubInputForm;
     private RedditInputForm? redditInputForm;
     private DevBlogsFeedbackForm? devBlogsInputForm;
+    private TwitterInputForm? twitterInputForm;
     private DevBlogsArticleModel? devBlogsArticle;
     private string selectedSource = "YouTube";
     private string markdownResult = "";
@@ -104,6 +111,7 @@
     private string currentStatusMessage = "";
     private string? initialSource;
     private string? initialId;
+    private string? twitterTweetUrlOrId;
 
     private async Task HandleAuthenticated(bool success)
     {
@@ -134,6 +142,7 @@
             redditThreads = null;
             hackerNewsAnalyses = null;
             devBlogsArticle = null;
+            twitterTweetUrlOrId = null;
             isLoading = true;
 
             IFeedbackService service = selectedSource switch
@@ -153,6 +162,9 @@
                     HandleStatusUpdate),
                 "DevBlogs" or "devblogs" => ServiceProvider.CreateDevBlogsService(
                     devBlogsInputForm?.ArticleUrl ?? string.Empty,
+                    HandleStatusUpdate),
+                "Twitter" or "twitter" => ServiceProvider.CreateTwitterService(
+                    twitterInputForm?.TweetId ?? string.Empty,
                     HandleStatusUpdate),
                 _ => throw new InvalidOperationException("Please select a feedback source")
             };
@@ -213,10 +225,13 @@
                         };
                     }
                 }
-            }
-            else if (additionalData is List<RedditThreadModel> threads)
+            }            else if (additionalData is List<RedditThreadModel> threads)
             {
                 redditThreads = threads;
+            }
+            else if (selectedSource == "Twitter" && additionalData != null)
+            {
+                twitterTweetUrlOrId = twitterInputForm?.TweetId ?? string.Empty;
             }
         }
         catch (Exception ex)
@@ -247,21 +262,20 @@
         await Task.Delay(400); // Allow the UI to settle before executing the logic
         if (!string.IsNullOrEmpty(initialSource) && !string.IsNullOrEmpty(initialId))
         {
-            // Set the selected source first
+            // Set the selected source first            
             selectedSource = initialSource.ToLower() switch
             {
                 "youtube" => "YouTube",
                 "hackernews" => "HackerNews",
                 "github" => "GitHub",
                 "reddit" => "Reddit",
+                "twitter" => "Twitter",
                 _ => selectedSource
             };
             StateHasChanged();
 
             // Allow time for the component to render
-            await Task.Delay(400);
-
-            // Now handle the specific source
+            await Task.Delay(400);            // Now handle the specific source
             if (selectedSource == "HackerNews" && hackerNewsInputForm != null)
             {
                 hackerNewsInputForm.Value = initialId;
@@ -281,6 +295,11 @@
             {
                 redditInputForm.ThreadsInput = initialId;
                 redditInputForm.RefreshUI();
+            }
+            else if (selectedSource == "Twitter" && twitterInputForm != null)
+            {
+                twitterInputForm.TweetId = initialId;
+                twitterInputForm.RefreshUI();
             }
 
             StateHasChanged();
