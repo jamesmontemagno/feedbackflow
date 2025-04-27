@@ -30,9 +30,8 @@ public class FeedbackFunctions
     private readonly IFeedbackAnalyzerService _analyzerService;
     private readonly TwitterFeedbackFetcher _twitterService;
     private readonly BlueSkyFeedbackFetcher _blueSkyService;
-    private readonly HttpClient _httpClient;
 
-    public FeedbackFunctions(ILogger<FeedbackFunctions> logger, IConfiguration configuration, HttpClient httpClient)
+    public FeedbackFunctions(ILogger<FeedbackFunctions> logger, IConfiguration configuration, IHttpClientFactory httpClientFactory)
     {
 #if DEBUG
 
@@ -44,25 +43,24 @@ public class FeedbackFunctions
         _configuration = configuration;
 #endif
         _logger = logger;
-        _httpClient = httpClient;
 
         
         var githubToken = _configuration["GitHub:AccessToken"];
-        _githubService = new GitHubService(githubToken ?? throw new InvalidOperationException("GitHub access token not configured"), _httpClient);
+        _githubService = new GitHubService(githubToken ?? throw new InvalidOperationException("GitHub access token not configured"), httpClientFactory.CreateClient("GitHub"));
         
-        _hnService = new HackerNewsService(_httpClient);
+        _hnService = new HackerNewsService(httpClientFactory.CreateClient("HackerNews"));
         
         var ytApiKey = _configuration["YouTube:ApiKey"];
-        _ytService = new YouTubeService(ytApiKey ?? throw new InvalidOperationException("YouTube API key not configured"), _httpClient);
+        _ytService = new YouTubeService(ytApiKey ?? throw new InvalidOperationException("YouTube API key not configured"), httpClientFactory.CreateClient("YouTube"));
 
         var redditClientId = _configuration["Reddit:ClientId"];
         var redditClientSecret = _configuration["Reddit:ClientSecret"];
         _redditService = new RedditService(
             redditClientId ?? throw new InvalidOperationException("Reddit client ID not configured"),
             redditClientSecret ?? throw new InvalidOperationException("Reddit client secret not configured"),
-            _httpClient);
+            httpClientFactory.CreateClient("Reddit"));
 
-        _devBlogsService = new DevBlogsService(_httpClient);
+        _devBlogsService = new DevBlogsService(httpClientFactory.CreateClient("DevBlogs"), _logger);
 
         var endpoint = _configuration["Azure:OpenAI:Endpoint"] ?? throw new InvalidOperationException("Azure OpenAI endpoint not configured");
         var apiKey = _configuration["Azure:OpenAI:ApiKey"] ?? throw new InvalidOperationException("Azure OpenAI API key not configured");
@@ -71,13 +69,14 @@ public class FeedbackFunctions
         _analyzerService = new FeedbackAnalyzerService(endpoint, apiKey, deployment);
 
         var twitterBearerToken = _configuration["Twitter:BearerToken"] ?? throw new InvalidOperationException("Twitter Bearer token not configured");
-        _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", twitterBearerToken);
-        _twitterService = new TwitterFeedbackFetcher(_httpClient, Microsoft.Extensions.Logging.Abstractions.NullLogger<TwitterFeedbackFetcher>.Instance);
+        var twitterHttpClient = httpClientFactory.CreateClient("Twitter");
+        twitterHttpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", twitterBearerToken);
+        _twitterService = new TwitterFeedbackFetcher(twitterHttpClient, Microsoft.Extensions.Logging.Abstractions.NullLogger<TwitterFeedbackFetcher>.Instance);
         
         // Initialize BlueSky service with authentication
         var blueSkyUsername = _configuration["BlueSky:Username"] ?? throw new InvalidOperationException("BlueSky username not configured");
         var blueSkyAppPassword = _configuration["BlueSky:AppPassword"] ?? throw new InvalidOperationException("BlueSky app password not configured");
-        _blueSkyService = new BlueSkyFeedbackFetcher(_httpClient, Microsoft.Extensions.Logging.Abstractions.NullLogger<BlueSkyFeedbackFetcher>.Instance);
+        _blueSkyService = new BlueSkyFeedbackFetcher(httpClientFactory.CreateClient("BlueSky"), Microsoft.Extensions.Logging.Abstractions.NullLogger<BlueSkyFeedbackFetcher>.Instance);
         _blueSkyService.SetCredentials(blueSkyUsername, blueSkyAppPassword);
     }
 
