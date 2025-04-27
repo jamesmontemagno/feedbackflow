@@ -8,7 +8,7 @@ namespace FeedbackWebApp.Services.Mock;
 public class MockGitHubFeedbackService : FeedbackService, IGitHubFeedbackService
 {
     public MockGitHubFeedbackService(
-        HttpClient http,
+        IHttpClientFactory http,
         IConfiguration configuration,
         UserSettingsService userSettings,
         FeedbackStatusUpdate? onStatusUpdate = null)

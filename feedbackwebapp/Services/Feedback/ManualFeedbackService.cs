@@ -9,7 +9,7 @@ public class ManualFeedbackService : FeedbackService, IManualFeedbackService
     public string Content { get; set; } = string.Empty;
 
     public ManualFeedbackService(
-        HttpClient http, 
+        IHttpClientFactory http, 
         IConfiguration configuration, 
         UserSettingsService userSettings,
         string content,

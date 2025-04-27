@@ -10,7 +10,7 @@ public class MockManualFeedbackService : FeedbackService, IManualFeedbackService
     public string Content { get; set; } = string.Empty;
 
     public MockManualFeedbackService(
-        HttpClient http,
+        IHttpClientFactory http,
         IConfiguration configuration,
         UserSettingsService userSettings,
         FeedbackStatusUpdate? onStatusUpdate = null)

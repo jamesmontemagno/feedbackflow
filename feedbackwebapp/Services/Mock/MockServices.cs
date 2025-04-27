@@ -5,7 +5,7 @@ using SharedDump.Models.YouTube;
 namespace FeedbackWebApp.Services.Mock;
 
 public class MockYouTubeFeedbackService(
-    HttpClient http,
+    IHttpClientFactory http,
     IConfiguration configuration,
     UserSettingsService userSettings,
     FeedbackStatusUpdate? onStatusUpdate = null)
@@ -73,7 +73,7 @@ public class MockYouTubeFeedbackService(
 }
 
 public class MockHackerNewsFeedbackService(
-    HttpClient http,
+    IHttpClientFactory http,
     IConfiguration configuration,
     UserSettingsService userSettings,
     FeedbackStatusUpdate? onStatusUpdate = null)

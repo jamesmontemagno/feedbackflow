@@ -11,7 +11,7 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
     private readonly string _url;
 
     public GitHubFeedbackService(
-        HttpClient http,
+        IHttpClientFactory http,
         IConfiguration configuration,
         UserSettingsService userSettings,
         string url,

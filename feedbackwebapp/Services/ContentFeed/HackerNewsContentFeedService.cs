@@ -11,7 +11,7 @@ public class HackerNewsContentFeedService : ContentFeedService, IHackerNewsConte
 
     public HackerNewsContentFeedService(
         string[]? keywords,
-        HttpClient http,
+        IHttpClientFactory http,
         IConfiguration configuration,
         HackerNewsCache cache)
         : base(http, configuration)

@@ -21,12 +21,12 @@ public abstract class FeedbackService
     protected readonly FeedbackStatusUpdate? OnStatusUpdate;
 
     protected FeedbackService(
-        HttpClient http, 
+        IHttpClientFactory http, 
         IConfiguration configuration, 
         UserSettingsService userSettings,
         FeedbackStatusUpdate? onStatusUpdate = null)
     {
-        Http = http;
+        Http = http.CreateClient("DefaultClient");
         Configuration = configuration;
         _userSettings = userSettings;
         BaseUrl = configuration["FeedbackApi:BaseUrl"] 

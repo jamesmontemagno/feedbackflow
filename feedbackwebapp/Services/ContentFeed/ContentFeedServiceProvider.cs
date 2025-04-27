@@ -7,12 +7,12 @@ namespace FeedbackWebApp.Services.ContentFeed;
 public class ContentFeedServiceProvider
 {
     private readonly IConfiguration _configuration;
-    private readonly HttpClient _http;
+    private readonly IHttpClientFactory _http;
     private readonly bool _useMocks;
     private readonly IMemoryCache _cache;
     private readonly HackerNewsCache _hackerNewsCache;
 
-    public ContentFeedServiceProvider(IConfiguration configuration, HttpClient http, IMemoryCache cache)
+    public ContentFeedServiceProvider(IConfiguration configuration, IHttpClientFactory http, IMemoryCache cache)
     {
         _configuration = configuration;
         _http = http;

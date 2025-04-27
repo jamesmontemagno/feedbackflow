@@ -12,7 +12,7 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
 
     public RedditFeedbackService(
         string[] threadIds,
-        HttpClient http,
+        IHttpClientFactory http,
         IConfiguration configuration,
         UserSettingsService userSettings,
         FeedbackStatusUpdate? onStatusUpdate = null)

@@ -14,7 +14,7 @@ public class YouTubeContentFeedService : ContentFeedService, IYouTubeContentFeed
         string topic,
         int days,
         string? tag,
-        HttpClient http,
+        IHttpClientFactory http,
         IConfiguration configuration)
         : base(http, configuration)
     {

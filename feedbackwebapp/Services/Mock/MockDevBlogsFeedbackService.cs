@@ -8,7 +8,7 @@ public class MockDevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackSer
 {
     public string ArticleUrl { get; set; } = string.Empty;
 
-    public MockDevBlogsFeedbackService(HttpClient http, IConfiguration configuration, UserSettingsService userSettings, FeedbackStatusUpdate? onStatusUpdate = null)
+    public MockDevBlogsFeedbackService(IHttpClientFactory http, IConfiguration configuration, UserSettingsService userSettings, FeedbackStatusUpdate? onStatusUpdate = null)
         : base(http, configuration, userSettings, onStatusUpdate) { }
 
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()

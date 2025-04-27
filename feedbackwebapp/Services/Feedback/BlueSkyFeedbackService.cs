@@ -15,7 +15,7 @@ public class BlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackService
     private readonly string _postUrlOrId;
 
     public BlueSkyFeedbackService(
-        HttpClient http,
+        IHttpClientFactory http,
         IConfiguration configuration,
         UserSettingsService userSettings,
         string postUrlOrId,

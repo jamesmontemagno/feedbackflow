@@ -12,7 +12,7 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
     private readonly string _storyIds;
 
     public HackerNewsFeedbackService(
-        HttpClient http, 
+        IHttpClientFactory http, 
         IConfiguration configuration,
         UserSettingsService userSettings,
         string storyIds,

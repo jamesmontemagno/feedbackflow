@@ -6,11 +6,11 @@ namespace FeedbackWebApp.Services.Feedback;
 public class FeedbackServiceProvider
 {
     private readonly IConfiguration _configuration;
-    private readonly HttpClient _http;
+    private readonly IHttpClientFactory _http;
     private readonly bool _useMocks;
     private readonly UserSettingsService _userSettings;
 
-    public FeedbackServiceProvider(IConfiguration configuration, HttpClient http, UserSettingsService userSettings)
+    public FeedbackServiceProvider(IConfiguration configuration, IHttpClientFactory http, UserSettingsService userSettings)
     {
         _configuration = configuration;
         _http = http;

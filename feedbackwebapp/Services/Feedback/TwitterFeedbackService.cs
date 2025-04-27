@@ -10,7 +10,7 @@ public class TwitterFeedbackService : FeedbackService, ITwitterFeedbackService
     private readonly string _tweetUrlOrId;
 
     public TwitterFeedbackService(
-        HttpClient http,
+        IHttpClientFactory http,
         IConfiguration configuration,
         UserSettingsService userSettings,
         string tweetUrlOrId,

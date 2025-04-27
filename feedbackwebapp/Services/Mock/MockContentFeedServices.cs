@@ -8,7 +8,7 @@ namespace FeedbackWebApp.Services.Mock;
 
 public class MockYouTubeContentFeedService : ContentFeedService, IYouTubeContentFeedService
 {
-    public MockYouTubeContentFeedService(HttpClient http, IConfiguration configuration)
+    public MockYouTubeContentFeedService(IHttpClientFactory http, IConfiguration configuration)
         : base(http, configuration) { }
 
     public override async Task<object?> FetchContent()
@@ -29,7 +29,7 @@ public class MockYouTubeContentFeedService : ContentFeedService, IYouTubeContent
 
 public class MockRedditContentFeedService : ContentFeedService, IRedditContentFeedService
 {
-    public MockRedditContentFeedService(HttpClient http, IConfiguration configuration)
+    public MockRedditContentFeedService(IHttpClientFactory http, IConfiguration configuration)
         : base(http, configuration) { }
 
     public override async Task<object?> FetchContent()
@@ -50,7 +50,7 @@ public class MockRedditContentFeedService : ContentFeedService, IRedditContentFe
 
 public class MockHackerNewsContentFeedService : ContentFeedService, IHackerNewsContentFeedService
 {
-    public MockHackerNewsContentFeedService(HttpClient http, IConfiguration configuration)
+    public MockHackerNewsContentFeedService(IHttpClientFactory http, IConfiguration configuration)
         : base(http, configuration) { }
 
     public override async Task<object?> FetchContent()

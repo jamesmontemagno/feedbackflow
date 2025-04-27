@@ -11,7 +11,7 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
     private readonly string _playlistIds;
 
     public YouTubeFeedbackService(
-        HttpClient http, 
+        IHttpClientFactory http, 
         IConfiguration configuration,
         UserSettingsService userSettings,
         string videoIds,

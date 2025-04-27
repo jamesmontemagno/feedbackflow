@@ -9,7 +9,7 @@ public class DevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackService
 {
     public string ArticleUrl { get; set; } = string.Empty;
 
-    public DevBlogsFeedbackService(HttpClient http, IConfiguration configuration, UserSettingsService userSettings, string articleUrl, FeedbackStatusUpdate? onStatusUpdate = null)
+    public DevBlogsFeedbackService(IHttpClientFactory http, IConfiguration configuration, UserSettingsService userSettings, string articleUrl, FeedbackStatusUpdate? onStatusUpdate = null)
         : base(http, configuration, userSettings, onStatusUpdate)
     {
         ArticleUrl = articleUrl;

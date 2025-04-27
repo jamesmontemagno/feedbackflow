@@ -7,7 +7,7 @@ namespace FeedbackWebApp.Services.Mock;
 public class MockTwitterFeedbackService : FeedbackService, ITwitterFeedbackService
 {
     public MockTwitterFeedbackService(
-        HttpClient http,
+        IHttpClientFactory http,
         IConfiguration configuration,
         UserSettingsService userSettings,
         FeedbackStatusUpdate? onStatusUpdate = null)

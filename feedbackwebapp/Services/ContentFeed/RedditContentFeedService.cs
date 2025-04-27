@@ -14,7 +14,7 @@ public class RedditContentFeedService : ContentFeedService, IRedditContentFeedSe
         string subreddit,
         int days,
         string sortBy,
-        HttpClient http,
+        IHttpClientFactory http,
         IConfiguration configuration)
         : base(http, configuration)
     {
