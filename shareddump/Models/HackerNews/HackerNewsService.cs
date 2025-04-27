@@ -82,7 +82,7 @@ public class HackerNewsService
             HackerNewsJsonContext.Default.Int32Array) ?? Array.Empty<int>();
     }
 
-    public async Task<List<HackerNewsItemBasicInfo>> SearchByTitleBasicInfo(IEnumerable<string> keywords)
+    public async Task<List<HackerNewsItemBasicInfo>> SearchByTitleBasicInfo()
     {
         var topStories = await GetTopStories();
         var results = new List<HackerNewsItemBasicInfo>();
@@ -90,8 +90,7 @@ public class HackerNewsService
         foreach (var storyId in topStories)
         {
             var item = await GetItemData(storyId);
-            if (item?.Title != null && (keywords.Count() == 0 || keywords.Any(k => 
-                item.Title.Contains(k, StringComparison.OrdinalIgnoreCase))))
+            if (!string.IsNullOrWhiteSpace(item?.Title))
             {
                 results.Add(new HackerNewsItemBasicInfo
                 {

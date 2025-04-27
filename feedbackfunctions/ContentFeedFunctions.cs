@@ -19,12 +19,12 @@ public class ContentFeedFunctions
     private readonly YouTubeService _ytService;
     private readonly RedditService _redditService;
     private static readonly ConcurrentDictionary<string, (List<HackerNewsItemBasicInfo> Items, DateTime ExpirationTime)> _hnSearchCache = new();
-    private static readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(60);
 
     public ContentFeedFunctions(
         ILogger<ContentFeedFunctions> logger,
         IConfiguration configuration,
-        HttpClient httpClient)
+        IHttpClientFactory httpClientFactory)
     {
 #if DEBUG
 
@@ -37,16 +37,16 @@ public class ContentFeedFunctions
 #endif
         _logger = logger;
         
-        _hnService = new HackerNewsService(httpClient);
+        _hnService = new HackerNewsService(httpClientFactory.CreateClient("HackerNews"));
         
         var ytApiKey = _configuration["YouTube:ApiKey"];
-        _ytService = new YouTubeService(ytApiKey ?? throw new InvalidOperationException("YouTube API key not configured"), httpClient);
+        _ytService = new YouTubeService(ytApiKey ?? throw new InvalidOperationException("YouTube API key not configured"), httpClientFactory.CreateClient("YouTube"));
 
         var redditClientId = _configuration["Reddit:ClientId"];
         var redditClientSecret = _configuration["Reddit:ClientSecret"];
         _redditService = new RedditService(
             redditClientId ?? throw new InvalidOperationException("Reddit client ID not configured"),
-            redditClientSecret ?? throw new InvalidOperationException("Reddit client secret not configured"), httpClient);
+            redditClientSecret ?? throw new InvalidOperationException("Reddit client secret not configured"), httpClientFactory.CreateClient("Reddit"));
     }
 
     [Function("GetRecentYouTubeVideos")]
@@ -139,9 +139,6 @@ public class ContentFeedFunctions
         }
     }
 
-    private string GetCacheKey(string[] keywords) => 
-        string.Join("-", keywords.OrderBy(k => k));
-
     private bool TryGetFromCache(string cacheKey, out List<HackerNewsItemBasicInfo>? items)
     {
         items = null;
@@ -165,21 +162,12 @@ public class ContentFeedFunctions
 
         try
         {
-            var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
-            
-            var keywords = queryParams["keywords"];
-            if (string.IsNullOrWhiteSpace(keywords))
-            {
-                keywords = "";
-            }
-
-            var keywordsList = keywords.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            var cacheKey = GetCacheKey(keywordsList);
+            var cacheKey = "all";
 
             List<HackerNewsItemBasicInfo> matchingItems;
             if (!TryGetFromCache(cacheKey, out var cachedItems))
             {
-                matchingItems = await _hnService.SearchByTitleBasicInfo(keywordsList);
+                matchingItems = await _hnService.SearchByTitleBasicInfo();
                 _hnSearchCache.TryAdd(cacheKey, (matchingItems, DateTime.UtcNow.Add(_cacheDuration)));
                 _logger.LogInformation("Cache miss for key: {CacheKey}", cacheKey);
             }
@@ -199,6 +187,32 @@ public class ContentFeedFunctions
             var response = req.CreateResponse(HttpStatusCode.InternalServerError);
             await response.WriteStringAsync("An error occurred processing the request");
             return response;
+        }
+    }
+
+    [Function("CacheHackerNewsArticlesHourly")]
+    public async Task CacheHackerNewsArticlesHourly(
+        [TimerTrigger("0 0 * * * *")] TimerInfo timerInfo)
+    {
+        _logger.LogInformation("Starting hourly Hacker News cache refresh at: {Time}", DateTime.UtcNow);
+
+        try
+        {
+            var cacheKey = "all";
+                var items = await _hnService.SearchByTitleBasicInfo();
+                _hnSearchCache.AddOrUpdate(
+                    cacheKey,
+                    (items, DateTime.UtcNow.Add(_cacheDuration)),
+                    (key, old) => (items, DateTime.UtcNow.Add(_cacheDuration))
+                );
+            
+                
+            _logger.LogInformation("Pre-cached Hacker News articles for key: {CacheKey}", cacheKey);
+            
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during hourly Hacker News cache refresh");
         }
     }
 }
