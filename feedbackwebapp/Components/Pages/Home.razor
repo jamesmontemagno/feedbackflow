@@ -260,13 +260,16 @@
                         };
                     }
                 }
-            }            else if (additionalData is List<RedditThreadModel> threads)
+            }            
+            else if (additionalData is List<RedditThreadModel> threads)
             {
                 redditThreads = threads;
-            }            else if (selectedSource == "Twitter" && additionalData != null)
+            }            
+            else if (selectedSource == "Twitter" && additionalData != null)
             {
                 twitterTweetUrlOrId = twitterInputForm?.TweetId ?? string.Empty;
-            }            else if (selectedSource == "BlueSky" && additionalData != null)
+            }            
+            else if (selectedSource == "BlueSky" && additionalData != null)
             {
                 blueSkyPostUrlOrId = blueSkyInputForm?.PostId ?? string.Empty;
             }
@@ -334,7 +337,8 @@
             {
                 redditInputForm.ThreadsInput = initialId;
                 redditInputForm.RefreshUI();
-            }            else if (selectedSource == "Twitter" && twitterInputForm != null)
+            }            
+            else if (selectedSource == "Twitter" && twitterInputForm != null)
             {
                 twitterInputForm.TweetId = initialId;
                 twitterInputForm.RefreshUI();

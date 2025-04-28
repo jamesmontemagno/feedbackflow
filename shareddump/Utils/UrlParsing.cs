@@ -134,6 +134,10 @@ public static class UrlParsing
             {
                 processedIds.Add(url);
             }
+            else if (RedditUrlParser.IsRedditShortUrl(url))
+            {
+                processedIds.Add(url);
+            }
         }
 
         return string.Join(",", processedIds);

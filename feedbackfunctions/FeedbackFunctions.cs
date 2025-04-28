@@ -36,8 +36,8 @@ public class FeedbackFunctions
 #if DEBUG
 
         _configuration = new ConfigurationBuilder()
-                    .AddUserSecrets<Program>()
                     .AddJsonFile("local.settings.json")
+                    .AddUserSecrets<Program>()
                     .Build();
 #else
 
@@ -532,7 +532,6 @@ public class FeedbackFunctions
         _logger.LogInformation("Processing BlueSky feedback request");
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var postUrlOrId = queryParams["post"];
-        var maxCommentsStr = queryParams["maxComments"];
         
         if (string.IsNullOrWhiteSpace(postUrlOrId))
         {
@@ -551,23 +550,6 @@ public class FeedbackFunctions
                 return notFound;
             }
             
-            // Limit comments if maxComments parameter is provided
-            if (!string.IsNullOrWhiteSpace(maxCommentsStr) && int.TryParse(maxCommentsStr, out var maxComments) && maxComments > 0)
-            {
-                _logger.LogInformation("Limiting BlueSky feedback to {MaxComments} comments", maxComments);
-                
-                // Count current total comments
-                int totalComments = CountComments(result.Items);
-                if (totalComments > maxComments)
-                {
-                    result.MayBeIncomplete = true;
-                    result.RateLimitInfo = $"Results limited to {maxComments} comments (out of {totalComments} total).";
-                    
-                    // Trim excess comments (a simplistic approach - could be more sophisticated)
-                    TrimComments(result.Items, maxComments);
-                }
-            }
-            
             var response = req.CreateResponse(HttpStatusCode.OK);
             var json = System.Text.Json.JsonSerializer.Serialize(result, BlueSkyFeedbackJsonContext.Default.BlueSkyFeedbackResponse);
             await response.WriteStringAsync(json);
@@ -582,49 +564,7 @@ public class FeedbackFunctions
         }
     }
     
-    private int CountComments(List<BlueSkyFeedbackItem> items)
-    {
-        if (items == null || items.Count == 0) return 0;
-        
-        int count = items.Count;
-        foreach (var item in items)
-        {
-            if (item.Replies != null)
-            {
-                count += CountComments(item.Replies);
-            }
-        }
-        return count;
-    }
-    
-    private void TrimComments(List<BlueSkyFeedbackItem> items, int maxComments, ref int currentCount)
-    {
-        if (items == null || items.Count == 0 || currentCount >= maxComments) return;
-        
-        // Preserve as many top-level items as possible
-        for (int i = items.Count - 1; i >= 0; i--)
-        {
-            if (currentCount >= maxComments)
-            {
-                // Remove excess items
-                items.RemoveAt(i);
-                continue;
-            }
-              currentCount++;
-            
-            // Process replies recursively
-            if (items[i].Replies != null && items[i].Replies.Count > 0)
-            {
-                TrimComments(items[i].Replies, maxComments, ref currentCount);
-            }
-        }
-    }
-    
-    private void TrimComments(List<BlueSkyFeedbackItem> items, int maxComments)
-    {
-        int currentCount = 0;
-        TrimComments(items, maxComments, ref currentCount);
-    }
+
 }
 
 public class AnalyzeCommentsRequest
