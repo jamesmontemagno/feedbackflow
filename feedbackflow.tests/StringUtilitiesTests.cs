@@ -1,4 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharedDump.Utils;
 
 namespace FeedbackFlow.Tests;

@@ -1,13 +1,10 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharedDump.Models.GitHub;
 using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
 
-namespace feedbackflow.tests;
+namespace FeedbackFlow.Tests;
 
 [TestClass]
-public class GitHubPullRequestCommentsTests : MSTestSettings
+public class GitHubPullRequestCommentsTests
 {
     [TestMethod]
     public async Task GetPullRequestCommentsAsync_ShouldRetrieveAllCommentTypes()
