@@ -1,5 +1,7 @@
 @page "/settings"
 @inject UserSettingsService UserSettings
+@inject IJSRuntime JSRuntime
+@inject ISpeechSynthesisService SpeechSynthesisService
 
 <PageTitle>Settings - FeedbackFlow</PageTitle>
 
@@ -7,7 +9,7 @@
     <h1 class="mb-4">Settings</h1>
 
     @if (settings != null)
-    {
+    {        
         <div class="row">
             <div class="col-md-6 mb-4">
                 <div class="card shadow-sm">
@@ -42,6 +44,59 @@
                                 Enable to use custom prompts instead of the default ones.
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Text-to-Speech Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (availableVoices == null)
+                        {
+                            <div class="text-center py-2">
+                                <div class="spinner-border spinner-border-sm" role="status">
+                                    <span class="visually-hidden">Loading voices...</span>
+                                </div>
+                                <span class="ms-2">Loading available voices...</span>
+                            </div>
+                        }
+                        else if (availableVoices.Length == 0)
+                        {
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                No voices available. Text-to-speech may not be supported in your browser.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Preferred Voice</label>
+                                <select class="form-select" @bind="PreferredVoice" @bind:event="onchange">
+                                    <option value="">Default (Auto-select best voice)</option>
+                                    @foreach (var voiceGroup in availableVoices.GroupBy(v => v.Lang))
+                                    {
+                                        <optgroup label="@GetLanguageName(voiceGroup.Key)">
+                                            @foreach (var voice in voiceGroup.OrderBy(v => v.Name))
+                                            {
+                                                <option value="@voice.VoiceURI">@voice.Name</option>
+                                            }
+                                        </optgroup>
+                                    }
+                                </select>
+                                <div class="text-muted small mt-1">
+                                    Choose a voice for the text-to-speech feature. If none is selected, the system will automatically choose the best available voice.
+                                </div>
+                                <div class="mt-3">
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="PlayVoiceDemo">
+                                        <i class="bi bi-volume-up me-1"></i>
+                                        Test Selected Voice
+                                    </button>
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
@@ -181,7 +236,15 @@
 @code {
     private UserSettingsService.UserSettings? settings;
     private bool isSaving;
-    private bool hasUnsavedChanges;
+    private bool hasUnsavedChanges;    private VoiceInfo[]? availableVoices;
+
+    private class VoiceInfo
+    {
+        public string Name { get; set; } = "";
+        public string Lang { get; set; } = "";
+        public string VoiceURI { get; set; } = "";
+        public bool IsDefault { get; set; }
+    }
 
     private bool UseCustomPrompts
     {
@@ -191,6 +254,19 @@
             if (settings != null)
             {
                 settings.UseCustomPrompts = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
+    private string? PreferredVoice
+    {
+        get => settings?.PreferredVoice;
+        set
+        {
+            if (settings != null)
+            {
+                settings.PreferredVoice = value;
                 hasUnsavedChanges = true;
             }
         }
@@ -298,13 +374,14 @@
                 hasUnsavedChanges = true;
             }
         }
-    }
-
+    }    
+    
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             await LoadSettings();
+            await LoadVoices();
             StateHasChanged();
         }
     }
@@ -314,8 +391,90 @@
         settings = await UserSettings.GetSettingsAsync();
         hasUnsavedChanges = false;
         StateHasChanged();
+    }    
+    
+    private async Task LoadVoices()
+    {
+        try
+        {
+            // Get voices using the SpeechSynthesisService
+            var voices = await SpeechSynthesisService.GetVoicesAsync();
+            
+            // Convert to our VoiceInfo class
+            availableVoices = voices.Select(v => new VoiceInfo
+            {
+                Name = v.Name,
+                Lang = v.Lang,
+                VoiceURI = v.VoiceURI,
+                IsDefault = v.Default
+            }).ToArray();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error loading voices: {ex.Message}");
+            availableVoices = Array.Empty<VoiceInfo>();
+        }
     }
 
+    private string GetLanguageName(string langCode)
+    {
+        // Convert language codes to readable names
+        var langMap = new Dictionary<string, string>
+        {
+            {"en-US", "English (US)"},
+            {"en-GB", "English (UK)"},
+            {"en", "English"},
+            {"es", "Spanish"},
+            {"fr", "French"},
+            {"de", "German"},
+            {"it", "Italian"},
+            {"ja", "Japanese"},
+            {"ko", "Korean"},
+            {"zh", "Chinese"},
+            {"zh-CN", "Chinese (Mainland)"},
+            {"zh-TW", "Chinese (Taiwan)"},
+            {"ru", "Russian"},
+            {"pt", "Portuguese"},
+            {"pt-BR", "Portuguese (Brazil)"}
+        };
+
+        return langMap.TryGetValue(langCode, out var name) ? name : langCode;
+    }    
+    
+    private async Task PlayVoiceDemo()
+    {
+        if (string.IsNullOrEmpty(PreferredVoice))
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Please select a voice to test.");
+            return;
+        }
+
+        const string demoText = "This is a test of the selected voice. If you can hear this, the voice is working correctly.";
+        
+        // Create utterance with the demo text
+        var utterance = new SpeechSynthesisUtterance
+        {
+            Text = demoText,
+            Rate = 1.0f,
+            Pitch = 1.0f
+        };
+        
+        // Set the selected voice
+        var voices = await SpeechSynthesisService.GetVoicesAsync();
+        var selectedVoice = voices.FirstOrDefault(v => v.VoiceURI == PreferredVoice);
+        
+        if (selectedVoice != null)
+        {
+            utterance.Voice = selectedVoice;
+        }
+        
+        // Cancel any ongoing speech
+        await SpeechSynthesisService.CancelAsync();
+        
+        // Speak the text
+        await SpeechSynthesisService.SpeakAsync(utterance);
+    }
+    
     private async Task SaveSettings()
     {
         if (settings == null) return;
@@ -325,6 +484,9 @@
             isSaving = true;
             await UserSettings.SaveSettingsAsync(settings);
             hasUnsavedChanges = false;
+            
+            // Show a toast or notification
+            await JSRuntime.InvokeVoidAsync("eval", "if (typeof bootstrap !== 'undefined' && bootstrap.Toast) { const toast = new bootstrap.Toast(document.createElement('div')); toast._element.innerHTML = '<div class=\"toast-body bg-success text-white\">Settings saved successfully!</div>'; document.body.appendChild(toast._element); toast.show(); setTimeout(() => toast._element.remove(), 3000); }");
         }
         finally
         {

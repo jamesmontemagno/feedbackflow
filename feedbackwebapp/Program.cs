@@ -3,10 +3,14 @@ using FeedbackWebApp.Services;
 using FeedbackWebApp.Services.Authentication;
 using FeedbackWebApp.Services.ContentFeed;
 using FeedbackWebApp.Services.Feedback;
+using Microsoft.JSInterop;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+
+// Add SpeechSynthesis services
+builder.Services.AddSpeechSynthesisServices();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

@@ -1,5 +1,8 @@
 @namespace FeedbackWebApp.Components.Feedback.Results
 @inject IJSRuntime JSRuntime
+@inject FeedbackWebApp.Services.UserSettingsService UserSettings
+@inject ISpeechSynthesisService SpeechSynthesisService
+@implements IDisposable
 
 @if (!string.IsNullOrEmpty(Error))
 {
@@ -13,11 +16,16 @@
 {
     <div class="card mt-4 shadow-sm">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0">Analysis Summary</h5>
-            <button class="btn btn-sm btn-outline-light" @onclick="CopyToClipboard">
-                <i class="bi bi-clipboard me-1"></i>
-                Copy
-            </button>
+            <h5 class="card-title mb-0">Analysis Summary</h5>            <div class="d-flex">
+                <button class="btn btn-sm btn-outline-light me-2 @(_isSpeaking ? "btn-speak-active" : "")" @onclick="SpeakAnalysis">
+                    <i class="bi @(_isSpeaking ? "bi-pause-fill" : "bi-volume-up-fill") me-1"></i>
+                    @(_isSpeaking ? "Stop" : "Speak")
+                </button>
+                <button class="btn btn-sm btn-outline-light" @onclick="CopyToClipboard">
+                    <i class="bi bi-clipboard me-1"></i>
+                    Copy
+                </button>
+            </div>
         </div>
         <div class="card-body">
             <div class="markdown-body">
@@ -32,9 +40,9 @@
     public string? Error { get; set; }
 
     [Parameter]
-    public string? MarkdownResult { get; set; }
-
-    private string? _previousMarkdown;
+    public string? MarkdownResult { get; set; }    private string? _previousMarkdown;
+    private bool _isSpeaking = false;
+    private System.Threading.Timer? _speakingTimer;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -42,6 +50,39 @@
         {
             _previousMarkdown = MarkdownResult;
             await TriggerConfetti();
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        // Check speaking status periodically
+        _speakingTimer = new System.Threading.Timer(
+            async _ => await CheckSpeakingStatus(), 
+            null, 
+            TimeSpan.Zero, 
+            TimeSpan.FromMilliseconds(500));
+    }    private async Task CheckSpeakingStatus()
+    {
+        try
+        {
+            if (_isSpeaking)
+            {
+                var stillSpeaking = await SpeechSynthesisService.Speaking;
+                if (!stillSpeaking && _isSpeaking)
+                {
+                    _isSpeaking = false;
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+        catch
+        {
+            // If there's an error checking the status, assume we're not speaking
+            if (_isSpeaking)
+            {
+                _isSpeaking = false;
+                await InvokeAsync(StateHasChanged);
+            }
         }
     }
 
@@ -60,6 +101,80 @@
         if (!string.IsNullOrEmpty(MarkdownResult))
         {
             await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", MarkdownResult);
+        }
+    }    
+    
+    private async Task SpeakAnalysis()
+    {
+        if (!string.IsNullOrEmpty(MarkdownResult))
+        {
+            try
+            {
+                if (_isSpeaking)
+                {
+                    await SpeechSynthesisService.CancelAsync();
+                    _isSpeaking = false;
+                }
+                else
+                {
+                    // Clean up the markdown text for better speech
+                    var cleanText = MarkdownResult
+                        .Replace("**", "")      // Remove bold markers
+                        .Replace("*", "")       // Remove italic markers
+                        .Replace("`", "")       // Remove code markers
+                        .Replace("```", "")     // Remove code block markers
+                        .Replace("\n- ", "\n• ") // Better pronounce list items
+                        .Replace("\n\n", ". ")  // Replace double newlines with pauses
+                        .Replace("\n", ". ");   // Replace newlines with pauses
+
+                    // Get user's preferred voice if set
+                    var preferredVoiceUri = await UserSettings.GetPreferredVoiceAsync();
+                    
+                    // Create utterance
+                    var utterance = new SpeechSynthesisUtterance
+                    {
+                        Text = cleanText,
+                        Rate = 1.0f,
+                        Pitch = 1.0f
+                    };
+                    
+                    // Set user's preferred voice if available
+                    if (!string.IsNullOrEmpty(preferredVoiceUri))
+                    {
+                        var voices = await SpeechSynthesisService.GetVoicesAsync();
+                        var selectedVoice = voices.FirstOrDefault(v => v.VoiceURI == preferredVoiceUri);
+                        
+                        if (selectedVoice != null)
+                        {
+                            utterance.Voice = selectedVoice;
+                        }
+                    }
+                    
+                    // Speak the text
+                    await SpeechSynthesisService.SpeakAsync(utterance);
+                    _isSpeaking = true;
+                }
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error in speech synthesis: {ex.Message}");
+                _isSpeaking = false;
+                StateHasChanged();
+            }
+        }
+    }   
+    
+    public void Dispose()
+    {
+        // Stop the timer
+        _speakingTimer?.Dispose();
+        _speakingTimer = null;
+        
+        // Ensure speech is stopped when component is disposed
+        if (_isSpeaking)
+        {
+            _ = SpeechSynthesisService.CancelAsync();
         }
     }
 }
