@@ -87,23 +87,39 @@ public class HackerNewsService
         var topStories = await GetTopStories();
         var results = new List<HackerNewsItemBasicInfo>();
 
-        foreach (var storyId in topStories)
-        {
-            var item = await GetItemData(storyId);
-            if (!string.IsNullOrWhiteSpace(item?.Title))
+        var tasks = topStories
+            .Select((storyId, index) => new { storyId, index })
+            .Select(async x =>
             {
-                results.Add(new HackerNewsItemBasicInfo
+                var item = await GetItemData(x.storyId);
+                if (!string.IsNullOrWhiteSpace(item?.Title))
                 {
-                    Id = item.Id,
-                    Title = item.Title,
-                    By = item.By ?? string.Empty,
-                    Time = item.Time,
-                    Url = item.Url,
-                    Score = item.Score ?? 0,
-                    Descendants = item.Descendants ?? 0
-                });
-            }
-        }
+                    return new
+                    {
+                        Index = x.index,
+                        Info = new HackerNewsItemBasicInfo
+                        {
+                            Id = item.Id,
+                            Title = item.Title,
+                            By = item.By ?? string.Empty,
+                            Time = item.Time,
+                            Url = item.Url,
+                            Score = item.Score ?? 0,
+                            Descendants = item.Descendants ?? 0
+                        }
+                    };
+                }
+                return null;
+            });
+
+        var items = await Task.WhenAll(tasks);
+
+        results.AddRange(
+            items
+            .Where(i => i?.Info is not null)
+            .OrderBy(i => i!.Index)
+            .Select(i => i!.Info!)
+        );
 
         return results;
     }

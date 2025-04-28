@@ -37,6 +37,7 @@ public class FeedbackFunctions
 
         _configuration = new ConfigurationBuilder()
                     .AddUserSecrets<Program>()
+                    .AddJsonFile("local.settings.json")
                     .Build();
 #else
 

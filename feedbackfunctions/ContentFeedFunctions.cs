@@ -18,8 +18,7 @@ public class ContentFeedFunctions
     private readonly HackerNewsService _hnService;
     private readonly YouTubeService _ytService;
     private readonly RedditService _redditService;
-    private static readonly ConcurrentDictionary<string, (List<HackerNewsItemBasicInfo> Items, DateTime ExpirationTime)> _hnSearchCache = new();
-    private static readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(60);
+    private static readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(10);
 
     public ContentFeedFunctions(
         ILogger<ContentFeedFunctions> logger,
@@ -30,6 +29,7 @@ public class ContentFeedFunctions
 
         _configuration = new ConfigurationBuilder()
                     .AddUserSecrets<Program>()
+                    .AddJsonFile("local.settings.json")
                     .Build();
 #else
 
@@ -139,42 +139,27 @@ public class ContentFeedFunctions
         }
     }
 
-    private bool TryGetFromCache(string cacheKey, out List<HackerNewsItemBasicInfo>? items)
-    {
-        items = null;
-        if (_hnSearchCache.TryGetValue(cacheKey, out var cacheEntry))
-        {
-            if (DateTime.UtcNow <= cacheEntry.ExpirationTime)
-            {
-                items = cacheEntry.Items;
-                return true;
-            }
-            _hnSearchCache.TryRemove(cacheKey, out _);
-        }
-        return false;
-    }
-
     [Function("SearchHackerNewsArticles")]
     public async Task<HttpResponseData> SearchHackerNewsArticles(
-        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req,
+        [BlobInput("hackernews-cache/all.json")] string? cachedBlob)
     {
         _logger.LogInformation("Processing Hacker News search request");
 
         try
         {
-            var cacheKey = "all";
-
             List<HackerNewsItemBasicInfo> matchingItems;
-            if (!TryGetFromCache(cacheKey, out var cachedItems))
+
+            if (!string.IsNullOrEmpty(cachedBlob))
             {
-                matchingItems = await _hnService.SearchByTitleBasicInfo();
-                _hnSearchCache.TryAdd(cacheKey, (matchingItems, DateTime.UtcNow.Add(_cacheDuration)));
-                _logger.LogInformation("Cache miss for key: {CacheKey}", cacheKey);
+                // Use blob cache if available
+                matchingItems = System.Text.Json.JsonSerializer.Deserialize<List<HackerNewsItemBasicInfo>>(cachedBlob) ?? new List<HackerNewsItemBasicInfo>();
+                _logger.LogInformation("Blob cache hit");
             }
             else
             {
-                matchingItems = cachedItems!;
-                _logger.LogInformation("Cache hit for key: {CacheKey}", cacheKey);
+                matchingItems = await _hnService.SearchByTitleBasicInfo();
+                _logger.LogInformation("Blob cache miss, fetched from service");
             }
 
             var response = req.CreateResponse(HttpStatusCode.OK);
@@ -191,28 +176,23 @@ public class ContentFeedFunctions
     }
 
     [Function("CacheHackerNewsArticlesHourly")]
-    public async Task CacheHackerNewsArticlesHourly(
+    [BlobOutput("hackernews-cache/all.json")]
+    public async Task<string> CacheHackerNewsArticlesHourly(
         [TimerTrigger("0 0 * * * *")] TimerInfo timerInfo)
     {
         _logger.LogInformation("Starting hourly Hacker News cache refresh at: {Time}", DateTime.UtcNow);
 
         try
         {
-            var cacheKey = "all";
-                var items = await _hnService.SearchByTitleBasicInfo();
-                _hnSearchCache.AddOrUpdate(
-                    cacheKey,
-                    (items, DateTime.UtcNow.Add(_cacheDuration)),
-                    (key, old) => (items, DateTime.UtcNow.Add(_cacheDuration))
-                );
-            
-                
-            _logger.LogInformation("Pre-cached Hacker News articles for key: {CacheKey}", cacheKey);
-            
+            var items = await _hnService.SearchByTitleBasicInfo();
+            _logger.LogInformation("Pre-cached Hacker News articles");
+            // Serialize items to JSON for blob output
+            return System.Text.Json.JsonSerializer.Serialize(items);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during hourly Hacker News cache refresh");
+            return string.Empty;
         }
     }
 }
