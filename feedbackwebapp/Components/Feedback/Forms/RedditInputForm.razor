@@ -1,6 +1,7 @@
 @namespace FeedbackWebApp.Components.Feedback.Forms
 @inject IJSRuntime JSRuntime
 @using SharedDump.Utils
+@using System.Collections.Generic
 
 <div class="mt-4">
     <div class="form-floating mb-3">
@@ -14,10 +15,22 @@
     
     @if (ContainsShortlinks)
     {
-        <div class="shortlink-warning alert alert-warning" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            Reddit shortlinks detected. These may not resolve correctly. 
-            For best results, please visit the actual post page and copy the full URL.
+        <div class="shortlink-warning alert alert-warning d-flex align-items-center justify-content-between" role="alert">
+            <div>
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                Reddit shortlinks detected. These may not resolve correctly. 
+                For best results, please visit the actual post page and copy the full URL.
+            </div>
+            <div>
+                @foreach (var url in _shortlinkUrls)
+                {
+                    <button type="button" 
+                            class="btn btn-outline-secondary btn-sm ms-2" 
+                            @onclick="() => OpenShortlinkInNewWindow(url)">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>Open link
+                    </button>
+                }
+            </div>
         </div>
     }
 </div>
@@ -25,6 +38,7 @@
 @code {
     private string _threadsInput = "";
     private bool _containsShortlinks = false;
+    private List<string> _shortlinkUrls = new();
 
     public bool ContainsShortlinks => _containsShortlinks;
 
@@ -50,6 +64,7 @@
         if (string.IsNullOrWhiteSpace(_threadsInput))
         {
             _containsShortlinks = false;
+            _shortlinkUrls.Clear();
             return;
         }
 
@@ -57,7 +72,19 @@
             .Select(url => url.Trim())
             .ToArray();
 
-        _containsShortlinks = urls.Any(RedditUrlParser.IsRedditShortUrl);
+        _shortlinkUrls = urls.Where(RedditUrlParser.IsRedditShortUrl).ToList();
+        _containsShortlinks = _shortlinkUrls.Count > 0;
+    }
+
+    private async Task OpenShortlinkInNewWindow(string url)
+    {
+        // Ensure the URL has the http/https prefix
+        if (!url.StartsWith("http://") && !url.StartsWith("https://"))
+        {
+            url = "https://" + url;
+        }
+        
+        await JSRuntime.InvokeVoidAsync("open", url, "_blank");
     }
 
     public void RefreshUI()
