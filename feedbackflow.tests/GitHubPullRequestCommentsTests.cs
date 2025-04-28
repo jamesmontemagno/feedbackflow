@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace feedbackflow.tests;
 
 [TestClass]
-public class GitHubPullRequestCommentsTests : MSTestSettings
+public class GitHubPullRequestCommentsTests
 {
     [TestMethod]
     public async Task GetPullRequestCommentsAsync_ShouldRetrieveAllCommentTypes()
