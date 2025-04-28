@@ -492,8 +492,5 @@ $RECYCLE.BIN/
 /feedbackfunctions/Properties/serviceDependencies.feedbackfunctions20250414121421.json
 /feedbackfunctions/Properties/serviceDependencies.json
 /feedbackfunctions/local.settings.json
-__azurite_db_blob__.json
-__blobstorage__/AzuriteConfig
-__blobstorage__/d2f77979-09d4-4fc1-b2b6-dd90abca22bf
-__blobstorage__/834d1fd8-4b36-441c-a0a9-a14c1ec20695
-__azurite_db_blob_extent__.json
+__azurite_db_blob*
+__blobstorage__/*
