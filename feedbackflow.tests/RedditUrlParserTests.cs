@@ -24,6 +24,14 @@ public class RedditUrlParserTests
         Assert.AreEqual("1k5tpyc", id);
     }
 
+        [TestMethod]
+    public async Task ParseUrl_ValidShortlinkUrl2_ReturnsThreadId()
+    {
+        var url = "https://www.reddit.com/r/dotnet/s/RwaAQyhfSu";
+        var id = await RedditUrlParser.GetShortlinkIdAsync2(url);
+        Assert.AreEqual("1k5tpyc", id);
+    }
+
     [TestMethod]
     public void ParseUrl_InvalidUrl_ReturnsNull()
     {

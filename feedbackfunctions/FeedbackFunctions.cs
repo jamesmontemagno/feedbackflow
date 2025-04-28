@@ -274,7 +274,7 @@ public class FeedbackFunctions
             {
                 if (SharedDump.Utils.RedditUrlParser.IsRedditShortUrl(threadId))
                 {
-                    var resolvedId = await SharedDump.Utils.RedditUrlParser.GetShortlinkIdAsync(threadId);
+                    var resolvedId = await SharedDump.Utils.RedditUrlParser.GetShortlinkIdAsync2(threadId);
                     if (!string.IsNullOrWhiteSpace(resolvedId))
                     {
                         threadResults.Add(await _redditService.GetThreadWithComments(resolvedId));
