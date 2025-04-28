@@ -32,4 +32,9 @@ public class GithubCommentModel
     public required string Content { get; set; }
     public required string CreatedAt { get; set; }
     public required string Url { get; set; }
+    
+    // Properties for code review comments
+    public string? CodeContext { get; set; }
+    public string? FilePath { get; set; }
+    public int? LinePosition { get; set; }
 }

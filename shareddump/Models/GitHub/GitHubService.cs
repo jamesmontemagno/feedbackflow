@@ -648,7 +648,7 @@ public class GitHubService
     /// <param name="repoOwner">Repository owner</param>
     /// <param name="repoName">Repository name</param>
     /// <param name="pullNumber">Pull request number</param>
-    /// <returns>List of comments for the specified pull request</returns>
+    /// <returns>List of comments for the specified pull request</returns>    
     public async Task<List<GithubCommentModel>> GetPullRequestCommentsAsync(string repoOwner, string repoName, int pullNumber)
     {
         var commentsList = new List<GithubCommentModel>();
@@ -694,6 +694,28 @@ public class GitHubService
                             pageInfo {
                                 hasNextPage
                                 endCursor
+                            }
+                        }
+                        reviews(first: 100) {
+                            nodes {
+                                author {
+                                    login
+                                }
+                                body
+                                comments(first: 100) {
+                                    nodes {
+                                        id
+                                        body
+                                        path
+                                        position
+                                        diffHunk
+                                        url
+                                        createdAt
+                                        author {
+                                            login
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -744,7 +766,7 @@ public class GitHubService
                         // Hoist replies as top-level comments
                         foreach (var replyEdge in replies.Edges)
                         {
-                            var reply = replyEdge.Node;
+                            var reply = replyEdge.Node;                            
                             var replyJson = new GithubCommentModel
                             {
                                 Id = reply.Id,
@@ -755,6 +777,35 @@ public class GitHubService
                                 Url = reply.Url
                             };
                             commentsList.Add(replyJson);
+                        }
+                    }
+                }
+
+                // Process review comments (code comments)
+                if (pullRequest.Reviews?.Nodes != null)
+                {
+                    foreach (var review in pullRequest.Reviews.Nodes)
+                    {
+                        if (review.Comments?.Nodes == null)
+                        {
+                            continue;
+                        }
+
+                        foreach (var reviewComment in review.Comments.Nodes)
+                        {
+                            var reviewCommentJson = new GithubCommentModel
+                            {
+                                Id = reviewComment.Id,
+                                Author = reviewComment.Author?.Login ?? "??",
+                                Content = reviewComment.Body,
+                                CreatedAt = reviewComment.CreatedAt,
+                                Url = reviewComment.Url,
+                                CodeContext = reviewComment.DiffHunk,
+                                FilePath = reviewComment.Path,
+                                LinePosition = reviewComment.Position
+                            };
+
+                            commentsList.Add(reviewCommentJson);
                         }
                     }
                 }

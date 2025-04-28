@@ -115,6 +115,9 @@ public class PullRequest
     public required Reaction Reactions { get; set; }
     public required LabelConnection Labels { get; set; }
     public required CommentConnection Comments { get; set; }
+    
+    [JsonPropertyName("reviews")]
+    public ReviewConnection? Reviews { get; set; }
 }
 
 public class Reaction
@@ -130,6 +133,35 @@ public class LabelConnection
 public class Label
 {
     public required string Name { get; set; }
+}
+
+public class ReviewConnection
+{
+    public required List<Review> Nodes { get; set; }
+}
+
+public class Review
+{
+    public required Author Author { get; set; }
+    public string? Body { get; set; }
+    public ReviewCommentConnection? Comments { get; set; }
+}
+
+public class ReviewCommentConnection
+{
+    public required List<ReviewComment> Nodes { get; set; }
+}
+
+public class ReviewComment
+{
+    public required string Id { get; set; }
+    public required string Body { get; set; }
+    public required string Path { get; set; }
+    public int? Position { get; set; }
+    public string? DiffHunk { get; set; }
+    public required string Url { get; set; }
+    public required string CreatedAt { get; set; }
+    public required Author Author { get; set; }
 }
 
 // GraphQL queries
