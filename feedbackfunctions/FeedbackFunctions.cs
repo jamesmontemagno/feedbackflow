@@ -272,6 +272,20 @@ public class FeedbackFunctions
 
             foreach (var threadId in threadIds)
             {
+                if (SharedDump.Utils.RedditUrlParser.IsRedditShortUrl(threadId))
+                {
+                    var resolvedId = await SharedDump.Utils.RedditUrlParser.GetShortlinkIdAsync(threadId);
+                    if (!string.IsNullOrWhiteSpace(resolvedId))
+                    {
+                        threadResults.Add(await _redditService.GetThreadWithComments(resolvedId));
+                        continue;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Could not resolve Reddit shortlink: {ThreadId}", threadId);
+                        continue;
+                    }
+                }
                 var thread = await _redditService.GetThreadWithComments(threadId);
                 threadResults.Add(thread);
             }

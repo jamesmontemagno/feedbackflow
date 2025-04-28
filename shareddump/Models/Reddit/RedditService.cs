@@ -78,7 +78,9 @@ public sealed class RedditService : IDisposable
 
     public async Task<RedditThreadModel> GetThreadWithComments(string threadId)
     {
-        ArgumentNullException.ThrowIfNull(threadId);
+
+        threadId = SharedDump.Utils.RedditUrlParser.ParseUrl(threadId) ?? threadId;
+        ArgumentNullException.ThrowIfNullOrWhiteSpace(threadId);
 
         for (var attempt = 0; attempt < _maxRetries; attempt++)
         {
