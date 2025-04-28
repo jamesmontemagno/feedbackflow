@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Chat bubble -->
+  <rect x="10" y="18" width="44" height="28" rx="10" fill="none" stroke="currentColor" stroke-width="3"/>
+  <polygon points="32,52 26,46 38,46" fill="currentColor" opacity="0.7"/>
+  <!-- Analytics bars inside bubble -->
+  <rect x="20" y="36" width="4" height="6" rx="1" fill="currentColor" />
+  <rect x="28" y="32" width="4" height="10" rx="1" fill="currentColor" />
+  <rect x="36" y="28" width="4" height="14" rx="1" fill="currentColor" />
+  <rect x="44" y="34" width="4" height="8" rx="1" fill="currentColor" />
+  <!-- Feedback dots -->
+  <circle cx="22" cy="28" r="1.5" fill="currentColor" />
+  <circle cx="32" cy="24" r="1.5" fill="currentColor" />
+  <circle cx="42" cy="28" r="1.5" fill="currentColor" />
+</svg>
