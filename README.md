@@ -114,6 +114,29 @@ func start
 
 > Note: Keep your API keys and tokens secure and never commit them to source control.
 
+## Azure Functions local.settings.json
+
+You will need the following:
+```json
+{
+   "IsEncrypted": false,
+   "Values": {
+      "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+      "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated"
+   },
+   "YouTube:ApiKey": "YOUR_API_KEY_HERE",
+   "Reddit:ClientId": "YOUR_REDDIT_CLIENT_ID",
+   "Reddit:ClientSecret": "YOUR_REDDIT_CLIENT_SECRET", 
+   "GitHub:AccessToken": "YOUR_ACCESS_TOKEN_HERE",
+   "Azure:OpenAI:Endpoint": "YOUR_AZURE_OPENAI_ENDPOINT",
+   "Azure:OpenAI:ApiKey": "YOUR_AZURE_OPENAI_API_KEY",
+   "Azure:OpenAI:Deployment": "YOUR_DEPLOYMENT_NAME",
+   "Twitter:BearerToken": "YOUR_TWITTER_BEARER_TOKEN",
+   "BlueSky:Username": "YOUR_BLUESKY_USERNAME",
+   "BlueSky:AppPassword": "YOUR_BLUESKY_APP_PASSWORD"
+}
+```
+
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
