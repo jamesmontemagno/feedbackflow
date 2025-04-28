@@ -1,21 +1,32 @@
 @namespace FeedbackWebApp.Components.Feedback.Forms
 @inject IJSRuntime JSRuntime
+@using SharedDump.Utils
 
 <div class="mt-4">
     <div class="form-floating mb-3">
         <input type="text" 
-               class="form-control" 
+               class="form-control @(ContainsShortlinks ? "is-warning" : "")" 
                id="redditThreads" 
                @bind="ThreadsInput" 
                @bind:event="oninput" />
         <label for="redditThreads">Reddit Thread URLs or IDs (comma-separated)</label>
     </div>
+    
+    @if (ContainsShortlinks)
+    {
+        <div class="shortlink-warning alert alert-warning" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            Reddit shortlinks detected. These may not resolve correctly. 
+            For best results, please visit the actual post page and copy the full URL.
+        </div>
+    }
 </div>
-
-
 
 @code {
     private string _threadsInput = "";
+    private bool _containsShortlinks = false;
+
+    public bool ContainsShortlinks => _containsShortlinks;
 
     public string ThreadsInput
     {
@@ -27,11 +38,27 @@
                 _threadsInput = value;
                 
                 ThreadIds = value.Split(',').Select(p => p.Trim()).ToArray();
+                CheckForShortlinks();
             }
         }
     }
 
     public string[] ThreadIds { get; private set; } = Array.Empty<string>();
+
+    private void CheckForShortlinks()
+    {
+        if (string.IsNullOrWhiteSpace(_threadsInput))
+        {
+            _containsShortlinks = false;
+            return;
+        }
+
+        var urls = _threadsInput.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(url => url.Trim())
+            .ToArray();
+
+        _containsShortlinks = urls.Any(RedditUrlParser.IsRedditShortUrl);
+    }
 
     public void RefreshUI()
     {
