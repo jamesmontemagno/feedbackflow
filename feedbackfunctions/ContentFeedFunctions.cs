@@ -178,7 +178,7 @@ public class ContentFeedFunctions
     [Function("CacheHackerNewsArticlesHourly")]
     [BlobOutput("hackernews-cache/all.json")]
     public async Task<string> CacheHackerNewsArticlesHourly(
-        [TimerTrigger("0 0 * * * *")] TimerInfo timerInfo)
+        [TimerTrigger("0 0 */2 * * *")] TimerInfo timerInfo)
     {
         _logger.LogInformation("Starting hourly Hacker News cache refresh at: {Time}", DateTime.UtcNow);
 
