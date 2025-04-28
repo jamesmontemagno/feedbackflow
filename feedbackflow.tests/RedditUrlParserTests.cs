@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharedDump.Utils;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace FeedbackFlow.Tests;
 
@@ -16,11 +17,11 @@ public class RedditUrlParserTests
     }
 
     [TestMethod]
-    public void ParseUrl_ValidShortlinkUrl_ReturnsThreadId()
+    public async Task ParseUrl_ValidShortlinkUrl_ReturnsThreadId()
     {
         var url = "https://www.reddit.com/r/dotnet/s/RwaAQyhfSu";
-        var id = RedditUrlParser.ParseUrl(url);
-        Assert.AreEqual("RwaAQyhfSu", id);
+        var id = await RedditUrlParser.GetShortlinkIdAsync(url);
+        Assert.AreEqual("1k5tpyc", id);
     }
 
     [TestMethod]

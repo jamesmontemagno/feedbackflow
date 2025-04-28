@@ -28,8 +28,8 @@ public class ContentFeedFunctions
 #if DEBUG
 
         _configuration = new ConfigurationBuilder()
-                    .AddUserSecrets<Program>()
                     .AddJsonFile("local.settings.json")
+                    .AddUserSecrets<Program>()
                     .Build();
 #else
 
@@ -139,6 +139,8 @@ public class ContentFeedFunctions
         }
     }
 
+#if DEBUG && BLOB_FUNCTIONS
+
     [Function("SearchHackerNewsArticles")]
     public async Task<HttpResponseData> SearchHackerNewsArticles(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req,
@@ -195,4 +197,5 @@ public class ContentFeedFunctions
             return string.Empty;
         }
     }
+#endif
 }
