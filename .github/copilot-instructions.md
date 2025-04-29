@@ -43,6 +43,7 @@
 - Test error scenarios
 - Mock external dependencies
 - Use MSTest for component testing
+- Create tests in the feedbackflow.tests project
 
 ## Documentation
 - Document public APIs

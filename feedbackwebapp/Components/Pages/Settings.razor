@@ -1,4 +1,5 @@
 @page "/settings"
+@using SharedDump.Utils
 @inject UserSettingsService UserSettings
 @inject IJSRuntime JSRuntime
 @inject ISpeechSynthesisService SpeechSynthesisService
@@ -74,17 +75,35 @@
                         else
                         {
                             <div class="mb-3">
-                                <label class="form-label">Preferred Voice</label>
-                                <select class="form-select" @bind="PreferredVoice" @bind:event="onchange">
+                                <label class="form-label">Preferred Voice</label>                                <select class="form-select" @bind="PreferredVoice" @bind:event="onchange">
                                     <option value="">Default (Auto-select best voice)</option>
-                                    @foreach (var voiceGroup in availableVoices.GroupBy(v => v.Lang))
-                                    {
-                                        <optgroup label="@GetLanguageName(voiceGroup.Key)">
-                                            @foreach (var voice in voiceGroup.OrderBy(v => v.Name))
-                                            {
-                                                <option value="@voice.VoiceURI">@voice.Name</option>
-                                            }
-                                        </optgroup>
+                                    
+                                    @{
+                                        // First display the en-US languages at the top
+                                        var enUsVoices = availableVoices.Where(v => v.Lang == "en-US").ToList();
+                                        if (enUsVoices.Any())
+                                        {
+                                            <optgroup label="@LanguageUtils.GetLanguageName("en-US")">
+                                                @foreach (var voice in enUsVoices.OrderBy(v => v.Name))
+                                                {
+                                                    <option value="@voice.VoiceURI">@voice.Name</option>
+                                                }
+                                            </optgroup>
+                                        }
+                                        
+                                        // Then display the rest of the languages
+                                        foreach (var voiceGroup in availableVoices
+                                            .Where(v => v.Lang != "en-US")
+                                            .GroupBy(v => v.Lang)
+                                            .OrderBy(g => LanguageUtils.GetLanguageName(g.Key)))
+                                        {
+                                            <optgroup label="@LanguageUtils.GetLanguageName(voiceGroup.Key)">
+                                                @foreach (var voice in voiceGroup.OrderBy(v => v.Name))
+                                                {
+                                                    <option value="@voice.VoiceURI">@voice.Name</option>
+                                                }
+                                            </optgroup>
+                                        }
                                     }
                                 </select>
                                 <div class="text-muted small mt-1">
@@ -421,31 +440,6 @@
             availableVoices = [];
         }
     }
-
-    private string? GetLanguageName(string langCode)
-    {
-        // Convert language codes to readable names
-        var langMap = new Dictionary<string, string>
-        {
-            {"en-US", "English (US)"},
-            {"en-GB", "English (UK)"},
-            {"en", "English"},
-            {"es", "Spanish"},
-            {"fr", "French"},
-            {"de", "German"},
-            {"it", "Italian"},
-            {"ja", "Japanese"},
-            {"ko", "Korean"},
-            {"zh", "Chinese"},
-            {"zh-CN", "Chinese (Mainland)"},
-            {"zh-TW", "Chinese (Taiwan)"},
-            {"ru", "Russian"},
-            {"pt", "Portuguese"},
-            {"pt-BR", "Portuguese (Brazil)"}
-        };
-
-        return langMap.TryGetValue(langCode ?? "", out var name) ? name : langCode;
-    }    
     
     private async Task PlayVoiceDemo()
     {
