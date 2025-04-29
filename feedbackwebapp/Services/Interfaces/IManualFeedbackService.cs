@@ -1,0 +1,7 @@
+namespace FeedbackWebApp.Services.Interfaces;
+
+public interface IManualFeedbackService : IFeedbackService
+{
+    string CustomPrompt { get; set; }
+    string Content { get; set; }
+}

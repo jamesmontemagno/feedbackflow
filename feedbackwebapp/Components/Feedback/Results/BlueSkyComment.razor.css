@@ -1,0 +1,28 @@
+.post-container {
+    margin-left: 0;
+}
+
+.reply {
+    margin-left: 2rem;
+    font-size: 0.95em;
+}
+
+.post-content {
+    background-color: var(--bs-secondary-bg);
+    transition: background-color 0.2s ease;
+}
+
+.post-content:hover {
+    background-color: var(--bs-tertiary-bg);
+}
+
+.author-info {
+    display: flex;
+    flex-direction: column;
+}
+
+@media (max-width: 576px) {
+    .reply {
+        margin-left: 1rem;
+    }
+}

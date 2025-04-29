@@ -1,0 +1,258 @@
+:root {
+    /* Light theme (default) */
+    --bg-primary: #f8f9fa;
+    --bg-secondary: #ffffff;
+    --text-primary: #24292f;
+    --text-secondary: #656d76;
+    --border-color: #d0d7de;
+    --hover-bg: rgba(0, 0, 0, 0.03);
+    --card-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    --primary-color: #6d28d9;
+    --primary-color-rgb: 109, 40, 217;
+    --primary-gradient: linear-gradient(135deg, #6d28d9, #7c3aed);
+    --primary-hover: #7c3aed;
+    --success-color: #198754;
+    --success-color-rgb: 25, 135, 84;
+    --danger-color: #dc3545;
+    --danger-color-rgb: 220, 53, 69;
+    --warning-color: #ffc107;
+    --warning-color-rgb: 255, 193, 7;
+    --info-color: #0dcaf0;
+    --info-color-rgb: 13, 202, 240;
+    --code-bg: rgba(175, 184, 193, 0.2);
+    --bs-secondary: #656d76;
+}
+
+[data-theme="dark"] {
+    --bg-primary: #0d1117;
+    --bg-secondary: #161b22;
+    --text-primary: #ffffff;  /* Changed to pure white for maximum visibility */
+    --text-secondary: #c9d1d9; /* Lightened significantly for better contrast */
+    --border-color: #30363d;
+    --hover-bg: rgba(255, 255, 255, 0.05); /* Increased opacity for better visibility */
+    --card-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.2);
+    --primary-color: #a855f7;
+    --primary-color-rgb: 168, 85, 247;
+    --primary-gradient: linear-gradient(135deg, #9333ea, #a855f7);
+    --primary-hover: #bf7af7;
+    --success-color: #4ade80;
+    --success-color-rgb: 74, 222, 128;
+    --danger-color: #f87171;
+    --danger-color-rgb: 248, 113, 113;
+    --warning-color: #fbbf24;
+    --warning-color-rgb: 251, 191, 36;
+    --info-color: #60a5fa;
+    --info-color-rgb: 96, 165, 250;
+    --code-bg: rgba(110, 118, 129, 0.4);
+    --bs-secondary: #c9d1d9; /* Match text-secondary */
+}
+
+/* Base styles */
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1:focus {
+    outline: none;
+}
+
+.valid.modified:not([type=checkbox]) {
+    outline: 1px solid var(--success-color);
+}
+
+.invalid {
+    outline: 1px solid var(--danger-color);
+}
+
+.validation-message {
+    color: var(--danger-color);
+}
+
+.blazor-error-boundary {
+    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZWQiLz48L2c+PC9zdmc+) no-repeat 1rem/1.8rem, var(--danger-color);
+    padding: 1rem 1rem 1rem 3.7rem;
+    color: var(--bg-secondary);
+}
+
+    .blazor-error-boundary::after {
+        content: "An error has occurred."
+    }
+
+.darker-border-checkbox.form-check-input {
+    border-color: #929292;
+}
+
+/* Bootstrap Overrides - Consolidated in one place */
+/* Place all Bootstrap overrides here to avoid conflicts */
+
+/* Buttons */
+.btn-primary {
+    background: var(--primary-gradient);
+    border-color: var(--primary-color);
+    transition: all 0.2s;
+    color: #ffffff;
+}
+
+.btn-primary:hover {
+    background: var(--primary-gradient);
+    border-color: var(--primary-hover);
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-light {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.btn-light:hover {
+    background-color: var(--hover-bg);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+/* Forms */
+.form-control,
+.form-select {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--bg-secondary);
+    border-color: var(--primary-color);
+    color: var(--text-primary);
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+.form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.15rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+/* Form Floating Labels */
+.form-floating > .form-control,
+.form-floating > .form-control-plaintext {
+    color: var(--text-primary);
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+.form-floating > .form-control::placeholder,
+.form-floating > .form-control-plaintext::placeholder {
+    color: var(--text-secondary);
+    text-align: end;
+}
+
+.form-floating > .form-control:focus::placeholder,
+.form-floating > .form-control-plaintext:focus::placeholder {
+    text-align: start;
+}
+
+.form-floating > label {
+    color: var(--text-secondary);
+    transition: color 0.3s ease;
+}
+
+.form-floating > .form-control:focus ~ label,
+.form-floating > .form-control:not(:placeholder-shown) ~ label,
+.form-floating > .form-control-plaintext ~ label {
+    color: var(--primary-color);
+    opacity: 1;
+}
+
+/* Cards */
+.card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--card-shadow);
+    transition: transform 0.2s, box-shadow 0.2s, background-color 0.3s ease;
+    color: var(--text-primary);
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.card-header {
+    background-color: var(--primary-color) !important;
+    color: #ffffff !important;
+    border-bottom: none !important;
+    font-weight: 500 !important;
+}
+
+/* List Groups */
+.list-group-item {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.list-group-item:hover {
+    background-color: var(--hover-bg);
+}
+
+/* Alerts */
+.alert {
+    border: none;
+    border-radius: 8px;
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+/* Navbar */
+.navbar {
+    background: var(--primary-gradient) !important;
+    box-shadow: var(--card-shadow);
+}
+
+/* Use :root for global styles */
+:root [data-bs-theme="dark"] {
+    /* Override Bootstrap 5 dark mode variables */
+    --bs-body-bg: var(--bg-primary);
+    --bs-body-color: var(--text-primary);
+    --bs-border-color: var(--border-color);
+}
+
+.text-muted, .secondary-text {
+    color: var(--text-secondary) !important;
+}
+
+.bg-light {
+    background-color: var(--bg-secondary) !important;
+}
+
+.bg-dark {
+    background-color: var(--bg-primary) !important;
+}
+
+/* Custom animations */
+.alert, .card {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fadeIn {
+    animation: fadeIn 0.3s ease-in-out;
+}

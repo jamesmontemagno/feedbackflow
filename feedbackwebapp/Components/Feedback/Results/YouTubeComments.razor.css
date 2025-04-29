@@ -1,0 +1,30 @@
+/* Component-specific styles for YouTubeComments */
+
+/* Uses CSS variables for theme support instead of hard-coded colors */
+.secondary-text {
+    color: var(--bs-secondary-color);
+}
+
+.comment-header {
+    font-size: 0.9rem;
+}
+
+.list-group-item {
+    transition: background-color 0.2s ease;
+}
+
+/* Animation for comment display */
+.card-body {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

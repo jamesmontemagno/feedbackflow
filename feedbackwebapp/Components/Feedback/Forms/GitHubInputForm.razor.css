@@ -1,0 +1,53 @@
+.github-input {
+    padding-bottom: 1rem;
+}
+
+.github-input .form-floating {
+    transition: all 0.3s ease-in-out;
+}
+
+.github-input .form-control {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.github-input .form-control:focus {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+.secondary-text {
+    color: var(--text-secondary);
+}
+
+.github-input ul {
+    list-style: none;
+    padding-left: 1rem;
+    margin-top: 0.5rem;
+}
+
+.github-input ul li {
+    font-family: monospace;
+    color: var(--text-primary);
+    opacity: 1;
+    padding: 0.25rem 0;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.github-input ul li:hover {
+    color: var(--primary-color);
+}
+
+.github-input-help {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+::deep .github-input-help ul {
+    list-style-type: none;
+    padding-left: 1.5rem;
+}

@@ -60,6 +60,83 @@ To gather comments from YouTube:
 ./ytdump -v <video-id> -o <output-file.json>
 ```
 
+## Azure Functions Configuration
+
+### Local Development Setup
+
+To run the Azure Functions project locally, you'll need to configure the `local.settings.json` file in the `feedbackfunctions` directory. Create the file with the following structure:
+
+```json
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "GitHub:AccessToken": "your_github_pat_here",
+    "YouTube:ApiKey": "your_youtube_api_key_here",
+    "Azure:OpenAI:Endpoint": "your_azure_openai_endpoint",
+    "Azure:OpenAI:ApiKey": "your_azure_openai_key",
+    "Azure:OpenAI:Deployment": "your_model_deployment_name"
+  }
+}
+```
+
+### Required API Keys and Configuration
+
+1. **GitHub Personal Access Token (PAT)**
+   - Create a GitHub PAT with `repo` scope
+   - Set it in `GitHub:AccessToken`
+
+2. **YouTube API Key**
+   - Create a project in Google Cloud Console
+   - Enable YouTube Data API v3
+   - Create API credentials
+   - Set the key in `YouTube:ApiKey`
+
+3. **Azure OpenAI Configuration**
+   - Create an Azure OpenAI resource
+   - Set the endpoint URL in `Azure:OpenAI:Endpoint`
+   - Set the API key in `Azure:OpenAI:ApiKey`
+   - Deploy a model and set its name in `Azure:OpenAI:Deployment`
+
+4. **Azure Storage Emulator**
+   - Install Azure Storage Emulator for local development
+   - The default connection string is already set in `AzureWebJobsStorage`
+
+### Running the Functions
+
+After configuring the settings:
+
+```bash
+cd feedbackfunctions
+func start
+```
+
+> Note: Keep your API keys and tokens secure and never commit them to source control.
+
+## Azure Functions local.settings.json
+
+You will need the following:
+```json
+{
+   "IsEncrypted": false,
+   "Values": {
+      "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+      "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated"
+   },
+   "YouTube:ApiKey": "YOUR_API_KEY_HERE",
+   "Reddit:ClientId": "YOUR_REDDIT_CLIENT_ID",
+   "Reddit:ClientSecret": "YOUR_REDDIT_CLIENT_SECRET", 
+   "GitHub:AccessToken": "YOUR_ACCESS_TOKEN_HERE",
+   "Azure:OpenAI:Endpoint": "YOUR_AZURE_OPENAI_ENDPOINT",
+   "Azure:OpenAI:ApiKey": "YOUR_AZURE_OPENAI_API_KEY",
+   "Azure:OpenAI:Deployment": "YOUR_DEPLOYMENT_NAME",
+   "Twitter:BearerToken": "YOUR_TWITTER_BEARER_TOKEN",
+   "BlueSky:Username": "YOUR_BLUESKY_USERNAME",
+   "BlueSky:AppPassword": "YOUR_BLUESKY_APP_PASSWORD"
+}
+```
+
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.

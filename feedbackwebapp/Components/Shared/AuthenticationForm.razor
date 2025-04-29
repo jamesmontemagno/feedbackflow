@@ -1,0 +1,122 @@
+@using FeedbackWebApp.Services.Authentication
+@inject IConfiguration Configuration
+@inject AuthenticationService AuthService
+
+@if (!useMockMode && !isAuthenticated && !isLoading)
+{
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h5 class="card-title">Authentication Required</h5>
+            <div class="form-floating mb-3">
+                <input type="password" class="form-control" id="password" @bind="password" @onkeyup="HandleKeyPress" placeholder="Enter password" />
+                <label for="password">Password</label>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary" @onclick="AuthenticateHandler">Login</button>
+            </div>
+            @if (!string.IsNullOrEmpty(authError))
+            {
+                <div class="alert alert-danger mt-3" role="alert">
+                    @authError
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{ 
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            <span>Loading...</span>
+        </div>
+    </div>
+}
+
+@code {
+    private string password = "";
+    private string authError = "";
+    private bool useMockMode;
+    private bool isAuthenticated;
+    private bool isLoading = true;
+
+    [Parameter]
+    public EventCallback<bool> OnAuthenticated { get; set; }
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(!firstRender) 
+            return;
+        try
+        {
+
+
+            useMockMode = Configuration.GetValue<bool>("FeedbackApi:UseMocks");
+            if (useMockMode)
+            {
+                await HandleAuthenticated(true);
+                return;
+            }
+
+            // Check if already authenticated
+            isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (isAuthenticated)
+            {
+                await HandleAuthenticated(true);
+                return;
+            }
+
+            var configuredPassword = Configuration["FeedbackApp:AccessPassword"];
+            if (string.IsNullOrEmpty(configuredPassword))
+            {
+                authError = "System error: Password not configured";
+            }
+        }
+        catch (Exception ex)
+        {
+            authError = $"System error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await AuthenticateHandler();
+        }
+    }
+
+    private async Task HandleAuthenticated(bool success)
+    {
+        isAuthenticated = success;
+        await AuthService.SetAuthenticatedAsync(success);
+        await OnAuthenticated.InvokeAsync(success);
+    }
+
+    private async Task AuthenticateHandler()
+    {
+        var configuredPassword = Configuration["FeedbackApp:AccessPassword"];
+        if (string.IsNullOrEmpty(configuredPassword))
+        {
+            authError = "System error: Password not configured";
+            return;
+        }
+
+        if (password == configuredPassword)
+        {
+            authError = "";
+            await HandleAuthenticated(true);
+        }
+        else
+        {
+            authError = "Invalid password";
+            password = "";
+        }
+    }
+}

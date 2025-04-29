@@ -1,0 +1,76 @@
+@namespace FeedbackWebApp.Components.Feedback.Results
+
+@if (Videos?.Any() == true)
+{
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-youtube text-danger me-2"></i>
+                    Found Videos (@Videos.Count)
+                </h5>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="video-list">
+                @foreach (var video in Videos)
+                {
+                    <div class="video-item mb-4">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="mb-0">
+                                <a href="@video.Url" target="_blank" class="video-link">
+                                    @video.Title
+                                </a>
+                            </h6>
+                            <small class="text-muted ms-2">
+                                @video.UploadDate.ToString("MMM dd, yyyy")
+                            </small>
+                        </div>
+                        @if (video.Comments?.Any() == true)
+                        {
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => ToggleComments(video.Id)">
+                                    @(ExpandedVideos.Contains(video.Id) ? "Hide Comments" : $"Show Comments ({video.Comments.Count})")
+                                </button>
+                                @if (ExpandedVideos.Contains(video.Id))
+                                {
+                                    <div class="comments-container mt-2">
+                                        @foreach (var comment in video.Comments)
+                                        {
+                                            <div class="comment-item p-3 mb-2 rounded">
+                                                <div class="d-flex justify-content-between">
+                                                    <strong>@comment.Author</strong>
+                                                    <small>@comment.PublishedAt.ToString("MMM dd, yyyy")</small>
+                                                </div>
+                                                <p class="mt-2 mb-0">@comment.Text</p>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public List<YouTubeOutputVideo>? Videos { get; set; }
+
+    private HashSet<string> ExpandedVideos { get; } = new();
+
+    private void ToggleComments(string videoId)
+    {
+        if (ExpandedVideos.Contains(videoId))
+        {
+            ExpandedVideos.Remove(videoId);
+        }
+        else
+        {
+            ExpandedVideos.Add(videoId);
+        }
+    }
+}

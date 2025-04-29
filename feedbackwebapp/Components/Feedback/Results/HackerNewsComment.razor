@@ -1,0 +1,31 @@
+<div class="comment-item p-3 mb-2 rounded @(Level > 0 ? "ms-4" : "")">
+    <div class="d-flex justify-content-between">
+        <strong>@Comment.By</strong>
+        <small>@DateTimeOffset.FromUnixTimeSeconds(Comment.Time).ToString("MMM dd, yyyy")</small>
+    </div>
+    <div class="mt-2">@((MarkupString)(Comment.Text ?? ""))</div>
+    
+    @if (ChildComments?.Any() == true)
+    {
+        <div class="nested-comments mt-3">
+            @foreach (var childComment in ChildComments)
+            {
+                <HackerNewsComment Comment="childComment" Level="Level + 1" />
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public required HackerNewsItem Comment { get; set; }
+
+    [Parameter]
+    public int Level { get; set; }
+
+    private List<HackerNewsItem>? ChildComments => 
+        CascadedStories?.Where(s => s.Parent == Comment.Id).ToList();
+
+    [CascadingParameter]
+    private List<HackerNewsItem>? CascadedStories { get; set; }
+}

@@ -1,0 +1,524 @@
+@page "/settings"
+@using SharedDump.Utils
+@inject UserSettingsService UserSettings
+@inject IJSRuntime JSRuntime
+@inject ISpeechSynthesisService SpeechSynthesisService
+@inject ILogger<Settings> Logger
+
+<PageTitle>Settings - FeedbackFlow</PageTitle>
+
+<div class="container py-4">
+    <h1 class="mb-4">Settings</h1>
+
+    @if (settings != null)
+    {        
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Analysis Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-floating mb-3">
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="maxComments" 
+                                   min="100" 
+                                   max="5000"
+                                   @bind="MaxCommentsToAnalyze" 
+                                   @bind:event="oninput" />
+                            <label for="maxComments">Maximum Comments to Analyze</label>
+                            <div class="text-muted small">
+                                Default: 1200. Analyzing more comments will take longer but provide more comprehensive results.
+                            </div>
+                        </div>
+
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="useCustomPrompts"
+                                   @bind="UseCustomPrompts"
+                                   @bind:event="oninput">
+                            <label class="form-check-label" for="useCustomPrompts">
+                                Use Custom Analysis Prompts
+                            </label>
+                            <div class="text-muted small">
+                                Enable to use custom prompts instead of the default ones.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Text-to-Speech Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (availableVoices == null)
+                        {
+                            <div class="text-center py-2">
+                                <div class="spinner-border spinner-border-sm" role="status">
+                                    <span class="visually-hidden">Loading voices...</span>
+                                </div>
+                                <span class="ms-2">Loading available voices...</span>
+                            </div>
+                        }
+                        else if (availableVoices.Length == 0)
+                        {
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                No voices available. Text-to-speech may not be supported in your browser.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Preferred Voice</label>                                <select class="form-select" @bind="PreferredVoice" @bind:event="onchange">
+                                    <option value="">Default (Auto-select best voice)</option>
+                                    
+                                    @{
+                                        // First display the en-US languages at the top
+                                        var enUsVoices = availableVoices.Where(v => v.Lang == "en-US").ToList();
+                                        if (enUsVoices.Any())
+                                        {
+                                            <optgroup label="@LanguageUtils.GetLanguageName("en-US")">
+                                                @foreach (var voice in enUsVoices.OrderBy(v => v.Name))
+                                                {
+                                                    <option value="@voice.VoiceURI">@voice.Name</option>
+                                                }
+                                            </optgroup>
+                                        }
+                                        
+                                        // Then display the rest of the languages
+                                        foreach (var voiceGroup in availableVoices
+                                            .Where(v => v.Lang != "en-US")
+                                            .GroupBy(v => v.Lang)
+                                            .OrderBy(g => LanguageUtils.GetLanguageName(g.Key)))
+                                        {
+                                            <optgroup label="@LanguageUtils.GetLanguageName(voiceGroup.Key)">
+                                                @foreach (var voice in voiceGroup.OrderBy(v => v.Name))
+                                                {
+                                                    <option value="@voice.VoiceURI">@voice.Name</option>
+                                                }
+                                            </optgroup>
+                                        }
+                                    }
+                                </select>
+                                <div class="text-muted small mt-1">
+                                    Choose a voice for the text-to-speech feature. If none is selected, the system will automatically choose the best available voice.
+                                </div>
+                                <div class="mt-3">
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="PlayVoiceDemo">
+                                        <i class="bi bi-volume-up me-1"></i>
+                                        Test Selected Voice
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12 mb-4">
+                <div class="card shadow-sm @(!UseCustomPrompts ? "opacity-50" : "")">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Analysis Prompts</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            @if (!UseCustomPrompts)
+                            {
+                                <div class="alert alert-info">
+                                    Enable custom prompts in the settings above to modify these values.
+                                </div>
+                            }
+                        </div>
+                        <fieldset disabled="@(!UseCustomPrompts)">
+                            <div class="mb-4">
+                                <label class="form-label d-flex justify-content-between">
+                                    <span>YouTube Analysis Prompt</span>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("youtube"))">Reset to Default</button>
+                                </label>
+                                <textarea class="form-control font-monospace" 
+                                        rows="6" 
+                                        @bind="YouTubePrompt"
+                                        @bind:event="oninput"></textarea>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label d-flex justify-content-between">
+                                    <span>GitHub Analysis Prompt</span>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("github"))">Reset to Default</button>
+                                </label>
+                                <textarea class="form-control font-monospace" 
+                                        rows="6" 
+                                        @bind="GitHubPrompt"
+                                        @bind:event="oninput"></textarea>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label d-flex justify-content-between">
+                                    <span>Hacker News Analysis Prompt</span>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("hackernews"))">Reset to Default</button>
+                                </label>
+                                <textarea class="form-control font-monospace" 
+                                        rows="6" 
+                                        @bind="HackerNewsPrompt"
+                                        @bind:event="oninput"></textarea>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label d-flex justify-content-between">
+                                    <span>Reddit Analysis Prompt</span>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("reddit"))">Reset to Default</button>
+                                </label>
+                                <textarea class="form-control font-monospace" 
+                                        rows="6" 
+                                        @bind="RedditPrompt"
+                                        @bind:event="oninput"></textarea>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label d-flex justify-content-between">
+                                    <span>DevBlogs Analysis Prompt</span>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("devblogs"))">Reset to Default</button>
+                                </label>
+                                <textarea class="form-control font-monospace" 
+                                        rows="6" 
+                                        @bind="DevBlogsPrompt"
+                                        @bind:event="oninput"></textarea>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label d-flex justify-content-between">
+                                    <span>Twitter Analysis Prompt</span>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("twitter"))">Reset to Default</button>
+                                </label>
+                                <textarea class="form-control font-monospace" 
+                                        rows="6" 
+                                        @bind="TwitterPrompt"
+                                        @bind:event="oninput"></textarea>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label d-flex justify-content-between">
+                                    <span>BlueSky Analysis Prompt</span>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("bluesky"))">Reset to Default</button>
+                                </label>
+                                <textarea class="form-control font-monospace" 
+                                        rows="6" 
+                                        @bind="BlueSkyPrompt"
+                                        @bind:event="oninput"></textarea>
+                            </div>
+                        </fieldset>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-end gap-2">
+                    <button class="btn btn-primary" 
+                            @onclick="SaveSettings" 
+                            disabled="@(isSaving || !hasUnsavedChanges)">
+                        @if (isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            <span>Saving...</span>
+                        }
+                        else
+                        {
+                            <span>Save Changes</span>
+                        }
+                    </button>
+                    <button class="btn btn-outline-secondary" 
+                            @onclick="LoadSettings"
+                            disabled="@(!hasUnsavedChanges)">Reset Changes</button>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+
+    private UserSettingsService.UserSettings? settings;
+    private bool isSaving;
+    private bool hasUnsavedChanges;    
+    private VoiceInfo[]? availableVoices;
+
+    internal record VoiceInfo(
+        string Name = "",
+        string Lang = "",
+        string VoiceURI = "",
+        bool IsDefault = false)
+    {
+        public static implicit operator VoiceInfo(SpeechSynthesisVoice voice) => 
+            new(voice.Name, voice.Lang, voice.VoiceURI, voice.Default);
+    }
+
+    private bool UseCustomPrompts
+    {
+        get => settings?.UseCustomPrompts ?? false;
+        set
+        {
+            if (settings != null)
+            {
+                settings.UseCustomPrompts = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
+    private string? PreferredVoice
+    {
+        get => settings?.PreferredVoice;
+        set
+        {
+            if (settings != null)
+            {
+                settings.PreferredVoice = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
+    private int MaxCommentsToAnalyze
+    {
+        get => settings?.MaxCommentsToAnalyze ?? 1200;
+        set
+        {
+            if (settings != null)
+            {
+                settings.MaxCommentsToAnalyze = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
+    private string YouTubePrompt
+    {
+        get => settings?.ServicePrompts.GetValueOrDefault("youtube") ?? "";
+        set
+        {
+            if (settings != null)
+            {
+                settings.ServicePrompts["youtube"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
+    private string GitHubPrompt
+    {
+        get => settings?.ServicePrompts.GetValueOrDefault("github") ?? "";
+        set
+        {
+            if (settings != null)
+            {
+                settings.ServicePrompts["github"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
+    private string HackerNewsPrompt
+    {
+        get => settings?.ServicePrompts.GetValueOrDefault("hackernews") ?? "";
+        set
+        {
+            if (settings != null)
+            {
+                settings.ServicePrompts["hackernews"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
+    private string RedditPrompt
+    {
+        get => settings?.ServicePrompts.GetValueOrDefault("reddit") ?? "";
+        set
+        {
+            if (settings != null)
+            {
+                settings.ServicePrompts["reddit"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
+    private string DevBlogsPrompt
+    {
+        get => settings?.ServicePrompts.GetValueOrDefault("devblogs") ?? "";
+        set
+        {
+            if (settings != null)
+            {
+                settings.ServicePrompts["devblogs"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
+    private string TwitterPrompt
+    {
+        get => settings?.ServicePrompts.GetValueOrDefault("twitter") ?? "";
+        set
+        {
+            if (settings != null)
+            {
+                settings.ServicePrompts["twitter"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
+    private string BlueSkyPrompt
+    {
+        get => settings?.ServicePrompts.GetValueOrDefault("bluesky") ?? "";
+        set
+        {
+            if (settings != null)
+            {
+                settings.ServicePrompts["bluesky"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }    
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Logger.LogInformation("On first render");
+
+            await LoadSettings();
+            await LoadVoices();
+
+            StateHasChanged();
+        }
+        else
+        {
+            Logger.LogInformation("On non-first render");
+        }
+    }
+
+    private async Task LoadSettings()
+    {
+        settings = await UserSettings.GetSettingsAsync();
+        hasUnsavedChanges = false;
+        StateHasChanged();
+    }    
+
+    private async Task LoadVoices()
+    {
+        try
+        {
+            // Get voices using the SpeechSynthesisService
+            var voices = await SpeechSynthesisService.GetVoicesAsync();
+
+            // Convert to our VoiceInfo class and filter out voices with "Online" in the name
+            availableVoices = voices?.Where(v => !v.Name.Contains("Online", StringComparison.OrdinalIgnoreCase))
+                                   .Select(v => (VoiceInfo)v)
+                                   .ToArray() ?? [];
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error loading voices: {ex.Message}");
+            availableVoices = [];
+        }
+    }
+    
+    private async Task PlayVoiceDemo()
+    {
+        if (string.IsNullOrEmpty(PreferredVoice))
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Please select a voice to test.");
+            return;
+        }
+
+        const string demoText = "This is a test of the selected voice. If you can hear this, the voice is working correctly.";
+        
+        // Create utterance with the demo text
+        var utterance = new SpeechSynthesisUtterance
+        {
+            Text = demoText,
+            Rate = 1.0f,
+            Pitch = 1.0f
+        };
+        
+        // Set the selected voice
+        var voices = await SpeechSynthesisService.GetVoicesAsync();
+        var selectedVoice = voices.FirstOrDefault(v => v.VoiceURI == PreferredVoice);
+        
+        if (selectedVoice != null)
+        {
+            utterance.Voice = selectedVoice;
+        }
+        
+        // Cancel any ongoing speech
+        await SpeechSynthesisService.CancelAsync();
+        
+        // Speak the text
+        await SpeechSynthesisService.SpeakAsync(utterance);
+    }
+    
+    private async Task SaveSettings()
+    {
+        if (settings == null) return;
+
+        try
+        {
+            isSaving = true;
+            await UserSettings.SaveSettingsAsync(settings);
+            hasUnsavedChanges = false;
+            
+            // Show a toast or notification
+            await JSRuntime.InvokeVoidAsync("eval", "if (typeof bootstrap !== 'undefined' && bootstrap.Toast) { const toast = new bootstrap.Toast(document.createElement('div')); toast._element.innerHTML = '<div class=\"toast-body bg-success text-white\">Settings saved successfully!</div>'; document.body.appendChild(toast._element); toast.show(); setTimeout(() => toast._element.remove(), 3000); }");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void ResetPrompt(string serviceType)
+    {
+        if (settings == null) return;
+
+        settings.ServicePrompts[serviceType] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt(serviceType);
+        hasUnsavedChanges = true;
+        StateHasChanged();
+    }
+
+    private void ResetAllPrompts()
+    {
+        if (settings == null) return;
+
+        foreach (var serviceType in settings.ServicePrompts.Keys.ToList())
+        {
+            settings.ServicePrompts[serviceType] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt(serviceType);
+        }
+        hasUnsavedChanges = true;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        // Cleanup if needed
+    }
+}

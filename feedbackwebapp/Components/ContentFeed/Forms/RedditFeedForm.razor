@@ -1,0 +1,99 @@
+@inject IJSRuntime JSRuntime
+
+<div class="reddit-feed-form">
+    <div class="form-floating mb-3">
+        <input type="text" 
+               class="form-control @(showValidation && string.IsNullOrWhiteSpace(Subreddit) ? "is-invalid" : "")" 
+               id="subreddit" 
+               placeholder="Subreddit" 
+               @bind="Subreddit" 
+               @bind:event="oninput" />
+        <label for="subreddit">Subreddit</label>
+        <div class="text-muted">Enter a subreddit name (without r/)</div>
+        @if (showValidation && string.IsNullOrWhiteSpace(Subreddit))
+        {
+            <div class="invalid-feedback">
+                Please enter a subreddit name
+            </div>
+        }
+    </div>
+
+    <div class="form-floating mb-3">
+        <select class="form-select" id="sort" @bind="SortBy">
+            <option value="hot">Hot</option>
+            <option value="top">Top</option>
+            <option value="new">New</option>
+        </select>
+        <label for="sort">Sort By</label>
+    </div>
+
+    <div class="form-floating mb-3">
+        <input type="number" 
+               class="form-control @(showValidation && (Days < 1 || Days > 30) ? "is-invalid" : "")" 
+               id="days" 
+               placeholder="Days" 
+               min="1" 
+               max="30"
+               @bind="Days" 
+               @bind:event="oninput" />
+        <label for="days">Days</label>
+        <div class="text-muted">Number of days to look back (1-30)</div>
+        @if (showValidation && (Days < 1 || Days > 30))
+        {
+            <div class="invalid-feedback">
+                Days must be between 1 and 30
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private const string StorageKey = "RedditFeedFormState";
+    private bool showValidation = false;
+
+    [Parameter]
+    public string Subreddit { get; set; } = "";
+
+    [Parameter]
+    public string SortBy { get; set; } = "hot";
+
+    [Parameter]
+    public int Days { get; set; } = 7;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFromLocalStorageAsync();
+    }
+
+    public async Task SaveToLocalStorageAsync()
+    {
+        showValidation = true;
+        var state = new
+        {
+            Subreddit,
+            SortBy,
+            Days
+        };
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", StorageKey, 
+            System.Text.Json.JsonSerializer.Serialize(state));
+    }
+
+    private async Task LoadFromLocalStorageAsync()
+    {
+        var savedValue = await JSRuntime.InvokeAsync<string>("localStorage.getItem", StorageKey);
+        if (!string.IsNullOrEmpty(savedValue))
+        {
+            try
+            {
+                var state = System.Text.Json.JsonSerializer.Deserialize<dynamic>(savedValue);
+                Subreddit = state?.GetProperty("Subreddit").GetString() ?? "";
+                SortBy = state?.GetProperty("SortBy").GetString() ?? "hot";
+                Days = state?.GetProperty("Days").GetInt32();
+            }
+            catch
+            {
+                // If there's any error reading the stored value, we'll keep the defaults
+            }
+        }
+    }
+}

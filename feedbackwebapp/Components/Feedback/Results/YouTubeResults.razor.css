@@ -1,0 +1,71 @@
+.card {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+.card-header {
+    background-color: var(--bg-secondary);
+    border-bottom-color: var(--border-color);
+}
+
+.card-title {
+    color: var(--text-primary);
+}
+
+.video-item {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+}
+
+.video-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.video-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.video-link:hover {
+    color: var(--primary-hover);
+    text-decoration: underline;
+}
+
+.btn-outline-secondary {
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--hover-bg);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.comment-item {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+}
+
+.comment-item:hover {
+    background-color: var(--hover-bg);
+    transform: translateX(2px);
+}
+
+.comments-container {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

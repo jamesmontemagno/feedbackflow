@@ -1,0 +1,102 @@
+<div class="container py-3">
+    <div class="row justify-content-center g-2">
+        @foreach (var source in sources)
+        {
+            <div class="col-lg-auto col-md-4 col-sm-6">
+                <button type="button" 
+                        class="btn w-100 py-2 source-button @GetButtonClass(source.Value)"
+                        @onclick="() => OnSourceSelectedAsync(source.Value)"
+                        title="@source.Description">
+                    <div class="d-flex align-items-center justify-content-center w-100">
+                        <div class="source-icon me-2">
+                            <i class="bi @source.IconClass fs-4"></i>
+                        </div>
+                        <div class="fw-medium">@source.Name</div>
+                    </div>
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string? _selectedSource;
+
+    [Parameter]
+    public string? SelectedSource {get;set;} = "YouTube";
+
+    [Parameter]
+    public EventCallback<string> SelectedSourceChanged { get; set; }
+
+    private const string DefaultSource = "YouTube";
+
+    private readonly SourceOption[] sources = new[]
+    {
+        new SourceOption(
+            "YouTube", 
+            "bi-youtube",
+            "Analyze feedback from video comments and community discussions", 
+            "YouTube"),
+        new SourceOption(
+            "HN", 
+            "bi-braces",
+            "Gather insights from technical discussions and feedback", 
+            "HackerNews"),
+        new SourceOption(
+            "GitHub", 
+            "bi-github",
+            "Process feedback from issues, PRs, and discussions", 
+            "GitHub"),
+        new SourceOption(
+            "Reddit", 
+            "bi-reddit",
+            "Analyze community feedback and discussions", 
+            "Reddit"),
+        new SourceOption(
+            "DevBlogs", 
+            "bi-journal-richtext",
+            "Analyze comments and feedback from Microsoft DevBlogs articles", 
+            "DevBlogs"),
+        new SourceOption(
+            "Twitter",
+            "bi-twitter-x",
+            "Analyze feedback from Twitter/X posts and replies",
+            "Twitter"),
+        new SourceOption(
+            "BlueSky",
+            "bi-cloud-fill",
+            "Analyze feedback from BlueSky posts and replies",
+            "BlueSky"),
+        new SourceOption(
+            "Manual",
+            "bi-pencil-square",
+            "Manually enter content and customize the analysis prompt",
+            "Manual")
+    };
+
+    private string GetButtonClass(string source) => 
+        source == SelectedSource 
+            ? "btn-primary shadow-sm" 
+            : "btn-outline-secondary";
+
+    private async Task OnSourceSelectedAsync(string value)
+    {
+        if (SelectedSource != value)
+        {
+            SelectedSource = value;
+            await SelectedSourceChanged.InvokeAsync(value);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // If no explicit selection was made, use the default and notify parent components
+        if (_selectedSource == null)
+        {
+            _selectedSource = DefaultSource;
+            await SelectedSourceChanged.InvokeAsync(DefaultSource);
+        }
+    }
+
+    private record SourceOption(string Name, string IconClass, string Description, string Value);
+}

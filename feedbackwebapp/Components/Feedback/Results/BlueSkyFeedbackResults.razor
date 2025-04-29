@@ -1,0 +1,118 @@
+@using SharedDump.Models.BlueSkyFeedback
+@using FeedbackWebApp.Services.Interfaces
+@namespace FeedbackWebApp.Components.Feedback.Results
+@inject FeedbackServiceProvider FeedbackServiceProvider
+@inject NavigationManager Navigation
+
+@if (_feedback?.Items is not null && _feedback.Items.Count > 0)
+{
+    <div class="card shadow-sm mt-4">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-cloud-fill text-primary me-2"></i>
+                    Found Comments (@GetTotalCommentCount(_feedback.Items))
+                </h5>
+                <div>
+                    @if (_feedback.ProcessedPostCount > 0)
+                    {
+                        <span class="badge bg-info me-2">Processed @_feedback.ProcessedPostCount posts</span>
+                    }
+                    @if (!string.IsNullOrEmpty(PostUrlOrId))
+                    {
+                        <a href="@GetBlueSkyUrl(PostUrlOrId)" target="_blank" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-box-arrow-up-right"></i> View on BlueSky
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            @if (_feedback.MayBeIncomplete)
+            {
+                <div class="alert alert-warning mb-3">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Note:</strong> Results may be incomplete due to API rate limits.
+                    @if (!string.IsNullOrEmpty(_feedback.RateLimitInfo))
+                    {
+                        <span>@_feedback.RateLimitInfo</span>
+                    }
+                </div>
+            }
+            <div class="comments-list">
+                @foreach (var post in _feedback.Items)
+                {
+                    <BlueSkyComment Comment="post" />
+                }
+            </div>
+        </div>
+    </div>
+}
+else if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-danger mt-4">
+        <i class="bi bi-exclamation-circle-fill me-2"></i>
+        Error fetching BlueSky feedback: @_error
+    </div>
+}
+
+@code {
+    [Parameter] public string? PostUrlOrId { get; set; }
+    [Parameter] public EventCallback OnBack { get; set; }
+
+    private IBlueSkyFeedbackService? _service;
+    private BlueSkyFeedbackResponse? _feedback;
+    private string? _error;
+
+    private int GetTotalCommentCount(List<BlueSkyFeedbackItem> items)
+    {
+        if (items == null) return 0;
+        
+        var count = items.Count;
+        foreach (var item in items)
+        {
+            if (item.Replies != null)
+            {
+                count += GetTotalCommentCount(item.Replies);
+            }
+        }
+        return count;
+    }
+
+    private string GetBlueSkyUrl(string postUrlOrId)
+    {
+        if (postUrlOrId.StartsWith("http"))
+            return postUrlOrId;
+            
+        if (postUrlOrId.Contains("/"))
+        {
+            // Handle profile/postId format
+            var parts = postUrlOrId.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length >= 2)
+            {
+                return $"https://bsky.app/profile/{parts[0]}/post/{parts[1]}";
+            }
+        }
+        
+        return $"https://bsky.app/profile/feedbackflow.bsky.social/post/{postUrlOrId}";
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrWhiteSpace(PostUrlOrId))
+        {
+            return;
+        }
+        _error = null;
+        try
+        {
+            _service = FeedbackServiceProvider.CreateBlueSkyService(PostUrlOrId);
+            var (markdown, additionalData) = await _service.GetFeedback();
+            _feedback = additionalData as BlueSkyFeedbackResponse;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

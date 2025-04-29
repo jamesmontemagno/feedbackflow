@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>FeedbackWebApp</RootNamespace>
+    <NoWarn>RZ10012</NoWarn>
+    <UserSecretsId>43f34703-3b46-4575-8e01-1fb8ea4446b5</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Blazor.SpeechSynthesis" />
+    <PackageReference Include="Markdig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FeedbackFlow.ServiceDefaults\FeedbackFlow.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\shareddump\shareddump.csproj" />
+  </ItemGroup>
+
+</Project>

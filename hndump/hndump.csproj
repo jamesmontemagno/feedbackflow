@@ -10,7 +10,11 @@
   </PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="System.CommandLine" Version="2.0.0-*" />
+		<PackageReference Include="System.CommandLine" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\shareddump\shareddump.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -1,0 +1,254 @@
+@inject NavigationManager NavigationManager
+
+<div class="hackernews-results">
+    @if (Items?.Any() == true)
+    {
+        <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
+            <div class="search-container flex-grow-1">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input 
+                        type="text" 
+                        class="form-control" 
+                        placeholder="Search in titles..." 
+                        @bind="SearchText" 
+                        @bind:event="oninput"
+                        @onkeyup="HandleSearch" />
+                    @if (!string.IsNullOrWhiteSpace(SearchText))
+                    {
+                        <button class="btn btn-outline-secondary" @onclick="ClearSearch">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <div class="date-filter">
+                    <input 
+                        type="date" 
+                        class="form-control" 
+                        @bind="SelectedDate" 
+                        @bind:event="oninput" />
+                    @if (SelectedDate.HasValue)
+                    {
+                        <button class="btn btn-outline-secondary btn-sm" @onclick="ClearDateFilter">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    }
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Sort by: @GetSortDisplayName(CurrentSort) @(IsAscending ? "↑" : "↓")
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><button class="dropdown-item" @onclick="() => Sort(SortOption.Default)">Default</button></li>
+                        <li><button class="dropdown-item" @onclick="() => Sort(SortOption.Date)">Date</button></li>
+                        <li><button class="dropdown-item" @onclick="() => Sort(SortOption.Title)">Title</button></li>
+                        <li><button class="dropdown-item" @onclick="() => Sort(SortOption.Score)">Score</button></li>
+                        <li><button class="dropdown-item" @onclick="() => Sort(SortOption.Comments)">Comments</button></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        @if (FilteredAndSortedItems.Any())
+        {
+            foreach (var item in FilteredAndSortedItems)
+            {
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h5 class="card-title mb-1">
+                                <i class="bi bi-newspaper text-warning me-2"></i>
+                                @item.Title
+                            </h5>
+                            <div class="btn-group">
+                                <a href="@item.Url" target="_blank" class="btn btn-sm btn-outline-secondary" title="Open thread">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                                <a href="javascript:void(0)" class="btn btn-sm btn-outline-secondary" @onclick="() => NavigateToAnalyze(item.Id.ToString())" title="Analyze thread">
+                                    <i class="bi bi-graph-up"></i>
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div class="item-meta mt-2 d-flex flex-wrap gap-3">
+                            <small class="text-muted">
+                                <i class="bi bi-person"></i> @item.By
+                            </small>
+                            <small class="text-muted">
+                                <i class="bi bi-star-fill"></i> @item.Score points
+                            </small>
+                            <small class="text-muted">
+                                <i class="bi bi-chat-fill"></i> @(item.Descendants ?? 0) comments
+                            </small>
+                            <small class="text-muted">
+                                <i class="bi bi-clock"></i> @DateTimeOffset.FromUnixTimeSeconds(item.Time).LocalDateTime.ToString("g")
+                            </small>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(item.Text))
+                        {
+                            <div class="item-content mt-3">@((MarkupString)item.Text)</div>
+                        }
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="text-center text-muted">
+                <p>No articles match your search criteria.</p>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="text-center text-muted">
+            <p>No articles found.</p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public List<HackerNewsItem>? Items { get; set; }
+
+    private string SearchText { get; set; } = string.Empty;
+    private DateTime? SelectedDate { get; set; }
+    private System.Timers.Timer? _debounceTimer;
+    private SortOption CurrentSort { get; set; } = SortOption.Default;
+    private bool IsAscending { get; set; }
+    private List<HackerNewsItem>? InitialOrder { get; set; }
+
+    private enum SortOption
+    {
+        Default,
+        Date,
+        Title,
+        Score,
+        Comments
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Items != null && InitialOrder == null)
+        {
+            InitialOrder = Items.ToList();
+        }
+        base.OnParametersSet();
+    }
+
+    private IEnumerable<HackerNewsItem> FilteredAndSortedItems
+    {
+        get
+        {
+            var baseQuery = Items ?? new List<HackerNewsItem>();
+
+            // Apply search filter
+            if (!string.IsNullOrWhiteSpace(SearchText))
+            {
+                var searchTerm = SearchText.Trim().ToLowerInvariant();
+                baseQuery = baseQuery.Where(item => 
+                    (item.Title?.ToLowerInvariant().Contains(searchTerm) ?? false))
+                    .ToList();
+            }
+
+            // Apply date filter
+            if (SelectedDate.HasValue)
+            {
+                var selectedDate = SelectedDate.Value.Date;
+                baseQuery = baseQuery.Where(item => 
+                    DateTimeOffset.FromUnixTimeSeconds(item.Time).Date == selectedDate)
+                    .ToList();
+            }
+
+            // Apply sorting
+            IEnumerable<HackerNewsItem> query = CurrentSort switch
+            {
+                SortOption.Date => IsAscending 
+                    ? baseQuery.OrderBy(item => item.Time)
+                    : baseQuery.OrderByDescending(item => item.Time),
+                SortOption.Title => IsAscending 
+                    ? baseQuery.OrderBy(item => item.Title)
+                    : baseQuery.OrderByDescending(item => item.Title),
+                SortOption.Score => IsAscending 
+                    ? baseQuery.OrderBy(item => item.Score)
+                    : baseQuery.OrderByDescending(item => item.Score),
+                SortOption.Comments => IsAscending 
+                    ? baseQuery.OrderBy(item => item.Descendants)
+                    : baseQuery.OrderByDescending(item => item.Descendants),
+                _ => baseQuery
+            };
+
+            return query;
+        }
+    }
+
+    private void HandleSearch()
+    {
+        _debounceTimer?.Stop();
+        _debounceTimer?.Start();
+    }
+
+    private void ClearSearch()
+    {
+        SearchText = string.Empty;
+        StateHasChanged();
+    }
+
+    private void ClearDateFilter()
+    {
+        SelectedDate = null;
+        StateHasChanged();
+    }
+
+    private void Sort(SortOption option)
+    {
+        if (CurrentSort == option)
+        {
+            IsAscending = !IsAscending;
+        }
+        else
+        {
+            CurrentSort = option;
+            IsAscending = option switch
+            {
+                SortOption.Score or SortOption.Comments => false,
+                _ => true
+            };
+        }
+    }
+
+    private string GetSortDisplayName(SortOption sort) => sort switch
+    {
+        SortOption.Default => "Default",
+        SortOption.Date => "Date",
+        SortOption.Title => "Title",
+        SortOption.Score => "Score",
+        SortOption.Comments => "Comments",
+        _ => "Default"
+    };
+
+    protected override void OnInitialized()
+    {
+        _debounceTimer = new System.Timers.Timer(300);
+        _debounceTimer.Elapsed += async (sender, e) =>
+        {
+            await InvokeAsync(StateHasChanged);
+            _debounceTimer.Stop();
+        };
+    }
+
+    private void NavigateToAnalyze(string id)
+    {
+        NavigationManager.NavigateTo($"/?source=hackernews&id={id}");
+    }
+
+    public void Dispose()
+    {
+        _debounceTimer?.Dispose();
+    }
+}

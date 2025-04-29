@@ -1,0 +1,64 @@
+@namespace FeedbackWebApp.Components.Feedback.Forms
+
+<div class="youtube-input">
+    <div class="input-type-selector mb-3">
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="inputType" id="videoInput" value="video" 
+                   checked="@(InputType == "video")" @onchange="@(() => ChangeInputType("video"))" />
+            <label class="form-check-label" for="videoInput">
+                <i class="bi bi-play-btn me-1"></i>Video
+            </label>
+        </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="inputType" id="playlistInput" value="playlist" 
+                   checked="@(InputType == "playlist")" @onchange="@(() => ChangeInputType("playlist"))" />
+            <label class="form-check-label" for="playlistInput">
+                <i class="bi bi-collection-play me-1"></i>Playlist
+            </label>
+        </div>
+    </div>
+
+    @if (InputType == "video")
+    {
+        <div class="form-floating">
+            <input type="text" class="form-control" id="videoIds" @bind="VideoIds"  />
+            <label for="videoIds">Video IDs or URLs (comma-separated)</label>
+        </div>
+    }
+    else
+    {
+        <div class="form-floating">
+            <input type="text" class="form-control" id="playlistIds" @bind="PlaylistIds" />
+            <label for="playlistIds">Playlist IDs or URLs (comma-separated)</label>
+        </div>
+    }
+</div>
+
+@code {
+    private string InputType { get; set; } = "video";
+
+    public string? VideoIds { get; set; }
+
+    public string? PlaylistIds { get; set; }
+
+    private void ChangeInputType(string newType)
+    {
+        InputType = newType;
+        // Clear out the values when switching types
+        if (newType == "video")
+        {
+            PlaylistIds = null;
+        }
+        else
+        {
+            VideoIds = null;
+        }
+    }
+
+    public void RefreshUI()
+    {
+        // This method can be used to trigger a UI refresh if needed.
+        // For example, you might want to call StateHasChanged() here if this component is part of a larger UI.
+        StateHasChanged();
+    }
+}

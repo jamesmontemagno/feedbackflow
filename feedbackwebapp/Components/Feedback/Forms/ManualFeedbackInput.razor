@@ -1,0 +1,139 @@
+@namespace FeedbackWebApp.Components.Feedback.Forms
+@using SharedDump.AI
+@inject UserSettingsService UserSettingsService
+
+<div class="manual-feedback-form">
+    <div class="form-floating mb-3">        <textarea 
+            class="form-control prompt-textarea @(string.IsNullOrWhiteSpace(CustomPrompt) && _isInitialized ? "is-invalid" : "")"
+            id="customPrompt" 
+            placeholder="Enter analysis prompt instructions"
+            style="min-height: 175px; height: 175px;"
+            @bind="CustomPrompt" 
+            @bind:event="oninput"></textarea>
+        <label for="customPrompt">Analysis Prompt</label>
+        <div class="invalid-feedback">
+            Please provide an analysis prompt.
+        </div>
+        <div class="d-flex align-items-center justify-content-between mt-2">
+            <small class="form-text text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                This prompt tells the AI how to analyze your content.
+            </small>
+            <button type="button" 
+                    class="btn btn-sm btn-outline-secondary"
+                    @onclick="SaveAsDefaultPrompt"
+                    title="Save this prompt as the default for Manual entries">
+                <i class="bi bi-save me-1"></i> Save as Default
+            </button>
+        </div>
+    </div>
+    
+    <div class="form-floating mb-3">        <textarea 
+            class="form-control content-textarea @(string.IsNullOrWhiteSpace(ContentInput) && _isInitialized ? "is-invalid" : "")"
+            id="contentInput" 
+            placeholder="Paste your content here"
+            style="min-height: 350px; height: 350px;"
+            @bind="ContentInput" 
+            @bind:event="oninput"></textarea>
+        <label for="contentInput">Content to Analyze</label>
+        <div class="invalid-feedback">
+            Please provide content to analyze.
+        </div>
+        <small class="form-text text-muted d-block mt-2">
+            <i class="bi bi-info-circle me-1"></i>
+            Paste any text content you want to analyze.
+        </small>
+    </div>
+</div>
+
+@code {
+    private string _customPrompt = string.Empty;
+    private string _contentInput = string.Empty;
+    private bool _isInitialized = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDefaultPromptAsync();
+        _isInitialized = true;
+    }
+
+    private async Task LoadDefaultPromptAsync()
+    {
+        try
+        {
+            var settings = await UserSettingsService.GetSettingsAsync();
+            
+            if (settings.ServicePrompts.TryGetValue("manual", out var savedPrompt) && !string.IsNullOrWhiteSpace(savedPrompt))
+            {
+                _customPrompt = savedPrompt;
+            }
+            else
+            {
+                // Get the default prompt from FeedbackAnalyzerService
+                _customPrompt = FeedbackAnalyzerService.GetServiceSpecificPrompt("manual");
+                
+                // Add it to settings if it doesn't exist
+                if (!settings.ServicePrompts.ContainsKey("manual"))
+                {
+                    settings.ServicePrompts["manual"] = _customPrompt;
+                    await UserSettingsService.SaveSettingsAsync(settings);
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Fallback to default prompt if there's an error
+            _customPrompt = FeedbackAnalyzerService.GetServiceSpecificPrompt("manual");
+        }
+    }
+
+    private async Task SaveAsDefaultPrompt()
+    {
+        if (string.IsNullOrWhiteSpace(_customPrompt))
+            return;
+            
+        try
+        {
+            var settings = await UserSettingsService.GetSettingsAsync();
+            settings.ServicePrompts["manual"] = _customPrompt;
+            await UserSettingsService.SaveSettingsAsync(settings);
+        }
+        catch (Exception)
+        {
+            // Handle error if needed
+        }
+    }
+
+    public string CustomPrompt
+    {
+        get => _customPrompt;
+        set
+        {
+            if (_customPrompt == value) return;
+            _customPrompt = value;
+        }
+    }
+
+    public string ContentInput
+    {
+        get => _contentInput;
+        set
+        {
+            if (_contentInput == value) return;
+            _contentInput = value;
+        }
+    }    public string GetSystemPrompt() => CustomPrompt;
+
+    public string GetContent() => ContentInput;
+
+    public bool IsValid => !string.IsNullOrWhiteSpace(ContentInput) && !string.IsNullOrWhiteSpace(CustomPrompt);
+
+    public void Reset()
+    {
+        _contentInput = string.Empty;
+        LoadDefaultPromptAsync().GetAwaiter().GetResult();
+        StateHasChanged();
+    }
+
+    public void RefreshUI() => StateHasChanged();
+}

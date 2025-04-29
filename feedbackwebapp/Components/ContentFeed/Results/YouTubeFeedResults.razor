@@ -1,0 +1,263 @@
+@inject NavigationManager NavigationManager
+
+<div class="youtube-results">
+    @if (Videos?.Any() == true)
+    {
+        <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
+            <div class="search-container flex-grow-1">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input 
+                        type="text" 
+                        class="form-control" 
+                        placeholder="Search in titles and descriptions..." 
+                        @bind="SearchText" 
+                        @bind:event="oninput"
+                        @onkeyup="HandleSearch" />
+                    @if (!string.IsNullOrWhiteSpace(SearchText))
+                    {
+                        <button class="btn btn-outline-secondary" @onclick="ClearSearch">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Sort by: @GetSortDisplayName() @(IsAscending && CurrentSort != SortOption.Relevance ? "↑" : "↓")
+                </button>
+                <ul class="dropdown-menu">
+                    <li><button class="dropdown-item" @onclick="() => Sort(SortOption.Relevance)">Relevance</button></li>
+                    <li><button class="dropdown-item" @onclick="() => Sort(SortOption.Title)">Title</button></li>
+                    <li><button class="dropdown-item" @onclick="() => Sort(SortOption.PublishedDate)">Published Date</button></li>
+                    <li><button class="dropdown-item" @onclick="() => Sort(SortOption.Views)">Views</button></li>
+                    <li><button class="dropdown-item" @onclick="() => Sort(SortOption.Likes)">Likes</button></li>
+                    <li><button class="dropdown-item" @onclick="() => Sort(SortOption.Comments)">Comments</button></li>
+                </ul>
+            </div>
+        </div>
+
+        @if (FilteredAndSortedVideos.Any())
+        {
+            @foreach (var video in FilteredAndSortedVideos)
+            {
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-youtube text-danger me-2"></i>
+                                @video.Title
+                            </h5>
+                            
+                            <div class="btn-group">
+                                <a href="@video.Url" target="_blank" class="btn btn-sm btn-outline-secondary" title="Open thread">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                                <a href="javascript:void(0)" class="btn btn-sm btn-outline-secondary" @onclick="() => NavigateToAnalyze(video.Id.ToString())" title="Analyze thread">
+                                    <i class="bi bi-graph-up"></i>
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="text-muted mb-2">
+                            <i class="bi bi-person-circle me-1"></i> @video.ChannelTitle
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(video.Description))
+                        {
+                            <p class="card-text">@(video.Description.Length > 200 ? $"{video.Description[..200]}..." : video.Description)</p>
+                        }
+
+                        <div class="d-flex gap-3 text-muted mt-3">
+                            <div title="Published Date">
+                                <i class="bi bi-calendar me-1"></i>
+                                @video.PublishedAt.ToString("MMM dd, yyyy")
+                            </div>
+                            <div title="Views">
+                                <i class="bi bi-eye me-1"></i>
+                                @FormatNumber(video.ViewCount)
+                            </div>
+                            <div title="Likes">
+                                <i class="bi bi-hand-thumbs-up me-1"></i>
+                                @FormatNumber(video.LikeCount)
+                            </div>
+                            <div title="Comments">
+                                <i class="bi bi-chat-text me-1"></i>
+                                @FormatNumber(video.CommentCount)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="text-center text-muted">
+                <p>No videos match your search criteria.</p>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="text-center text-muted">
+            <p>No videos found.</p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public List<YouTubeOutputVideo>? Videos { get; set; }
+
+    private string SearchText { get; set; } = string.Empty;
+    private System.Timers.Timer? _debounceTimer;
+    private SortOption CurrentSort { get; set; } = SortOption.Relevance;
+    private bool IsAscending { get; set; } = true;
+    private List<YouTubeOutputVideo>? _originalVideos;
+
+    private enum SortOption
+    {
+        Relevance,
+        Title,
+        PublishedDate,
+        Views,
+        Likes,
+        Comments
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_originalVideos == null && Videos != null)
+        {
+            _originalVideos = Videos.ToList();
+        }
+    }
+
+    private IEnumerable<YouTubeOutputVideo> FilteredAndSortedVideos
+    {
+        get
+        {
+            var baseQuery = Videos ?? new List<YouTubeOutputVideo>();
+
+            // Apply search filter
+            if (!string.IsNullOrWhiteSpace(SearchText))
+            {
+                var searchTerm = SearchText.Trim().ToLowerInvariant();
+                baseQuery = baseQuery.Where(v => 
+                    (v.Title?.ToLowerInvariant().Contains(searchTerm) ?? false) ||
+                    (v.Description?.ToLowerInvariant().Contains(searchTerm) ?? false)
+                ).ToList();
+            }
+
+            // Apply sorting
+            return CurrentSort switch
+            {
+                SortOption.Relevance => baseQuery,
+                SortOption.Title => IsAscending 
+                    ? baseQuery.OrderBy(v => v.Title)
+                    : baseQuery.OrderByDescending(v => v.Title),
+                SortOption.PublishedDate => IsAscending 
+                    ? baseQuery.OrderBy(v => v.PublishedAt)
+                    : baseQuery.OrderByDescending(v => v.PublishedAt),
+                SortOption.Views => IsAscending 
+                    ? baseQuery.OrderBy(v => v.ViewCount)
+                    : baseQuery.OrderByDescending(v => v.ViewCount),
+                SortOption.Likes => IsAscending 
+                    ? baseQuery.OrderBy(v => v.LikeCount)
+                    : baseQuery.OrderByDescending(v => v.LikeCount),
+                SortOption.Comments => IsAscending 
+                    ? baseQuery.OrderBy(v => v.CommentCount)
+                    : baseQuery.OrderByDescending(v => v.CommentCount),
+                _ => baseQuery
+            };
+        }
+    }
+
+    private void HandleSearch()
+    {
+        _debounceTimer?.Stop();
+        _debounceTimer?.Start();
+    }
+
+    private void ClearSearch()
+    {
+        SearchText = string.Empty;
+        StateHasChanged();
+    }
+
+    private void Sort(SortOption option)
+    {
+        if (CurrentSort == option)
+        {
+            if (option != SortOption.Relevance)
+            {
+                IsAscending = !IsAscending;
+            }
+        }
+        else
+        {
+            CurrentSort = option;
+            if (option == SortOption.Relevance)
+            {
+                // Restore original order
+                if (_originalVideos != null)
+                {
+                    Videos = _originalVideos.ToList();
+                }
+            }
+            else
+            {
+                // Set initial sort direction based on the type of data
+                IsAscending = option switch
+                {
+                    SortOption.Views or SortOption.Likes or SortOption.Comments => false,
+                    _ => true
+                };
+            }
+        }
+    }
+
+    private string GetSortDisplayName() => CurrentSort switch
+    {
+        SortOption.Relevance => "Relevance",
+        SortOption.Title => "Title",
+        SortOption.PublishedDate => "Published Date",
+        SortOption.Views => "Views",
+        SortOption.Likes => "Likes",
+        SortOption.Comments => "Comments",
+        _ => "Relevance"
+    };
+
+    private string FormatNumber(long number)
+    {
+        if (number >= 1_000_000_000)
+            return $"{number / 1_000_000_000:N1}B";
+        if (number >= 1_000_000)
+            return $"{number / 1_000_000:N1}M";
+        if (number >= 1_000)
+            return $"{number / 1_000:N1}K";
+        return number.ToString("N0");
+    }
+
+    protected override void OnInitialized()
+    {
+        _debounceTimer = new System.Timers.Timer(300);
+        _debounceTimer.Elapsed += async (sender, e) =>
+        {
+            await InvokeAsync(StateHasChanged);
+            _debounceTimer.Stop();
+        };
+    }
+
+    private void NavigateToAnalyze(string videoId)
+    {
+        NavigationManager.NavigateTo($"/?source=youtube&id={videoId}");
+    }
+
+    public void Dispose()
+    {
+        _debounceTimer?.Dispose();
+    }
+}

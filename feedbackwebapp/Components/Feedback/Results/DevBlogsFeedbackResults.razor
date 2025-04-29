@@ -1,0 +1,35 @@
+@using SharedDump.Models.DevBlogs
+@using Microsoft.AspNetCore.Components
+
+@if (Article?.Comments?.Any() == true)
+{
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-microsoft text-primary me-2"></i>
+                    DevBlogs Comments (@Article.Comments.Count)
+                </h5>
+                <a href="@Article.Url" target="_blank" class="btn btn-sm btn-outline-light">
+                    <i class="bi bi-box-arrow-up-right"></i> View Article
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="article-info mb-4">
+                <h6 class="mb-2">@Article.Title</h6>
+            </div>
+            <div class="comments-list">
+                @foreach (var comment in Article.Comments)
+                {
+                    <DevBlogsCommentCard Comment="comment" />
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public DevBlogsArticleModel? Article { get; set; }
+}

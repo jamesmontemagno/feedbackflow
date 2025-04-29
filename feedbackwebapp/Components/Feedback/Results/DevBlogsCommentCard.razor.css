@@ -1,0 +1,79 @@
+.card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    background-color: var(--bg-secondary);
+    border-bottom-color: var(--border-color);
+}
+
+.card-title {
+    color: var(--text-primary);
+}
+
+.btn-outline-light {
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.btn-outline-light:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.comment-content {
+    color: var(--text-primary);
+}
+
+.comment-text {
+    line-height: 1.6;
+}
+
+.comment-text ::deep p {
+    margin-bottom: 0.75rem;
+}
+
+.comment-text ::deep p:last-child {
+    margin-bottom: 0;
+}
+
+.replies-container {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.reply-item {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+}
+
+.reply-item:hover {
+    background-color: var(--hover-bg);
+}
+
+.reply-text {
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.reply-text ::deep p {
+    margin-bottom: 0.75rem;
+}
+
+.reply-text ::deep p:last-child {
+    margin-bottom: 0;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

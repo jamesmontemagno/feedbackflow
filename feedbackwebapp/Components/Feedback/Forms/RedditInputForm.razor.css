@@ -1,0 +1,14 @@
+.shortlink-warning {
+    display: flex;
+    align-items: center;
+}
+
+button.btn-outline-secondary {
+    border-color: var(--bs-warning);
+    color: var(--bs-warning-text);
+}
+
+button.btn-outline-secondary:hover {
+    background-color: var(--bs-warning);
+    color: var(--bs-body-bg);
+}

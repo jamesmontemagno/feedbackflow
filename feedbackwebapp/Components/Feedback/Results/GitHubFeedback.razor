@@ -1,0 +1,235 @@
+@if (Issues?.Any() == true || PullRequests?.Any() == true || Discussions?.Any() == true)
+{
+    @if (Issues?.Any() == true)
+    {
+        <div class="card mt-4 shadow-sm">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-exclamation-circle text-warning me-2"></i>
+                        Issues (@Issues.Count)
+                    </h5>
+                    <button class="btn btn-sm btn-outline-primary" @onclick="ToggleIssues">
+                        @(ShowIssues ? "Hide Issues" : "Show Issues")
+                    </button>
+                </div>
+            </div>
+            @if (ShowIssues)
+            {
+                <div class="card-body">
+                    <div class="list-group">
+                        @foreach (var issue in Issues)
+                        {
+                            <div class="list-group-item issue-item">
+                                <div class="d-flex w-100 justify-content-between mb-2">
+                                    <h5 class="mb-1">
+                                        #@issue.Id: @issue.Title
+                                    </h5>
+                                    <small>
+                                        Updated: @issue.LastUpdated.ToString("MMM dd, yyyy")
+                                    </small>
+                                </div>
+                                <div class="mb-2 issue-labels">
+                                    @foreach (var label in issue.Labels ?? Enumerable.Empty<string>())
+                                    {
+                                        <span class="badge bg-info me-1">@label</span>
+                                    }
+                                </div>
+                                <p>@issue.Body</p>
+                                @if (issue.Comments?.Any() == true)
+                                {
+                                    <div class="issue-comments mt-3">
+                                        <button class="btn btn-sm btn-outline-secondary mb-2" @onclick="() => ToggleComments(issue.Id)">
+                                            @(ExpandedItems.Contains(issue.Id) ? "Hide Comments" : $"Show Comments ({issue.Comments.Length})")
+                                        </button>
+                                        
+                                        @if (ExpandedItems.Contains(issue.Id))
+                                        {
+                                            <div class="comments-container">
+                                                @foreach (var comment in issue.Comments)
+                                                {
+                                                    <div class="comment-item p-3 mb-2 rounded">
+                                                        <div class="d-flex justify-content-between">
+                                                            <strong>@comment.Author</strong>
+                                                            <small>@comment.CreatedAt</small>
+                                                        </div>
+                                                        <p class="mt-2 mb-0">@comment.Content</p>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (PullRequests?.Any() == true)
+    {
+        <div class="card mt-4 shadow-sm">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-git text-success me-2"></i>
+                        Pull Requests (@PullRequests.Count)
+                    </h5>
+                    <button class="btn btn-sm btn-outline-primary" @onclick="TogglePRs">
+                        @(ShowPRs ? "Hide Pull Requests" : "Show Pull Requests")
+                    </button>
+                </div>
+            </div>
+            @if (ShowPRs)
+            {
+                <div class="card-body">
+                    <div class="list-group">
+                        @foreach (var pr in PullRequests)
+                        {
+                            <div class="list-group-item pr-item">
+                                <div class="d-flex w-100 justify-content-between mb-2">
+                                    <h5 class="mb-1">
+                                        #@pr.Id: @pr.Title
+                                    </h5>
+                                    <small>
+                                        Updated: @pr.LastUpdated.ToString("MMM dd, yyyy")
+                                    </small>
+                                </div>
+                                <div class="mb-2 pr-labels">
+                                    @foreach (var label in pr.Labels ?? Enumerable.Empty<string>())
+                                    {
+                                        <span class="badge bg-info me-1">@label</span>
+                                    }
+                                </div>
+                                <p>@pr.Body</p>
+                                @if (pr.Comments?.Any() == true)
+                                {
+                                    <div class="pr-comments mt-3">
+                                        <button class="btn btn-sm btn-outline-secondary mb-2" @onclick="() => ToggleComments(pr.Id)">
+                                            @(ExpandedItems.Contains(pr.Id) ? "Hide Comments" : $"Show Comments ({pr.Comments.Length})")
+                                        </button>
+                                        
+                                        @if (ExpandedItems.Contains(pr.Id))
+                                        {
+                                            <div class="comments-container">
+                                                @foreach (var comment in pr.Comments)
+                                                {
+                                                    <div class="comment-item p-3 mb-2 rounded">
+                                                        <div class="d-flex justify-content-between">
+                                                            <strong>@comment.Author</strong>
+                                                            <small>@comment.CreatedAt</small>
+                                                        </div>
+                                                        <p class="mt-2 mb-0">@comment.Content</p>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (Discussions?.Any() == true)
+    {
+        <div class="card mt-4 shadow-sm">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-chat-text text-primary me-2"></i>
+                        Discussions (@Discussions.Count)
+                    </h5>
+                    <button class="btn btn-sm btn-outline-primary" @onclick="ToggleDiscussions">
+                        @(ShowDiscussions ? "Hide Discussions" : "Show Discussions")
+                    </button>
+                </div>
+            </div>
+            @if (ShowDiscussions)
+            {
+                <div class="card-body">
+                    <div class="list-group">
+                        @foreach (var discussion in Discussions)
+                        {
+                            <div class="list-group-item discussion-item">
+                                <div class="d-flex w-100 justify-content-between mb-2">
+                                    <h5 class="mb-1">
+                                        @discussion.Title
+                                    </h5>
+                                    <small>
+                                        <a href="@discussion.Url" target="_blank" class="external-link">
+                                            <i class="bi bi-box-arrow-up-right"></i> View
+                                        </a>
+                                    </small>
+                                </div>
+                                @if (discussion.Comments?.Any() == true)
+                                {
+                                    <div class="discussion-comments mt-3">
+                                        <button class="btn btn-sm btn-outline-secondary mb-2" @onclick="() => ToggleComments(discussion.Url)">
+                                            @(ExpandedItems.Contains(discussion.Url) ? "Hide Comments" : $"Show Comments ({discussion.Comments.Length})")
+                                        </button>
+                                        
+                                        @if (ExpandedItems.Contains(discussion.Url))
+                                        {
+                                            <div class="comments-container">
+                                                @foreach (var comment in discussion.Comments)
+                                                {
+                                                    <div class="comment-item p-3 mb-2 rounded">
+                                                        <div class="d-flex justify-content-between">
+                                                            <strong>@comment.Author</strong>
+                                                            <small>@comment.CreatedAt</small>
+                                                        </div>
+                                                        <p class="mt-2 mb-0">@comment.Content</p>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private bool ShowIssues { get; set; } = true;
+    private bool ShowPRs { get; set; } = true;
+    private bool ShowDiscussions { get; set; } = true;
+    private HashSet<string> ExpandedItems { get; set; } = new();
+
+    [Parameter]
+    public List<GithubIssueModel>? Issues { get; set; }
+    
+    [Parameter]
+    public List<GithubIssueModel>? PullRequests { get; set; }
+    
+    [Parameter]
+    public List<GithubDiscussionModel>? Discussions { get; set; }
+    
+    private void ToggleIssues() => ShowIssues = !ShowIssues;
+    
+    private void TogglePRs() => ShowPRs = !ShowPRs;
+    
+    private void ToggleDiscussions() => ShowDiscussions = !ShowDiscussions;
+    
+    private void ToggleComments(string itemId)
+    {
+        if (ExpandedItems.Contains(itemId))
+        {
+            ExpandedItems.Remove(itemId);
+        }
+        else
+        {
+            ExpandedItems.Add(itemId);
+        }
+    }
+}
