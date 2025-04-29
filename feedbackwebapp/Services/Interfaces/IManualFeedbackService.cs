@@ -1,5 +1,3 @@
-using FeedbackWebApp.Services.Feedback;
-
 namespace FeedbackWebApp.Services.Interfaces;
 
 public interface IManualFeedbackService : IFeedbackService

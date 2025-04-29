@@ -1,5 +1,3 @@
-using SharedDump.Models.DevBlogs;
-
 namespace FeedbackWebApp.Services.Interfaces;
 
 public interface IDevBlogsFeedbackService : IFeedbackService

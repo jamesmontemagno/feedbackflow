@@ -10,8 +10,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Blazor.SpeechSynthesis" Version="9.0.1" />
-    <PackageReference Include="Markdig" Version="0.35.0" />
+    <PackageReference Include="Blazor.SpeechSynthesis" />
+    <PackageReference Include="Markdig" />
   </ItemGroup>
 
   <ItemGroup>

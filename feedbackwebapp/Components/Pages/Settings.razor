@@ -2,6 +2,7 @@
 @inject UserSettingsService UserSettings
 @inject IJSRuntime JSRuntime
 @inject ISpeechSynthesisService SpeechSynthesisService
+@inject ILogger<Settings> Logger
 
 <PageTitle>Settings - FeedbackFlow</PageTitle>
 
@@ -234,16 +235,20 @@
 </div>
 
 @code {
+
     private UserSettingsService.UserSettings? settings;
     private bool isSaving;
-    private bool hasUnsavedChanges;    private VoiceInfo[]? availableVoices;
+    private bool hasUnsavedChanges;    
+    private VoiceInfo[]? availableVoices;
 
-    private class VoiceInfo
+    internal record VoiceInfo(
+        string Name = "",
+        string Lang = "",
+        string VoiceURI = "",
+        bool IsDefault = false)
     {
-        public string Name { get; set; } = "";
-        public string Lang { get; set; } = "";
-        public string VoiceURI { get; set; } = "";
-        public bool IsDefault { get; set; }
+        public static implicit operator VoiceInfo(SpeechSynthesisVoice voice) => 
+            new(voice.Name, voice.Lang, voice.VoiceURI, voice.Default);
     }
 
     private bool UseCustomPrompts
@@ -375,14 +380,21 @@
             }
         }
     }    
-    
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            Logger.LogInformation("On first render");
+
             await LoadSettings();
             await LoadVoices();
+
             StateHasChanged();
+        }
+        else
+        {
+            Logger.LogInformation("On non-first render");
         }
     }
 
@@ -392,31 +404,25 @@
         hasUnsavedChanges = false;
         StateHasChanged();
     }    
-    
+
     private async Task LoadVoices()
     {
         try
         {
             // Get voices using the SpeechSynthesisService
             var voices = await SpeechSynthesisService.GetVoicesAsync();
-            
+
             // Convert to our VoiceInfo class
-            availableVoices = voices.Select(v => new VoiceInfo
-            {
-                Name = v.Name,
-                Lang = v.Lang,
-                VoiceURI = v.VoiceURI,
-                IsDefault = v.Default
-            }).ToArray();
+            availableVoices = [ .. voices ?? [] ];
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Error loading voices: {ex.Message}");
-            availableVoices = Array.Empty<VoiceInfo>();
+            availableVoices = [];
         }
     }
 
-    private string GetLanguageName(string langCode)
+    private string? GetLanguageName(string langCode)
     {
         // Convert language codes to readable names
         var langMap = new Dictionary<string, string>
@@ -438,7 +444,7 @@
             {"pt-BR", "Portuguese (Brazil)"}
         };
 
-        return langMap.TryGetValue(langCode, out var name) ? name : langCode;
+        return langMap.TryGetValue(langCode ?? "", out var name) ? name : langCode;
     }    
     
     private async Task PlayVoiceDemo()

@@ -3,7 +3,6 @@ using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using SharedDump.Models.Reddit;
 using SharedDump.Json;
-using System.Net.Http;
 
 var threadId = new Option<string>(
     ["--thread", "-t"],

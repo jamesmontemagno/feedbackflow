@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 using SharedDump.Models.HackerNews;
 using FeedbackWebApp.Services.Interfaces;
 
