@@ -138,7 +138,7 @@ public class ContentFeedFunctions
         }
     }
 
-#if DEBUG && BLOB_FUNCTIONS
+#if (DEBUG && BLOB_FUNCTIONS) || RELEASE
 
     [Function("SearchHackerNewsArticles")]
     public async Task<HttpResponseData> SearchHackerNewsArticles(
