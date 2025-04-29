@@ -69,11 +69,11 @@ public class GitHubPullRequestCommentsTests
                 }
             }";
 
-            return new HttpResponseMessage
+            return await Task.FromResult(new HttpResponseMessage
             {
                 StatusCode = HttpStatusCode.OK,
                 Content = new StringContent(jsonResponse)
-            };
+            });
         });
 
         var httpClient = new HttpClient(mockHttpHandler);
@@ -102,17 +102,11 @@ public class GitHubPullRequestCommentsTests
     }
 }
 
-public class MockHttpMessageHandler : HttpMessageHandler
+public class MockHttpMessageHandler(
+    Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler) : HttpMessageHandler
 {
-    private readonly Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> _handler;
-
-    public MockHttpMessageHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler)
-    {
-        _handler = handler;
-    }
-
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        return _handler(request, cancellationToken);
+        return handler(request, cancellationToken);
     }
 }

@@ -1,5 +1,4 @@
-﻿using System;
-using System.CommandLine;
+﻿using System.CommandLine;
 using System.Text.Json;
 using SharedDump.Models.HackerNews;
 using SharedDump.Json;
