@@ -140,6 +140,7 @@
         if (_isSpeaking)
         {
             _ = SpeechSynthesisService.CancelAsync();
+            _isSpeaking = false;
         }
     }
 }

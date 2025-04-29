@@ -431,8 +431,10 @@
             // Get voices using the SpeechSynthesisService
             var voices = await SpeechSynthesisService.GetVoicesAsync();
 
-            // Convert to our VoiceInfo class
-            availableVoices = [ .. voices ?? [] ];
+            // Convert to our VoiceInfo class and filter out voices with "Online" in the name
+            availableVoices = voices?.Where(v => !v.Name.Contains("Online", StringComparison.OrdinalIgnoreCase))
+                                   .Select(v => (VoiceInfo)v)
+                                   .ToArray() ?? [];
         }
         catch (Exception ex)
         {
