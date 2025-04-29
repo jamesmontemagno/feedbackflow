@@ -19,6 +19,9 @@ builder.Services.AddRazorComponents()
         options.EnableDetailedErrors = true;
         options.MaximumReceiveMessageSize = 102_400; // 100 KB or more
     });
+    
+// Register ToastService
+builder.Services.AddScoped<IToastService, ToastService>();
 
 builder.Services.AddHttpClient("DefaultClient")
     .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(3));

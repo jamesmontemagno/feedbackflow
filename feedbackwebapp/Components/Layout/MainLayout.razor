@@ -25,8 +25,7 @@
                             <i class="bi bi-collection me-1"></i>
                             Content Feeds
                         </a>
-                    </li>
-                    <li class="nav-item">
+                    </li>                    <li class="nav-item">
                         <a class="nav-link @(IsActive("/settings") ? "active" : "")" href="/settings">
                             <i class="bi bi-gear me-1"></i>
                             Settings
@@ -38,11 +37,12 @@
                 <ThemeToggle />
             </div>
         </div>
-    </nav>
-
+    </nav>    
     <main>
         @Body
     </main>
+    
+    <ToastNotification />
 </div>
 
 @code {

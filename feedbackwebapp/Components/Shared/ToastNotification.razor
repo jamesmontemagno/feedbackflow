@@ -1,0 +1,53 @@
+@namespace FeedbackWebApp.Components.Shared
+@inject IToastService ToastService
+@implements IDisposable
+@using System.Timers
+
+@code {
+    [Parameter]
+    public string? Message { get; set; }
+    
+    [Parameter]
+    public ToastType Type { get; set; } = ToastType.Success;
+    
+    [Parameter]
+    public int Duration { get; set; } = 3000;
+    
+    [Parameter]
+    public ToastPosition Position { get; set; } = ToastPosition.BottomEnd;
+    
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+    
+    private System.Timers.Timer? _autoCloseTimer;
+    
+    protected override void OnInitialized()
+    {
+        if (!string.IsNullOrEmpty(Message))
+        {
+            _autoCloseTimer = new System.Timers.Timer(Duration);
+            _autoCloseTimer.Elapsed += OnTimerElapsed;
+            _autoCloseTimer.AutoReset = false;
+            _autoCloseTimer.Start();
+        }
+    }
+    
+    private async void OnTimerElapsed(object? sender, ElapsedEventArgs e)
+    {
+        await InvokeAsync(async () =>
+        {
+            await OnClose.InvokeAsync();
+            StateHasChanged();
+        });
+    }
+    
+    public void Dispose()
+    {
+        _autoCloseTimer?.Dispose();
+    }
+    
+    public async Task ShowAsync(string message, ToastType type = ToastType.Success, int duration = 3000, ToastPosition position = ToastPosition.BottomEnd)
+    {
+        await ToastService.ShowToastAsync(message, type, duration, position);
+    }
+}

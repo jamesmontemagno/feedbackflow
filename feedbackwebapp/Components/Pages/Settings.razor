@@ -5,6 +5,7 @@
 @inject IJSRuntime JSRuntime
 @inject ISpeechSynthesisService SpeechSynthesisService
 @inject ILogger<Settings> Logger
+@inject IToastService ToastService
 
 <PageTitle>Settings - FeedbackFlow</PageTitle>
 
@@ -440,24 +441,7 @@
             await LoadSettings();
             
             // Load voices with timeout
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            try
-            {
-                var loadVoicesTask = Task.Run(async () => await LoadVoices(), cts.Token);
-                await loadVoicesTask;
-            }
-            catch (OperationCanceledException)
-            {
-                Logger.LogWarning("Initial voice loading timed out after 10 seconds");
-                availableVoices = []; // Empty array to show the retry button
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error during initial voice loading");
-                availableVoices = []; // Empty array to show the retry button
-            }
-
-            StateHasChanged();
+            await RetryLoadVoices();
         }
         else
         {
@@ -515,7 +499,7 @@
             StateHasChanged();
             
             // Wait a moment to ensure UI updates
-            await Task.Delay(100);
+            await Task.Delay(500);
             
             // Create a cancellation token with timeout
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
@@ -531,10 +515,10 @@
                 // Update UI
                 StateHasChanged();
                 
-                // Show a success message if voices were loaded
+                // Show a success message if voices were loaded                  
                 if (availableVoices != null && availableVoices.Length > 0)
                 {
-                    await JSRuntime.InvokeVoidAsync("eval", "if (typeof bootstrap !== 'undefined' && bootstrap.Toast) { const toast = new bootstrap.Toast(document.createElement('div')); toast._element.innerHTML = '<div class=\"toast-body bg-success text-white\">Text-to-speech voices loaded successfully!</div>'; document.body.appendChild(toast._element); toast.show(); setTimeout(() => toast._element.remove(), 3000); }");
+                    await ToastService.ShowSuccessAsync("Text-to-speech voices loaded successfully!");
                 }
             }
             catch (OperationCanceledException)
@@ -542,7 +526,7 @@
                 Logger.LogWarning("Voice loading timed out after 10 seconds");
                 availableVoices = []; // Empty array to show the retry button
                 StateHasChanged();
-                await JSRuntime.InvokeVoidAsync("eval", "if (typeof bootstrap !== 'undefined' && bootstrap.Toast) { const toast = new bootstrap.Toast(document.createElement('div')); toast._element.innerHTML = '<div class=\"toast-body bg-warning text-white\">Voice loading timed out. Please try again.</div>'; document.body.appendChild(toast._element); toast.show(); setTimeout(() => toast._element.remove(), 3000); }");
+                await ToastService.ShowWarningAsync("Voice loading timed out. Please try again.");
             }
         }
         catch (Exception ex)
@@ -603,14 +587,12 @@
             foreach (var key in _servicePrompts.Keys)
             {
                 settings.ServicePrompts[key] = _servicePrompts[key];
-            }
-            
-            // Save to persistent storage
+            }            // Save to persistent storage
             await UserSettings.SaveSettingsAsync(settings);
             hasUnsavedChanges = false;
             
             // Show a toast or notification
-            await JSRuntime.InvokeVoidAsync("eval", "if (typeof bootstrap !== 'undefined' && bootstrap.Toast) { const toast = new bootstrap.Toast(document.createElement('div')); toast._element.innerHTML = '<div class=\"toast-body bg-success text-white\">Settings saved successfully!</div>'; document.body.appendChild(toast._element); toast.show(); setTimeout(() => toast._element.remove(), 3000); }");
+            await ToastService.ShowSuccessAsync("Settings saved successfully!");
         }
         finally
         {
