@@ -1,0 +1,11 @@
+/* SaveButton component styles */
+button {
+    transition: all 0.2s ease-in-out;
+}
+
+/* If the button should float in a card (handled by parent component CSS) */
+:host(.floating) button {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+}

@@ -1,5 +1,6 @@
 @page "/settings"
 @using SharedDump.Utils
+@using System.Threading
 @inject UserSettingsService UserSettings
 @inject IJSRuntime JSRuntime
 @inject ISpeechSynthesisService SpeechSynthesisService
@@ -7,8 +8,19 @@
 
 <PageTitle>Settings - FeedbackFlow</PageTitle>
 
-<div class="container py-4">
-    <h1 class="mb-4">Settings</h1>
+<div class="container py-4">    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">Settings</h1>
+        @if (settings != null && hasUnsavedChanges)
+        {
+            <button class="btn btn-outline-secondary" 
+                    @onclick="ResetAllChanges"
+                    disabled="@(!hasUnsavedChanges)">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>
+                Reset Changes
+            </button>
+        }
+    </div>
 
     @if (settings != null)
     {        
@@ -46,6 +58,23 @@
                                 Enable to use custom prompts instead of the default ones.
                             </div>
                         </div>
+                        
+                        <div class="card-footer">
+                            <button class="btn btn-primary save-button" 
+                                    @onclick="SaveSettings" 
+                                    disabled="@(isSaving || !hasUnsavedChanges)">
+                                @if (isSaving)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                    <span>Saving...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-save me-1"></i>
+                                    <span>Save</span>
+                                }
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -55,8 +84,7 @@
                     <div class="card-header">
                         <h5 class="card-title mb-0">Text-to-Speech Settings</h5>
                     </div>
-                    <div class="card-body">
-                        @if (availableVoices == null)
+                    <div class="card-body">                        @if (availableVoices == null)
                         {
                             <div class="text-center py-2">
                                 <div class="spinner-border spinner-border-sm" role="status">
@@ -67,9 +95,17 @@
                         }
                         else if (availableVoices.Length == 0)
                         {
-                            <div class="alert alert-info">
-                                <i class="bi bi-info-circle me-2"></i>
-                                No voices available. Text-to-speech may not be supported in your browser.
+                            <div class="alert alert-warning">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                        No voices available. Text-to-speech may not be supported in your browser.
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="RetryLoadVoices">
+                                        <i class="bi bi-arrow-clockwise me-1"></i>
+                                        Retry
+                                    </button>
+                                </div>
                             </div>
                         }
                         else
@@ -108,8 +144,7 @@
                                 </select>
                                 <div class="text-muted small mt-1">
                                     Choose a voice for the text-to-speech feature. If none is selected, the system will automatically choose the best available voice.
-                                </div>
-                                <div class="mt-3">
+                                </div>                                <div class="mt-3">
                                     <button class="btn btn-sm btn-outline-secondary" @onclick="PlayVoiceDemo">
                                         <i class="bi bi-volume-up me-1"></i>
                                         Test Selected Voice
@@ -117,6 +152,14 @@
                                 </div>
                             </div>
                         }
+                        
+                        <div class="card-footer">
+                            <SaveButton 
+                                OnSave="SaveSettings" 
+                                IsSaving="@isSaving" 
+                                IsDisabled="@(!hasUnsavedChanges)" 
+                                ClassNames="save-button" />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -213,33 +256,16 @@
                                         rows="6" 
                                         @bind="BlueSkyPrompt"
                                         @bind:event="oninput"></textarea>
-                            </div>
-                        </fieldset>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col-12">
-                <div class="d-flex justify-content-end gap-2">
-                    <button class="btn btn-primary" 
-                            @onclick="SaveSettings" 
-                            disabled="@(isSaving || !hasUnsavedChanges)">
-                        @if (isSaving)
-                        {
-                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                            <span>Saving...</span>
-                        }
-                        else
-                        {
-                            <span>Save Changes</span>
-                        }
-                    </button>
-                    <button class="btn btn-outline-secondary" 
-                            @onclick="LoadSettings"
-                            disabled="@(!hasUnsavedChanges)">Reset Changes</button>
-                </div>
+                            </div>                        </fieldset>
+                        
+                        <div class="card-footer">
+                            <SaveButton 
+                                OnSave="SaveSettings" 
+                                IsSaving="@isSaving" 
+                                IsDisabled="@(!hasUnsavedChanges)" 
+                                ClassNames="save-button" />
+                        </div>
+                    </div>                </div>
             </div>
         </div>
     }
@@ -260,6 +286,12 @@
     private bool hasUnsavedChanges;    
     private VoiceInfo[]? availableVoices;
 
+    // Backing fields for settings properties
+    private bool _useCustomPrompts;
+    private string? _preferredVoice;
+    private int _maxCommentsToAnalyze = 1200;
+    private Dictionary<string, string> _servicePrompts = new();
+
     internal record VoiceInfo(
         string Name = "",
         string Lang = "",
@@ -268,138 +300,137 @@
     {
         public static implicit operator VoiceInfo(SpeechSynthesisVoice voice) => 
             new(voice.Name, voice.Lang, voice.VoiceURI, voice.Default);
-    }
-
+    }    
+    
     private bool UseCustomPrompts
     {
-        get => settings?.UseCustomPrompts ?? false;
+        get => _useCustomPrompts;
         set
         {
-            if (settings != null)
+            if (_useCustomPrompts != value)
             {
-                settings.UseCustomPrompts = value;
-                hasUnsavedChanges = true;
-            }
-        }
-    }
-
-    private string? PreferredVoice
-    {
-        get => settings?.PreferredVoice;
-        set
-        {
-            if (settings != null)
-            {
-                settings.PreferredVoice = value;
-                hasUnsavedChanges = true;
-            }
-        }
-    }
-
-    private int MaxCommentsToAnalyze
-    {
-        get => settings?.MaxCommentsToAnalyze ?? 1200;
-        set
-        {
-            if (settings != null)
-            {
-                settings.MaxCommentsToAnalyze = value;
-                hasUnsavedChanges = true;
-            }
-        }
-    }
-
-    private string YouTubePrompt
-    {
-        get => settings?.ServicePrompts.GetValueOrDefault("youtube") ?? "";
-        set
-        {
-            if (settings != null)
-            {
-                settings.ServicePrompts["youtube"] = value;
-                hasUnsavedChanges = true;
-            }
-        }
-    }
-
-    private string GitHubPrompt
-    {
-        get => settings?.ServicePrompts.GetValueOrDefault("github") ?? "";
-        set
-        {
-            if (settings != null)
-            {
-                settings.ServicePrompts["github"] = value;
-                hasUnsavedChanges = true;
-            }
-        }
-    }
-
-    private string HackerNewsPrompt
-    {
-        get => settings?.ServicePrompts.GetValueOrDefault("hackernews") ?? "";
-        set
-        {
-            if (settings != null)
-            {
-                settings.ServicePrompts["hackernews"] = value;
-                hasUnsavedChanges = true;
-            }
-        }
-    }
-
-    private string RedditPrompt
-    {
-        get => settings?.ServicePrompts.GetValueOrDefault("reddit") ?? "";
-        set
-        {
-            if (settings != null)
-            {
-                settings.ServicePrompts["reddit"] = value;
-                hasUnsavedChanges = true;
-            }
-        }
-    }
-
-    private string DevBlogsPrompt
-    {
-        get => settings?.ServicePrompts.GetValueOrDefault("devblogs") ?? "";
-        set
-        {
-            if (settings != null)
-            {
-                settings.ServicePrompts["devblogs"] = value;
-                hasUnsavedChanges = true;
-            }
-        }
-    }
-
-    private string TwitterPrompt
-    {
-        get => settings?.ServicePrompts.GetValueOrDefault("twitter") ?? "";
-        set
-        {
-            if (settings != null)
-            {
-                settings.ServicePrompts["twitter"] = value;
-                hasUnsavedChanges = true;
-            }
-        }
-    }
-
-    private string BlueSkyPrompt
-    {
-        get => settings?.ServicePrompts.GetValueOrDefault("bluesky") ?? "";
-        set
-        {
-            if (settings != null)
-            {
-                settings.ServicePrompts["bluesky"] = value;
+                _useCustomPrompts = value;
                 hasUnsavedChanges = true;
             }
         }
     }    
-
+    
+    private string? PreferredVoice
+    {
+        get => _preferredVoice;
+        set
+        {
+            if (_preferredVoice != value)
+            {
+                _preferredVoice = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }    
+    
+    private int MaxCommentsToAnalyze
+    {
+        get => _maxCommentsToAnalyze;
+        set
+        {
+            if (_maxCommentsToAnalyze != value)
+            {
+                _maxCommentsToAnalyze = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }    
+    
+    private string YouTubePrompt
+    {
+        get => _servicePrompts.GetValueOrDefault("youtube", "");
+        set
+        {
+            if (_servicePrompts.GetValueOrDefault("youtube", "") != value)
+            {
+                _servicePrompts["youtube"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }    
+    
+    private string GitHubPrompt
+    {
+        get => _servicePrompts.GetValueOrDefault("github", "");
+        set
+        {
+            if (_servicePrompts.GetValueOrDefault("github", "") != value)
+            {
+                _servicePrompts["github"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }    
+    
+    private string HackerNewsPrompt
+    {
+        get => _servicePrompts.GetValueOrDefault("hackernews", "");
+        set
+        {
+            if (_servicePrompts.GetValueOrDefault("hackernews", "") != value)
+            {
+                _servicePrompts["hackernews"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }    
+    
+    private string RedditPrompt
+    {
+        get => _servicePrompts.GetValueOrDefault("reddit", "");
+        set
+        {
+            if (_servicePrompts.GetValueOrDefault("reddit", "") != value)
+            {
+                _servicePrompts["reddit"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }   
+    
+    private string DevBlogsPrompt
+    {
+        get => _servicePrompts.GetValueOrDefault("devblogs", "");
+        set
+        {
+            if (_servicePrompts.GetValueOrDefault("devblogs", "") != value)
+            {
+                _servicePrompts["devblogs"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }    
+    
+    private string TwitterPrompt
+    {
+        get => _servicePrompts.GetValueOrDefault("twitter", "");
+        set
+        {
+            if (_servicePrompts.GetValueOrDefault("twitter", "") != value)
+            {
+                _servicePrompts["twitter"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }    
+    
+    private string BlueSkyPrompt
+    {
+        get => _servicePrompts.GetValueOrDefault("bluesky", "");
+        set
+        {
+            if (_servicePrompts.GetValueOrDefault("bluesky", "") != value)
+            {
+                _servicePrompts["bluesky"] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }    
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -407,7 +438,24 @@
             Logger.LogInformation("On first render");
 
             await LoadSettings();
-            await LoadVoices();
+            
+            // Load voices with timeout
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            try
+            {
+                var loadVoicesTask = Task.Run(async () => await LoadVoices(), cts.Token);
+                await loadVoicesTask;
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.LogWarning("Initial voice loading timed out after 10 seconds");
+                availableVoices = []; // Empty array to show the retry button
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error during initial voice loading");
+                availableVoices = []; // Empty array to show the retry button
+            }
 
             StateHasChanged();
         }
@@ -416,18 +464,30 @@
             Logger.LogInformation("On non-first render");
         }
     }
-
     private async Task LoadSettings()
     {
         settings = await UserSettings.GetSettingsAsync();
+        
+        // Initialize backing fields from settings
+        if (settings != null)
+        {
+            _useCustomPrompts = settings.UseCustomPrompts;
+            _preferredVoice = settings.PreferredVoice;
+            _maxCommentsToAnalyze = settings.MaxCommentsToAnalyze;
+            
+            // Initialize service prompts
+            _servicePrompts = new Dictionary<string, string>(settings.ServicePrompts);
+        }
+        
         hasUnsavedChanges = false;
         StateHasChanged();
     }    
-
     private async Task LoadVoices()
     {
         try
         {
+            Logger.LogInformation("Loading text-to-speech voices");
+            
             // Get voices using the SpeechSynthesisService
             var voices = await SpeechSynthesisService.GetVoicesAsync();
 
@@ -435,11 +495,61 @@
             availableVoices = voices?.Where(v => !v.Name.Contains("Online", StringComparison.OrdinalIgnoreCase))
                                    .Select(v => (VoiceInfo)v)
                                    .ToArray() ?? [];
+            
+            Logger.LogInformation("Loaded {VoiceCount} text-to-speech voices", availableVoices.Length);
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Error loading voices: {ex.Message}");
+            Logger.LogError(ex, "Error loading voices");
             availableVoices = [];
+        }
+    }
+    private async Task RetryLoadVoices()
+    {
+        try
+        {
+            // Set to null to show loading indicator
+            availableVoices = null;
+            
+            // Force UI update
+            StateHasChanged();
+            
+            // Wait a moment to ensure UI updates
+            await Task.Delay(100);
+            
+            // Create a cancellation token with timeout
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            
+            // Try to load voices again with timeout
+            var loadTask = Task.Run(async () => await LoadVoices(), cts.Token);
+            
+            try
+            {
+                // Wait for load to complete or timeout
+                await loadTask;
+                
+                // Update UI
+                StateHasChanged();
+                
+                // Show a success message if voices were loaded
+                if (availableVoices != null && availableVoices.Length > 0)
+                {
+                    await JSRuntime.InvokeVoidAsync("eval", "if (typeof bootstrap !== 'undefined' && bootstrap.Toast) { const toast = new bootstrap.Toast(document.createElement('div')); toast._element.innerHTML = '<div class=\"toast-body bg-success text-white\">Text-to-speech voices loaded successfully!</div>'; document.body.appendChild(toast._element); toast.show(); setTimeout(() => toast._element.remove(), 3000); }");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.LogWarning("Voice loading timed out after 10 seconds");
+                availableVoices = []; // Empty array to show the retry button
+                StateHasChanged();
+                await JSRuntime.InvokeVoidAsync("eval", "if (typeof bootstrap !== 'undefined' && bootstrap.Toast) { const toast = new bootstrap.Toast(document.createElement('div')); toast._element.innerHTML = '<div class=\"toast-body bg-warning text-white\">Voice loading timed out. Please try again.</div>'; document.body.appendChild(toast._element); toast.show(); setTimeout(() => toast._element.remove(), 3000); }");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during retry load voices");
+            availableVoices = []; // Empty array to show the retry button
+            StateHasChanged();
         }
     }
     
@@ -476,14 +586,26 @@
         // Speak the text
         await SpeechSynthesisService.SpeakAsync(utterance);
     }
-    
-    private async Task SaveSettings()
+      private async Task SaveSettings()
     {
         if (settings == null) return;
 
         try
         {
             isSaving = true;
+            
+            // Apply all local values to the settings object
+            settings.UseCustomPrompts = _useCustomPrompts;
+            settings.PreferredVoice = _preferredVoice;
+            settings.MaxCommentsToAnalyze = _maxCommentsToAnalyze;
+            
+            // Apply service prompts
+            foreach (var key in _servicePrompts.Keys)
+            {
+                settings.ServicePrompts[key] = _servicePrompts[key];
+            }
+            
+            // Save to persistent storage
             await UserSettings.SaveSettingsAsync(settings);
             hasUnsavedChanges = false;
             
@@ -494,13 +616,11 @@
         {
             isSaving = false;
         }
-    }
-
-    private void ResetPrompt(string serviceType)
+    }    private void ResetPrompt(string serviceType)
     {
         if (settings == null) return;
 
-        settings.ServicePrompts[serviceType] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt(serviceType);
+        _servicePrompts[serviceType] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt(serviceType);
         hasUnsavedChanges = true;
         StateHasChanged();
     }
@@ -511,7 +631,7 @@
 
         foreach (var serviceType in settings.ServicePrompts.Keys.ToList())
         {
-            settings.ServicePrompts[serviceType] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt(serviceType);
+            _servicePrompts[serviceType] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt(serviceType);
         }
         hasUnsavedChanges = true;
         StateHasChanged();
@@ -520,5 +640,13 @@
     public void Dispose()
     {
         // Cleanup if needed
+    }
+
+    /// <summary>
+    /// Discards all current edits and reloads settings from storage
+    /// </summary>
+    private async Task ResetAllChanges()
+    {
+        await LoadSettings();
     }
 }

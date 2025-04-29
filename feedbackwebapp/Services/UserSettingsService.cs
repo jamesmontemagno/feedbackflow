@@ -89,7 +89,8 @@ public class UserSettingsService
             await SaveSettingsAsync(_cachedSettings);
             return _cachedSettings;
         }
-    }    public async Task SaveSettingsAsync(UserSettings settings)
+    }
+    public async Task SaveSettingsAsync(UserSettings settings)
     {
         var json = JsonSerializer.Serialize(settings);
         await _jsRuntime.InvokeVoidAsync("localStorage.setItem", SETTINGS_KEY, json);

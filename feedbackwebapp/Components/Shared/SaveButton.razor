@@ -1,0 +1,44 @@
+@inject ILogger<SaveButton> Logger
+
+<button class="btn btn-primary @(ClassNames)" 
+        @onclick="OnSaveClick" 
+        disabled="@(IsSaving || IsDisabled)">
+    @if (IsSaving)
+    {
+        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        <span>@(SavingText)</span>
+    }    else
+    {
+        <i class="bi bi-floppy me-1"></i>
+        <span>@(ButtonText)</span>
+    }
+</button>
+
+@code {
+    [Parameter]
+    public EventCallback OnSave { get; set; }
+
+    [Parameter]
+    public bool IsSaving { get; set; }
+
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
+    [Parameter]
+    public string ButtonText { get; set; } = "Save";
+
+    [Parameter]
+    public string SavingText { get; set; } = "Saving...";
+
+    [Parameter]
+    public string ClassNames { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool IsFloating { get; set; } = false;
+
+    private async Task OnSaveClick()
+    {
+        Logger.LogInformation("Save button clicked");
+        await OnSave.InvokeAsync();
+    }
+}
