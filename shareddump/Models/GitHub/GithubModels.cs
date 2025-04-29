@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-
 namespace SharedDump.Models.GitHub;
 
 public class GithubDiscussionModel

@@ -8,15 +8,20 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
+// Add SpeechSynthesis services
+builder.Services.AddSpeechSynthesisServices();
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents(options => options.DetailedErrors = true)
+    .AddHubOptions(options =>
+    {
+        options.EnableDetailedErrors = true;
+        options.MaximumReceiveMessageSize = 102_400; // 100 KB or more
+    });
 
 builder.Services.AddHttpClient("DefaultClient")
-    .ConfigureHttpClient(client =>
-    {
-        client.Timeout = TimeSpan.FromMinutes(3); // Adjust timeout value as needed
-    });
+    .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(3));
 builder.Services.AddScoped<FeedbackServiceProvider>();
 builder.Services.AddScoped<ContentFeedServiceProvider>();
 builder.Services.AddScoped<AuthenticationService>();

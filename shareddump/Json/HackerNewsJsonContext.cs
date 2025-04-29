@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using System.Text.Json;
 using SharedDump.Models.HackerNews;
 
 namespace SharedDump.Json;

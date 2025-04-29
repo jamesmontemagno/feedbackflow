@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 using FeedbackWebApp.Services.Interfaces;
 using SharedDump.Models.Reddit;
 

@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 using SharedDump.Models.Reddit;
 using System.Text.Json;
 using SharedDump.Utils;

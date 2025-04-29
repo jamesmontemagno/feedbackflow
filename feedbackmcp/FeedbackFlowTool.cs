@@ -1,6 +1,4 @@
-using System;
 using System.ComponentModel;
-using System.Net.Http;
 using ModelContextProtocol.Server;
 using SharedDump.Models.GitHub;
 using SharedDump.Models.HackerNews;

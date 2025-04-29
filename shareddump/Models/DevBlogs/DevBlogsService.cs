@@ -1,10 +1,5 @@
 #nullable enable
-using System;
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Threading.Tasks;
 using System.Xml.Linq;
-using System.Linq;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using System.Net;

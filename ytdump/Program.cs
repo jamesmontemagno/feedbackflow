@@ -3,7 +3,6 @@ using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using SharedDump.Models.YouTube;
 using SharedDump.Json;
-using System.Net.Http;
 
 var userInput = new Option<FileInfo?>(["--input", "-i"], "The input file with video/playlist IDs.");
 var channelId = new Option<string?>(["--channel", "-c"], "The ID of the channel.");

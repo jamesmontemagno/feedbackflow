@@ -1,7 +1,6 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharedDump.Utils;
 
-namespace feedbackflow.tests;
+namespace FeedbackFlow.Tests;
 
 [TestClass]
 public class DevBlogsUrlValidatorTests

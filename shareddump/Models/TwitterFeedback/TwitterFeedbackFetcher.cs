@@ -1,7 +1,5 @@
-using System.Net.Http;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using SharedDump.Models.TwitterFeedback;
 using SharedDump.Utils;
 
 namespace SharedDump.Models.TwitterFeedback;

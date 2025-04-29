@@ -8,11 +8,11 @@ public class UserSettingsService
     private readonly IJSRuntime _jsRuntime;
     private const string SETTINGS_KEY = "feedbackflow_settings";
     private UserSettings? _cachedSettings;
-
     public class UserSettings
     {
         public int MaxCommentsToAnalyze { get; set; } = 1200;
         public bool UseCustomPrompts { get; set; } = false;
+        public string? PreferredVoice { get; set; }
         public Dictionary<string, string> ServicePrompts { get; set; } = new()
         {
             ["youtube"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("youtube"),
@@ -89,12 +89,23 @@ public class UserSettingsService
             await SaveSettingsAsync(_cachedSettings);
             return _cachedSettings;
         }
-    }
-
-    public async Task SaveSettingsAsync(UserSettings settings)
+    }    public async Task SaveSettingsAsync(UserSettings settings)
     {
         var json = JsonSerializer.Serialize(settings);
         await _jsRuntime.InvokeVoidAsync("localStorage.setItem", SETTINGS_KEY, json);
         _cachedSettings = settings;
+    }
+    
+    public async Task<string?> GetPreferredVoiceAsync()
+    {
+        var settings = await GetSettingsAsync();
+        return settings.PreferredVoice;
+    }
+    
+    public async Task SetPreferredVoiceAsync(string? voiceUri)
+    {
+        var settings = await GetSettingsAsync();
+        settings.PreferredVoice = voiceUri;
+        await SaveSettingsAsync(settings);
     }
 }
