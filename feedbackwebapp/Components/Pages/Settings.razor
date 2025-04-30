@@ -9,14 +9,12 @@
 
 <PageTitle>Settings - FeedbackFlow</PageTitle>
 
-<div class="container py-4">    
+<div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="mb-0">Settings</h1>
         @if (settings != null && hasUnsavedChanges)
         {
-            <button class="btn btn-outline-secondary" 
-                    @onclick="ResetAllChanges"
-                    disabled="@(!hasUnsavedChanges)">
+            <button class="btn btn-outline-secondary" @onclick="ResetAllChanges" disabled="@(!hasUnsavedChanges)">
                 <i class="bi bi-arrow-counterclockwise me-1"></i>
                 Reset Changes
             </button>
@@ -24,7 +22,7 @@
     </div>
 
     @if (settings != null)
-    {        
+    {
         <div class="row">
             <div class="col-md-6 mb-4">
                 <div class="card shadow-sm">
@@ -33,25 +31,18 @@
                     </div>
                     <div class="card-body">
                         <div class="form-floating mb-3">
-                            <input type="number" 
-                                   class="form-control" 
-                                   id="maxComments" 
-                                   min="100" 
-                                   max="5000"
-                                   @bind="MaxCommentsToAnalyze" 
-                                   @bind:event="oninput" />
+                            <input type="number" class="form-control" id="maxComments" min="100" max="5000"
+                                @bind="MaxCommentsToAnalyze" @bind:event="oninput" />
                             <label for="maxComments">Maximum Comments to Analyze</label>
                             <div class="text-muted small">
-                                Default: 1200. Analyzing more comments will take longer but provide more comprehensive results.
+                                Default: 1200. Analyzing more comments will take longer but provide more comprehensive
+                                results.
                             </div>
                         </div>
 
                         <div class="form-check form-switch">
-                            <input class="form-check-input" 
-                                   type="checkbox" 
-                                   id="useCustomPrompts"
-                                   @bind="UseCustomPrompts"
-                                   @bind:event="oninput">
+                            <input class="form-check-input" type="checkbox" id="useCustomPrompts" @bind="UseCustomPrompts"
+                                @bind:event="oninput">
                             <label class="form-check-label" for="useCustomPrompts">
                                 Use Custom Analysis Prompts
                             </label>
@@ -59,33 +50,21 @@
                                 Enable to use custom prompts instead of the default ones.
                             </div>
                         </div>
-                        
+
                         <div class="card-footer">
-                            <button class="btn btn-primary save-button" 
-                                    @onclick="SaveSettings" 
-                                    disabled="@(isSaving || !hasUnsavedChanges)">
-                                @if (isSaving)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                                    <span>Saving...</span>
-                                }
-                                else
-                                {
-                                    <i class="bi bi-save me-1"></i>
-                                    <span>Save</span>
-                                }
-                            </button>
+                            <SaveButton OnSave="SaveSettings" IsSaving="@isSaving" IsDisabled="@(!hasUnsavedChanges)"
+                                ClassNames="save-button" />
                         </div>
                     </div>
                 </div>
             </div>
-            
+
             <div class="col-md-6 mb-4">
                 <div class="card shadow-sm">
                     <div class="card-header">
                         <h5 class="card-title mb-0">Text-to-Speech Settings</h5>
                     </div>
-                    <div class="card-body">                        @if (availableVoices == null)
+                    <div class="card-body"> @if (availableVoices == null)
                         {
                             <div class="text-center py-2">
                                 <div class="spinner-border spinner-border-sm" role="status">
@@ -94,7 +73,7 @@
                                 <span class="ms-2">Loading available voices...</span>
                             </div>
                         }
-                        else if (availableVoices.Length == 0)
+                                        else if (availableVoices.Length == 0)
                         {
                             <div class="alert alert-warning">
                                 <div class="d-flex justify-content-between align-items-center">
@@ -112,9 +91,10 @@
                         else
                         {
                             <div class="mb-3">
-                                <label class="form-label">Preferred Voice</label>                                <select class="form-select" @bind="PreferredVoice" @bind:event="onchange">
+                                <label class="form-label">Preferred Voice</label> <select class="form-select"
+                                    @bind="PreferredVoice" @bind:event="onchange">
                                     <option value="">Default (Auto-select best voice)</option>
-                                    
+
                                     @{
                                         // First display the en-US languages at the top
                                         var enUsVoices = availableVoices.Where(v => v.Lang == "en-US").ToList();
@@ -127,12 +107,12 @@
                                                 }
                                             </optgroup>
                                         }
-                                        
+
                                         // Then display the rest of the languages
                                         foreach (var voiceGroup in availableVoices
-                                            .Where(v => v.Lang != "en-US")
-                                            .GroupBy(v => v.Lang)
-                                            .OrderBy(g => LanguageUtils.GetLanguageName(g.Key)))
+                                        .Where(v => v.Lang != "en-US")
+                                        .GroupBy(v => v.Lang)
+                                        .OrderBy(g => LanguageUtils.GetLanguageName(g.Key)))
                                         {
                                             <optgroup label="@LanguageUtils.GetLanguageName(voiceGroup.Key)">
                                                 @foreach (var voice in voiceGroup.OrderBy(v => v.Name))
@@ -144,8 +124,10 @@
                                     }
                                 </select>
                                 <div class="text-muted small mt-1">
-                                    Choose a voice for the text-to-speech feature. If none is selected, the system will automatically choose the best available voice.
-                                </div>                                <div class="mt-3">
+                                    Choose a voice for the text-to-speech feature. If none is selected, the system will
+                                    automatically choose the best available voice.
+                                </div>
+                                <div class="mt-3">
                                     <button class="btn btn-sm btn-outline-secondary" @onclick="PlayVoiceDemo">
                                         <i class="bi bi-volume-up me-1"></i>
                                         Test Selected Voice
@@ -153,12 +135,9 @@
                                 </div>
                             </div>
                         }
-                        
+
                         <div class="card-footer">
-                            <SaveButton 
-                                OnSave="SaveSettings" 
-                                IsSaving="@isSaving" 
-                                IsDisabled="@(!hasUnsavedChanges)" 
+                            <SaveButton OnSave="SaveSettings" IsSaving="@isSaving" IsDisabled="@(!hasUnsavedChanges)"
                                 ClassNames="save-button" />
                         </div>
                     </div>
@@ -185,88 +164,80 @@
                             <div class="mb-4">
                                 <label class="form-label d-flex justify-content-between">
                                     <span>YouTube Analysis Prompt</span>
-                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("youtube"))">Reset to Default</button>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                        @onclick="@(() => ResetPrompt("youtube"))">Reset to Default</button>
                                 </label>
-                                <textarea class="form-control font-monospace" 
-                                        rows="6" 
-                                        @bind="YouTubePrompt"
-                                        @bind:event="oninput"></textarea>
+                                <textarea class="form-control font-monospace" rows="6" @bind="YouTubePrompt"
+                                    @bind:event="oninput"></textarea>
                             </div>
 
                             <div class="mb-4">
                                 <label class="form-label d-flex justify-content-between">
                                     <span>GitHub Analysis Prompt</span>
-                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("github"))">Reset to Default</button>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                        @onclick="@(() => ResetPrompt("github"))">Reset to Default</button>
                                 </label>
-                                <textarea class="form-control font-monospace" 
-                                        rows="6" 
-                                        @bind="GitHubPrompt"
-                                        @bind:event="oninput"></textarea>
+                                <textarea class="form-control font-monospace" rows="6" @bind="GitHubPrompt"
+                                    @bind:event="oninput"></textarea>
                             </div>
 
                             <div class="mb-4">
                                 <label class="form-label d-flex justify-content-between">
                                     <span>Hacker News Analysis Prompt</span>
-                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("hackernews"))">Reset to Default</button>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                        @onclick="@(() => ResetPrompt("hackernews"))">Reset to Default</button>
                                 </label>
-                                <textarea class="form-control font-monospace" 
-                                        rows="6" 
-                                        @bind="HackerNewsPrompt"
-                                        @bind:event="oninput"></textarea>
+                                <textarea class="form-control font-monospace" rows="6" @bind="HackerNewsPrompt"
+                                    @bind:event="oninput"></textarea>
                             </div>
 
                             <div class="mb-4">
                                 <label class="form-label d-flex justify-content-between">
                                     <span>Reddit Analysis Prompt</span>
-                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("reddit"))">Reset to Default</button>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                        @onclick="@(() => ResetPrompt("reddit"))">Reset to Default</button>
                                 </label>
-                                <textarea class="form-control font-monospace" 
-                                        rows="6" 
-                                        @bind="RedditPrompt"
-                                        @bind:event="oninput"></textarea>
+                                <textarea class="form-control font-monospace" rows="6" @bind="RedditPrompt"
+                                    @bind:event="oninput"></textarea>
                             </div>
 
                             <div class="mb-4">
                                 <label class="form-label d-flex justify-content-between">
                                     <span>DevBlogs Analysis Prompt</span>
-                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("devblogs"))">Reset to Default</button>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                        @onclick="@(() => ResetPrompt("devblogs"))">Reset to Default</button>
                                 </label>
-                                <textarea class="form-control font-monospace" 
-                                        rows="6" 
-                                        @bind="DevBlogsPrompt"
-                                        @bind:event="oninput"></textarea>
+                                <textarea class="form-control font-monospace" rows="6" @bind="DevBlogsPrompt"
+                                    @bind:event="oninput"></textarea>
                             </div>
 
                             <div class="mb-4">
                                 <label class="form-label d-flex justify-content-between">
                                     <span>Twitter Analysis Prompt</span>
-                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("twitter"))">Reset to Default</button>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                        @onclick="@(() => ResetPrompt("twitter"))">Reset to Default</button>
                                 </label>
-                                <textarea class="form-control font-monospace" 
-                                        rows="6" 
-                                        @bind="TwitterPrompt"
-                                        @bind:event="oninput"></textarea>
+                                <textarea class="form-control font-monospace" rows="6" @bind="TwitterPrompt"
+                                    @bind:event="oninput"></textarea>
                             </div>
 
                             <div class="mb-4">
                                 <label class="form-label d-flex justify-content-between">
                                     <span>BlueSky Analysis Prompt</span>
-                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => ResetPrompt("bluesky"))">Reset to Default</button>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                        @onclick="@(() => ResetPrompt("bluesky"))">Reset to Default</button>
                                 </label>
-                                <textarea class="form-control font-monospace" 
-                                        rows="6" 
-                                        @bind="BlueSkyPrompt"
-                                        @bind:event="oninput"></textarea>
-                            </div>                        </fieldset>
-                        
+                                <textarea class="form-control font-monospace" rows="6" @bind="BlueSkyPrompt"
+                                    @bind:event="oninput"></textarea>
+                            </div>
+                        </fieldset>
+
                         <div class="card-footer">
-                            <SaveButton 
-                                OnSave="SaveSettings" 
-                                IsSaving="@isSaving" 
-                                IsDisabled="@(!hasUnsavedChanges)" 
+                            <SaveButton OnSave="SaveSettings" IsSaving="@isSaving" IsDisabled="@(!hasUnsavedChanges)"
                                 ClassNames="save-button" />
                         </div>
-                    </div>                </div>
+                    </div>
+                </div>
             </div>
         </div>
     }
@@ -284,7 +255,7 @@
 
     private UserSettingsService.UserSettings? settings;
     private bool isSaving;
-    private bool hasUnsavedChanges;    
+    private bool hasUnsavedChanges;
     private VoiceInfo[]? availableVoices;
 
     // Backing fields for settings properties
@@ -294,15 +265,15 @@
     private Dictionary<string, string> _servicePrompts = new();
 
     internal record VoiceInfo(
-        string Name = "",
-        string Lang = "",
-        string VoiceURI = "",
-        bool IsDefault = false)
+    string Name = "",
+    string Lang = "",
+    string VoiceURI = "",
+    bool IsDefault = false)
     {
-        public static implicit operator VoiceInfo(SpeechSynthesisVoice voice) => 
-            new(voice.Name, voice.Lang, voice.VoiceURI, voice.Default);
-    }    
-    
+        public static implicit operator VoiceInfo(SpeechSynthesisVoice voice) =>
+        new(voice.Name, voice.Lang, voice.VoiceURI, voice.Default);
+    }
+
     private bool UseCustomPrompts
     {
         get => _useCustomPrompts;
@@ -314,8 +285,8 @@
                 hasUnsavedChanges = true;
             }
         }
-    }    
-    
+    }
+
     private string? PreferredVoice
     {
         get => _preferredVoice;
@@ -327,8 +298,8 @@
                 hasUnsavedChanges = true;
             }
         }
-    }    
-    
+    }
+
     private int MaxCommentsToAnalyze
     {
         get => _maxCommentsToAnalyze;
@@ -340,8 +311,8 @@
                 hasUnsavedChanges = true;
             }
         }
-    }    
-    
+    }
+
     private string YouTubePrompt
     {
         get => _servicePrompts.GetValueOrDefault("youtube", "");
@@ -353,8 +324,8 @@
                 hasUnsavedChanges = true;
             }
         }
-    }    
-    
+    }
+
     private string GitHubPrompt
     {
         get => _servicePrompts.GetValueOrDefault("github", "");
@@ -366,8 +337,8 @@
                 hasUnsavedChanges = true;
             }
         }
-    }    
-    
+    }
+
     private string HackerNewsPrompt
     {
         get => _servicePrompts.GetValueOrDefault("hackernews", "");
@@ -379,8 +350,8 @@
                 hasUnsavedChanges = true;
             }
         }
-    }    
-    
+    }
+
     private string RedditPrompt
     {
         get => _servicePrompts.GetValueOrDefault("reddit", "");
@@ -392,8 +363,8 @@
                 hasUnsavedChanges = true;
             }
         }
-    }   
-    
+    }
+
     private string DevBlogsPrompt
     {
         get => _servicePrompts.GetValueOrDefault("devblogs", "");
@@ -405,8 +376,8 @@
                 hasUnsavedChanges = true;
             }
         }
-    }    
-    
+    }
+
     private string TwitterPrompt
     {
         get => _servicePrompts.GetValueOrDefault("twitter", "");
@@ -418,8 +389,8 @@
                 hasUnsavedChanges = true;
             }
         }
-    }    
-    
+    }
+
     private string BlueSkyPrompt
     {
         get => _servicePrompts.GetValueOrDefault("bluesky", "");
@@ -431,7 +402,7 @@
                 hasUnsavedChanges = true;
             }
         }
-    }    
+    }
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -439,7 +410,7 @@
             Logger.LogInformation("On first render");
 
             await LoadSettings();
-            
+
             // Load voices with timeout
             await RetryLoadVoices();
         }
@@ -451,35 +422,35 @@
     private async Task LoadSettings()
     {
         settings = await UserSettings.GetSettingsAsync();
-        
+
         // Initialize backing fields from settings
         if (settings != null)
         {
             _useCustomPrompts = settings.UseCustomPrompts;
             _preferredVoice = settings.PreferredVoice;
             _maxCommentsToAnalyze = settings.MaxCommentsToAnalyze;
-            
+
             // Initialize service prompts
             _servicePrompts = new Dictionary<string, string>(settings.ServicePrompts);
         }
-        
+
         hasUnsavedChanges = false;
         StateHasChanged();
-    }    
+    }
     private async Task LoadVoices()
     {
         try
         {
             Logger.LogInformation("Loading text-to-speech voices");
-            
+
             // Get voices using the SpeechSynthesisService
             var voices = await SpeechSynthesisService.GetVoicesAsync();
 
             // Convert to our VoiceInfo class and filter out voices with "Online" in the name
             availableVoices = voices?.Where(v => !v.Name.Contains("Online", StringComparison.OrdinalIgnoreCase))
-                                   .Select(v => (VoiceInfo)v)
-                                   .ToArray() ?? [];
-            
+            .Select(v => (VoiceInfo)v)
+            .ToArray() ?? [];
+
             Logger.LogInformation("Loaded {VoiceCount} text-to-speech voices", availableVoices.Length);
         }
         catch (Exception ex)
@@ -494,28 +465,28 @@
         {
             // Set to null to show loading indicator
             availableVoices = null;
-            
+
             // Force UI update
             StateHasChanged();
-            
+
             // Wait a moment to ensure UI updates
             await Task.Delay(500);
-            
+
             // Create a cancellation token with timeout
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            
+
             // Try to load voices again with timeout
             var loadTask = Task.Run(async () => await LoadVoices(), cts.Token);
-            
+
             try
             {
                 // Wait for load to complete or timeout
                 await loadTask;
-                
+
                 // Update UI
                 StateHasChanged();
-                
-                // Show a success message if voices were loaded                  
+
+                // Show a success message if voices were loaded
                 if (availableVoices != null && availableVoices.Length > 0)
                 {
                     await ToastService.ShowSuccessAsync("Text-to-speech voices loaded successfully!");
@@ -536,7 +507,7 @@
             StateHasChanged();
         }
     }
-    
+
     private async Task PlayVoiceDemo()
     {
         if (string.IsNullOrEmpty(PreferredVoice))
@@ -546,7 +517,7 @@
         }
 
         const string demoText = "This is a test of the selected voice. If you can hear this, the voice is working correctly.";
-        
+
         // Create utterance with the demo text
         var utterance = new SpeechSynthesisUtterance
         {
@@ -554,43 +525,43 @@
             Rate = 1.0f,
             Pitch = 1.0f
         };
-        
+
         // Set the selected voice
         var voices = await SpeechSynthesisService.GetVoicesAsync();
         var selectedVoice = voices.FirstOrDefault(v => v.VoiceURI == PreferredVoice);
-        
+
         if (selectedVoice != null)
         {
             utterance.Voice = selectedVoice;
         }
-        
+
         // Cancel any ongoing speech
         await SpeechSynthesisService.CancelAsync();
-        
+
         // Speak the text
         await SpeechSynthesisService.SpeakAsync(utterance);
     }
-      private async Task SaveSettings()
+    private async Task SaveSettings()
     {
         if (settings == null) return;
 
         try
         {
             isSaving = true;
-            
+
             // Apply all local values to the settings object
             settings.UseCustomPrompts = _useCustomPrompts;
             settings.PreferredVoice = _preferredVoice;
             settings.MaxCommentsToAnalyze = _maxCommentsToAnalyze;
-            
+
             // Apply service prompts
             foreach (var key in _servicePrompts.Keys)
             {
                 settings.ServicePrompts[key] = _servicePrompts[key];
-            }            // Save to persistent storage
+            } // Save to persistent storage
             await UserSettings.SaveSettingsAsync(settings);
             hasUnsavedChanges = false;
-            
+
             // Show a toast or notification
             await ToastService.ShowSuccessAsync("Settings saved successfully!");
         }
@@ -598,7 +569,8 @@
         {
             isSaving = false;
         }
-    }    private void ResetPrompt(string serviceType)
+    }
+    private void ResetPrompt(string serviceType)
     {
         if (settings == null) return;
 
