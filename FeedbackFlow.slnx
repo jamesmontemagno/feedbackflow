@@ -18,7 +18,7 @@
     <File Path=".github/copilot-instructions.md" />
     <File Path=".github/workflows/build.yaml" />
     <File Path=".github/workflows/build-deploy-webapp.yml" />
-    <File Path=".github/workflows/jamont-refactor_feedbackfunctions20250414121421.yml" />
+    <File Path=".github/workflows/main_feedbackfunctions20250414121421.yml" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".gitignore" />
