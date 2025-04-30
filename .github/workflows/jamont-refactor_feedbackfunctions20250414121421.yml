@@ -10,7 +10,7 @@ on:
     paths:
       - 'feedbackfunctions/**'
       - 'shareddump/**'
-      - '.github/workflows/build-deploy-function.yml'
+      - '.github/workflows/jamont-refactor_feedbackfunctions20250414121421.yml'
       - 'FeedbackFlow.ServiceDefaults/**'
   workflow_dispatch:
 
