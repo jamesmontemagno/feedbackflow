@@ -1,5 +1,7 @@
 # Copilot Instructions
 
+The github repo is jamesmontemagno/feedbackflow and the primary branch that I work off of is main
+
 ## Blazor
 - Always add component-specific CSS in a corresponding .razor.css file
 - When creating a new component, automatically create a matching .razor.css file
