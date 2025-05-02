@@ -17,11 +17,24 @@
             </button>
         }
     </div>
-    
-    @if (historyItems is { Count: > 0 })
+      @if (historyItems is { Count: > 0 })
     {
         <div class="filter-section card mb-4 p-3 shadow-sm">
             <div class="row g-3">
+                <div class="col-12 mb-2">
+                    <label for="searchFilter" class="form-label">Search Analysis Content</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="searchFilter" placeholder="Search through analysis content..." 
+                               @bind="searchTerm" @bind:event="oninput" @bind:after="StateHasChanged" />
+                        @if (!string.IsNullOrWhiteSpace(searchTerm))
+                        {
+                            <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        }
+                    </div>
+                </div>
                 <div class="col-md-6">
                     <label for="dateFilter" class="form-label">Date Range</label>                    
                     <select class="form-select" id="dateFilter" @bind="dateFilter" @bind:after="StateHasChanged">
@@ -79,40 +92,47 @@
                         <button class="btn btn-sm btn-outline-danger" title="Delete" @onclick="() => ConfirmDelete(item.Id)">
                             <i class="bi bi-trash"></i>
                         </button>
-                    </div>                    
+                    </div>
                     <div class="d-flex align-items-center mb-2">
-                        <button class="expand-button @(expandedItems.Contains(item.Id) ? "expanded" : "")" @onclick="() => ToggleExpand(item.Id)">
+                        <button class="btn @(expandedItems.Contains(item.Id) ? "btn-outline-secondary" : "btn-outline-primary") btn-sm expand-button" @onclick="() => ToggleExpand(item.Id)">
                             <i class="bi @(expandedItems.Contains(item.Id) ? "bi-chevron-down" : "bi-chevron-right")"></i>
-                            <span>View Analysis</span>
+                            <span>@(expandedItems.Contains(item.Id) ? "Show Summary" : "Show Full Analysis")</span>
                         </button>
                     </div>
-
                     @if (!string.IsNullOrWhiteSpace(item.UserInput))
                     {
                         <div class="text-muted small mb-2">
                             <strong>Input:</strong> @item.UserInput
                         </div>
-                    }                    
-                    @if (expandedItems.Contains(item.Id))
-                    {
-                        <div class="border-start border-4 border-accent ps-3 mt-3">
-                            <div class="markdown-body">
-                                @((MarkupString)ConvertMarkdownToHtml(string.IsNullOrEmpty(item.FullAnalysis) ? item.Summary : item.FullAnalysis))
-                            </div>
-                        </div>
                     }
+                      <div class="border-start border-4 border-accent ps-3 mt-3">
+                        @if (expandedItems.Contains(item.Id) && !string.IsNullOrEmpty(item.FullAnalysis))
+                        {
+                            <div class="full-analysis-badge mb-2">Full Analysis</div>
+                        }
+                        <div class="markdown-body">
+                            @if (expandedItems.Contains(item.Id) && !string.IsNullOrEmpty(item.FullAnalysis))
+                            {
+                                @((MarkupString)ConvertMarkdownToHtml(item.FullAnalysis))
+                            }
+                            else
+                            {
+                                @((MarkupString)ConvertMarkdownToHtml(item.Summary))
+                            }
+                        </div>
+                    </div>
                 </div>
             }
         </div>
     }
 </div>
 
-@code {
-    private List<AnalysisHistoryItem>? historyItems;
+@code {    private List<AnalysisHistoryItem>? historyItems;
     private List<AnalysisHistoryItem>? filteredItems => FilterHistoryItems();
     private HashSet<string> expandedItems = new();
     private string dateFilter = "all";
     private string sourceFilter = "all";
+    private string searchTerm = string.Empty;
 
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -169,8 +189,7 @@
             _ => "bi-question-circle"
         };
     }
-    
-    private List<AnalysisHistoryItem> FilterHistoryItems()
+      private List<AnalysisHistoryItem> FilterHistoryItems()
     {
         if (historyItems == null)
             return new List<AnalysisHistoryItem>();
@@ -191,18 +210,34 @@
             _ => items // "all" or any other value
         };
         
+        // Apply search term filter if not empty
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.Trim().ToLowerInvariant();
+            items = items.Where(x => 
+                (x.Summary != null && x.Summary.ToLowerInvariant().Contains(term)) || 
+                (x.FullAnalysis != null && x.FullAnalysis.ToLowerInvariant().Contains(term)) ||
+                (x.UserInput != null && x.UserInput.ToLowerInvariant().Contains(term)));
+        }
+        
         return items.ToList();
-    }    private void OpenAnalysis(AnalysisHistoryItem item)
+    }private void OpenAnalysis(AnalysisHistoryItem item)
     {
         // In a real implementation, you might navigate to a details page
         // or open a modal with the full analysis
         ToggleExpand(item.Id); // For now, just expand the item
     }
-    
-    private void ResetFilters()
+      private void ResetFilters()
     {
         dateFilter = "all";
         sourceFilter = "all";
+        searchTerm = string.Empty;
+    }
+    
+    private void ClearSearch()
+    {
+        searchTerm = string.Empty;
+        StateHasChanged();
     }
 
     private async Task ConfirmDelete(string id)

@@ -99,6 +99,40 @@
     margin-top: 1rem;
 }
 
+/* Custom badge styling for source type */
+.badge.bg-accent {
+    background-color: var(--primary-color);
+    color: white !important; /* Ensure text is always white and visible */
+    font-weight: 600; /* Make the text a bit bolder */
+    font-size: 0.75rem;
+    padding: 0.4em 0.65em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(var(--primary-color-rgb), 0.3);
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+}
+
+[data-theme="dark"] .badge.bg-accent {
+    background-color: var(--primary-color);
+    box-shadow: 0 2px 6px rgba(var(--primary-color-rgb), 0.4);
+}
+
+.badge.bg-accent:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(var(--primary-color-rgb), 0.4);
+}
+
+/* Service icon styling */
+.service-icon {
+    font-size: 1.1rem;
+    color: var(--primary-color);
+    margin-right: 0.5rem;
+    opacity: 0.9;
+}
+
 .summary-toggle-btn {
     color: var(--text-primary);
     text-decoration: none;
@@ -160,9 +194,22 @@
 /* Markdown styling */
 .markdown-body {
     color: var(--text-primary);
-    padding: 0;
+    padding: 0.75rem 0;
     line-height: 1.6;
-    font-size: 1.05rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .markdown-body :deep(h1),
@@ -240,44 +287,16 @@
 
 /* Service icon styling */
 .service-icon {
-    font-size: 1.25rem;
-    margin-right: 0.5rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
-}
-
-/* Expand button and badge styling */
-.expand-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: flex-start;
-    width: 100%;
-    background: none;
-    border: none;
-    padding: 0.75rem;
-    font-weight: 500;
-    color: var(--text-primary) !important;
-    text-decoration: none;
-    transition: all 0.15s ease-in-out;
-    border-radius: 0.375rem;
-}
-
-.expand-button:hover {
-    background-color: var(--bs-secondary-bg);
-}
-
-.expand-button.expanded {
-    background-color: var(--bs-secondary-bg);
-}
-
-.expand-button i {
-    color: var(--bg-accent) !important;
-    transition: transform 0.2s ease-in-out;
     font-size: 1.1rem;
-    width: 1.5rem;
+    color: var(--primary-color);
+    margin-right: 0.5rem;
+    opacity: 0.9;
+}
+
+/* Expand button - removed custom styling to use Bootstrap styles */
+.expand-button i {
+    transition: transform 0.2s ease-in-out;
+    margin-right: 0.35rem;
 }
 
 .badge.bg-accent {
@@ -313,6 +332,24 @@
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* Search box styling */
+.input-group .input-group-text {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--primary-color);
+}
+
+.input-group .form-control {
+    border-color: var(--border-color);
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.input-group .form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(var(--primary-color-rgb), 0.25);
 }
 
 /* Responsive adjustments */
@@ -401,4 +438,17 @@
 .analysis-summary-card .card-body {
     padding: 1.5rem !important;
     background-color: var(--bg-secondary);
+}
+
+/* Full analysis badge */
+.full-analysis-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    background-color: rgba(var(--primary-color-rgb), 0.15);
+    color: var(--primary-color);
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    border: 1px solid rgba(var(--primary-color-rgb), 0.2);
 }
