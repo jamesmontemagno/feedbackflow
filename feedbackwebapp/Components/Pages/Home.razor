@@ -75,10 +75,15 @@
                                 </div>
                             </div>
                         </div>
-                    }
+                    }                    
+                    
 
-                    <AnalysisResults Error="@error" MarkdownResult="@markdownResult" />
-
+                    <AnalysisResults 
+                        Error="@error" 
+                        MarkdownResult="@markdownResult" 
+                        SourceType="@selectedSource"
+                        UserInput="@GetUserInputForSource()" />
+                
                     @if (selectedSource.Equals("HackerNews", StringComparison.OrdinalIgnoreCase))
                     {
                         <HackerNewsResults Analyses="@hackerNewsAnalyses" />
@@ -154,6 +159,22 @@
         currentStatus = status;
         currentStatusMessage = message;
         StateHasChanged();
+    }
+
+    private string? GetUserInputForSource()
+    {
+        return selectedSource switch
+        {
+            "Manual" => manualInputForm?.ContentInput,
+            "YouTube" => !string.IsNullOrWhiteSpace(youtubeInput?.VideoIds) ? youtubeInput?.VideoIds : youtubeInput?.PlaylistIds,
+            "GitHub" => githubInputForm?.Url,
+            "Reddit" => !string.IsNullOrWhiteSpace(redditInputForm?.ThreadsInput) ? redditInputForm?.ThreadsInput : (redditInputForm?.ThreadIds != null ? string.Join(",", redditInputForm.ThreadIds) : null),
+            "HackerNews" => hackerNewsInputForm?.Value,
+            "Twitter" => twitterInputForm?.TweetId,
+            "BlueSky" => blueSkyInputForm?.PostId,
+            "DevBlogs" => devBlogsInputForm?.ArticleUrl,
+            _ => null
+        };
     }
 
     private async Task SubmitFeedbackRequest()

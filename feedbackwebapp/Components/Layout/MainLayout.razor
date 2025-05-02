@@ -25,7 +25,14 @@
                             <i class="bi bi-collection me-1"></i>
                             Content Feeds
                         </a>
-                    </li>                    <li class="nav-item">
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("/history") ? "active" : "")" href="/history">
+                            <i class="bi bi-clock-history me-1"></i>
+                            History
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link @(IsActive("/settings") ? "active" : "")" href="/settings">
                             <i class="bi bi-gear me-1"></i>
                             Settings

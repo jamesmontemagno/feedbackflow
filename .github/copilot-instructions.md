@@ -26,7 +26,7 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 - Use consistent naming conventions (PascalCase for public members, camelCase for private members)
 - use meaningful names for variables, methods, and classes
 - Use dependency injection for services and components
-- Use interfaces for service contracts
+- Use interfaces for service contracts and put them in a unique file
 - use file scoped namespaces in c# and are pascal cased
 
 ## Component Structure

@@ -4,6 +4,8 @@
 @inject IJSRuntime JSRuntime
 @inject FeedbackWebApp.Services.UserSettingsService UserSettings
 @inject ISpeechSynthesisService SpeechSynthesisService
+@inject FeedbackWebApp.Services.Interfaces.IHistoryService HistoryService
+@inject FeedbackWebApp.Services.IToastService ToastService
 @implements IDisposable
 
 @if (!string.IsNullOrEmpty(Error))
@@ -19,6 +21,10 @@
     <div class="card mt-4 shadow-sm">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h5 class="card-title mb-0">Analysis Summary</h5>            <div class="d-flex">
+                <button class="btn btn-sm btn-outline-light me-2" @onclick="SaveToHistory">
+                    <i class="bi bi-clock-history me-1"></i>
+                    Save
+                </button>
                 <button class="btn btn-sm btn-outline-light me-2 @(_isSpeaking ? "btn-speak-active" : "")" @onclick="SpeakAnalysis">
                     <i class="bi @(_isSpeaking ? "bi-pause-fill" : "bi-volume-up-fill") me-1"></i>
                     @(_isSpeaking ? "Stop" : "Speak")
@@ -42,13 +48,20 @@
     public string? Error { get; set; }
 
     [Parameter]
-    public string? MarkdownResult { get; set; }     
+    public string? MarkdownResult { get; set; }
+    
+    [Parameter]
+    public string SourceType { get; set; } = "Manual";
+    
+    [Parameter]
+    public string? UserInput { get; set; }
+    
     private string? _previousMarkdown;
     private bool _isSpeaking = false;
 
     protected override async Task OnParametersSetAsync()
     {
-        if (!string.IsNullOrEmpty(MarkdownResult) && MarkdownResult != _previousMarkdown)
+        if (!string.IsNullOrEmpty(MarkdownResult))
         {
             // If we're currently speaking and new content arrives, stop the speech
             if (_isSpeaking)
@@ -57,8 +70,11 @@
                 _isSpeaking = false;
             }
             
-            _previousMarkdown = MarkdownResult;
-            await TriggerConfetti();
+            if(_previousMarkdown != MarkdownResult)
+            {               
+                await TriggerConfetti();
+                _previousMarkdown = MarkdownResult;
+            }
         }
     }
 
@@ -70,16 +86,29 @@
             spread = 70,
             origin = new { y = 0.6 }
         });
-    }
-
-    private async Task CopyToClipboard()
+    }    private async Task CopyToClipboard()
     {
         if (!string.IsNullOrEmpty(MarkdownResult))
         {
             await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", MarkdownResult);
         }
-    }    
-      private async Task SpeakAnalysis()
+    }    private async Task SaveToHistory()
+    {
+        if (!string.IsNullOrEmpty(MarkdownResult))
+        {
+            var historyItem = new SharedDump.Models.AnalysisHistoryItem
+            {
+                Summary = MarkdownResult.Length > 300 ? MarkdownResult.Substring(0, 300) + "..." : MarkdownResult,
+                FullAnalysis = MarkdownResult,
+                SourceType = SourceType,
+                UserInput = UserInput
+            };
+            await HistoryService.SaveToHistoryAsync(historyItem);
+            await ToastService.ShowSuccessAsync("Analysis saved to history", 3000);
+        }
+    }
+    
+    private async Task SpeakAnalysis()
     {
         if (!string.IsNullOrEmpty(MarkdownResult))
         {
