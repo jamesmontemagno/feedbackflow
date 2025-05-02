@@ -1,28 +1,190 @@
-.history-list {
-    list-style: none;
-    padding: 0;
+.history-container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 2rem 2rem 2rem;
 }
 
-.history-item {
-    border: 1px solid var(--bs-border-color, #ccc);
-    border-radius: 6px;
+.history-title {
+    font-size: 2rem;
+    margin: 1.5rem 0;
+    color: var(--text-primary);
+}
+
+.clear-all-btn {
+    transition: all 0.2s ease;
+}
+
+.clear-all-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--card-shadow);
+}
+
+.loading-state, .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-secondary);
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+}
+
+.empty-state i {
+    font-size: 2.5rem;
     margin-bottom: 1rem;
-    padding: 1rem;
-    background: var(--bs-body-bg, #fff);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
-    transition: background 0.2s;
+    opacity: 0.7;
 }
 
-.history-item:hover {
-    background: var(--bs-secondary-bg, #f8f9fa);
+.history-cards {
+    display: flex;
+    flex-direction: column;
+    animation: fadeIn 0.3s ease-in-out;
 }
 
+/* Card styling to match AnalysisResults */
+.card {
+    transition: all 0.2s ease;
+    margin-bottom: 1.5rem;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+}
+
+.source-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.timestamp {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.source-badge-label {
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.summary-section {
+    margin-top: 1rem;
+}
+
+.summary-section .btn-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    margin: -0.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    background-color: rgba(var(--primary-color-rgb), 0.05);
+}
+
+.summary-section .btn-link:hover {
+    color: var(--primary-hover);
+    background-color: rgba(var(--primary-color-rgb), 0.1);
+}
+
+.summary-section .btn-link i {
+    transition: transform 0.2s ease;
+    font-size: 1.1rem;
+}
+
+.summary-content {
+    margin-top: 1rem;
+    animation: fadeIn 0.3s ease-in-out;
+    padding: 1.5rem;
+    background-color: var(--bg-primary);
+    border-radius: 8px;
+}
+
+/* Use Bootstrap's markdown-body class for consistent styling with AnalysisResults */
+.markdown-body {
+    color: var(--text-primary);
+    padding: 0.5rem;
+}
+
+/* User input styling */
 .user-input {
-    font-size: 0.95em;
-    color: var(--bs-secondary-color, #666);
-    margin-top: 0.5em;
+    background-color: var(--bg-primary);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
 }
 
-button.btn-outline-danger {
-    float: right;
+.user-input-label {
+    display: block;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--primary-color);
+    margin-bottom: 0.75rem;
+}
+
+.user-input p {
+    color: var(--text-primary);
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+/* Timestamp styling */
+.timestamp {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .history-container {
+        padding: 0.75rem;
+    }
+
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 1rem;
+    }
+    
+    .card-header button {
+        margin-top: 0.75rem;
+        align-self: flex-end;
+    }
+
+    .card-body {
+        padding: 1rem !important;
+    }
+
+    .user-input {
+        padding: 1rem;
+    }
+
+    .summary-content {
+        padding: 1rem;
+    }
 }

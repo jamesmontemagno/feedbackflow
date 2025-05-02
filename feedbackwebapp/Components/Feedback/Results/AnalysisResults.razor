@@ -5,6 +5,7 @@
 @inject FeedbackWebApp.Services.UserSettingsService UserSettings
 @inject ISpeechSynthesisService SpeechSynthesisService
 @inject FeedbackWebApp.Services.Interfaces.IHistoryService HistoryService
+@inject FeedbackWebApp.Services.IToastService ToastService
 @implements IDisposable
 
 @if (!string.IsNullOrEmpty(Error))
@@ -88,8 +89,7 @@
         {
             await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", MarkdownResult);
         }
-    }
-      private async Task SaveToHistory()
+    }    private async Task SaveToHistory()
     {
         if (!string.IsNullOrEmpty(MarkdownResult))
         {
@@ -100,6 +100,7 @@
                 UserInput = UserInput
             };
             await HistoryService.SaveToHistoryAsync(historyItem);
+            await ToastService.ShowSuccessAsync("Analysis saved to history", 3000);
         }
     }
     
