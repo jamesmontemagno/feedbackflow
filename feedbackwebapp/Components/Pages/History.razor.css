@@ -1,12 +1,11 @@
-/* Define accent color for summary cards - a different shade than primary */
 :root {
-    --bg-accent: #2563eb; /* Blue color that stands out from the purple primary */
-    --bg-accent-rgb: 37, 99, 235;
+    --bg-accent: #6d28d9; /* Match primary purple */
+    --bg-accent-rgb: 109, 40, 217;
 }
 
 [data-theme="dark"] {
-    --bg-accent: #3b82f6; /* Lighter blue for dark theme */
-    --bg-accent-rgb: 59, 130, 246;
+    --bg-accent: #a855f7; /* Match dark theme primary purple */
+    --bg-accent-rgb: 168, 85, 247;
 }
 
 .history-container {
@@ -203,8 +202,7 @@
     margin-bottom: 0.5rem;
 }
 
-.markdown-body :deep(blockquote) {
-    border-left: 4px solid var(--primary-color);
+.markdown-body :deep(blockquote) {    border-left: 4px solid var(--bg-accent) !important;
     padding-left: 1rem;
     margin-left: 0;
     color: var(--text-secondary);
@@ -236,7 +234,7 @@
 
 /* Timestamp styling */
 .timestamp {
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--text-secondary) !important;
     font-size: 0.9rem;
 }
 
@@ -249,6 +247,49 @@
     justify-content: center;
     width: 1.5rem;
     height: 1.5rem;
+}
+
+/* Expand button and badge styling */
+.expand-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 0.75rem;
+    font-weight: 500;
+    color: var(--text-primary) !important;
+    text-decoration: none;
+    transition: all 0.15s ease-in-out;
+    border-radius: 0.375rem;
+}
+
+.expand-button:hover {
+    background-color: var(--bs-secondary-bg);
+}
+
+.expand-button.expanded {
+    background-color: var(--bs-secondary-bg);
+}
+
+.expand-button i {
+    color: var(--bg-accent) !important;
+    transition: transform 0.2s ease-in-out;
+    font-size: 1.1rem;
+    width: 1.5rem;
+}
+
+.badge.bg-accent {
+    background: rgba(var(--primary-color-rgb), 0.15) !important;
+    color: var(--primary-color) !important;
+    font-weight: 600;
+    border: 1px solid rgba(var(--primary-color-rgb), 0.3) !important;
+    padding: 0.35em 0.65em !important;
+}
+
+.border-accent {
+    border-color: var(--bg-accent) !important;
 }
 
 /* Animation */
@@ -348,12 +389,11 @@
     width: 0;
     height: 0;
     border-left: 15px solid transparent;
-    border-right: 15px solid transparent;
-    border-bottom: 15px solid var(--bg-accent, var(--primary-color));
+    border-right: 15px solid transparent;    border-bottom: 15px solid var(--bg-accent) !important;
 }
 
 .analysis-summary-card .card-header {
-    background-color: var(--bg-accent, var(--primary-color)) !important;
+    background-color: var(--bg-accent) !important;
     border-bottom: none;
     padding: 1rem 1.5rem;
 }

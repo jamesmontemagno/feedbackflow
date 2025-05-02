@@ -1,11 +1,13 @@
 @page "/history"
 @inject FeedbackWebApp.Services.Interfaces.IHistoryService HistoryService
+@inject IJSRuntime JSRuntime
 @using SharedDump.Models
 @using Markdig
+@using Microsoft.JSInterop
 
 <PageTitle>Analysis History</PageTitle>
 
-<div class="history-container">
+<div class="container-lg py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="history-title mb-0">Analysis History</h1>
         @if (historyItems is { Count: > 0 })
@@ -21,7 +23,8 @@
         <div class="filter-section card mb-4 p-3 shadow-sm">
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label for="dateFilter" class="form-label">Date Range</label>                    <select class="form-select" id="dateFilter" @bind="dateFilter" @bind:after="StateHasChanged">
+                    <label for="dateFilter" class="form-label">Date Range</label>                    
+                    <select class="form-select" id="dateFilter" @bind="dateFilter" @bind:after="StateHasChanged">
                         <option value="all">All Time</option>
                         <option value="today">Today</option>
                         <option value="week">Last 7 Days</option>
@@ -29,7 +32,8 @@
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label for="sourceFilter" class="form-label">Service Type</label>                    <select class="form-select" id="sourceFilter" @bind="sourceFilter" @bind:after="StateHasChanged">
+                    <label for="sourceFilter" class="form-label">Service Type</label>                    
+                    <select class="form-select" id="sourceFilter" @bind="sourceFilter" @bind:after="StateHasChanged">
                         <option value="all">All Services</option>
                         <option value="YouTube">YouTube</option>
                         <option value="GitHub">GitHub</option>
@@ -59,7 +63,8 @@
             <i class="bi bi-clock-history"></i>
             <p>No analysis history found.</p>
         </div>
-    }    else if (filteredItems is { Count: > 0 })
+    }    
+    else if (filteredItems is { Count: > 0 })
     {
         <div class="list-group">
             @foreach (var item in filteredItems)
@@ -68,18 +73,17 @@
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="d-flex align-items-center">
                             <i class="bi @GetServiceIcon(item.SourceType) service-icon me-2"></i>
-                            <span class="badge bg-primary me-2">@item.SourceType</span>
+                            <span class="badge bg-accent me-2">@item.SourceType</span>
                             <small class="text-muted">@item.Timestamp.ToLocalTime().ToString("g")</small>
-                        </div>
-                        <button class="btn btn-sm btn-outline-danger" title="Delete" @onclick="() => DeleteItem(item.Id)">
+                        </div>                        
+                        <button class="btn btn-sm btn-outline-danger" title="Delete" @onclick="() => ConfirmDelete(item.Id)">
                             <i class="bi bi-trash"></i>
                         </button>
-                    </div>
-
+                    </div>                    
                     <div class="d-flex align-items-center mb-2">
-                        <button class="btn btn-sm btn-link text-decoration-none p-0" @onclick="() => ToggleExpand(item.Id)">
-                            <i class="bi @(expandedItems.Contains(item.Id) ? "bi-chevron-down" : "bi-chevron-right") me-2"></i>
-                            View Analysis
+                        <button class="expand-button @(expandedItems.Contains(item.Id) ? "expanded" : "")" @onclick="() => ToggleExpand(item.Id)">
+                            <i class="bi @(expandedItems.Contains(item.Id) ? "bi-chevron-down" : "bi-chevron-right")"></i>
+                            <span>View Analysis</span>
                         </button>
                     </div>
 
@@ -92,7 +96,7 @@
 
                     @if (expandedItems.Contains(item.Id))
                     {
-                        <div class="border-start border-4 border-primary ps-3 mt-3">
+                        <div class="border-start border-4 border-accent ps-3 mt-3">
                             <div class="markdown-body">
                                 @((MarkupString)ConvertMarkdownToHtml(item.Summary))
                             </div>
@@ -127,13 +131,16 @@
         await HistoryService.DeleteHistoryItemAsync(id);
         historyItems = await HistoryService.GetHistoryAsync();
         expandedItems.Remove(id);
-    }
-
+    }    
+    
     private async Task ClearHistory()
     {
-        await HistoryService.ClearHistoryAsync();
-        historyItems = new();
-        expandedItems.Clear();
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to clear all history? This cannot be undone."))
+        {
+            await HistoryService.ClearHistoryAsync();
+            historyItems = new();
+            expandedItems.Clear();
+        }
     }
 
     private void ToggleExpand(string id)
@@ -142,10 +149,14 @@
         {
             expandedItems.Remove(id);
         }
-    }    private string ConvertMarkdownToHtml(string markdown)
+    }    
+    
+    private string ConvertMarkdownToHtml(string markdown)
     {
         return Markdown.ToHtml(markdown ?? string.Empty, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build());
-    }    private string GetServiceIcon(string sourceType)
+    }    
+    
+    private string GetServiceIcon(string sourceType)
     {
         return sourceType?.ToLowerInvariant() switch
         {
@@ -153,7 +164,7 @@
             "github" => "bi-github",
             "reddit" => "bi-reddit",
             "twitter" => "bi-twitter",
-            "hackernews" => "bi-hacker-news",
+            "hackernews" => "bi-braces",
             "devblogs" => "bi-journal-code",
             "manual" => "bi-pencil-square",
             _ => "bi-question-circle"
@@ -193,5 +204,13 @@
     {
         dateFilter = "all";
         sourceFilter = "all";
+    }
+
+    private async Task ConfirmDelete(string id)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this item? This cannot be undone."))
+        {
+            await DeleteItem(id);
+        }
     }
 }
