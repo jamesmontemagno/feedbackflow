@@ -1,206 +1,126 @@
-:root {
-    --bg-accent: #6d28d9; /* Match primary purple */
-    --bg-accent-rgb: 109, 40, 217;
-}
-
-[data-theme="dark"] {
-    --bg-accent: #a855f7; /* Match dark theme primary purple */
-    --bg-accent-rgb: 168, 85, 247;
-}
-
 .history-container {
+    /* Inherits background from body or parent */
     width: 100%;
     max-width: 100%;
-    padding: 0 2rem 2rem 2rem;
-    min-height: calc(100vh - 80px); /* Account for header height */
-    background-color: var(--bg-primary);
+    padding: 0 2rem 2rem 2rem; /* Keep padding */
+    min-height: calc(100vh - 80px); /* Keep min-height */
 }
 
 .history-title {
     font-size: 2.5rem;
     margin: 2rem 0;
-    color: var(--text-primary);
+    color: var(--text-primary); /* Use theme variable */
     font-weight: 600;
 }
 
 .clear-all-btn {
+    /* Uses btn-danger from Bootstrap, which should adapt */
     transition: all 0.2s ease;
 }
 
 .clear-all-btn:hover {
     transform: translateY(-1px);
-    box-shadow: var(--card-shadow);
+    box-shadow: var(--card-shadow); /* Use theme variable */
 }
 
 .loading-state, .empty-state {
     text-align: center;
     padding: 3rem 1rem;
-    color: var(--text-secondary);
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    color: var(--text-secondary); /* Use theme variable */
+    background-color: var(--bg-secondary); /* Use theme variable */
+    border: 1px solid var(--border-color); /* Use theme variable */
     border-radius: 8px;
-    box-shadow: var(--card-shadow);
+    box-shadow: var(--card-shadow); /* Use theme variable */
 }
 
 .empty-state i {
     font-size: 2.5rem;
     margin-bottom: 1rem;
     opacity: 0.7;
+    color: var(--text-secondary); /* Explicitly set color */
 }
 
-.history-cards {
-    display: flex;
-    flex-direction: column;
-    animation: fadeIn 0.3s ease-in-out;
+/* Removed .history-cards - list-group handles layout */
+
+/* Card styling for filter section - uses Bootstrap .card */
+.filter-section.card {
+    /* Uses styles from app.css */
+    transition: all 0.2s ease; /* Keep transition */
+    margin-bottom: 2rem; /* Keep margin */
+    border-radius: 8px; /* Keep radius */
+    overflow: hidden; /* Keep overflow */
+    border: 1px solid var(--border-color); /* Ensure border uses theme variable */
+    padding: 1.5rem !important; /* Keep padding */
 }
 
-/* Card styling to match AnalysisResults */
-.card {
-    transition: all 0.2s ease;
-    margin-bottom: 2rem;
-    border-radius: 8px;
-    overflow: hidden;
-    border: none;
+.filter-section .form-label {
+    font-weight: 500;
+    color: var(--text-primary); /* Use theme variable */
+    margin-bottom: 0.5rem;
 }
 
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-}
-
-.card-body {
-    padding: 1.5rem !important;
-}
-
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.5rem;
-}
-
-.source-info {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
+/* Removed generic .card, .card:hover, .card-body, .card-header overrides - rely on app.css/Bootstrap */
+/* Removed .source-info - structure changed */
 
 .timestamp {
-    color: var(--text-primary);
-    font-weight: 500;
+    color: var(--text-secondary) !important; /* Use theme variable */
+    font-size: 0.9rem; /* Keep size */
+    font-weight: 500; /* Keep weight */
 }
 
-.source-badge-label {
-    font-weight: 500;
-    text-transform: capitalize;
-}
-
-.summary-section {
-    margin-top: 1rem;
-}
+/* Removed .source-badge-label - integrated into badge */
+/* Removed .summary-section - structure changed */
 
 /* Custom badge styling for source type */
 .badge.bg-accent {
-    background-color: var(--primary-color);
-    color: white !important; /* Ensure text is always white and visible */
-    font-weight: 600; /* Make the text a bit bolder */
+    background-color: var(--primary-color) !important; /* Use theme variable and ensure override */
+    color: white !important;
+    font-weight: 600;
     font-size: 0.75rem;
     padding: 0.4em 0.65em;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(var(--primary-color-rgb), 0.3);
+    box-shadow: 0 2px 4px rgba(var(--primary-color-rgb), 0.3); /* Use theme variable */
     transition: all 0.2s ease;
     display: inline-flex;
     align-items: center;
+    border: none; /* Remove potential border */
 }
 
 [data-theme="dark"] .badge.bg-accent {
-    background-color: var(--primary-color);
-    box-shadow: 0 2px 6px rgba(var(--primary-color-rgb), 0.4);
+    /* Dark theme uses the same primary color variable which is different */
+    box-shadow: 0 2px 6px rgba(var(--primary-color-rgb), 0.4); /* Adjust shadow for dark */
 }
 
 .badge.bg-accent:hover {
     transform: translateY(-1px);
-    box-shadow: 0 3px 6px rgba(var(--primary-color-rgb), 0.4);
+    box-shadow: 0 3px 6px rgba(var(--primary-color-rgb), 0.4); /* Use theme variable */
 }
 
 /* Service icon styling */
 .service-icon {
     font-size: 1.1rem;
-    color: var(--primary-color);
+    color: var(--primary-color); /* Use theme variable */
     margin-right: 0.5rem;
     opacity: 0.9;
 }
 
-.summary-toggle-btn {
-    color: var(--text-primary);
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-    padding: 0.75rem 1.25rem;
-    border-radius: 50px;
-    font-weight: 500;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-    background-color: rgba(var(--primary-color-rgb), 0.1);
-    color: var(--primary-color);
-    border: 1px solid rgba(var(--primary-color-rgb), 0.2);
-    margin-top: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-
-.summary-toggle-btn:hover {
-    background-color: rgba(var(--primary-color-rgb), 0.15);
-    transform: translateY(-1px);
-    box-shadow: 0 3px 6px rgba(var(--primary-color-rgb), 0.15);
-}
-
-.summary-toggle-btn:active {
-    transform: translateY(0);
-}
-
-.summary-toggle-btn.expanded {
-    background-color: rgba(var(--primary-color-rgb), 0.2);
-}
-
-.summary-toggle-btn i {
-    transition: transform 0.3s ease;
-    font-size: 1.25rem;
-}
-
-.toggle-action {
-    font-size: 0.85rem;
-    opacity: 0.8;
-    display: flex;
-    align-items: center;
-}
-
-.toggle-action:hover {
-    opacity: 1;
-}
-
-.summary-content {
-    margin-top: 1rem;
-    margin-bottom: 1rem;
-    animation: fadeIn 0.3s ease-in-out;
-    padding: 1.5rem;
-    background-color: var(--bg-primary);
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
+/* Removed .summary-toggle-btn and related styles */
+/* Removed .toggle-action */
+/* Removed .summary-content */
 
 /* Markdown styling */
 .markdown-body {
-    color: var(--text-primary);
+    color: var(--text-primary); /* Use theme variable */
     padding: 0.75rem 0;
     line-height: 1.6;
-    font-size: 1rem;
+    font-size: 1rem; /* Adjusted from 1.05rem */
     transition: all 0.3s ease;
     animation: fadeIn 0.3s ease;
 }
 
+/* Keep fadeIn animation */
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -220,24 +140,35 @@
 .markdown-body :deep(h6) {
     margin-top: 1.5rem;
     margin-bottom: 1rem;
-    color: var(--bg-accent);
+    color: var(--primary-color); /* Use theme variable (instead of bg-accent) */
     font-weight: 600;
 }
 
 .markdown-body :deep(pre) {
-    background-color: var(--code-bg);
+    background-color: var(--code-bg); /* Use theme variable */
     padding: 1rem;
     border-radius: 6px;
     overflow-x: auto;
     margin: 1rem 0;
+    border: 1px solid var(--border-color); /* Add subtle border */
 }
 
 .markdown-body :deep(code) {
     font-family: 'Cascadia Code', 'Consolas', 'Monaco', 'Courier New', monospace;
-    background-color: var(--code-bg);
+    background-color: var(--code-bg); /* Use theme variable */
     padding: 0.2rem 0.4rem;
     border-radius: 3px;
+    font-size: 0.9em; /* Slightly smaller */
+    color: var(--text-primary); /* Ensure text color */
 }
+
+.markdown-body :deep(pre) > :deep(code) {
+    background-color: transparent; /* Code inside pre shouldn't have double background */
+    padding: 0;
+    border-radius: 0;
+    font-size: inherit; /* Inherit pre font size */
+}
+
 
 .markdown-body :deep(ul),
 .markdown-body :deep(ol) {
@@ -249,107 +180,72 @@
     margin-bottom: 0.5rem;
 }
 
-.markdown-body :deep(blockquote) {    border-left: 4px solid var(--bg-accent) !important;
+.markdown-body :deep(blockquote) {
+    border-left: 4px solid var(--primary-color) !important; /* Use theme variable */
     padding-left: 1rem;
     margin-left: 0;
-    color: var(--text-secondary);
+    color: var(--text-secondary); /* Use theme variable */
     font-style: italic;
+    background-color: var(--hover-bg); /* Add subtle background */
+    border-radius: 0 4px 4px 0; /* Add slight rounding */
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
 }
 
 /* User input styling */
 .user-input {
-    background-color: var(--bg-primary);
+    background-color: var(--bg-primary); /* Use theme variable */
+    border: 1px solid var(--border-color); /* Add border */
     border-radius: 8px;
-    padding: 1.25rem;
-    margin-bottom: 1.5rem;
+    padding: 1rem; /* Adjusted padding */
+    margin-bottom: 1rem; /* Adjusted margin */
 }
 
-.user-input-label {
-    display: block;
-    font-size: 1rem;
-    font-weight: 500;
-    color: var(--primary-color);
-    margin-bottom: 0.75rem;
-}
-
-.user-input p {
-    color: var(--text-primary);
-    margin: 0;
-    font-size: 1rem;
-    line-height: 1.6;
-}
-
-/* Timestamp styling */
-.timestamp {
-    color: var(--text-secondary) !important;
-    font-size: 0.9rem;
-}
-
-/* Service icon styling */
-.service-icon {
-    font-size: 1.1rem;
-    color: var(--primary-color);
+.user-input strong { /* Style the label part */
+    font-weight: 600; /* Bolder */
+    color: var(--primary-color); /* Use theme variable */
     margin-right: 0.5rem;
-    opacity: 0.9;
 }
 
-/* Expand button - removed custom styling to use Bootstrap styles */
+/* Removed .user-input-label and .user-input p - simplified structure */
+
+/* Expand button styling - only icon transition remains */
 .expand-button i {
     transition: transform 0.2s ease-in-out;
     margin-right: 0.35rem;
 }
 
-.badge.bg-accent {
-    background: rgba(var(--primary-color-rgb), 0.15) !important;
-    color: var(--primary-color) !important;
-    font-weight: 600;
-    border: 1px solid rgba(var(--primary-color-rgb), 0.3) !important;
-    padding: 0.35em 0.65em !important;
-}
-
 .border-accent {
-    border-color: var(--bg-accent) !important;
+    border-color: var(--primary-color) !important; /* Use theme variable */
 }
 
-/* Animation */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
+/* Removed duplicate @keyframes fadeIn */
+/* Removed @keyframes slideDown - not used */
 
 /* Search box styling */
 .input-group .input-group-text {
-    background-color: var(--bg-secondary);
-    border-color: var(--border-color);
-    color: var(--primary-color);
+    background-color: var(--bg-secondary); /* Use theme variable */
+    border-color: var(--border-color); /* Use theme variable */
+    color: var(--primary-color); /* Use theme variable */
 }
 
 .input-group .form-control {
-    border-color: var(--border-color);
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
+    /* Uses styles from app.css */
+    border-color: var(--border-color); /* Ensure border uses theme variable */
+    color: var(--text-primary) !important; /* Ensure text color has priority */
+}
+
+.input-group .form-control::placeholder {
+    color: var(--text-secondary) !important;
+    opacity: 0.7;
 }
 
 .input-group .form-control:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 0.2rem rgba(var(--primary-color-rgb), 0.25);
+    /* Uses styles from app.css */
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 0.2rem rgba(var(--primary-color-rgb), 0.25) !important;
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
 }
 
 /* Responsive adjustments */
@@ -358,97 +254,74 @@
         padding: 0.75rem;
     }
 
-    .card-header {
-        flex-direction: column;
-        align-items: flex-start;
-        padding: 1rem;
-    }
-    
-    .card-header button {
-        margin-top: 0.75rem;
-        align-self: flex-end;
-    }
-
-    .card-body {
-        padding: 1rem !important;
-    }
+    /* Removed .card-header adjustments - rely on Bootstrap */
 
     .user-input {
         padding: 1rem;
     }
-    
-    .analysis-summary-card {
-        margin-left: 0.5rem;
-        margin-right: 0.5rem;
-    }
-    
-    .analysis-summary-card::before {
-        left: 30px;
-    }
-    
-    .summary-toggle-btn {
-        padding: 0.75rem 1rem;
-    }
-    
-    .toggle-action {
-        font-size: 0.8rem;
-    }
+
+    /* Removed .analysis-summary-card adjustments */
 }
 
-.filter-section {
-    padding: 1.5rem !important;
-    background-color: var(--bg-secondary);
-    border-radius: 8px;
-}
-
-.filter-section .form-label {
-    font-weight: 500;
-    color: var(--text-primary);
-    margin-bottom: 0.5rem;
-}
-
-.analysis-summary-card {
-    border: none;
-    border-radius: 8px;
-    overflow: hidden;
-    animation: slideDown 0.4s ease-out;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
-    margin-left: 1.5rem;
-    margin-right: 1.5rem;
-    position: relative;
-}
-
-.analysis-summary-card::before {
-    content: '';
-    position: absolute;
-    top: -15px;
-    left: 40px;
-    width: 0;
-    height: 0;
-    border-left: 15px solid transparent;
-    border-right: 15px solid transparent;    border-bottom: 15px solid var(--bg-accent) !important;
-}
-
-.analysis-summary-card .card-header {
-    background-color: var(--bg-accent) !important;
-    border-bottom: none;
-    padding: 1rem 1.5rem;
-}
-
-.analysis-summary-card .card-body {
-    padding: 1.5rem !important;
-    background-color: var(--bg-secondary);
-}
+/* Removed .analysis-summary-card and related styles */
 
 /* Full analysis badge */
 .full-analysis-badge {
     display: inline-block;
     font-size: 0.75rem;
-    background-color: rgba(var(--primary-color-rgb), 0.15);
-    color: var(--primary-color);
+    background-color: rgba(var(--primary-color-rgb), 0.15); /* Use theme variable */
+    color: var(--primary-color); /* Use theme variable */
     padding: 0.25rem 0.75rem;
     border-radius: 1rem;
     font-weight: 500;
     letter-spacing: 0.5px;
-    border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+    border: 1px solid rgba(var(--primary-color-rgb), 0.2); /* Use theme variable */
+}
+
+/* Ensure list group items use theme variables */
+.list-group-item {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    /* Add transition for hover */
+    transition: background-color 0.15s ease-in-out;
+}
+
+.list-group-item:hover {
+    background-color: var(--hover-bg);
+}
+
+/* Ensure text-muted uses theme variable */
+.text-muted {
+    color: var(--text-secondary) !important;
+}
+
+/* Badge styling with all necessary properties explicitly set */
+.list-group-item .badge.bg-accent {
+    background-color: var(--primary-color) !important;
+    color: #ffffff !important;
+    border: none !important;
+    font-weight: 600 !important;
+    font-size: 0.75rem !important;
+    padding: 0.4em 0.65em !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    border-radius: 6px !important;
+    box-shadow: 0 2px 4px rgba(var(--primary-color-rgb), 0.3) !important;
+    transition: all 0.2s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+/* Dark theme specific overrides */
+[data-theme="dark"] .filter-section .input-group .form-control {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .list-group-item .badge.bg-accent {
+    background-color: var(--primary-color) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(var(--primary-color-rgb), 0.4) !important;
 }
