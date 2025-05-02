@@ -88,12 +88,21 @@
                             <i class="bi @GetServiceIcon(item.SourceType) service-icon"></i>
                             <span class="source-badge">@item.SourceType</span>
                             <small class="text-muted">@item.Timestamp.ToLocalTime().ToString("g")</small>
-                        </div>                        
-                        <button class="btn btn-sm btn-outline-danger" title="Delete" @onclick="() => ConfirmDelete(item.Id)">
-                            <i class="bi bi-trash"></i>
-                        </button>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            @if(item.SourceType != "Manual")
+                            {
+                                <a class="btn btn-sm btn-outline-primary" title="Open Source" target="_blank" rel="noopener noreferrer" href="@GetSourceUrl(item)">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                            }
+                            <button class="btn btn-sm btn-outline-danger" title="Delete" @onclick="() => ConfirmDelete(item.Id)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
                     </div>
-                                @if (!string.IsNullOrWhiteSpace(item.UserInput))
+                                
+                    @if (!string.IsNullOrWhiteSpace(item.UserInput) && item.SourceType != "Manual")
                     {
                         <div class="user-input mb-3">
                             <strong>Input:</strong> @item.UserInput
@@ -186,6 +195,21 @@
             "devblogs" => "bi-journal-code",
             "manual" => "bi-pencil-square",
             _ => "bi-question-circle"
+        };
+    }
+
+    private string GetSourceUrl(AnalysisHistoryItem item)
+    {
+        // Format the URL based on the source type and item.Id
+        return item.SourceType?.ToLowerInvariant() switch
+        {
+            "youtube" => $"https://youtube.com/watch?v={item.Id}",
+            "github" => $"https://github.com/{item.Id}",
+            "reddit" => $"https://reddit.com/{item.Id}",
+            "twitter" => $"https://twitter.com/i/web/status/{item.Id}",
+            "hackernews" => $"https://news.ycombinator.com/item?id={item.Id}",
+            "devblogs" => $"https://devblogs.microsoft.com/{item.Id}",
+            _ => "#"
         };
     }
       private List<AnalysisHistoryItem> FilterHistoryItems()
