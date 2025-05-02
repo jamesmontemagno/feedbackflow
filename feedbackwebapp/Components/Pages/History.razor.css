@@ -1,0 +1,28 @@
+.history-list {
+    list-style: none;
+    padding: 0;
+}
+
+.history-item {
+    border: 1px solid var(--bs-border-color, #ccc);
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: var(--bs-body-bg, #fff);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+    transition: background 0.2s;
+}
+
+.history-item:hover {
+    background: var(--bs-secondary-bg, #f8f9fa);
+}
+
+.user-input {
+    font-size: 0.95em;
+    color: var(--bs-secondary-color, #666);
+    margin-top: 0.5em;
+}
+
+button.btn-outline-danger {
+    float: right;
+}

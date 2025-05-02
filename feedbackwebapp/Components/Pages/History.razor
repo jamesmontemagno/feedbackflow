@@ -1,0 +1,57 @@
+@page "/history"
+@inject FeedbackWebApp.Services.Interfaces.IHistoryService HistoryService
+@using SharedDump.Models
+
+<PageTitle>Analysis History</PageTitle>
+
+<h3>Analysis History</h3>
+
+@if (historyItems is null)
+{
+    <p>Loading...</p>
+}
+else if (!historyItems.Any())
+{
+    <p>No analysis history found.</p>
+}
+else
+{
+    <button class="btn btn-danger mb-2" @onclick="ClearHistory">Clear All History</button>
+    <ul class="history-list">
+        @foreach (var item in historyItems)
+        {
+            <li class="history-item" @key="item.Id">
+                <div>
+                    <strong>@item.Timestamp.ToLocalTime().ToString("g")</strong> - @item.SourceType
+                </div>
+                <div>@item.Summary</div>
+                @if (!string.IsNullOrWhiteSpace(item.UserInput))
+                {
+                    <div class="user-input">User Input: @item.UserInput</div>
+                }
+                <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteItem(item.Id)">Delete</button>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<AnalysisHistoryItem>? historyItems;
+
+    protected override async Task OnInitializedAsync()
+    {
+        historyItems = await HistoryService.GetHistoryAsync();
+    }
+
+    private async Task DeleteItem(string id)
+    {
+        await HistoryService.DeleteHistoryItemAsync(id);
+        historyItems = await HistoryService.GetHistoryAsync();
+    }
+
+    private async Task ClearHistory()
+    {
+        await HistoryService.ClearHistoryAsync();
+        historyItems = new();
+    }
+}

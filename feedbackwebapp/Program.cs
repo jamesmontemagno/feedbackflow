@@ -3,6 +3,7 @@ using FeedbackWebApp.Services;
 using FeedbackWebApp.Services.Authentication;
 using FeedbackWebApp.Services.ContentFeed;
 using FeedbackWebApp.Services.Feedback;
+using FeedbackWebApp.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +31,7 @@ builder.Services.AddScoped<ContentFeedServiceProvider>();
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<UserSettingsService>();
 builder.Services.AddMemoryCache(); // Add this line for caching support
+builder.Services.AddScoped<IHistoryService, HistoryService>();
 
 var app = builder.Build();
 
