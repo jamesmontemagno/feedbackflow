@@ -75,9 +75,13 @@
                                 </div>
                             </div>
                         </div>
-                    }
-
-                    <AnalysisResults Error="@error" MarkdownResult="@markdownResult" />
+                    }                    
+                    
+                    <AnalysisResults 
+                        Error="@error" 
+                        MarkdownResult="@markdownResult" 
+                        SourceType="@selectedSource"
+                        UserInput="@(selectedSource == "Manual" ? manualInputForm?.ContentInput : null)" />
 
                     @if (selectedSource.Equals("HackerNews", StringComparison.OrdinalIgnoreCase))
                     {
