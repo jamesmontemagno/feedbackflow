@@ -92,13 +92,12 @@
                         <div class="text-muted small mb-2">
                             <strong>Input:</strong> @item.UserInput
                         </div>
-                    }
-
+                    }                    
                     @if (expandedItems.Contains(item.Id))
                     {
                         <div class="border-start border-4 border-accent ps-3 mt-3">
                             <div class="markdown-body">
-                                @((MarkupString)ConvertMarkdownToHtml(item.Summary))
+                                @((MarkupString)ConvertMarkdownToHtml(string.IsNullOrEmpty(item.FullAnalysis) ? item.Summary : item.FullAnalysis))
                             </div>
                         </div>
                     }

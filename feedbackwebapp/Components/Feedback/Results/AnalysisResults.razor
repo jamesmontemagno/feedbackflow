@@ -70,8 +70,11 @@
                 _isSpeaking = false;
             }
             
-            await TriggerConfetti();
-            _previousMarkdown = MarkdownResult;
+            if(_previousMarkdown != MarkdownResult)
+            {               
+                await TriggerConfetti();
+                _previousMarkdown = MarkdownResult;
+            }
         }
     }
 
@@ -95,7 +98,8 @@
         {
             var historyItem = new SharedDump.Models.AnalysisHistoryItem
             {
-                Summary = MarkdownResult.Length > 200 ? MarkdownResult.Substring(0, 200) : MarkdownResult,
+                Summary = MarkdownResult.Length > 200 ? MarkdownResult.Substring(0, 200) + "..." : MarkdownResult,
+                FullAnalysis = MarkdownResult,
                 SourceType = SourceType,
                 UserInput = UserInput
             };
