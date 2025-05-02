@@ -1,13 +1,14 @@
 /* Searchbox (input) dark mode fix */
 [data-theme="dark"] .filter-section .form-control,
-[data-theme="dark"] .filter-section .form-control:focus {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    border-color: var(--border-color);
+[data-theme="dark"] .filter-section .form-select,
+[data-theme="dark"] .filter-section .form-control:focus,
+[data-theme="dark"] .filter-section .form-select:focus {
+    background-color: var(--bg-primary) !important;
+    color: #fff !important;
+    border-color: var(--border-color) !important;
 }
 [data-theme="dark"] .filter-section .form-control::placeholder {
-    color: var(--text-secondary);
-    opacity: 0.8;
+    color: rgba(255, 255, 255, 0.6) !important;
 }
 
 /* History.razor.css - Slimmed down, Bootstrap-aligned, and theme-respecting */
@@ -41,10 +42,24 @@
     border-radius: 8px;
     border: 1px solid var(--border-color);
     padding: 1.25rem 1rem;
+    background-color: var(--bg-secondary) !important;
 }
 .filter-section .form-label {
     color: var(--text-primary);
     font-weight: 500;
+}
+.filter-section .form-select,
+.filter-section .form-control {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+.filter-section .form-select:focus,
+.filter-section .form-control:focus {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 0.2rem rgba(var(--primary-color-rgb), 0.25) !important;
 }
 
 /* Service icon and badge */
