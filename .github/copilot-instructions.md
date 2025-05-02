@@ -2,6 +2,13 @@
 
 The github repo is jamesmontemagno/feedbackflow and the primary branch that I work off of is main
 
+## Project Structure
+- feedbackflow.tests is the main testing project using MSTests primarily for testing reusable logic from shareddump
+- feedbackfunctions are AzureFunctions written in C# that are backend for the webapp
+- feedbackmcp is a C# MCP server for the functions, but is a work in progress and no work is happenign right now.
+- feedbackwebapp is a Blazor Server app written in C# and .NET 9 and is the main app we work on
+- shareddump is a shared library that contains reusable logic and models used across the webapp and functions
+
 ## Blazor
 - Always add component-specific CSS in a corresponding .razor.css file
 - When creating a new component, automatically create a matching .razor.css file
