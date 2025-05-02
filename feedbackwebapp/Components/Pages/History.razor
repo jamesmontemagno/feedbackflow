@@ -15,6 +15,34 @@
             </button>
         }
     </div>
+    
+    @if (historyItems is { Count: > 0 })
+    {
+        <div class="filter-section card mb-4 p-3 shadow-sm">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="dateFilter" class="form-label">Date Range</label>                    <select class="form-select" id="dateFilter" @bind="dateFilter" @bind:after="StateHasChanged">
+                        <option value="all">All Time</option>
+                        <option value="today">Today</option>
+                        <option value="week">Last 7 Days</option>
+                        <option value="month">Last 30 Days</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="sourceFilter" class="form-label">Service Type</label>                    <select class="form-select" id="sourceFilter" @bind="sourceFilter" @bind:after="StateHasChanged">
+                        <option value="all">All Services</option>
+                        <option value="YouTube">YouTube</option>
+                        <option value="GitHub">GitHub</option>
+                        <option value="Reddit">Reddit</option>
+                        <option value="Twitter">Twitter</option>
+                        <option value="HackerNews">HackerNews</option>
+                        <option value="DevBlogs">DevBlogs</option>
+                        <option value="Manual">Manual</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    }
 
     @if (historyItems is null)
     {
@@ -31,48 +59,45 @@
             <i class="bi bi-clock-history"></i>
             <p>No analysis history found.</p>
         </div>
-    }
-    else
+    }    else if (filteredItems is { Count: > 0 })
     {
-        <div class="history-cards">
-            @foreach (var item in historyItems)
-            {                <div class="card mt-4 shadow-sm" @key="item.Id">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <div class="list-group">
+            @foreach (var item in filteredItems)
+            {
+                <div class="list-group-item" @key="item.Id">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="d-flex align-items-center">
-                            <span class="source-badge-label me-2">@item.SourceType</span>
-                            <span class="timestamp">@item.Timestamp.ToLocalTime().ToString("g")</span>
+                            <i class="bi @GetServiceIcon(item.SourceType) service-icon me-2"></i>
+                            <span class="badge bg-primary me-2">@item.SourceType</span>
+                            <small class="text-muted">@item.Timestamp.ToLocalTime().ToString("g")</small>
                         </div>
-                        <button class="btn btn-sm btn-outline-light" title="Delete" @onclick="() => DeleteItem(item.Id)">
-                            <i class="bi bi-trash me-1"></i>
-                            Delete
+                        <button class="btn btn-sm btn-outline-danger" title="Delete" @onclick="() => DeleteItem(item.Id)">
+                            <i class="bi bi-trash"></i>
                         </button>
                     </div>
-                    
-                    <div class="card-body p-4">
-                        @if (!string.IsNullOrWhiteSpace(item.UserInput))
-                        {
-                            <div class="user-input mb-4">
-                                <span class="user-input-label">User Input:</span>
-                                <p>@item.UserInput</p>
-                            </div>
-                        }                        <div class="summary-section">
-                            <button class="summary-toggle-btn w-100 mb-3 d-flex align-items-center justify-content-between @(expandedItems.Contains(item.Id) ? "expanded" : "")"
-                                    @onclick="() => ToggleExpand(item.Id)">
-                                <div class="d-flex align-items-center">
-                                    <i class="bi @(expandedItems.Contains(item.Id) ? "bi-chevron-down" : "bi-chevron-right") me-2"></i>
-                                    <span>Analysis Summary</span>
-                                </div>
-                                <i class="bi bi-file-text"></i>
-                            </button>
-                            
-                            @if (expandedItems.Contains(item.Id))
-                            {
-                                <div class="markdown-body summary-content">
-                                    @((MarkupString)ConvertMarkdownToHtml(item.Summary))
-                                </div>
-                            }
-                        </div>
+
+                    <div class="d-flex align-items-center mb-2">
+                        <button class="btn btn-sm btn-link text-decoration-none p-0" @onclick="() => ToggleExpand(item.Id)">
+                            <i class="bi @(expandedItems.Contains(item.Id) ? "bi-chevron-down" : "bi-chevron-right") me-2"></i>
+                            View Analysis
+                        </button>
                     </div>
+
+                    @if (!string.IsNullOrWhiteSpace(item.UserInput))
+                    {
+                        <div class="text-muted small mb-2">
+                            <strong>Input:</strong> @item.UserInput
+                        </div>
+                    }
+
+                    @if (expandedItems.Contains(item.Id))
+                    {
+                        <div class="border-start border-4 border-primary ps-3 mt-3">
+                            <div class="markdown-body">
+                                @((MarkupString)ConvertMarkdownToHtml(item.Summary))
+                            </div>
+                        </div>
+                    }
                 </div>
             }
         </div>
@@ -81,10 +106,11 @@
 
 @code {
     private List<AnalysisHistoryItem>? historyItems;
-    private HashSet<string> expandedItems = new();    protected override async Task OnInitializedAsync()
-    {
-        historyItems = await HistoryService.GetHistoryAsync();
-    }
+    private List<AnalysisHistoryItem>? filteredItems => FilterHistoryItems();
+    private HashSet<string> expandedItems = new();
+    private string dateFilter = "all";
+    private string sourceFilter = "all";
+
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -116,10 +142,56 @@
         {
             expandedItems.Remove(id);
         }
-    }
-
-    private string ConvertMarkdownToHtml(string markdown)
+    }    private string ConvertMarkdownToHtml(string markdown)
     {
         return Markdown.ToHtml(markdown ?? string.Empty, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build());
+    }    private string GetServiceIcon(string sourceType)
+    {
+        return sourceType?.ToLowerInvariant() switch
+        {
+            "youtube" => "bi-youtube",
+            "github" => "bi-github",
+            "reddit" => "bi-reddit",
+            "twitter" => "bi-twitter",
+            "hackernews" => "bi-hacker-news",
+            "devblogs" => "bi-journal-code",
+            "manual" => "bi-pencil-square",
+            _ => "bi-question-circle"
+        };
+    }
+    
+    private List<AnalysisHistoryItem> FilterHistoryItems()
+    {
+        if (historyItems == null)
+            return new List<AnalysisHistoryItem>();
+            
+        var items = historyItems.AsEnumerable();
+        
+        // Apply source filter
+        if (sourceFilter != "all")
+            items = items.Where(x => x.SourceType == sourceFilter);
+            
+        // Apply date filter
+        var now = DateTime.Now;
+        items = dateFilter switch
+        {
+            "today" => items.Where(x => x.Timestamp.Date == now.Date),
+            "week" => items.Where(x => (now - x.Timestamp).TotalDays <= 7),
+            "month" => items.Where(x => (now - x.Timestamp).TotalDays <= 30),
+            _ => items // "all" or any other value
+        };
+        
+        return items.ToList();
+    }    private void OpenAnalysis(AnalysisHistoryItem item)
+    {
+        // In a real implementation, you might navigate to a details page
+        // or open a modal with the full analysis
+        ToggleExpand(item.Id); // For now, just expand the item
+    }
+    
+    private void ResetFilters()
+    {
+        dateFilter = "all";
+        sourceFilter = "all";
     }
 }
