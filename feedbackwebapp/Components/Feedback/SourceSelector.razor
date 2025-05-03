@@ -72,12 +72,10 @@
             "bi-pencil-square",
             "Manually enter content and customize the analysis prompt",
             "Manual")
-    };
-
-    private string GetButtonClass(string source) => 
+    };    private string GetButtonClass(string source) => 
         source == SelectedSource 
             ? "btn-primary shadow-sm" 
-            : "btn-outline-secondary";
+            : "btn-outline-primary";
 
     private async Task OnSourceSelectedAsync(string value)
     {

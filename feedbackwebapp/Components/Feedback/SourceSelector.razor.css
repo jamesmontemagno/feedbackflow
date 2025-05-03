@@ -46,6 +46,18 @@
     opacity: 1;
 }
 
+/* Button styling for different states */
+::deep .btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+::deep .btn-outline-primary:hover {
+    background: var(--primary-gradient);
+    border-color: var(--primary-color);
+    color: white;
+}
+
 /* Selected button state */
 ::deep .btn.active {
     background-color: var(--primary-color) !important;
