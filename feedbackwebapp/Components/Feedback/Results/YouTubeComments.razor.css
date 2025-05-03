@@ -2,29 +2,69 @@
 
 /* Uses CSS variables for theme support instead of hard-coded colors */
 .secondary-text {
-    color: var(--bs-secondary-color);
+    color: var(--text-secondary);
 }
 
 .comment-header {
     font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.comment-item {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(var(--primary-color-rgb), 0.08);
+}
+
+.comment-item:hover {
+    background-color: var(--hover-bg);
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(var(--primary-color-rgb), 0.15);
+    border-left: 3px solid var(--primary-color);
 }
 
 .list-group-item {
-    transition: background-color 0.2s ease;
+    transition: all 0.3s ease;
+    border-radius: var(--border-radius-sm);
+}
+
+.list-group-item:hover {
+    background-color: var(--hover-bg);
+    transform: translateX(5px);
 }
 
 /* Animation for comment display */
 .card-body {
-    animation: fadeIn 0.3s ease-in-out;
+    animation: fadeIn 0.4s ease-in-out;
 }
 
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(15px);
     }
     to {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+.comment-author {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.comment-date {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.comment-content {
+    margin-top: 0.5rem;
+    line-height: 1.5;
 }

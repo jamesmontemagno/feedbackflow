@@ -2,30 +2,61 @@
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
     margin-bottom: 1.5rem;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 0.5rem 1rem rgba(var(--primary-color-rgb), 0.1);
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.75rem 1.5rem rgba(var(--primary-color-rgb), 0.15);
 }
 
 .card-header {
-    background-color: var(--bg-secondary);
-    border-bottom-color: var(--border-color);
+    background: var(--primary-gradient);
+    border-bottom: none;
+    padding: 1.25rem;
+    color: white;
 }
 
 .card-title {
-    color: var(--text-primary);
+    color: white;
+    font-weight: 600;
+    margin-bottom: 0;
+}
+
+.card-body {
+    padding: 1.5rem;
 }
 
 .btn-outline-light {
-    border-color: var(--border-color);
-    color: var(--text-secondary);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: white;
+    transition: all 0.3s ease;
+    border-radius: var(--border-radius-sm);
 }
 
 .btn-outline-light:hover {
-    background-color: var(--bg-hover);
-    color: var(--text-primary);
-    border-color: var(--border-color);
+    background-color: rgba(255, 255, 255, 0.15);
+    color: white;
+    transform: translateY(-2px);
 }
 
 .comment-content {
     color: var(--text-primary);
+}
+
+.comment-author {
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.comment-date {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
 }
 
 .comment-text {
@@ -41,17 +72,55 @@
 }
 
 .replies-container {
-    animation: fadeIn 0.3s ease-in-out;
+    animation: fadeIn 0.4s ease-in-out;
+    margin-top: 1.5rem;
+}
+
+.replies-title {
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    position: relative;
+    display: inline-block;
+}
+
+.replies-title::after {
+    content: '';
+    position: absolute;
+    bottom: -0.5rem;
+    left: 0;
+    width: 50%;
+    height: 2px;
+    background: var(--primary-gradient);
+    border-radius: 2px;
 }
 
 .reply-item {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
+    border-radius: var(--border-radius-sm);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-left: 3px solid var(--primary-color);
 }
 
 .reply-item:hover {
     background-color: var(--hover-bg);
+    transform: translateX(5px);
+    box-shadow: 0 3px 10px rgba(var(--primary-color-rgb), 0.1);
+}
+
+.reply-author {
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 0.25rem;
+}
+
+.reply-date {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
 }
 
 .reply-text {

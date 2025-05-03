@@ -1,11 +1,114 @@
 /* Settings component styles */
 .card {
     position: relative;
-    padding-bottom: 45px;
+    padding-bottom: 55px;
+    border-radius: var(--border-radius);
+    transition: all 0.3s ease;
+    box-shadow: 0 0.5rem 1.5rem rgba(var(--primary-color-rgb), 0.12);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.75rem 2rem rgba(var(--primary-color-rgb), 0.18);
+}
+
+.card-header {
+    background: var(--primary-gradient) !important;
+    color: white;
+    font-weight: 600;
+    padding: 1.25rem;
+    border-bottom: none;
+    border-radius: var(--border-radius) var(--border-radius) 0 0 !important;
+}
+
+.card-body {
+    padding: 1.5rem;
 }
 
 .card-footer {
     background-color: transparent;
-    border-top: none;
+    border-top: 1px solid var(--border-color);
     text-align: right;
+    padding: 1rem 1.5rem;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+}
+
+.form-control, .form-select {
+    border-radius: var(--border-radius-sm);
+    transition: all 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
+    transform: translateY(-2px);
+}
+
+.form-label {
+    color: var(--text-primary);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.btn-primary {
+    background: var(--primary-gradient);
+    border-color: var(--primary-color);
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(var(--primary-color-rgb), 0.2);
+}
+
+.btn-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(var(--primary-color-rgb), 0.3);
+    filter: brightness(1.1);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 10px rgba(var(--primary-color-rgb), 0.2);
+}
+
+.form-check-input {
+    cursor: pointer;
+    width: 1.2em;
+    height: 1.2em;
+    border-color: var(--border-color);
+    background-color: var(--bg-secondary);
+    transition: all 0.3s ease;
+}
+
+.form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.15rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+.form-check-label {
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+    padding-left: 0.25rem;
+}
+
+.section-title {
+    color: var(--primary-color);
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+    position: relative;
+    display: inline-block;
+}
+
+.section-title::after {
+    content: '';
+    position: absolute;
+    bottom: -0.5rem;
+    left: 0;
+    width: 50%;
+    height: 3px;
+    background: var(--primary-gradient);
+    border-radius: 3px;
 }

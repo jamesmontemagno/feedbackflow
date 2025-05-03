@@ -3,43 +3,75 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 40px;
-    padding: 0.5rem 1rem;
-    font-size: 0.92rem;
-    min-width: 160px;
-    border-radius: 0.5rem;
+    min-height: 48px;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.95rem;
+    min-width: 180px;
+    border-radius: var(--border-radius-sm);
     margin-bottom: 0;
     white-space: nowrap;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
 }
 
-/* Add subtle hover effect to buttons */
+/* Add enhanced hover effect to buttons */
 ::deep .btn {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+::deep .btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 120%;
+    height: 0;
+    padding-bottom: 120%;
+    border-radius: 50%;
+    background-color: rgba(var(--primary-color-rgb), 0.08);
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+    transition: transform 0.5s, opacity 0.5s;
 }
 
 ::deep .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--bs-box-shadow) !important;
+    transform: translateY(-3px);
+    box-shadow: 0 4px 15px rgba(var(--primary-color-rgb), 0.15) !important;
+}
+
+::deep .btn:hover::after {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+}
+
+/* Selected button state */
+::deep .btn.active {
+    background-color: var(--primary-color) !important;
+    color: white !important;
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 5px 15px rgba(var(--primary-color-rgb), 0.25) !important;
 }
 
 /* Add focus styling */
 ::deep .btn:focus {
-    box-shadow: 0 0 0 0.18rem rgba(var(--bs-primary-rgb), 0.22);
+    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.25);
 }
 
 /* Source icons styling */
 ::deep .source-icon {
-    font-size: 1.1rem !important;
-    margin-right: 0.5rem;
+    font-size: 1.25rem !important;
+    margin-right: 0.75rem;
 }
 
 /* Icon animations */
 ::deep .bi {
-    transition: transform 0.2s;
+    transition: all 0.3s ease;
 }
 
 ::deep .btn:hover .bi {
-    transform: scale(1.12);
+    transform: scale(1.2) rotate(5deg);
 }
 
 /* Responsive adjustments */

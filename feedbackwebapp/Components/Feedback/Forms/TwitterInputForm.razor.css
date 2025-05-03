@@ -39,5 +39,22 @@
 }
 
 .text-danger {
-    color: var(--bs-danger, #dc3545);
+    color: var(--danger-color);
+}
+
+.invalid-feedback {
+    font-size: 0.875rem;
+    color: var(--danger-color);
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
