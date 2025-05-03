@@ -49,11 +49,13 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
         var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
         feedbackResponse.EnsureSuccessStatusCode();
 
-        var responseContent = await feedbackResponse.Content.ReadAsStringAsync();        var comments = JsonSerializer.Deserialize<List<GithubCommentModel>>(responseContent);
+        var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
+        var comments = JsonSerializer.Deserialize<List<GithubCommentModel>>(responseContent);
 
         if (comments == null || !comments.Any())
         {
-            throw new InvalidOperationException("No comments found for the specified item");
+            UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
         }
 
         var totalComments = comments.Count;

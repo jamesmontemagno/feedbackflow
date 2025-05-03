@@ -28,12 +28,14 @@ public class DevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackService
             var error = await response.Content.ReadAsStringAsync();
             throw new InvalidOperationException($"Failed to fetch DevBlogs comments: {error}");
         }
-
         var responseContent = await response.Content.ReadAsStringAsync();
         var article = JsonSerializer.Deserialize<DevBlogsArticleModel>(responseContent);
 
-        if (article == null)
-            throw new InvalidOperationException("No comments found or failed to parse article.");
+        if (article == null || article.Comments == null || article.Comments.Count == 0)
+        {
+            UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
+        }
 
         // Count total comments including replies recursively
         int CountComments(List<DevBlogsCommentModel> comments)

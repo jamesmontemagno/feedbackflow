@@ -44,13 +44,14 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
         feedbackResponse.EnsureSuccessStatusCode();
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
 
-        // Parse the Hacker News response as List<List<HackerNewsItem>>
+        // Parse the Hacker News response as List<List<HackerNewsItem>>        
         var articleThreads = JsonSerializer.Deserialize<List<List<HackerNewsItem>>>(responseContent)
             ?? throw new InvalidOperationException("Failed to deserialize Hacker News response");
 
         if (!articleThreads.Any() || articleThreads.All(thread => !thread.Any()))
         {
-            throw new InvalidOperationException("No comments found for the specified stories");
+            UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
         }
 
         var analyses = new List<HackerNewsAnalysis>();

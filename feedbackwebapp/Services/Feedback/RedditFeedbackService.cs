@@ -41,13 +41,13 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
         var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
         feedbackResponse.EnsureSuccessStatusCode();
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
-
         // Parse the Reddit response
         var threads = JsonSerializer.Deserialize<List<RedditThreadModel>>(responseContent);
 
         if (threads == null || !threads.Any())
         {
-            throw new InvalidOperationException("No comments found in the specified threads");
+            UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
         }
 
         int CountCommentsAndReplies(List<RedditCommentModel>? comments)

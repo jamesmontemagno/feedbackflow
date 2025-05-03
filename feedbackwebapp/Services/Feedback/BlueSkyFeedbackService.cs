@@ -36,10 +36,12 @@ public class BlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackService
         var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
         feedbackResponse.EnsureSuccessStatusCode();
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
-
         var feedback = JsonSerializer.Deserialize<BlueSkyFeedbackResponse>(responseContent);
         if (feedback == null || feedback.Items == null || feedback.Items.Count == 0)
-            throw new InvalidOperationException("No feedback found for the specified post");
+        {
+            UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
+        }
 
         var totalComments = CountCommentsRecursively(feedback.Items);
 

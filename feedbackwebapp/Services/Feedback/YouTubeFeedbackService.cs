@@ -60,17 +60,18 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
         feedbackResponse.EnsureSuccessStatusCode();
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
-        
-        // Parse the YouTube response
+          // Parse the YouTube response
         var videos = JsonSerializer.Deserialize<List<YouTubeOutputVideo>>(responseContent);
         
         if (videos == null || !videos.Any())
         {
-            throw new InvalidOperationException("No comments found for the specified videos/playlists");
+            UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
         }
 
         var totalComments = videos.Sum(v => v.Comments.Count);
-        UpdateStatus(FeedbackProcessStatus.GatheringComments, $"Found {totalComments} comments across {videos.Count} videos...");        // Build our analysis request with all comments
+        UpdateStatus(FeedbackProcessStatus.GatheringComments, $"Found {totalComments} comments across {videos.Count} videos...");
+        // Build our analysis request with all comments
         var allComments = string.Join("\n\n", videos.SelectMany(v => 
             v.Comments.Select(c => $"Video: {v.Title}\nComment by {c.Author}: {c.Text}")));
 
