@@ -86,13 +86,18 @@
             spread = 70,
             origin = new { y = 0.6 }
         });
-    }    private async Task CopyToClipboard()
+    }   
+
+    private async Task CopyToClipboard()
     {
         if (!string.IsNullOrEmpty(MarkdownResult))
         {
             await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", MarkdownResult);
+            await ToastService.ShowSuccessAsync("Analysis copied to clipboard", 3000);
         }
-    }    private async Task SaveToHistory()
+    }
+
+    private async Task SaveToHistory()
     {
         if (!string.IsNullOrEmpty(MarkdownResult))
         {
@@ -163,7 +168,8 @@
             StateHasChanged();
         }
     }
-      public void Dispose()
+      
+    public void Dispose()
     {
         // Ensure speech is stopped when component is disposed
         if (_isSpeaking)
