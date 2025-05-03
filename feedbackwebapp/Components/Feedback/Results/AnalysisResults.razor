@@ -19,17 +19,16 @@
 @if (!string.IsNullOrEmpty(MarkdownResult))
 {
     <div class="card mt-4 shadow-sm">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0">Analysis Summary</h5>            <div class="d-flex">
-                <button class="btn btn-sm btn-outline-light me-2" @onclick="SaveToHistory">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">            <h5 class="card-title mb-0">Analysis Summary</h5>            <div class="d-flex">
+                <button class="btn btn-sm btn-outline-light me-2 action-btn" @onclick="SaveToHistory">
                     <i class="bi bi-clock-history me-1"></i>
                     Save
                 </button>
-                <button class="btn btn-sm btn-outline-light me-2 @(_isSpeaking ? "btn-speak-active" : "")" @onclick="SpeakAnalysis">
+                <button class="btn btn-sm btn-outline-light me-2 action-btn @(_isSpeaking ? "btn-speak-active" : "")" @onclick="SpeakAnalysis">
                     <i class="bi @(_isSpeaking ? "bi-pause-fill" : "bi-volume-up-fill") me-1"></i>
                     @(_isSpeaking ? "Stop" : "Speak")
                 </button>
-                <button class="btn btn-sm btn-outline-light" @onclick="CopyToClipboard">
+                <button class="btn btn-sm btn-outline-light action-btn" @onclick="CopyToClipboard">
                     <i class="bi bi-clipboard me-1"></i>
                     Copy
                 </button>

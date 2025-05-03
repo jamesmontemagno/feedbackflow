@@ -23,9 +23,8 @@
             </div>
             <div>
                 @foreach (var url in _shortlinkUrls)
-                {
-                    <button type="button" 
-                            class="btn btn-outline-secondary btn-sm ms-2" 
+                {                    <button type="button" 
+                            class="btn btn-outline-secondary btn-sm ms-2 action-btn" 
                             @onclick="() => OpenShortlinkInNewWindow(url)">
                         <i class="bi bi-box-arrow-up-right me-1"></i>Open link
                     </button>

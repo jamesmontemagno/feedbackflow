@@ -13,7 +13,7 @@
         <h1 class="history-title mb-0">Analysis History</h1>
         @if (historyItems is { Count: > 0 })
         {
-            <button class="btn btn-danger clear-all-btn px-4 py-2" @onclick="ClearHistory">
+            <button class="btn btn-danger clear-all-btn action-btn px-4 py-2" @onclick="ClearHistory">
                 <i class="bi bi-trash me-2"></i>Clear All History
             </button>
         }
@@ -27,10 +27,9 @@
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
                         <input type="text" class="form-control" id="searchFilter" placeholder="Search through analysis content..." 
-                               @bind="searchTerm" @bind:event="oninput" @bind:after="StateHasChanged" />
-                        @if (!string.IsNullOrWhiteSpace(searchTerm))
+                               @bind="searchTerm" @bind:event="oninput" @bind:after="StateHasChanged" />                        @if (!string.IsNullOrWhiteSpace(searchTerm))
                         {
-                            <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">
+                            <button class="btn btn-outline-secondary action-btn" type="button" @onclick="ClearSearch">
                                 <i class="bi bi-x-circle"></i>
                             </button>
                         }
@@ -89,18 +88,17 @@
                             <i class="bi @GetServiceIcon(item.SourceType) service-icon"></i>
                             <span class="source-badge">@item.SourceType</span>
                             <small class="text-muted">@item.Timestamp.ToLocalTime().ToString("g")</small>
-                        </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <button class="btn btn-sm btn-outline-primary" title="Copy Analysis" @onclick="() => CopyToClipboard(item)">
+                        </div>                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="() => CopyToClipboard(item)">
                                 <i class="bi bi-clipboard"></i>
                             </button>
                             @if(item.SourceType != "Manual")
                             {
-                                <a class="btn btn-sm btn-outline-primary" title="Open Source" target="_blank" rel="noopener noreferrer" href="@GetSourceUrl(item)">
+                                <a class="btn btn-sm btn-outline-primary action-btn" title="Open Source" target="_blank" rel="noopener noreferrer" href="@GetSourceUrl(item)">
                                     <i class="bi bi-box-arrow-up-right"></i>
                                 </a>
                             }
-                            <button class="btn btn-sm btn-outline-danger" title="Delete" @onclick="() => ConfirmDelete(item.Id)">
+                            <button class="btn btn-sm btn-outline-danger action-btn" title="Delete" @onclick="() => ConfirmDelete(item.Id)">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>
@@ -112,9 +110,8 @@
                             <strong>Input:</strong> @item.UserInput
                         </div>
                     }
-                    
-                    <div class="analysis-content">
-                        <button class="btn btn-sm mb-3 @(expandedItems.Contains(item.Id) ? "btn-outline-secondary" : "btn-outline-primary")" 
+                      <div class="analysis-content">
+                        <button class="btn btn-sm mb-3 action-btn @(expandedItems.Contains(item.Id) ? "btn-outline-secondary" : "btn-outline-primary")" 
                                 @onclick="() => ToggleExpand(item.Id)">
                             <i class="bi @(expandedItems.Contains(item.Id) ? "bi-chevron-down" : "bi-chevron-right") me-1"></i>
                             @(expandedItems.Contains(item.Id) ? "Show Summary" : "Show Full Analysis")

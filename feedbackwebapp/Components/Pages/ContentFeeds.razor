@@ -51,10 +51,8 @@
                                 case "hackernews":
                                     <HackerNewsFeedForm @ref="hackerNewsFeedForm" />
                                     break;
-                            }
-
-                            <div class="mt-4">
-                                <button class="btn btn-primary w-100" disabled="@isLoading" @onclick="FetchContent">
+                            }                            <div class="mt-4">
+                                <button class="btn btn-primary source-button w-100" disabled="@isLoading" @onclick="FetchContent">
                                     @if (isLoading)
                                     {
                                         <span class="spinner-border spinner-border-sm me-2" role="status"></span>

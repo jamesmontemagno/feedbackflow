@@ -7,6 +7,14 @@
     resize: vertical;
     min-height: 175px !important;
     height: 175px !important;
+    border-radius: var(--border-radius-sm);
+    transition: all 0.3s ease;
+    border-color: rgba(var(--primary-color-rgb), 0.3);
+}
+
+.prompt-textarea:focus, .content-textarea:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.15);
+    border-color: var(--primary-color);
 }
 
 .content-textarea {
@@ -20,20 +28,57 @@
     color: var(--bs-danger);
 }
 
+/* Button styling */
 ::deep .source-button {
-    transition: all 0.2s ease-in-out;
+    transition: all 0.3s ease;
 }
 
 ::deep .source-button:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+    box-shadow: 0 4px 15px rgba(var(--primary-color-rgb), 0.15) !important;
 }
 
 ::deep .btn-primary {
-    border-color: var(--bs-primary);
+    border-color: var(--primary-color);
+    background: var(--primary-gradient);
 }
 
 ::deep .btn-outline-secondary {
     border-color: var(--bs-border-color);
+}
+
+/* Add ripple effect for buttons */
+button.action-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+button.action-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 120%;
+    height: 0;
+    padding-bottom: 120%;
+    border-radius: 50%;
+    background-color: rgba(var(--primary-color-rgb), 0.08);
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+    transition: transform 0.5s, opacity 0.5s;
+}
+
+button.action-btn:hover::after {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+}
+
+button.action-btn:hover i {
+    transform: scale(1.2) rotate(5deg);
+}
+
+button.action-btn i {
+    transition: all 0.3s ease;
 }
 
 .form-floating textarea.form-control {

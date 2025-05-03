@@ -1,3 +1,8 @@
+/* Import custom button styles */
+@import url('buttons.css');
+
+@import url('buttons.css');
+
 :root {
     /* Light theme (default) - Darker Pastel Purple Theme */
     --bg-primary: #f7f4ff;
@@ -49,7 +54,6 @@
     --info-color-rgb: 133, 165, 231;
     --code-bg: rgba(165, 139, 216, 0.15);
     --bs-secondary: #c8c0e7;
-}
 }
 
 /* Base styles */

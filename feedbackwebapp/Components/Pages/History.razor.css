@@ -12,9 +12,6 @@
 [data-theme='dark'] .filter-section .form-control::placeholder {
     color: rgba(255, 255, 255, 0.6) !important;
 }
-[data-theme=\dark\] .filter-section .form-control::placeholder {
-    color: rgba(255, 255, 255, 0.6) !important;
-}
 
 /* History.razor.css - Slimmed down, Bootstrap-aligned, and theme-respecting */
 
@@ -189,6 +186,8 @@
     background-color: var(--bg-secondary);
     border-color: var(--border-color);
     transition: all 0.3s ease;
+    border-radius: var(--border-radius-sm);
+    margin: 0 0.2rem;
 }
 
 .pagination .page-item.active .page-link {
@@ -200,12 +199,106 @@
 .pagination .page-item .page-link:hover:not(.active) {
     background-color: var(--hover-bg);
     color: var(--primary-color);
+    transform: translateY(-2px);
 }
 
 .pagination .page-item.disabled .page-link {
     color: var(--text-secondary);
     background-color: var(--bg-secondary);
     border-color: var(--border-color);
+}
+
+/* Action Buttons */
+.action-btn {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    border-radius: var(--border-radius-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.4rem 0.75rem;
+}
+
+.action-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 120%;
+    height: 0;
+    padding-bottom: 120%;
+    border-radius: 50%;
+    background-color: rgba(var(--primary-color-rgb), 0.08);
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+    transition: transform 0.5s, opacity 0.5s;
+}
+
+.action-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 15px rgba(var(--primary-color-rgb), 0.15) !important;
+}
+
+.action-btn:hover::after {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+}
+
+.action-btn:active {
+    transform: translateY(0);
+}
+
+.action-btn i {
+    transition: all 0.3s ease;
+}
+
+.action-btn:hover i {
+    transform: scale(1.2) rotate(5deg);
+}
+
+.btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-outline-primary:hover {
+    background: var(--primary-gradient);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.btn-outline-secondary {
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--hover-bg);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+/* Clear History Button */
+.clear-all-btn {
+    background: linear-gradient(135deg, #e98a97, #d96674);
+    border: none;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.clear-all-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 15px rgba(217, 102, 116, 0.3) !important;
+}
+
+.clear-all-btn i {
+    transition: all 0.3s ease;
+}
+
+.clear-all-btn:hover i {
+    transform: scale(1.2) rotate(5deg);
 }
 
 /* Responsive adjustments */
