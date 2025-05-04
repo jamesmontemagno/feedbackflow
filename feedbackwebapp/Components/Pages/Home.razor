@@ -170,8 +170,8 @@
             "GitHub" => githubInputForm?.Url,
             "Reddit" => !string.IsNullOrWhiteSpace(redditInputForm?.ThreadsInput) ? redditInputForm?.ThreadsInput : (redditInputForm?.ThreadIds != null ? string.Join(",", redditInputForm.ThreadIds) : null),
             "HackerNews" => hackerNewsInputForm?.Value,
-            "Twitter" => twitterInputForm?.TweetId,
-            "BlueSky" => blueSkyInputForm?.PostId,
+            "Twitter" => twitterInputForm?.RawInput,
+            "BlueSky" => blueSkyInputForm?.RawInput,
             "DevBlogs" => devBlogsInputForm?.ArticleUrl,
             _ => null
         };
