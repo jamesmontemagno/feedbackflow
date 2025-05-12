@@ -40,6 +40,10 @@ public static class EmailUtils
         .top-comment { background-color: #f0f8ff; padding: 15px; border-radius: 5px; margin-bottom: 10px; }
         .comment-meta { color: #7c7c7c; font-size: 0.9em; margin-bottom: 5px; }
         .divider { border-top: 1px solid #eee; margin: 20px 0; }
+        .toc { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .toc a { color: #1a1a1b; text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+        .top-posts { background-color: #fff3e0; padding: 15px; border-radius: 5px; margin: 20px 0; }
     </style>
 </head>
 <body>");
@@ -47,13 +51,42 @@ public static class EmailUtils
         // Header
         emailBuilder.AppendFormat(@"
     <div class='header'>
-        <h1>Weekly r/{0} Report</h1>
+        <h1>Weekly r/<a href='https://reddit.com/r/{0}' style='color: white; text-decoration: none;'>{0}</a> Report</h1>
         <p>Analysis for {1:MMMM dd, yyyy} - {2:MMMM dd, yyyy}</p>
     </div>", subreddit, cutoffDate, DateTimeOffset.UtcNow);
 
+        // Top Posts Quick Links
+        emailBuilder.AppendLine(@"
+    <div class='top-posts'>
+        <h2>?? Top Posts This Week</h2>
+        <ul>");
+        foreach (var (thread, _) in threadAnalyses)
+        {
+            emailBuilder.AppendFormat(@"
+            <li><a href='{0}'>{1}</a> ({2:n0} points, {3:n0} comments)</li>",
+                thread.Url,
+                thread.Title,
+                thread.Score,
+                thread.NumComments);
+        }
+        emailBuilder.AppendLine(@"
+        </ul>
+    </div>");
+
+        // Table of Contents
+        emailBuilder.AppendLine(@"
+    <div class='toc'>
+        <h2>?? Table of Contents</h2>
+        <ul>
+            <li><a href='#weekly-summary'>Weekly Summary</a></li>
+            <li><a href='#top-comments'>Top Comments</a></li>
+            <li><a href='#top-discussions'>Top Discussions</a></li>
+        </ul>
+    </div>");
+
         // Weekly Analysis Section
         emailBuilder.AppendLine(@"
-    <div class='section'>
+    <div class='section' id='weekly-summary'>
         <h2>Weekly Summary</h2>
         <div class='analysis'>");
         emailBuilder.AppendLine(ConvertMarkdownToHtml(weeklyAnalysis));
@@ -63,21 +96,23 @@ public static class EmailUtils
 
         // Top Comments Section
         emailBuilder.AppendLine(@"
-    <div class='section'>
+    <div class='section' id='top-comments'>
         <h2>Top Comments This Week</h2>");
         foreach (var comment in topComments)
         {
             emailBuilder.AppendFormat(@"
         <div class='top-comment'>
             <div class='comment-meta'>
-                <strong>u/{0}</strong> · {1:n0} points
+                <strong><a href='https://reddit.com/user/{0}' style='color: #1a1a1b; text-decoration: none;'>u/{0}</a></strong> · {1:n0} points
+                {2}
             </div>
             <div class='comment-content'>
-                {2}
+                {3}
             </div>
         </div>", 
                 comment.Author, 
                 comment.Score,
+                !string.IsNullOrEmpty(comment.ParentId) ? $@" · <a href='https://reddit.com/comments/{comment.ParentId}' style='color: #1a1a1b; text-decoration: none;'>View Thread</a>" : "",
                 ConvertMarkdownToHtml(comment.Body));
         }
         emailBuilder.AppendLine(@"
@@ -85,7 +120,7 @@ public static class EmailUtils
 
         // Top Discussions Section
         emailBuilder.AppendLine(@"
-    <div class='section'>
+    <div class='section' id='top-discussions'>
         <h2>Top Discussions</h2>");
         foreach (var (thread, analysis) in threadAnalyses)
         {
@@ -93,7 +128,7 @@ public static class EmailUtils
         <div class='thread'>
             <a href='{0}' class='thread-title'>{1}</a>
             <div class='thread-stats'>
-                {2:n0} points · {3:n0} comments · Posted by u/{4}
+                {2:n0} points · {3:n0} comments · Posted by <a href='https://reddit.com/user/{4}' style='color: #7c7c7c; text-decoration: none;'>u/{4}</a>
             </div>
             <div class='analysis'>
                 {5}
