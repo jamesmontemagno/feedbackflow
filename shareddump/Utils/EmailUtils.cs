@@ -46,6 +46,10 @@ public static class EmailUtils
         .toc { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; }
         .toc a { color: #1a1a1b; text-decoration: none; }
         .toc a:hover { text-decoration: underline; }
+        .toc ul { list-style-type: none; padding-left: 20px; }
+        .toc > ul { padding-left: 0; }
+        .toc-section { font-weight: bold; margin-top: 10px; }
+        .toc-subsection { padding-left: 20px; }
         .top-posts { background-color: #fff3e0; padding: 15px; border-radius: 5px; margin: 20px 0; }
     </style>
 </head>
@@ -81,20 +85,25 @@ public static class EmailUtils
     <div class='toc'>
         <h2>📖 Table of Contents</h2>
         <ul>
-            <li><a href='#weekly-summary'>Weekly Summary</a></li>
-            <li><a href='#top-comments'>Top Comments</a></li>
-            <li><a href='#top-discussions'>Top Discussions</a></li>
-        </ul>
-    </div>");
+            <li class='toc-section'><a href='#thread-titles-analysis'>Thread Titles Analysis</a></li>
+            <li class='toc-section'><a href='#weekly-summary'>Weekly Summary</a></li>
+            <li class='toc-section'><a href='#top-comments'>Top Comments</a></li>
+            <li class='toc-section'><a href='#top-discussions'>Top Discussions</a>
+                <ul class='toc-subsection'>");
 
-        // Weekly Analysis Section
+        foreach (var (thread, _) in threadAnalyses)
+        {
+            var threadId = $"thread-{thread.Id}";
+            emailBuilder.AppendFormat(@"
+                    <li><a href='#{0}'>{1}</a></li>", 
+                threadId, 
+                thread.Title.Length > 60 ? thread.Title[..57] + "..." : thread.Title);
+        }
+
         emailBuilder.AppendLine(@"
-    <div class='section' id='weekly-summary'>
-        <h2>Weekly Summary</h2>
-        <div class='analysis'>");
-        emailBuilder.AppendLine(ConvertMarkdownToHtml(weeklyAnalysis));
-        emailBuilder.AppendLine(@"
-        </div>
+                </ul>
+            </li>
+        </ul>
     </div>");
 
         // Thread Titles Analysis Section
@@ -103,6 +112,16 @@ public static class EmailUtils
         <h2>Thread Titles Analysis</h2>
         <div class='analysis'>");
         emailBuilder.AppendLine(ConvertMarkdownToHtml(threadTitlesAnalysis));
+        emailBuilder.AppendLine(@"
+        </div>
+    </div>");
+
+        // Weekly Analysis Section
+        emailBuilder.AppendLine(@"
+    <div class='section' id='weekly-summary'>
+        <h2>Weekly Summary</h2>
+        <div class='analysis'>");
+        emailBuilder.AppendLine(ConvertMarkdownToHtml(weeklyAnalysis));
         emailBuilder.AppendLine(@"
         </div>
     </div>");
@@ -116,16 +135,17 @@ public static class EmailUtils
             emailBuilder.AppendFormat(@"
         <div class='top-comment'>
             <div class='comment-meta'>
-                <strong><a href='https://reddit.com/user/{0}' style='color: #1a1a1b; text-decoration: none;'>u/{0}</a></strong> · {1:n0} points
-                {2}
+                <strong><a href='https://reddit.com/user/{0}' style='color: #1a1a1b; text-decoration: none;'>u/{0}</a></strong> · {1:n0} points · 
+                <a href='{2}' style='color: #1a1a1b; text-decoration: none;'>View in Thread: {3}</a>
             </div>
             <div class='comment-content'>
-                {3}
+                {4}
             </div>
         </div>", 
                 comment.Comment.Author, 
                 comment.Comment.Score,
-                !string.IsNullOrEmpty(comment.Comment.ParentId) ? $@" · <a href='https://reddit.com/comments/{comment.Comment.ParentId}' style='color: #1a1a1b; text-decoration: none;'>View Thread</a>" : "",
+                comment.CommentUrl,
+                comment.Thread.Title.Length > 60 ? comment.Thread.Title[..57] + "..." : comment.Thread.Title,
                 ConvertMarkdownToHtml(comment.Comment.Body));
         }
         emailBuilder.AppendLine(@"
@@ -137,16 +157,18 @@ public static class EmailUtils
         <h2>Top Discussions</h2>");
         foreach (var (thread, analysis) in threadAnalyses)
         {
+            var threadId = $"thread-{thread.Id}";
             emailBuilder.AppendFormat(@"
-        <div class='thread'>
-            <a href='{0}' class='thread-title'>{1}</a>
+        <div class='thread' id='{0}'>
+            <a href='{1}' class='thread-title'>{2}</a>
             <div class='thread-stats'>
-                {2:n0} points · {3:n0} comments · Posted by <a href='https://reddit.com/user/{4}' style='color: #7c7c7c; text-decoration: none;'>u/{4}</a>
+                {3:n0} points · {4:n0} comments · Posted by <a href='https://reddit.com/user/{5}' style='color: #7c7c7c; text-decoration: none;'>u/{5}</a>
             </div>
             <div class='analysis'>
-                {5}
+                {6}
             </div>
         </div>",
+                threadId,
                 thread.Url,
                 thread.Title,
                 thread.Score,
@@ -161,7 +183,7 @@ public static class EmailUtils
         emailBuilder.AppendLine(@"
     <div class='divider'></div>
     <div style='text-align: center; color: #7c7c7c; font-size: 0.9em;'>
-        Generated by FeedbackFlow
+        Generated by FeedbackFlow 🥰
     </div>
 </body>
 </html>");
