@@ -79,17 +79,14 @@ public class ReportingFunctions
                 .ToList();
             _logger.LogInformation("Selected top {TopThreadCount} threads for detailed analysis", topThreads.Count);
 
-            var threadAnalyses = new List<(RedditThreadModel Thread, string Analysis)>();
-            var allComments = new List<RedditCommentModel>();
-
-            foreach (var thread in topThreads)
+            // Create tasks for parallel processing of each thread
+            var threadTasks = topThreads.Select(async thread =>
             {
                 _logger.LogDebug("Fetching full thread details for thread {ThreadId}: {ThreadTitle}", thread.Id, thread.Title);
                 var fullThread = await _redditService.GetThreadWithComments(thread.Id);
                 
                 var flatComments = FlattenComments(fullThread.Comments);
-                allComments.AddRange(flatComments);
-                
+
                 _logger.LogInformation("Thread {ThreadId} has {CommentCount} comments", thread.Id, flatComments.Count);
                 
                 var threadContent = $"Title: {fullThread.Title}\n\nContent: {fullThread.SelfText}\n\nComments:\n";
@@ -97,9 +94,18 @@ public class ReportingFunctions
 
                 _logger.LogDebug("Analyzing thread {ThreadId}", thread.Id);
                 var threadAnalysis = await _analyzerService.AnalyzeCommentsAsync("reddit", threadContent);
-                threadAnalyses.Add((fullThread, threadAnalysis));
+              
                 _logger.LogDebug("Completed analysis for thread {ThreadId}", thread.Id);
-            }
+
+                return (Thread: fullThread, Analysis: threadAnalysis, Comments: flatComments);
+            }).ToList();
+
+            // Wait for all thread processing to complete
+            var results = await Task.WhenAll(threadTasks);
+
+            var threadAnalyses = results.Select(r => (r.Thread, r.Analysis)).ToList();
+            var allComments = results.SelectMany(r => r.Comments).ToList();
+
 
             _logger.LogInformation("Processing top comments from {TotalCommentCount} total comments", allComments.Count);
             var topComments = allComments
