@@ -1,4 +1,4 @@
-using System.Text;
+Ôªøusing System.Text;
 using Markdig;
 using SharedDump.Models.Reddit;
 
@@ -20,6 +20,7 @@ public static class EmailUtils
     public static string GenerateRedditReportEmail(
         string subreddit, 
         DateTimeOffset cutoffDate, 
+        string threadTitlesAnalysis,
         string weeklyAnalysis, 
         List<(RedditThreadModel Thread, string Analysis)> threadAnalyses,
         List<TopCommentInfo> topComments)
@@ -60,7 +61,7 @@ public static class EmailUtils
         // Top Posts Quick Links
         emailBuilder.AppendLine(@"
     <div class='top-posts'>
-        <h2>?? Top Posts This Week</h2>
+        <h2>üîù Top Posts This Week</h2>
         <ul>");
         foreach (var (thread, _) in threadAnalyses)
         {
@@ -78,7 +79,7 @@ public static class EmailUtils
         // Table of Contents
         emailBuilder.AppendLine(@"
     <div class='toc'>
-        <h2>?? Table of Contents</h2>
+        <h2>üìñ Table of Contents</h2>
         <ul>
             <li><a href='#weekly-summary'>Weekly Summary</a></li>
             <li><a href='#top-comments'>Top Comments</a></li>
@@ -96,6 +97,16 @@ public static class EmailUtils
         </div>
     </div>");
 
+        // Thread Titles Analysis Section
+        emailBuilder.AppendLine(@"
+    <div class='section' id='thread-titles-analysis'>
+        <h2>Thread Titles Analysis</h2>
+        <div class='analysis'>");
+        emailBuilder.AppendLine(ConvertMarkdownToHtml(threadTitlesAnalysis));
+        emailBuilder.AppendLine(@"
+        </div>
+    </div>");
+
         // Top Comments Section
         emailBuilder.AppendLine(@"
     <div class='section' id='top-comments'>
@@ -105,7 +116,7 @@ public static class EmailUtils
             emailBuilder.AppendFormat(@"
         <div class='top-comment'>
             <div class='comment-meta'>
-                <strong><a href='https://reddit.com/user/{0}' style='color: #1a1a1b; text-decoration: none;'>u/{0}</a></strong> ∑ {1:n0} points
+                <strong><a href='https://reddit.com/user/{0}' style='color: #1a1a1b; text-decoration: none;'>u/{0}</a></strong> ¬∑ {1:n0} points
                 {2}
             </div>
             <div class='comment-content'>
@@ -114,7 +125,7 @@ public static class EmailUtils
         </div>", 
                 comment.Comment.Author, 
                 comment.Comment.Score,
-                !string.IsNullOrEmpty(comment.Comment.ParentId) ? $@" ∑ <a href='https://reddit.com/comments/{comment.Comment.ParentId}' style='color: #1a1a1b; text-decoration: none;'>View Thread</a>" : "",
+                !string.IsNullOrEmpty(comment.Comment.ParentId) ? $@" ¬∑ <a href='https://reddit.com/comments/{comment.Comment.ParentId}' style='color: #1a1a1b; text-decoration: none;'>View Thread</a>" : "",
                 ConvertMarkdownToHtml(comment.Comment.Body));
         }
         emailBuilder.AppendLine(@"
@@ -130,7 +141,7 @@ public static class EmailUtils
         <div class='thread'>
             <a href='{0}' class='thread-title'>{1}</a>
             <div class='thread-stats'>
-                {2:n0} points ∑ {3:n0} comments ∑ Posted by <a href='https://reddit.com/user/{4}' style='color: #7c7c7c; text-decoration: none;'>u/{4}</a>
+                {2:n0} points ¬∑ {3:n0} comments ¬∑ Posted by <a href='https://reddit.com/user/{4}' style='color: #7c7c7c; text-decoration: none;'>u/{4}</a>
             </div>
             <div class='analysis'>
                 {5}

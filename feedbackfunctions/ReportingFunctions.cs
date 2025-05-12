@@ -73,6 +73,22 @@ public class ReportingFunctions
             var threads = await _redditService.GetSubredditThreadsBasicInfo(subreddit, "hot", cutoffDate);
             _logger.LogInformation("Retrieved {ThreadCount} threads from r/{Subreddit}", threads.Count, subreddit);
 
+            // Analyze all thread titles first
+            var threadTitlesContent = $@"Analyze the titles of these Reddit posts from r/{subreddit} in the last week. Focus on:
+1. Common themes or patterns in what people are posting about
+2. The general mood or sentiment of the community based on titles
+3. Any notable trends or recurring topics
+4. Types of posts (e.g., questions, discussions, announcements)
+5. Popular or trending subjects
+
+Here are all the titles to analyze:
+
+{string.Join("\n\n", threads.Select(t => $"• {t.Title} (Score: {t.Score}, Comments: {t.NumComments})"))}";
+
+            _logger.LogDebug("Analyzing thread titles");
+            var threadTitlesAnalysis = await _analyzerService.AnalyzeCommentsAsync("reddit", threadTitlesContent);
+            _logger.LogDebug("Thread titles analysis completed");
+
             var topThreads = threads
                 .OrderByDescending(t => (t.NumComments * 0.7) + (t.Score * 0.3))
                 .Take(5)
@@ -142,7 +158,13 @@ Content to analyze:
             _logger.LogDebug("Weekly analysis completed");
 
             _logger.LogInformation("Generating HTML email report");
-            var emailHtml = EmailUtils.GenerateRedditReportEmail(subreddit, cutoffDate, weeklyAnalysis, threadAnalyses, topComments);
+            var emailHtml = EmailUtils.GenerateRedditReportEmail(
+                subreddit, 
+                cutoffDate, 
+                threadTitlesAnalysis,
+                weeklyAnalysis, 
+                threadAnalyses, 
+                topComments);
 
             var processingTime = DateTime.UtcNow - startTime;
             _logger.LogInformation("Reddit Report processing completed for r/{Subreddit} in {ProcessingTime:c}. Analyzed {ThreadCount} threads and {CommentCount} comments", 
