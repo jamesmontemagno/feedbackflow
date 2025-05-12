@@ -49,13 +49,15 @@ public class ReportingFunctions
     public async Task<HttpResponseData> RedditReport(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
-        _logger.LogInformation("Processing Reddit Report request");
+        var startTime = DateTime.UtcNow;
+        _logger.LogInformation("Starting Reddit Report processing for URL {RequestUrl}", req.Url);
 
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var subreddit = queryParams["subreddit"];
 
         if (string.IsNullOrEmpty(subreddit))
         {
+            _logger.LogWarning("Reddit Report request rejected - missing subreddit parameter");
             var response = req.CreateResponse(HttpStatusCode.BadRequest);
             await response.WriteStringAsync("Subreddit parameter is required");
             return response;
@@ -63,43 +65,49 @@ public class ReportingFunctions
 
         try
         {
-            // Get threads from the last 7 days
+            _logger.LogInformation("Fetching threads for subreddit r/{Subreddit}", subreddit);
+            
             var cutoffDate = DateTimeOffset.UtcNow.AddDays(-7);
+            _logger.LogDebug("Using cutoff date of {CutoffDate} for thread retrieval", cutoffDate);
+            
             var threads = await _redditService.GetSubredditThreadsBasicInfo(subreddit, "hot", cutoffDate);
+            _logger.LogInformation("Retrieved {ThreadCount} threads from r/{Subreddit}", threads.Count, subreddit);
 
-            // Sort threads by engagement (combination of comments and score)
             var topThreads = threads
                 .OrderByDescending(t => (t.NumComments * 0.7) + (t.Score * 0.3))
                 .Take(5)
                 .ToList();
+            _logger.LogInformation("Selected top {TopThreadCount} threads for detailed analysis", topThreads.Count);
 
-            // Get full thread details with comments
             var threadAnalyses = new List<(RedditThreadModel Thread, string Analysis)>();
             var allComments = new List<RedditCommentModel>();
 
             foreach (var thread in topThreads)
             {
+                _logger.LogDebug("Fetching full thread details for thread {ThreadId}: {ThreadTitle}", thread.Id, thread.Title);
                 var fullThread = await _redditService.GetThreadWithComments(thread.Id);
-                var threadContent = $"Title: {fullThread.Title}\n\nContent: {fullThread.SelfText}\n\nComments:\n";
                 
-                // Collect all comments for the thread
                 var flatComments = FlattenComments(fullThread.Comments);
                 allComments.AddRange(flatComments);
                 
+                _logger.LogInformation("Thread {ThreadId} has {CommentCount} comments", thread.Id, flatComments.Count);
+                
+                var threadContent = $"Title: {fullThread.Title}\n\nContent: {fullThread.SelfText}\n\nComments:\n";
                 threadContent += string.Join("\n", flatComments.Select(c => $"Comment by {c.Author}: {c.Body}"));
 
-                // Analyze each thread individually
+                _logger.LogDebug("Analyzing thread {ThreadId}", thread.Id);
                 var threadAnalysis = await _analyzerService.AnalyzeCommentsAsync("reddit", threadContent);
                 threadAnalyses.Add((fullThread, threadAnalysis));
+                _logger.LogDebug("Completed analysis for thread {ThreadId}", thread.Id);
             }
 
-            // Get top comments from the week
+            _logger.LogInformation("Processing top comments from {TotalCommentCount} total comments", allComments.Count);
             var topComments = allComments
                 .OrderByDescending(c => c.Score)
                 .Take(5)
                 .ToList();
 
-            // Create a weekly summary
+            _logger.LogInformation("Generating weekly summary analysis for r/{Subreddit}", subreddit);
             var weeklyContent = $@"Analyze the following week of Reddit discussions from r/{subreddit}. Focus on:
 1. Overall community sentiment and trends
 2. Key themes and topics that emerged
@@ -114,9 +122,14 @@ Content to analyze:
 {string.Join("\n\n", allComments.Select(c => c.Body))}";
 
             var weeklyAnalysis = await _analyzerService.AnalyzeCommentsAsync("reddit", weeklyContent);
+            _logger.LogDebug("Weekly analysis completed");
 
-            // Generate the HTML email using the new EmailUtils class
+            _logger.LogInformation("Generating HTML email report");
             var emailHtml = EmailUtils.GenerateRedditReportEmail(subreddit, cutoffDate, weeklyAnalysis, threadAnalyses, topComments);
+
+            var processingTime = DateTime.UtcNow - startTime;
+            _logger.LogInformation("Reddit Report processing completed for r/{Subreddit} in {ProcessingTime:c}. Analyzed {ThreadCount} threads and {CommentCount} comments", 
+                subreddit, processingTime, topThreads.Count, allComments.Count);
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "text/html; charset=utf-8");
@@ -125,7 +138,8 @@ Content to analyze:
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing Reddit report for r/{Subreddit}", subreddit);
+            _logger.LogError(ex, "Error processing Reddit report for r/{Subreddit}. Processing time: {ProcessingTime:c}", 
+                subreddit, DateTime.UtcNow - startTime);
             var response = req.CreateResponse(HttpStatusCode.InternalServerError);
             await response.WriteStringAsync($"Error processing report: {ex.Message}");
             return response;
