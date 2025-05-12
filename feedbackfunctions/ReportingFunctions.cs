@@ -81,6 +81,10 @@ public class ReportingFunctions
 4. Types of posts (e.g., questions, discussions, announcements)
 5. Popular or trending subjects
 
+Make the analysis pretty short recapping everything and any major highlights.
+
+Format your analysis in markdown with clear sections and emoji for better readability.
+
 Here are all the titles to analyze:
 
 {string.Join("\n\n", threads.Select(t => $"• {t.Title} (Score: {t.Score}, Comments: {t.NumComments})"))}";
