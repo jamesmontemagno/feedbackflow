@@ -21,6 +21,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" />
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
+    <PackageReference Include="Markdig" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\FeedbackFlow.ServiceDefaults\FeedbackFlow.ServiceDefaults.csproj" />
