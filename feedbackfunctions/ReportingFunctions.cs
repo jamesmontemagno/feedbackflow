@@ -86,6 +86,7 @@ public class ReportingFunctions
                 var fullThread = await _redditService.GetThreadWithComments(thread.Id);
                 
                 var flatComments = FlattenComments(fullThread.Comments);
+
                 _logger.LogInformation("Thread {ThreadId} has {CommentCount} comments", thread.Id, flatComments.Count);
                 
                 var threadContent = $"Title: {fullThread.Title}\n\nContent: {fullThread.SelfText}\n\nComments:\n";
@@ -93,6 +94,7 @@ public class ReportingFunctions
 
                 _logger.LogDebug("Analyzing thread {ThreadId}", thread.Id);
                 var threadAnalysis = await _analyzerService.AnalyzeCommentsAsync("reddit", threadContent);
+              
                 _logger.LogDebug("Completed analysis for thread {ThreadId}", thread.Id);
 
                 return (Thread: fullThread, Analysis: threadAnalysis, Comments: flatComments);
@@ -103,6 +105,7 @@ public class ReportingFunctions
 
             var threadAnalyses = results.Select(r => (r.Thread, r.Analysis)).ToList();
             var allComments = results.SelectMany(r => r.Comments).ToList();
+
 
             _logger.LogInformation("Processing top comments from {TotalCommentCount} total comments", allComments.Count);
             var topComments = allComments
