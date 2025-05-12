@@ -4,6 +4,8 @@ using SharedDump.Models.Reddit;
 
 namespace SharedDump.Utils;
 
+public record TopCommentInfo(RedditCommentModel Comment, RedditThreadModel Thread, string CommentUrl);
+
 public static class EmailUtils
 {
     private static readonly MarkdownPipeline _markdownPipeline = new MarkdownPipelineBuilder()
@@ -20,7 +22,7 @@ public static class EmailUtils
         DateTimeOffset cutoffDate, 
         string weeklyAnalysis, 
         List<(RedditThreadModel Thread, string Analysis)> threadAnalyses,
-        List<RedditCommentModel> topComments)
+        List<TopCommentInfo> topComments)
     {
         var emailBuilder = new StringBuilder();
         emailBuilder.AppendLine(@"<!DOCTYPE html>
@@ -110,10 +112,10 @@ public static class EmailUtils
                 {3}
             </div>
         </div>", 
-                comment.Author, 
-                comment.Score,
-                !string.IsNullOrEmpty(comment.ParentId) ? $@" · <a href='https://reddit.com/comments/{comment.ParentId}' style='color: #1a1a1b; text-decoration: none;'>View Thread</a>" : "",
-                ConvertMarkdownToHtml(comment.Body));
+                comment.Comment.Author, 
+                comment.Comment.Score,
+                !string.IsNullOrEmpty(comment.Comment.ParentId) ? $@" · <a href='https://reddit.com/comments/{comment.Comment.ParentId}' style='color: #1a1a1b; text-decoration: none;'>View Thread</a>" : "",
+                ConvertMarkdownToHtml(comment.Comment.Body));
         }
         emailBuilder.AppendLine(@"
     </div>");

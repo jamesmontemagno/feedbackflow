@@ -106,11 +106,22 @@ public class ReportingFunctions
             var threadAnalyses = results.Select(r => (r.Thread, r.Analysis)).ToList();
             var allComments = results.SelectMany(r => r.Comments).ToList();
 
-
             _logger.LogInformation("Processing top comments from {TotalCommentCount} total comments", allComments.Count);
+            
+            // Enhance top comments with thread information
             var topComments = allComments
                 .OrderByDescending(c => c.Score)
                 .Take(5)
+                .Select(comment =>
+                {
+                    // Find the parent thread for this comment
+                    var parentThread = results.First(r => r.Comments.Any(c => c.Id == comment.Id)).Thread;
+                    return new TopCommentInfo(
+                        Comment: comment,
+                        Thread: parentThread,
+                        CommentUrl: $"https://reddit.com{parentThread.Permalink}{comment.Id}"
+                    );
+                })
                 .ToList();
 
             _logger.LogInformation("Generating weekly summary analysis for r/{Subreddit}", subreddit);
