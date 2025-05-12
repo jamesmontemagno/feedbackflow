@@ -1,4 +1,4 @@
-using System.Net;
+ï»¿using System.Net;
 using System.Text.Json;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
@@ -73,26 +73,6 @@ public class ReportingFunctions
             var threads = await _redditService.GetSubredditThreadsBasicInfo(subreddit, "hot", cutoffDate);
             _logger.LogInformation("Retrieved {ThreadCount} threads from r/{Subreddit}", threads.Count, subreddit);
 
-            // Analyze all thread titles first
-            var threadTitlesContent = $@"Analyze the titles of these Reddit posts from r/{subreddit} in the last week. Focus on:
-1. Common themes or patterns in what people are posting about
-2. The general mood or sentiment of the community based on titles
-3. Any notable trends or recurring topics
-4. Types of posts (e.g., questions, discussions, announcements)
-5. Popular or trending subjects
-
-Make the analysis pretty short recapping everything and any major highlights.
-
-Format your analysis in markdown with clear sections and emoji for better readability.
-
-Here are all the titles to analyze:
-
-{string.Join("\n\n", threads.Select(t => $"• {t.Title} (Score: {t.Score}, Comments: {t.NumComments})"))}";
-
-            _logger.LogDebug("Analyzing thread titles");
-            var threadTitlesAnalysis = await _analyzerService.AnalyzeCommentsAsync("reddit", threadTitlesContent);
-            _logger.LogDebug("Thread titles analysis completed");
-
             var topThreads = threads
                 .OrderByDescending(t => (t.NumComments * 0.7) + (t.Score * 0.3))
                 .Take(5)
@@ -112,8 +92,16 @@ Here are all the titles to analyze:
                 var threadContent = $"Title: {fullThread.Title}\n\nContent: {fullThread.SelfText}\n\nComments:\n";
                 threadContent += string.Join("\n", flatComments.Select(c => $"Comment by {c.Author}: {c.Body}"));
 
+                var customPrompt = @"Analyze this Reddit thread and provide a concise summary in 3 short sections with use of emojis throughotu to add visual flair:
+
+1. Executive Summary: Brief overview of the main topic and key points (1-3 sentences)
+2. Key Insights: Most important takeaways or findings (2-4 bullet points)
+3. Sentiment Analysis: Overall mood of the discussion (1-2 sentence2)
+
+Keep each section very brief and focused. Total analysis should be no more than three short paragraphs. Format in markdown.";
+
                 _logger.LogDebug("Analyzing thread {ThreadId}", thread.Id);
-                var threadAnalysis = await _analyzerService.AnalyzeCommentsAsync("reddit", threadContent);
+                var threadAnalysis = await _analyzerService.AnalyzeCommentsAsync("reddit", threadContent, customPrompt);
               
                 _logger.LogDebug("Completed analysis for thread {ThreadId}", thread.Id);
 
@@ -145,27 +133,23 @@ Here are all the titles to analyze:
                 .ToList();
 
             _logger.LogInformation("Generating weekly summary analysis for r/{Subreddit}", subreddit);
-            var weeklyContent = $@"Analyze the following week of Reddit discussions from r/{subreddit}. Focus on:
-1. Overall community sentiment and trends
-2. Key themes and topics that emerged
-3. Notable insights or recurring pain points
-4. The quality and nature of community engagement
-5. Any actionable recommendations
 
-Format your analysis in markdown with clear sections and emoji for better readability.
+            var customWeeklyContentPrompt = $@"Analyze all of the top posts of the last week of Reddit discussions from r/{subreddit} this is a list of all of the comment sfrom all of these top threads of various topics. provide a concise summary in 3 short sections with use of emojis to add visual flair througout:
 
-Content to analyze:
+1. Executive Summary: Brief overview of the main topic and key points (1-3 sentences)
+2. Key Insights or Trends: Most important takeaways or findings (2-4 bullet points)
+3. Sentiment Analysis: Overall mood of the discussion (1-2 sentence)
 
-{string.Join("\n\n", allComments.Select(c => c.Body))}";
+Keep each section very brief and focused. Total analysis should be no more than three short paragraphs. Format in markdown.";
+            var weeklyContent = string.Join("\n\n", allComments.Select(c => c.Body));
 
-            var weeklyAnalysis = await _analyzerService.AnalyzeCommentsAsync("reddit", weeklyContent);
+            var weeklyAnalysis = await _analyzerService.AnalyzeCommentsAsync("reddit", weeklyContent, customWeeklyContentPrompt);
             _logger.LogDebug("Weekly analysis completed");
 
             _logger.LogInformation("Generating HTML email report");
             var emailHtml = EmailUtils.GenerateRedditReportEmail(
                 subreddit, 
                 cutoffDate, 
-                threadTitlesAnalysis,
                 weeklyAnalysis, 
                 threadAnalyses, 
                 topComments);

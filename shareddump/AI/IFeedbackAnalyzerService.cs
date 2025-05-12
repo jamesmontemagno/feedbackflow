@@ -6,6 +6,7 @@ public interface IFeedbackAnalyzerService
 {
     IChatClient CreateClient(string endpoint, string apiKey, string deploymentModel);
     Task<string> AnalyzeCommentsAsync(string serviceType, string comments);
+    Task<string> AnalyzeCommentsAsync(string serviceType, string comments, string? customSystemPrompt);
     IAsyncEnumerable<string> GetStreamingAnalysisAsync(string serviceType, string comments);
     IAsyncEnumerable<string> GetStreamingAnalysisAsync(string serviceType, string comments, string? customSystemPrompt);
 }

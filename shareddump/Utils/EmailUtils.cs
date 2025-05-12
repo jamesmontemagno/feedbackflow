@@ -20,7 +20,6 @@ public static class EmailUtils
     public static string GenerateRedditReportEmail(
         string subreddit, 
         DateTimeOffset cutoffDate, 
-        string threadTitlesAnalysis,
         string weeklyAnalysis, 
         List<(RedditThreadModel Thread, string Analysis)> threadAnalyses,
         List<TopCommentInfo> topComments)
@@ -51,6 +50,24 @@ public static class EmailUtils
         .toc-section { font-weight: bold; margin-top: 10px; }
         .toc-subsection { padding-left: 20px; }
         .top-posts { background-color: #fff3e0; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .feedback-button { 
+            display: inline-block; 
+            background-color: #0366d6; 
+            color: white; 
+            padding: 8px 16px; 
+            border-radius: 4px; 
+            text-decoration: none; 
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        .feedback-button:hover {
+            background-color: #0255b3;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>");
@@ -85,7 +102,6 @@ public static class EmailUtils
     <div class='toc'>
         <h2>📖 Table of Contents</h2>
         <ul>
-            <li class='toc-section'><a href='#thread-titles-analysis'>Thread Titles Analysis</a></li>
             <li class='toc-section'><a href='#weekly-summary'>Weekly Summary</a></li>
             <li class='toc-section'><a href='#top-comments'>Top Comments</a></li>
             <li class='toc-section'><a href='#top-discussions'>Top Discussions</a>
@@ -104,16 +120,6 @@ public static class EmailUtils
                 </ul>
             </li>
         </ul>
-    </div>");
-
-        // Thread Titles Analysis Section
-        emailBuilder.AppendLine(@"
-    <div class='section' id='thread-titles-analysis'>
-        <h2>Thread Titles Analysis</h2>
-        <div class='analysis'>");
-        emailBuilder.AppendLine(ConvertMarkdownToHtml(threadTitlesAnalysis));
-        emailBuilder.AppendLine(@"
-        </div>
     </div>");
 
         // Weekly Analysis Section
@@ -164,8 +170,12 @@ public static class EmailUtils
             <div class='thread-stats'>
                 {3:n0} points · {4:n0} comments · Posted by <a href='https://reddit.com/user/{5}' style='color: #7c7c7c; text-decoration: none;'>u/{5}</a>
             </div>
+            <div class='action-buttons'>
+                <a href='{1}' class='feedback-button'>View on Reddit</a>
+                <a href='https://feedbackwebapp20250414225345-f6bxcxgvh9ergkf0.canadacentral-01.azurewebsites.net/?source=reddit&id={6}' class='feedback-button'>Open in FeedbackFlow</a>
+            </div>
             <div class='analysis'>
-                {6}
+                {7}
             </div>
         </div>",
                 threadId,
@@ -174,6 +184,7 @@ public static class EmailUtils
                 thread.Score,
                 thread.NumComments,
                 thread.Author,
+                thread.Id,
                 ConvertMarkdownToHtml(analysis));
         }
         emailBuilder.AppendLine(@"
