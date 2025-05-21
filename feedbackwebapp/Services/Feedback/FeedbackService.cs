@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using FeedbackWebApp.Services.Interfaces;
 
 namespace FeedbackWebApp.Services.Feedback;
 
@@ -12,7 +13,7 @@ public enum FeedbackProcessStatus
 
 public delegate void FeedbackStatusUpdate(FeedbackProcessStatus status, string message);
 
-public abstract class FeedbackService
+public abstract class FeedbackService : IFeedbackService
 {
     private readonly UserSettingsService _userSettings;
     protected readonly HttpClient Http;
@@ -39,7 +40,7 @@ public abstract class FeedbackService
         OnStatusUpdate?.Invoke(status, message);
     }
 
-    protected async Task<string> AnalyzeComments(string serviceType, string comments, int commentCount, string? explicitCustomPrompt = null)
+    protected async Task<string> AnalyzeCommentsInternal(string serviceType, string comments, int commentCount, string? explicitCustomPrompt = null)
     {
         var maxComments = await GetMaxCommentsToAnalyze();
 
@@ -103,6 +104,19 @@ public abstract class FeedbackService
         return await analyzeResponse.Content.ReadAsStringAsync();
     }
 
+    /// <summary>
+    /// Gets raw comments directly from the source
+    /// </summary>
+    public abstract Task<(string rawComments, object? additionalData)> GetComments();
+
+    /// <summary>
+    /// Analyzes comments to produce insights
+    /// </summary>
+    public abstract Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null);
+    
+    /// <summary>
+    /// Gets and analyzes feedback in a single operation
+    /// </summary>
     public abstract Task<(string markdownResult, object? additionalData)> GetFeedback();
 
     protected async Task<int> GetMaxCommentsToAnalyze()

@@ -23,7 +23,7 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         _playlistIds = playlistIds;
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    public override async Task<(string rawComments, object? additionalData)> GetComments()
     {
         var processedVideoIds = UrlParsing.ExtractVideoId(_videoIds);
         var processedPlaylistIds = UrlParsing.ExtractPlaylistId(_playlistIds);
@@ -60,23 +60,52 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
         feedbackResponse.EnsureSuccessStatusCode();
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
-          // Parse the YouTube response
+        
+        // Parse the YouTube response
         var videos = JsonSerializer.Deserialize<List<YouTubeOutputVideo>>(responseContent);
         
         if (videos == null || !videos.Any())
         {
             UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
-            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
+            return ("No comments available", null);
         }
 
         var totalComments = videos.Sum(v => v.Comments.Count);
         UpdateStatus(FeedbackProcessStatus.GatheringComments, $"Found {totalComments} comments across {videos.Count} videos...");
-        // Build our analysis request with all comments
+        
+        // Build our comments string
         var allComments = string.Join("\n\n", videos.SelectMany(v => 
             v.Comments.Select(c => $"Video: {v.Title}\nComment by {c.Author}: {c.Text}")));
 
+        return (allComments, videos);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    {
+        if (string.IsNullOrWhiteSpace(comments))
+        {
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
+        }
+
+        // Calculate the number of comments based on newline separations
+        int totalComments = comments.Split(new[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries).Length;
+        
         // Analyze the comments
-        var markdownResult = await AnalyzeComments("YouTube", allComments, totalComments);
-        return (markdownResult, videos);
+        var markdownResult = await AnalyzeCommentsInternal("YouTube", comments, totalComments);
+        return (markdownResult, additionalData);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    {
+        // Get comments
+        var (comments, additionalData) = await GetComments();
+        
+        if (string.IsNullOrWhiteSpace(comments) || comments == "No comments available")
+        {
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
+        }
+
+        // Analyze comments
+        return await AnalyzeComments(comments, additionalData);
     }
 }

@@ -21,7 +21,7 @@ public class BlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackService
         _postUrlOrId = postUrlOrId;
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    public override async Task<(string rawComments, object? additionalData)> GetComments()
     {
         if (string.IsNullOrWhiteSpace(_postUrlOrId))
             throw new InvalidOperationException("Please enter a valid BlueSky post URL or ID");
@@ -36,7 +36,13 @@ public class BlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackService
         var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
         feedbackResponse.EnsureSuccessStatusCode();
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
-        var feedback = JsonSerializer.Deserialize<BlueSkyFeedbackResponse>(responseContent);
+        
+        return (responseContent, JsonSerializer.Deserialize<BlueSkyFeedbackResponse>(responseContent));
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    {
+        var feedback = JsonSerializer.Deserialize<BlueSkyFeedbackResponse>(comments);
         if (feedback == null || feedback.Items == null || feedback.Items.Count == 0)
         {
             UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
@@ -54,8 +60,22 @@ public class BlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackService
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Found {totalComments} comments and replies...");
 
         // Analyze comments using the shared AnalyzeComments method
-        var markdown = await AnalyzeComments("bluesky", responseContent, totalComments);
+        var markdown = await AnalyzeCommentsInternal("bluesky", comments, totalComments);
 
         return (markdown, feedback);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    {
+        // Get comments
+        var (comments, additionalData) = await GetComments();
+        
+        if (string.IsNullOrWhiteSpace(comments))
+        {
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
+        }
+
+        // Analyze comments
+        return await AnalyzeComments(comments, additionalData);
     }
 }

@@ -19,7 +19,7 @@ public class TwitterFeedbackService : FeedbackService, ITwitterFeedbackService
         _tweetUrlOrId = tweetUrlOrId;
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    public override async Task<(string rawComments, object? additionalData)> GetComments()
     {
         if (string.IsNullOrWhiteSpace(_tweetUrlOrId))
             throw new InvalidOperationException("Please enter a valid tweet URL or ID");
@@ -35,26 +35,59 @@ public class TwitterFeedbackService : FeedbackService, ITwitterFeedbackService
         feedbackResponse.EnsureSuccessStatusCode();
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
         var feedback = JsonSerializer.Deserialize<TwitterFeedbackResponse>(responseContent);
+
         if (feedback == null || feedback.Items == null || feedback.Items.Count == 0)
         {
             UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
-            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
+            return ("No comments available", null);
         }
 
-        var totalComments = CountCommentsRecursively(feedback.Items);
-
-        int CountCommentsRecursively(List<TwitterFeedbackItem> items)
+        var allComments = string.Join("\n\n", feedback.Items.Select(item =>
         {
-            if (items == null) return 0;
-            
-            return items.Sum(item => 1 + CountCommentsRecursively(item.Replies ?? new()));
+            var comments = new List<string>
+            {
+                $"Tweet by {item.Author}: {item.Content}"
+            };
+
+            if (item.Replies?.Any() == true)
+            {
+                comments.AddRange(item.Replies.Select(reply =>
+                    $"Reply by {reply.Author}: {reply.Content}"
+                ));
+            }
+
+            return string.Join("\n", comments);
+        }));
+
+        return (allComments, feedback);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    {
+        if (string.IsNullOrWhiteSpace(comments))
+        {
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
         }
-        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Found {totalComments} comments and replies...");
 
-       
-        // Optionally, analyze comments using the shared AnalyzeComments method
-        var markdown = await AnalyzeComments("twitter", responseContent, totalComments);
+        // Calculate number of comments based on line breaks
+        var totalComments = comments.Split("\n\n").Length;
 
-        return (markdown, feedback);
+        // Analyze comments
+        var markdownResult = await AnalyzeCommentsInternal("twitter", comments, totalComments);
+        return (markdownResult, additionalData);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    {
+        // Get comments
+        var (comments, additionalData) = await GetComments();
+        
+        if (string.IsNullOrWhiteSpace(comments) || comments == "No comments available")
+        {
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
+        }
+
+        // Analyze comments
+        return await AnalyzeComments(comments, additionalData);
     }
 }

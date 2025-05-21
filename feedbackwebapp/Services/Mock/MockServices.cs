@@ -1,5 +1,6 @@
 using FeedbackWebApp.Services.Feedback;
 using FeedbackWebApp.Services.Interfaces;
+using SharedDump.Models.HackerNews;
 using SharedDump.Models.YouTube;
 
 namespace FeedbackWebApp.Services.Mock;
@@ -11,7 +12,7 @@ public class MockYouTubeFeedbackService(
     FeedbackStatusUpdate? onStatusUpdate = null)
     : FeedbackService(http, configuration, userSettings, onStatusUpdate), IYouTubeFeedbackService
 {
-    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    public override async Task<(string rawComments, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock YouTube comments...");
         await Task.Delay(1000); // Simulate network delay
@@ -64,9 +65,18 @@ public class MockYouTubeFeedbackService(
             }
         };
 
-        // Instead of using AnalyzeComments, return a pre-defined mockup result
+        // Build our comments string
+        var allComments = string.Join("\n\n", mockVideos.SelectMany(v => 
+            v.Comments.Select(c => $"Video: {v.Title}\nComment by {c.Author}: {c.Text}")));
+
+        return (allComments, mockVideos);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    {
+        // Simulate analysis time
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing mock YouTube comments...");
-        await Task.Delay(1000); // Simulate analysis time
+        await Task.Delay(1000); 
         
         var mockMarkdownResult = @"# YouTube Comment Analysis 📺
 
@@ -98,7 +108,16 @@ public class MockYouTubeFeedbackService(
 - Continue emphasis on practical examples which resonated strongly
 - Maintain current explanation style that viewers found effective";
 
-        return (mockMarkdownResult, mockVideos);
+        return (mockMarkdownResult, additionalData);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    {
+        // Get comments
+        var (comments, additionalData) = await GetComments();
+        
+        // Analyze comments
+        return await AnalyzeComments(comments, additionalData);
     }
 }
 
@@ -109,12 +128,75 @@ public class MockHackerNewsFeedbackService(
     FeedbackStatusUpdate? onStatusUpdate = null)
     : FeedbackService(http, configuration, userSettings, onStatusUpdate), IHackerNewsFeedbackService
 {
-    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    public override async Task<(string rawComments, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock Hacker News comments...");
         await Task.Delay(1000); // Simulate network delay
 
-        // Instead of using AnalyzeComments, return a pre-defined mockup result
+        var mockComments = @"Story: Announcing TypeScript 5.4: The Best Release Yet for Developer Experience
+Comment by user123: The new type inference improvements are incredible. This will save me hours of debugging.
+Comment by devExpert: I've been testing the beta, and the strict mode enhancements are a game changer for large codebases.
+Comment by typescript_fan: Would love to see more examples of using the new mapped types features.
+Comment by senior_dev: The performance improvements in type checking are noticeable in our monorepo.
+
+Story: Why We Chose TypeScript for Our New Project
+Comment by jsDev: TypeScript has been essential for maintaining our codebase as it grows.
+Comment by tech_lead: The biggest win for us was catching errors before runtime.
+Comment by newbie: As someone learning TS, the documentation and community support are fantastic.
+Comment by architect: Strong typing has improved our team's productivity significantly.";
+
+        // Create a mock HackerNews response structure
+        var mockArticleThreads = new List<List<HackerNewsItem>>
+        {
+            new()
+            {
+                new()
+                {
+                    Id = 123,
+                    Title = "Announcing TypeScript 5.4: The Best Release Yet for Developer Experience",
+                    By = "microsoftdev",
+                    Text = null,
+                    Time = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    Kids = new List<int> { 456, 457, 458, 459 }
+                },
+                new()
+                {
+                    Id = 456,
+                    By = "user123",
+                    Text = "The new type inference improvements are incredible. This will save me hours of debugging.",
+                    Time = DateTimeOffset.UtcNow.AddMinutes(-30).ToUnixTimeSeconds(),
+                    Parent = 123
+                }
+                // Additional comments would be added here
+            },
+            new()
+            {
+                new()
+                {
+                    Id = 124,
+                    Title = "Why We Chose TypeScript for Our New Project",
+                    By = "teamlead",
+                    Text = null,
+                    Time = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    Kids = new List<int> { 460, 461, 462, 463 }
+                },
+                new()
+                {
+                    Id = 460,
+                    By = "jsDev",
+                    Text = "TypeScript has been essential for maintaining our codebase as it grows.",
+                    Time = DateTimeOffset.UtcNow.AddMinutes(-45).ToUnixTimeSeconds(),
+                    Parent = 124
+                }
+                // Additional comments would be added here
+            }
+        };
+
+        return (mockComments, mockArticleThreads);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    {
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing mock Hacker News comments...");
         await Task.Delay(1000); // Simulate analysis time
         
@@ -123,6 +205,18 @@ public class MockHackerNewsFeedbackService(
 ## Overview and Key Themes 🔍
 The discussion focuses on TypeScript's type system, with strong community support for its benefits in development workflows. Key themes include:
 - Productivity improvements when using TypeScript
+- Strong appreciation for type safety features
+- Interest in advanced typing features
+
+## Technical Highlights ⚡
+1. Type Inference Improvements
+- Positive feedback on new inference capabilities
+- Reduced debugging time reported
+- Enhanced IDE support
+
+2. Strict Mode Features
+- Particularly valuable for large codebases
+- Improved error detection
 - Value of strict mode for error prevention
 - Interest in advanced type system features
 
@@ -141,24 +235,33 @@ The discussion focuses on TypeScript's type system, with strong community suppor
 2. **Static Type Checking**: Highlighted for preventing runtime errors
 3. **Advanced Types**: Community interest in mapped types and other advanced features
 
-## Comparative Analysis ⚖️
-- TypeScript favorably compared to plain JavaScript for large codebases
-- Strict mode specifically praised over loose type checking
-- Some discussion of TypeScript vs. alternative type systems
+## Learning & Documentation
+- Positive feedback on documentation quality
+- Strong community support noted
+- Resources available for newcomers
 
-## Trade-offs and Controversies 🔄
-- Minimal controversy detected in the discussion
-- General consensus on TypeScript's value proposition
-- Some debate about ideal strictness settings for different project sizes
+## Impact on Development
+1. Improved maintainability
+2. Better error detection
+3. Enhanced team productivity
+4. Stronger tooling support
 
-## Recommendations & Opportunities 💡
-1. Consider expanding documentation/tutorials on advanced typing features
-2. Continue emphasizing strict mode adoption in community resources
-3. Provide more examples of mapped types and their practical applications
-
-## Final Summary 📝
 The Hacker News community strongly endorses TypeScript's type system, particularly valuing strict mode for error prevention. There's notable interest in advanced typing features like mapped types, suggesting an opportunity for more educational content in this area.";
 
-        return (mockMarkdownResult, null);
+        return (mockMarkdownResult, additionalData);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    {
+        // Get comments
+        var (comments, additionalData) = await GetComments();
+        
+        if (string.IsNullOrWhiteSpace(comments))
+        {
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
+        }
+
+        // Analyze comments
+        return await AnalyzeComments(comments, additionalData);
     }
 }

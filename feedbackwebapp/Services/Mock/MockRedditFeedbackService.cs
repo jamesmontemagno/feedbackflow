@@ -15,7 +15,7 @@ public class MockRedditFeedbackService : FeedbackService, IRedditFeedbackService
     {
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    public override async Task<(string rawComments, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock Reddit data...");
         await Task.Delay(1000); // Simulate network delay
@@ -68,6 +68,38 @@ public class MockRedditFeedbackService : FeedbackService, IRedditFeedbackService
             }
         };
 
+        // Build the comments string
+        var allComments = string.Join("\n\n", mockThreads.Select(t =>
+        {
+            var threadComments = new List<string>();
+            void AddComment(RedditCommentModel comment, int depth = 0)
+            {
+                var indent = new string(' ', depth * 2);
+                threadComments.Add($"{indent}Comment by {comment.Author}: {comment.Body}");
+                
+                if (comment.Replies?.Any() == true)
+                {
+                    foreach (var reply in comment.Replies)
+                    {
+                        AddComment(reply, depth + 1);
+                    }
+                }
+            }
+
+            threadComments.Add($"Thread: {t.Title}\nAuthor: {t.Author}\nContent: {t.SelfText}");
+            foreach (var comment in t.Comments)
+            {
+                AddComment(comment);
+            }
+
+            return string.Join("\n", threadComments);
+        }));
+
+        return (allComments, mockThreads);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    {
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing mock Reddit comments...");
         await Task.Delay(1000); // Simulate analysis delay
 
@@ -79,20 +111,40 @@ public class MockRedditFeedbackService : FeedbackService, IRedditFeedbackService
 💬 Key responses highly upvoted (98 and 32 points)
 
 ## Key Technical Points
-🔍 Performance profiling recommended as first step
-⚡ Thread pool and async IO considerations in .NET Core
-🛠️ Potential blocking IO issues identified
+1. Performance issues between ASP.NET and .NET Core applications
+2. Importance of proper profiling and analysis
+3. Discussion of thread pool management in ASP.NET Core
 
-## Notable Insights
-- Detailed explanation of ASP.NET Core threading model
-- Importance of proper performance testing
-- Community focus on systematic debugging approach
+## Recommendations
+1. Use profiling tools to identify bottlenecks
+2. Check for blocking I/O operations
+3. Review thread pool configuration
+4. Consider async/await implementation
 
-## Community Response
-👥 Experienced developers providing detailed technical guidance
-📈 Strong emphasis on proper diagnostic approaches
-🤝 Constructive discussion tone with practical advice";
+## Community Interaction
+- High engagement from experienced developers
+- Constructive discussion format
+- Good follow-up questions from OP
 
-        return (mockAnalysis, mockThreads);
+## Action Items
+1. Implement profiling
+2. Review async operations
+3. Analyze thread pool usage";
+
+        return (mockAnalysis, additionalData);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    {
+        // Get comments
+        var (comments, additionalData) = await GetComments();
+        
+        if (string.IsNullOrWhiteSpace(comments))
+        {
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
+        }
+
+        // Analyze comments
+        return await AnalyzeComments(comments, additionalData);
     }
 }

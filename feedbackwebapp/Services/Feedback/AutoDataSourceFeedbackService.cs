@@ -21,7 +21,7 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         _serviceProvider = serviceProvider;
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    public override async Task<(string rawComments, object? additionalData)> GetComments()
     {
         if (_urls == null || _urls.Length == 0)
         {
@@ -56,13 +56,40 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
             throw new InvalidOperationException("No valid comments were found from the provided URLs");
         }
 
+        // Join all comments together
+        var combinedComments = string.Join("\n---\n", allComments);
+        return (combinedComments, allComments.Count);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    {
+        if (string.IsNullOrWhiteSpace(comments))
+        {
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
+        }
+
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing feedback...");
 
-        // Join all comments and analyze them
-        var combinedComments = string.Join("\n---\n", allComments);
-        var analysisResult = await AnalyzeComments("auto", combinedComments, allComments.Count);
+        // Use the comment count if provided in additionalData
+        var commentCount = additionalData is int count ? count : comments.Split("\n---\n").Length;
+        
+        // Analyze the combined comments
+        var markdown = await AnalyzeCommentsInternal("auto", comments, commentCount);
+        return (markdown, null);
+    }
 
-        return (analysisResult, null);
+    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    {
+        // Get comments from all sources
+        var (comments, additionalData) = await GetComments();
+        
+        if (string.IsNullOrWhiteSpace(comments))
+        {
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
+        }
+
+        // Analyze all comments together
+        return await AnalyzeComments(comments, additionalData);
     }
 
     private async Task<List<string>> ProcessUrl(string url)
@@ -84,7 +111,8 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
     {
         if (UrlParsing.IsYouTubeUrl(url))
         {
-            var videoId = UrlParsing.ExtractYouTubeId(url);            if (!string.IsNullOrEmpty(videoId))
+            var videoId = UrlParsing.ExtractYouTubeId(url);
+            if (!string.IsNullOrEmpty(videoId))
             {
                 return _serviceProvider.CreateYouTubeService(videoId, string.Empty, OnStatusUpdate);
             }
@@ -100,7 +128,8 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
             {
                 return _serviceProvider.CreateRedditService(new[] { threadId }, OnStatusUpdate);
             }
-        }        else if (UrlParsing.IsDevBlogsUrl(url))
+        }       
+        else if (UrlParsing.IsDevBlogsUrl(url))
         {
             return _serviceProvider.CreateDevBlogsService(url, OnStatusUpdate);
         }

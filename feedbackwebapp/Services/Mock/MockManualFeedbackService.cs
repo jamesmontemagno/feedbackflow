@@ -16,13 +16,31 @@ public class MockManualFeedbackService : FeedbackService, IManualFeedbackService
         FeedbackStatusUpdate? onStatusUpdate = null)
         : base(http, configuration, userSettings, onStatusUpdate) { }
 
-    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    public override async Task<(string rawComments, object? additionalData)> GetComments()
     {
-        await Task.Delay(500); // Simulate network delay
-        
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Processing manual input...");
-        await Task.Delay(1000); // Simulate analysis time
-        
+        await Task.Delay(500); // Simulate network delay
+
+        if (string.IsNullOrWhiteSpace(Content))
+        {
+            return ("", null);
+        }
+
+        return (Content, null);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    {
+        if (string.IsNullOrWhiteSpace(comments))
+        {
+            UpdateStatus(FeedbackProcessStatus.Completed, "No content to analyze");
+            return ("## No Content Available\n\nThere is no content to analyze at this time.", null);
+        }
+
+        // Simulate analysis time
+        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing manual input...");
+        await Task.Delay(1000);
+
         var mockMarkdown = @"## Manual Input Analysis
 
 ### Overview
@@ -40,7 +58,6 @@ Content length: " + Content.Length + @" characters
 1. Content Overview
    - The provided content was successfully processed
    - " + (Content.Length > 100 ? "Substantial amount of content analyzed" : "Brief content provided for analysis") + @"
-
 2. Sentiment Analysis
    - Overall sentiment appears balanced
    - Key emotional markers identified in the content
@@ -55,5 +72,19 @@ The manual content analysis provides valuable insights that can guide your under
 
         UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed");
         return (mockMarkdown, null);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    {
+        // Get comments
+        var (comments, additionalData) = await GetComments();
+        
+        if (string.IsNullOrWhiteSpace(comments))
+        {
+            return ("## No Comments Available\n\nThere is no content to analyze at this time.", null);
+        }
+
+        // Analyze comments
+        return await AnalyzeComments(comments, additionalData);
     }
 }

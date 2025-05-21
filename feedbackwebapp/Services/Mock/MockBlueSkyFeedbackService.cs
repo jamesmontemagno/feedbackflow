@@ -1,5 +1,6 @@
 using FeedbackWebApp.Services.Feedback;
 using SharedDump.Models.BlueSkyFeedback;
+using FeedbackWebApp.Services.Interfaces;
 
 namespace FeedbackWebApp.Services.Mock;
 
@@ -17,10 +18,10 @@ public class MockBlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackServi
     {
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    public override async Task<(string rawComments, object? additionalData)> GetComments()
     {
-        UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock BlueSky data...");
-        await Task.Delay(500); // Simulate network delay
+        UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock BlueSky comments...");
+        await Task.Delay(1000); // Simulate network delay
 
         var mockFeedback = new BlueSkyFeedbackResponse
         {
@@ -32,47 +33,132 @@ public class MockBlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackServi
                     Author = "did:plc:feedbackflow",
                     AuthorName = "FeedbackFlow",
                     AuthorUsername = "feedbackflow.bsky.social",
-                    Content = "Excited to announce support for BlueSky in FeedbackFlow!",
+                    Content = "Excited to announce BlueSky support in FeedbackFlow! 🚀",
                     TimestampUtc = DateTime.UtcNow.AddMinutes(-30),
                     Replies = new List<BlueSkyFeedbackItem>
                     {
-                        new BlueSkyFeedbackItem
+                        new()
                         {
                             Id = "at://did:plc:abcdef/app.bsky.feed.post/1234567891",
                             Author = "did:plc:user1",
-                            AuthorName = "Skyline Developer",
-                            AuthorUsername = "skydev.bsky.social",
-                            Content = "Congrats! Looking forward to using this feature.",
-                            TimestampUtc = DateTime.UtcNow.AddMinutes(-28),
+                            AuthorName = "Early Adopter",
+                            AuthorUsername = "earlyadopter.bsky.social",
+                            Content = "Finally! Just what I needed for my feedback analysis.",
+                            TimestampUtc = DateTime.UtcNow.AddMinutes(-25),
                             ParentId = "at://did:plc:abcdef/app.bsky.feed.post/1234567890"
                         },
-                        new BlueSkyFeedbackItem
+                        new()
                         {
                             Id = "at://did:plc:abcdef/app.bsky.feed.post/1234567892",
                             Author = "did:plc:user2",
-                            AuthorName = "Blazor Enthusiast",
-                            AuthorUsername = "blazorfan.bsky.social",
-                            Content = "This is exactly what I was looking for!",
-                            TimestampUtc = DateTime.UtcNow.AddMinutes(-25),
-                            ParentId = "at://did:plc:abcdef/app.bsky.feed.post/1234567890"
+                            AuthorName = "Developer",
+                            AuthorUsername = "developer.bsky.social",
+                            Content = "Does it support custom analysis prompts? 🤔",
+                            TimestampUtc = DateTime.UtcNow.AddMinutes(-20),
+                            ParentId = "at://did:plc:abcdef/app.bsky.feed.post/1234567890",
+                            Replies = new List<BlueSkyFeedbackItem>
+                            {
+                                new()
+                                {
+                                    Id = "at://did:plc:abcdef/app.bsky.feed.post/1234567893",
+                                    Author = "did:plc:feedbackflow",
+                                    AuthorName = "FeedbackFlow",
+                                    AuthorUsername = "feedbackflow.bsky.social",
+                                    Content = "Yes! You can customize analysis prompts for your specific needs. 👍",
+                                    TimestampUtc = DateTime.UtcNow.AddMinutes(-15),
+                                    ParentId = "at://did:plc:abcdef/app.bsky.feed.post/1234567892"
+                                }
+                            }
                         }
                     }
                 }
             }
         };
 
-        var totalComments = mockFeedback.Items.Sum(item => 1 + (item.Replies?.Count ?? 0));
-        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Found {totalComments} comments and replies (mock)...");
+        // Build comments string
+        var comments = string.Join("\n\n", mockFeedback.Items.Select(item =>
+        {
+            var replies = item.Replies?.Select(r =>
+            {
+                var nestedReplies = r.Replies?.Select(nr =>
+                    $"    > {nr.AuthorName} (@{nr.AuthorUsername}): {nr.Content}") ?? Array.Empty<string>();
+                
+                return $"  > {r.AuthorName} (@{r.AuthorUsername}): {r.Content}\n{string.Join("\n", nestedReplies)}";
+            }) ?? Array.Empty<string>();
 
-        var markdown = "# BlueSky Feedback (Mock)\n\n" +
-            "## Overall Sentiment & Engagement 💙\n\n" +
-            "Strong positive sentiment with users excited about the BlueSky integration. Good engagement with quick replies.\n\n" + 
-            "## Key Takeaways\n\n" +
-            "- Users are enthusiastic about the integration\n" +
-            "- Developers are looking forward to trying the feature\n" +
-            "- No negative feedback observed\n\n" +
-            string.Join("\n\n", mockFeedback.Items.Select(item => $"**{item.AuthorName} (@{item.AuthorUsername})**: {item.Content}\n{string.Join("\n", item.Replies?.Select(r => $"> **{r.AuthorName} (@{r.AuthorUsername})**: {r.Content}") ?? Array.Empty<string>())}"));
+            return $"{item.AuthorName} (@{item.AuthorUsername}): {item.Content}\n{string.Join("\n", replies)}";
+        }));
 
-        return (markdown, mockFeedback);
+        return (comments, mockFeedback);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    {
+        if (string.IsNullOrWhiteSpace(comments))
+        {
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
+        }
+
+        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing BlueSky feedback...");
+        await Task.Delay(1000); // Simulate analysis time
+
+        var feedback = additionalData as BlueSkyFeedbackResponse;
+        var totalComments = feedback?.Items.Sum(item => 
+            1 + (item.Replies?.Sum(r => 1 + (r.Replies?.Count ?? 0)) ?? 0)) ?? 0;
+
+        var mockAnalysis = @$"# BlueSky Feedback Analysis 🦋
+
+## Overview
+Total Interactions: {totalComments} posts and replies
+Engagement Level: High
+Overall Sentiment: Very Positive
+
+## Key Themes 🎯
+
+### Feature Interest
+- BlueSky integration well-received
+- Interest in customization options
+- Quick response to feature inquiries
+
+### User Engagement 👥
+- Early adopters showing enthusiasm
+- Developer community engagement
+- Positive response to feature explanations
+
+### Discussion Metrics 📊
+- Active conversation threads
+- Good response time to questions
+- Multiple nested discussions
+
+## Action Items 📋
+1. Follow up on customization interest
+2. Consider highlighting custom prompt features
+3. Maintain active engagement with developer questions
+
+## Recommendations 💡
+- Share more examples of custom analysis prompts
+- Create tutorial content for BlueSky-specific features
+- Highlight successful use cases
+
+### Future Considerations
+- Monitor for additional feature requests
+- Track engagement patterns
+- Plan regular feature updates based on feedback";
+
+        return (mockAnalysis, feedback);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    {
+        // Get comments
+        var (comments, additionalData) = await GetComments();
+        
+        if (string.IsNullOrWhiteSpace(comments))
+        {
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
+        }
+
+        // Analyze comments
+        return await AnalyzeComments(comments, additionalData);
     }
 }

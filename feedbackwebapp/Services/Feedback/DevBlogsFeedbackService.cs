@@ -14,7 +14,7 @@ public class DevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackService
         ArticleUrl = articleUrl;
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    public override async Task<(string rawComments, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching DevBlogs comments...");
         if (string.IsNullOrWhiteSpace(ArticleUrl))
@@ -29,8 +29,13 @@ public class DevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackService
             throw new InvalidOperationException($"Failed to fetch DevBlogs comments: {error}");
         }
         var responseContent = await response.Content.ReadAsStringAsync();
-        var article = JsonSerializer.Deserialize<DevBlogsArticleModel>(responseContent);
+        
+        return (responseContent, JsonSerializer.Deserialize<DevBlogsArticleModel>(responseContent));
+    }
 
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    {
+        var article = JsonSerializer.Deserialize<DevBlogsArticleModel>(comments);
         if (article == null || article.Comments == null || article.Comments.Count == 0)
         {
             UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
@@ -47,7 +52,21 @@ public class DevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackService
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing comments...");
 
         // Analyze the comments and return both the markdown result and the comments list
-        var markdown = await AnalyzeComments("devblogs", responseContent, totalComments);
+        var markdown = await AnalyzeCommentsInternal("devblogs", comments, totalComments);
         return (markdown, article);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    {
+        // Get comments
+        var (comments, additionalData) = await GetComments();
+        
+        if (string.IsNullOrWhiteSpace(comments))
+        {
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
+        }
+
+        // Analyze comments
+        return await AnalyzeComments(comments, additionalData);
     }
 }
