@@ -258,4 +258,35 @@ public static class UrlParsing
 
         return null;
     }
+
+    public static bool IsTwitterUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return false;
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return false;
+
+        var host = uri.Host.ToLowerInvariant();
+        return host.Equals("twitter.com") || host.Equals("x.com");
+    }
+
+    public static bool IsBlueSkyUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return false;
+
+        return BlueSkyUrlParser.IsValidBlueSkyUrl(url);
+    }
+
+    public static bool IsHackerNewsUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return false;
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return false;
+
+        return uri.Host.Contains("ycombinator.com", StringComparison.OrdinalIgnoreCase);
+    }
 }

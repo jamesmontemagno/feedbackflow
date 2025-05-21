@@ -100,7 +100,30 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         {
             return _serviceProvider.CreateDevBlogsService(url, OnStatusUpdate);
         }
-        // TODO: Add support for Twitter/X and BlueSky URLs once their URL parsing utilities are available
+        else if (UrlParsing.IsTwitterUrl(url))
+        {
+            var tweetId = TwitterUrlParser.ExtractTweetId(url);
+            if (!string.IsNullOrEmpty(tweetId))
+            {
+                return _serviceProvider.CreateTwitterService(tweetId, OnStatusUpdate);
+            }
+        }
+        else if (UrlParsing.IsBlueSkyUrl(url))
+        {
+            var postId = BlueSkyUrlParser.ExtractPostId(url);
+            if (!string.IsNullOrEmpty(postId))
+            {
+                return _serviceProvider.CreateBlueSkyService(postId, OnStatusUpdate);
+            }
+        }
+        else if (UrlParsing.IsHackerNewsUrl(url))
+        {
+            var itemId = UrlParsing.ExtractHackerNewsId(url);
+            if (!string.IsNullOrEmpty(itemId))
+            {
+                return _serviceProvider.CreateHackerNewsService(itemId, OnStatusUpdate);
+            }
+        }
         
         return null;
     }
