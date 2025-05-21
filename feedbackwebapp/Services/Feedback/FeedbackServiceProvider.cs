@@ -4,8 +4,7 @@ using FeedbackWebApp.Services.Mock;
 namespace FeedbackWebApp.Services.Feedback;
 
 public class FeedbackServiceProvider
-{
-    private readonly IConfiguration _configuration;
+{    private readonly IConfiguration _configuration;
     private readonly IHttpClientFactory _http;
     private readonly bool _useMocks;
     private readonly UserSettingsService _userSettings;
@@ -76,5 +75,12 @@ public class FeedbackServiceProvider
                   CustomPrompt = customPrompt ?? string.Empty
               }
             : new ManualFeedbackService(_http, _configuration, _userSettings, content, customPrompt, onStatusUpdate);
+    }
+
+    public IAutoDataSourceFeedbackService CreateAutoDataSourceService(string[] urls, FeedbackStatusUpdate? onStatusUpdate = null)
+    {
+        return _useMocks
+            ? new MockAutoDataSourceFeedbackService(_http, _configuration, _userSettings, onStatusUpdate)
+            : new AutoDataSourceFeedbackService(_http, _configuration, _userSettings, this, urls, onStatusUpdate);
     }
 }

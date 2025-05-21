@@ -1,0 +1,57 @@
+@namespace FeedbackWebApp.Components.Feedback.Forms
+@using System.ComponentModel.DataAnnotations
+
+<div class="auto-input-container">
+    <div class="auto-input-list">
+        @for (var i = 0; i < Urls.Count; i++)
+        {
+            var index = i;
+            <div class="input-group mb-2">
+                <input type="url" 
+                       class="form-control" 
+                       placeholder="Enter URL (YouTube, Reddit, GitHub, etc.)" 
+                       value="@Urls[index]"
+                       @onchange="@(e => HandleUrlChange(index, e.Value?.ToString() ?? ""))" />
+                <button class="btn btn-outline-danger" @onclick="@(() => RemoveUrl(index))" type="button">
+                    <i class="bi bi-x-lg"></i>
+                    <span class="visually-hidden">Remove URL</span>
+                </button>
+            </div>
+        }
+    </div>
+
+    <button class="btn btn-outline-primary mb-3" @onclick="AddUrl" type="button">
+        <i class="bi bi-plus-lg"></i> Add Another URL
+    </button>
+</div>
+
+@code {
+    private List<string> Urls { get; set; } = new() { "" };
+    
+    [Parameter]
+    public EventCallback<List<string>> OnUrlsChanged { get; set; }    public async Task HandleUrlChange(int index, string value)
+    {
+        Urls[index] = value;
+        await OnUrlsChanged.InvokeAsync(Urls);
+    }
+
+    private void AddUrl()
+    {
+        Urls.Add("");
+        StateHasChanged();
+    }
+
+    private async Task RemoveUrl(int index)
+    {
+        if (Urls.Count > 1)
+        {
+            Urls.RemoveAt(index);
+            await OnUrlsChanged.InvokeAsync(Urls);
+            StateHasChanged();
+        }
+    }
+
+    public void RefreshUI() => StateHasChanged();
+
+    public List<string> GetUrls() => Urls.Where(u => !string.IsNullOrWhiteSpace(u)).ToList();
+}

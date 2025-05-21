@@ -1,0 +1,18 @@
+.auto-input-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.auto-input-list {
+    margin-bottom: 1rem;
+}
+
+::deep .input-group .btn-outline-danger {
+    border-color: var(--bs-border-color);
+}
+
+::deep .input-group .btn-outline-danger:hover {
+    background-color: var(--bs-danger);
+    border-color: var(--bs-danger);
+    color: var(--bs-white);
+}

@@ -22,12 +22,19 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 - Use var over explicit type declarations 
 - Always implement IDisposable when dealing with event handlers or subscriptions
 - Prefer using async/await for asynchronous operations
-- use latest C# features (e.g., records, pattern matching)
+- Use latest C# features (e.g., records, pattern matching)
 - Use consistent naming conventions (PascalCase for public members, camelCase for private members)
-- use meaningful names for variables, methods, and classes
+- Use meaningful names for variables, methods, and classes
 - Use dependency injection for services and components
 - Use interfaces for service contracts and put them in a unique file
-- use file scoped namespaces in c# and are pascal cased
+- Use file scoped namespaces in C# and are PascalCased
+- Always add namespace declarations to Blazor components matching their folder structure
+- Organize using directives:
+  - Put System namespaces first
+  - Put Microsoft namespaces second
+  - Put application namespaces last
+  - Remove unused using directives
+  - Sort using directives alphabetically within each group
 
 ## Component Structure
 - Keep components small and focused
