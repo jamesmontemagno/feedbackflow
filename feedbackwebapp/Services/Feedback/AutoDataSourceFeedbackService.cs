@@ -19,7 +19,9 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
     {
         _urls = urls;
         _serviceProvider = serviceProvider;
-    }public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         if (_urls == null || _urls.Length == 0)
         {
@@ -37,7 +39,7 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
             processedCount++;
             UpdateStatus(FeedbackProcessStatus.GatheringComments, $"Processing URL {processedCount} of {totalUrls}...");
 
-            try 
+            try
             {
                 var comments = await ProcessUrl(url);
                 allComments.AddRange(comments);
@@ -55,13 +57,15 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         }
 
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing feedback...");
-        
+
         // Join all comments and analyze them
         var combinedComments = string.Join("\n---\n", allComments);
         var analysisResult = await AnalyzeComments("auto", combinedComments, allComments.Count);
 
         return (analysisResult, null);
-    }    private async Task<List<string>> ProcessUrl(string url)
+    }
+
+    private async Task<List<string>> ProcessUrl(string url)
     {
         if (string.IsNullOrEmpty(url))
             return new List<string>();
