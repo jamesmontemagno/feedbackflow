@@ -1,0 +1,26 @@
+/* ShareButton component styles */
+button {
+    transition: all 0.2s ease-in-out;
+    background-color: var(--info-color);
+    border-color: var(--info-color);
+    color: var(--text-primary);
+}
+
+button:hover {
+    background-color: rgba(var(--info-color-rgb), 0.9);
+    border-color: rgba(var(--info-color-rgb), 0.9);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(var(--info-color-rgb), 0.3);
+}
+
+button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 5px rgba(var(--info-color-rgb), 0.2);
+}
+
+/* If the button should float in a card (handled by parent component CSS) */
+:host(.floating) button {
+    position: absolute;
+    bottom: 15px;
+    right: 60px; /* Positioned to the left of the save button */
+}
