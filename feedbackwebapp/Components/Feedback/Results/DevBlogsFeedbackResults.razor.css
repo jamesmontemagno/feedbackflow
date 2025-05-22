@@ -1,44 +1,4 @@
-.card {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-}
-
-.card-header {
-    background-color: var(--bg-secondary);
-    border-bottom-color: var(--border-color);
-}
-
-.card-title {
-    color: var(--text-primary);
-}
-
-.btn-outline-light {
-    border-color: var(--border-color);
-    color: var(--text-secondary);
-}
-
-.btn-outline-light:hover {
-    background-color: var(--bg-hover);
-    color: var(--text-primary);
-    border-color: var(--border-color);
-}
-
 .article-info {
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--border-color);
-}
-
-.comments-list {
-    animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
 }

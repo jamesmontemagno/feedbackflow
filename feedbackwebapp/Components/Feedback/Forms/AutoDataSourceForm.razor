@@ -34,11 +34,14 @@
         {            
             var index = i;
             <div class="input-group mb-2">                
-                <input type="url" 
-                       class="form-control" 
-                       placeholder="Enter URL (YouTube, Reddit, GitHub, etc.)" 
-                       value="@Urls[index]"
-                       @onchange="@(async (ChangeEventArgs e) => await HandleUrlChange(index, e.Value?.ToString() ?? ""))" />
+                <div class="form-floating flex-grow-1">
+                    <input type="url" 
+                           class="form-control" 
+                           id="url-@index"
+                           value="@Urls[index]"
+                           @onchange="@(async (ChangeEventArgs e) => await HandleUrlChange(index, e.Value?.ToString() ?? ""))" />
+                    <label for="url-@index">Enter URL (YouTube, Reddit, GitHub, etc.)</label>
+                </div>
                 <button class="btn btn-outline-danger" @onclick="@(() => RemoveUrl(index))" type="button">
                     <i class="bi bi-x-lg"></i>
                     <span class="visually-hidden">Remove URL</span>

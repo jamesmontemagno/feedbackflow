@@ -2,13 +2,6 @@
     margin-left: 0;
     border-radius: var(--border-radius-sm);
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(var(--primary-color-rgb), 0.08);
-    transition: all 0.3s ease;
-}
-
-.post-container:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(var(--primary-color-rgb), 0.15);
 }
 
 .reply {
@@ -19,14 +12,11 @@
 }
 
 .post-content {
-    background-color: var(--bg-secondary);
-    transition: all 0.3s ease;
     padding: 1rem;
     border-radius: var(--border-radius-sm);
 }
 
 .post-content:hover {
-    background-color: var(--hover-bg);
     border-left: 3px solid var(--primary-color);
 }
 
@@ -53,7 +43,6 @@
 .post-text {
     margin-top: 0.75rem;
     line-height: 1.5;
-    color: var(--text-primary);
 }
 
 @media (max-width: 576px) {

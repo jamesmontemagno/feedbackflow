@@ -7,7 +7,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s ease;
     border: none;
     border-radius: var(--border-radius-sm);
     box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
@@ -30,7 +29,6 @@
 /* Icon styling */
 ::deep .bi {
     color: white;
-    transition: all 0.3s ease;
 }
 
 ::deep .theme-toggle-button:hover .bi {

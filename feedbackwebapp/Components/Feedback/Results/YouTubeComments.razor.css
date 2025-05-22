@@ -1,10 +1,5 @@
 /* Component-specific styles for YouTubeComments */
 
-/* Uses CSS variables for theme support instead of hard-coded colors */
-.secondary-text {
-    color: var(--text-secondary);
-}
-
 .comment-header {
     font-size: 0.9rem;
     font-weight: 600;
@@ -26,32 +21,6 @@
     transform: translateY(-3px);
     box-shadow: 0 5px 15px rgba(var(--primary-color-rgb), 0.15);
     border-left: 3px solid var(--primary-color);
-}
-
-.list-group-item {
-    transition: all 0.3s ease;
-    border-radius: var(--border-radius-sm);
-}
-
-.list-group-item:hover {
-    background-color: var(--hover-bg);
-    transform: translateX(5px);
-}
-
-/* Animation for comment display */
-.card-body {
-    animation: fadeIn 0.4s ease-in-out;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(15px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
 }
 
 .comment-author {

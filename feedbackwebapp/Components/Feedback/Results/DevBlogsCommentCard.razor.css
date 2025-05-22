@@ -1,48 +1,3 @@
-.card {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    margin-bottom: 1.5rem;
-    border-radius: var(--border-radius);
-    overflow: hidden;
-    transition: all 0.3s ease;
-    box-shadow: 0 0.5rem 1rem rgba(var(--primary-color-rgb), 0.1);
-}
-
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 0.75rem 1.5rem rgba(var(--primary-color-rgb), 0.15);
-}
-
-.card-header {
-    background: var(--primary-gradient);
-    border-bottom: none;
-    padding: 1.25rem;
-    color: white;
-}
-
-.card-title {
-    color: white;
-    font-weight: 600;
-    margin-bottom: 0;
-}
-
-.card-body {
-    padding: 1.5rem;
-}
-
-.btn-outline-light {
-    border-color: rgba(255, 255, 255, 0.5);
-    color: white;
-    transition: all 0.3s ease;
-    border-radius: var(--border-radius-sm);
-}
-
-.btn-outline-light:hover {
-    background-color: rgba(255, 255, 255, 0.15);
-    color: white;
-    transform: translateY(-2px);
-}
-
 .comment-content {
     color: var(--text-primary);
 }
@@ -72,7 +27,6 @@
 }
 
 .replies-container {
-    animation: fadeIn 0.4s ease-in-out;
     margin-top: 1.5rem;
 }
 
@@ -96,19 +50,13 @@
 }
 
 .reply-item {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
-    border-radius: var(--border-radius-sm);
     padding: 1rem;
     margin-bottom: 1rem;
     border-left: 3px solid var(--primary-color);
 }
 
 .reply-item:hover {
-    background-color: var(--hover-bg);
     transform: translateX(5px);
-    box-shadow: 0 3px 10px rgba(var(--primary-color-rgb), 0.1);
 }
 
 .reply-author {

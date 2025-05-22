@@ -10,40 +10,16 @@
     margin-bottom: 1.5rem;
 }
 
-::deep .summary-mode .form-check-inline {
-    margin-right: 2rem;
-}
-
-::deep .summary-mode .form-check-input:checked {
-    background-color: var(--bs-primary);
-    border-color: var(--bs-primary);
-}
-
 .auto-input-list {
     margin-bottom: 1rem;
 }
 
 ::deep .input-group .btn-outline-danger {
-    border-color: var(--bs-border-color);
+    border-color: var(--border-color);
 }
 
 ::deep .input-group .btn-outline-danger:hover {
     background-color: var(--bs-danger);
     border-color: var(--bs-danger);
     color: var(--bs-white);
-}
-
-::deep .input-group .form-control {
-    color: var(--bs-body-color);
-    background-color: var(--bs-body-bg);
-    border-color: var(--bs-border-color);
-}
-
-::deep .input-group .form-control::placeholder {
-    color: rgba(173, 181, 189, 0.75) !important;
-}
-
-::deep .input-group .form-control:focus {
-    border-color: var(--bs-primary);
-    box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
 }
