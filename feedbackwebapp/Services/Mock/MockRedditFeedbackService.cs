@@ -15,7 +15,7 @@ public class MockRedditFeedbackService : FeedbackService, IRedditFeedbackService
     {
     }
 
-    public override async Task<(string rawComments, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock Reddit data...");
         await Task.Delay(1000); // Simulate network delay
@@ -95,18 +95,43 @@ public class MockRedditFeedbackService : FeedbackService, IRedditFeedbackService
             return string.Join("\n", threadComments);
         }));
 
-        return (allComments, mockThreads);
+        // Count total comments including nested replies
+        int totalComments = mockThreads.Sum(t =>
+        {
+            int count = 0;
+            void CountComments(RedditCommentModel comment)
+            {
+                count++;
+                if (comment.Replies?.Any() == true)
+                {
+                    foreach (var reply in comment.Replies)
+                    {
+                        CountComments(reply);
+                    }
+                }
+            }
+            foreach (var comment in t.Comments)
+            {
+                CountComments(comment);
+            }
+            return count;
+        });
+
+        return (allComments, totalComments, mockThreads);
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing mock Reddit comments...");
         await Task.Delay(1000); // Simulate analysis delay
 
-        var mockAnalysis = @"# Reddit Discussion Analysis 👽
+        // Use provided comment count or calculate from threads if available
+        int totalComments = commentCount ?? (additionalData as List<RedditThreadModel>)?.Sum(t => t.NumComments) ?? 3;
+
+        var mockAnalysis = @$"# Reddit Discussion Analysis 👽
 
 ## Overall Sentiment & Engagement
-🎯 Active technical discussion with high-quality responses
+🎯 Active technical discussion with high-quality responses ({totalComments} total comments)
 📊 Main post has moderate engagement (67% upvote ratio)
 💬 Key responses highly upvoted (98 and 32 points)
 
@@ -122,7 +147,7 @@ public class MockRedditFeedbackService : FeedbackService, IRedditFeedbackService
 4. Consider async/await implementation
 
 ## Community Interaction
-- High engagement from experienced developers
+- High engagement from {totalComments} developers
 - Constructive discussion format
 - Good follow-up questions from OP
 
@@ -137,14 +162,14 @@ public class MockRedditFeedbackService : FeedbackService, IRedditFeedbackService
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         // Get comments
-        var (comments, additionalData) = await GetComments();
+        var (comments, commentCount, additionalData) = await GetComments();
         
         if (string.IsNullOrWhiteSpace(comments))
         {
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
         }
 
-        // Analyze comments
-        return await AnalyzeComments(comments, additionalData);
+        // Analyze comments with count
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 }

@@ -21,7 +21,7 @@ public class BlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackService
         _postUrlOrId = postUrlOrId;
     }
 
-    public override async Task<(string rawComments, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         if (string.IsNullOrWhiteSpace(_postUrlOrId))
             throw new InvalidOperationException("Please enter a valid BlueSky post URL or ID");
@@ -37,10 +37,13 @@ public class BlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackService
         feedbackResponse.EnsureSuccessStatusCode();
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
         
-        return (responseContent, JsonSerializer.Deserialize<BlueSkyFeedbackResponse>(responseContent));
+        var feedback = JsonSerializer.Deserialize<BlueSkyFeedbackResponse>(responseContent);
+        var totalComments = feedback?.Items != null ? CountCommentsRecursively(feedback.Items) : 0;
+        
+        return (responseContent, totalComments, feedback);
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
         var feedback = JsonSerializer.Deserialize<BlueSkyFeedbackResponse>(comments);
         if (feedback == null || feedback.Items == null || feedback.Items.Count == 0)
@@ -49,26 +52,24 @@ public class BlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackService
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
         }
 
-        var totalComments = CountCommentsRecursively(feedback.Items);
-
-        int CountCommentsRecursively(List<BlueSkyFeedbackItem> items)
-        {
-            if (items == null) return 0;
-            
-            return items.Sum(item => 1 + CountCommentsRecursively(item.Replies ?? new()));
-        }
+        var totalComments = commentCount ?? CountCommentsRecursively(feedback.Items);
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Found {totalComments} comments and replies...");
 
         // Analyze comments using the shared AnalyzeComments method
         var markdown = await AnalyzeCommentsInternal("bluesky", comments, totalComments);
-
         return (markdown, feedback);
+    }
+
+    private int CountCommentsRecursively(List<BlueSkyFeedbackItem> items)
+    {
+        if (items == null) return 0;
+        return items.Sum(item => 1 + CountCommentsRecursively(item.Replies ?? new()));
     }
 
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         // Get comments
-        var (comments, additionalData) = await GetComments();
+        var (comments, commentCount, additionalData) = await GetComments();
         
         if (string.IsNullOrWhiteSpace(comments))
         {
@@ -76,6 +77,6 @@ public class BlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackService
         }
 
         // Analyze comments
-        return await AnalyzeComments(comments, additionalData);
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 }

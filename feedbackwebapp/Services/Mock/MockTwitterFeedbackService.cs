@@ -15,7 +15,7 @@ public class MockTwitterFeedbackService : FeedbackService, ITwitterFeedbackServi
     {
     }
 
-    public override async Task<(string rawComments, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock Twitter/X comments...");
         await Task.Delay(1000); // Simulate network delay
@@ -85,65 +85,58 @@ public class MockTwitterFeedbackService : FeedbackService, ITwitterFeedbackServi
         }
         var comments = string.Join("\n\n", commentsList);
 
-        return (comments, mockFeedback);
+        // Count total comments including replies
+        int totalComments = mockFeedback.Items.Sum(i => 1 + (i.Replies?.Count ?? 0));
+
+        return (comments, totalComments, mockFeedback);
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
-        if (string.IsNullOrWhiteSpace(comments))
-        {
-            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
-        }
-
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing Twitter/X feedback...");
         await Task.Delay(1000); // Simulate analysis time
 
         var feedback = additionalData as TwitterFeedbackResponse;
-        var totalComments = feedback?.Items.Sum(item => 1 + (item.Replies?.Count ?? 0)) ?? 0;
-        var uniqueAuthors = feedback?.Items
-            .Union(feedback.Items.SelectMany(i => i.Replies ?? new List<TwitterFeedbackItem>()))
-            .Select(i => i.Author)
-            .Distinct()
-            .Count() ?? 0;
+        var totalComments = commentCount ?? feedback?.Items.Sum(i => 1 + (i.Replies?.Count ?? 0)) ?? 0;
 
         var mockAnalysis = @$"# Twitter/X Feedback Analysis 🐦
 
 ## Overview
-Total Interactions: {totalComments} tweets and replies
-Unique Participants: {uniqueAuthors}
+Total Engagements: {totalComments} tweets and replies
+Platform: Twitter/X
 Time Range: Last 4 hours
-Overall Sentiment: Very Positive
 
 ## Key Themes 🎯
 
-### Product Features
-- Performance improvements highlighted
-- Large dataset handling capabilities
-- Weekly feedback review functionality
+### Performance & Features
+- Positive response to performance improvements
+- Interest in handling large datasets
+- New features well-received
 
-### User Experience
-- Positive sentiment around insights
-- Strong appreciation for analysis capabilities
-- Easy integration into workflows
+### User Adoption
+- Product teams implementing for feedback analysis
+- Active engagement from developers
+- Strong cross-role interest (developers, product managers)
 
-### Use Cases 💡
-1. Product Development
-   - Feature prioritization
-   - Weekly feedback reviews
-   - Performance monitoring
-
-2. Technical Implementation
-   - Large dataset processing
-   - Integration capabilities
-   - Performance benchmarks
+## User Categories 👥
+1. Developers
+   - Focus on performance metrics
+   - Technical implementation questions
+2. Product Teams
+   - Using for regular feedback review
+   - Feature prioritization use case
+3. Early Adopters
+   - Strong enthusiasm
+   - Sharing success stories
 
 ## Engagement Metrics 📊
-- Active discussions around features
-- Quick response time to inquiries
-- Strong professional user engagement
+- Direct feedback: {feedback?.Items.Count ?? 0} tweets
+- Community discussion: {feedback?.Items.Sum(i => i.Replies?.Count ?? 0) ?? 0} replies
+- Strong positive sentiment
 
-## Community Feedback
-- Product managers finding value
+## Key Insights 💡
+- Performance improvements resonating with users
+- Product teams finding value
 - Developers interested in technical details
 - Positive feedback on performance improvements
 
@@ -165,14 +158,14 @@ Overall Sentiment: Very Positive
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         // Get comments
-        var (comments, additionalData) = await GetComments();
+        var (comments, commentCount, additionalData) = await GetComments();
         
         if (string.IsNullOrWhiteSpace(comments))
         {
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
         }
 
-        // Analyze comments
-        return await AnalyzeComments(comments, additionalData);
+        // Analyze comments with count
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 }

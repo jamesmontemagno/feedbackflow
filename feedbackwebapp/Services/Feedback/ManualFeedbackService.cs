@@ -24,7 +24,7 @@ public class ManualFeedbackService : FeedbackService, IManualFeedbackService
         }
     }
 
-    public override async Task<(string rawComments, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Processing manual input...");
         
@@ -32,14 +32,14 @@ public class ManualFeedbackService : FeedbackService, IManualFeedbackService
 
         if (string.IsNullOrWhiteSpace(Content))
         {
-            return ("", null);
+            return ("", 0, null);
         }
 
         // For manual content, we just return the raw content
-        return (Content, null);
+        return (Content, 1, null);
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
         if (string.IsNullOrWhiteSpace(comments))
         {
@@ -48,14 +48,14 @@ public class ManualFeedbackService : FeedbackService, IManualFeedbackService
         }
 
         // For manual service, we use "manual" as the service type and pass custom prompt
-        var result = await AnalyzeCommentsInternal("manual", comments, 1, CustomPrompt);
+        var result = await AnalyzeCommentsInternal("manual", comments, commentCount ?? 1, CustomPrompt);
         return (result, null);
     }
 
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         // Get comments
-        var (comments, additionalData) = await GetComments();
+        var (comments, commentCount, additionalData) = await GetComments();
         
         if (string.IsNullOrWhiteSpace(comments))
         {
@@ -64,6 +64,6 @@ public class ManualFeedbackService : FeedbackService, IManualFeedbackService
         }
 
         // Analyze comments
-        return await AnalyzeComments(comments, additionalData);
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 }

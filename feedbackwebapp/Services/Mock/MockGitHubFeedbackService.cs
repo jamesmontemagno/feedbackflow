@@ -15,7 +15,7 @@ public class MockGitHubFeedbackService : FeedbackService, IGitHubFeedbackService
     {
     }
 
-    public override async Task<(string rawComments, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching GitHub feedback...");
         
@@ -134,20 +134,16 @@ public class MockGitHubFeedbackService : FeedbackService, IGitHubFeedbackService
             }
         };
 
-        // Create a response object that matches the API's response structure
-        var responseData = new
-        {
-            Issues = issues,
-            PullRequests = new List<GithubIssueModel>(), // Empty pull requests list
-            Discussions = discussions
-        };
+        // Build response data object
+        var responseData = new { Issues = issues, Discussions = discussions };
 
         // Build the comments string
-        var allComments = string.Join("\n\n", issues.Concat(new List<GithubIssueModel>()).Select(issue => 
+        var allComments = string.Join("\n\n", issues.Select(issue =>
         {
             var comments = new List<string>
             {
-                $"Issue: {issue.Title}\nAuthor: {issue.Author}\nContent: {issue.Body}"
+                $"Issue: {issue.Title}",
+                $"Description: {issue.Body}"
             };
 
             if (issue.Comments != null)
@@ -177,18 +173,26 @@ public class MockGitHubFeedbackService : FeedbackService, IGitHubFeedbackService
             return string.Join("\n", comments);
         }));
 
-        return (allComments, responseData);
+        // Count total comments (issue comments + discussion comments + issues descriptions + discussions)
+        int totalComments = 
+            issues.Sum(i => (i.Comments?.Length ?? 0) + 1) + // Issue comments + descriptions
+            discussions.Sum(d => d.Comments?.Length ?? 0); // Discussion comments
+
+        return (allComments, totalComments, responseData);
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing GitHub feedback...");
         await Task.Delay(2000);
 
-        var mockAnalysis = @"# GitHub Feedback Analysis
+        // Use provided comment count or calculate
+        int totalComments = commentCount ?? comments.Split('\n').Count(line => line.StartsWith("Comment by"));
+
+        var mockAnalysis = @$"# GitHub Feedback Analysis
 
 ## Overview
-Based on the GitHub issues and discussions, there are several key areas of focus:
+Based on {totalComments} GitHub issues, comments, and discussions, there are several key areas of focus:
 
 1. **Accessibility Improvements** - Particularly for dark mode
 2. **User Experience Enhancements** - Including keyboard shortcuts and UI clarity
@@ -197,7 +201,7 @@ Based on the GitHub issues and discussions, there are several key areas of focus
 ## Key Insights
 
 ### Accessibility
-- Critical dark mode contrast issues affecting readability
+- Critical dark mode contrast issues affecting readability ({totalComments} total items of feedback)
 - Multiple users reporting WCAG compliance concerns
 - Statistics dashboard particularly problematic
 
@@ -220,7 +224,7 @@ Based on the GitHub issues and discussions, there are several key areas of focus
 5. Configurable UI elements
 
 ## Community Engagement
-- Active discussion participation
+- Active discussion participation ({totalComments} contributions)
 - Detailed, constructive feedback
 - Strong interest in accessibility features
 
@@ -233,14 +237,14 @@ Overall sentiment is constructive rather than critical. Users are engaged and pr
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         // Get comments
-        var (comments, additionalData) = await GetComments();
+        var (comments, commentCount, additionalData) = await GetComments();
         
         if (string.IsNullOrWhiteSpace(comments))
         {
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
         }
 
-        // Analyze comments
-        return await AnalyzeComments(comments, additionalData);
+        // Analyze comments with count
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 }

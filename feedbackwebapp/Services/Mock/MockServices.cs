@@ -11,8 +11,7 @@ public class MockYouTubeFeedbackService(
     UserSettingsService userSettings,
     FeedbackStatusUpdate? onStatusUpdate = null)
     : FeedbackService(http, configuration, userSettings, onStatusUpdate), IYouTubeFeedbackService
-{
-    public override async Task<(string rawComments, object? additionalData)> GetComments()
+{    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock YouTube comments...");
         await Task.Delay(1000); // Simulate network delay
@@ -65,20 +64,21 @@ public class MockYouTubeFeedbackService(
             }
         };
 
-        // Build our comments string
+        // Build our comments string and count total comments
+        var totalComments = mockVideos.Sum(v => v.Comments?.Count ?? 0);
         var allComments = string.Join("\n\n", mockVideos.SelectMany(v => 
             v.Comments.Select(c => $"Video: {v.Title}\nComment by {c.Author}: {c.Text}")));
 
-        return (allComments, mockVideos);
+        return (allComments, totalComments, mockVideos);
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
         // Simulate analysis time
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing mock YouTube comments...");
         await Task.Delay(1000); 
         
-        var mockMarkdownResult = @"# YouTube Comment Analysis 📺
+        var mockMarkdownResult = @$"# YouTube Comment Analysis 📺
 
 ## Overall Sentiment & Engagement 👍
 - Overwhelmingly positive reception across both videos
@@ -90,22 +90,14 @@ public class MockYouTubeFeedbackService(
 - Viewers found explanations clear and valuable
 - Content successfully helping viewers understand complex concepts
 
-## Positive Feedback Themes ✨
-- **Clear Explanations**: Multiple comments praising clarity
-- **Informative Content**: Viewers appreciating depth of information
-- **Practical Examples**: Specific examples receiving positive mentions
+## Community Feedback 💭
+- Users find content informative and well-explained
+- Positive sentiment around teaching style
+- Follow-up content requests indicate high interest
 
-## Suggestions & Requests 💡
-- Follow-up content requested on the same topic
-- Interest in expanding on concepts introduced
-
-## Questions & Discussion Points ❓
-- No significant confusion points identified
-- Strong understanding of presented material evident in comments
-
-## Recommendations 📋
-- Consider creating follow-up content as requested by viewers
-- Continue emphasis on practical examples which resonated strongly
+## Recommendations 📝
+- Consider creating follow-up content
+- Highlight successful teaching approaches
 - Maintain current explanation style that viewers found effective";
 
         return (mockMarkdownResult, additionalData);
@@ -114,10 +106,10 @@ public class MockYouTubeFeedbackService(
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         // Get comments
-        var (comments, additionalData) = await GetComments();
+        var (comments, commentCount, additionalData) = await GetComments();
         
         // Analyze comments
-        return await AnalyzeComments(comments, additionalData);
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 }
 
@@ -128,7 +120,7 @@ public class MockHackerNewsFeedbackService(
     FeedbackStatusUpdate? onStatusUpdate = null)
     : FeedbackService(http, configuration, userSettings, onStatusUpdate), IHackerNewsFeedbackService
 {
-    public override async Task<(string rawComments, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock Hacker News comments...");
         await Task.Delay(1000); // Simulate network delay
@@ -192,21 +184,24 @@ Comment by architect: Strong typing has improved our team's productivity signifi
             }
         };
 
-        return (mockComments, mockArticleThreads);
+        // Count total comments by counting lines that start with "Comment by"
+        int commentCount = mockComments.Split('\n').Count(line => line.StartsWith("Comment by"));
+
+        return (mockComments, commentCount, mockArticleThreads);
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing mock Hacker News comments...");
         await Task.Delay(1000); // Simulate analysis time
         
-        var mockMarkdownResult = @"# Hacker News Discussion Analysis: TypeScript's Type System 📊
+        // Use the provided comment count or calculate it
+        int totalComments = commentCount ?? comments.Split('\n').Count(line => line.StartsWith("Comment by"));
+        
+        var mockMarkdownResult = @$"# Hacker News Discussion Analysis: TypeScript's Type System 📊
 
 ## Overview and Key Themes 🔍
-The discussion focuses on TypeScript's type system, with strong community support for its benefits in development workflows. Key themes include:
-- Productivity improvements when using TypeScript
-- Strong appreciation for type safety features
-- Interest in advanced typing features
+The discussion focuses on TypeScript's type system, with strong community support for its benefits in development workflows. Analysis based on {totalComments} comments covering two main threads.
 
 ## Technical Highlights ⚡
 1. Type Inference Improvements
@@ -219,16 +214,6 @@ The discussion focuses on TypeScript's type system, with strong community suppor
 - Improved error detection
 - Value of strict mode for error prevention
 - Interest in advanced type system features
-
-## Sentiment Analysis 💬
-**Positive Comments:**
-- TypeScript described as a ""game changer"" for team productivity
-- Strong appreciation for type safety features
-- Recognition of TypeScript's value in catching errors early
-
-**Neutral/Constructive Comments:**
-- Request for more coverage on advanced features like mapped types
-- Discussion of specific TypeScript configuration options
 
 ## Feature Popularity 🌟
 1. **Strict Mode**: Most frequently mentioned feature with positive sentiment
@@ -246,6 +231,12 @@ The discussion focuses on TypeScript's type system, with strong community suppor
 3. Enhanced team productivity
 4. Stronger tooling support
 
+## Sentiment Analysis 💬
+Analysis of {totalComments} comments shows:
+- Strongly positive sentiment (90% favorable)
+- High engagement level
+- Constructive discussion quality
+
 The Hacker News community strongly endorses TypeScript's type system, particularly valuing strict mode for error prevention. There's notable interest in advanced typing features like mapped types, suggesting an opportunity for more educational content in this area.";
 
         return (mockMarkdownResult, additionalData);
@@ -254,7 +245,7 @@ The Hacker News community strongly endorses TypeScript's type system, particular
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         // Get comments
-        var (comments, additionalData) = await GetComments();
+        var (comments, commentCount, additionalData) = await GetComments();
         
         if (string.IsNullOrWhiteSpace(comments))
         {
@@ -262,6 +253,6 @@ The Hacker News community strongly endorses TypeScript's type system, particular
         }
 
         // Analyze comments
-        return await AnalyzeComments(comments, additionalData);
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 }

@@ -2,8 +2,9 @@
 @using System.ComponentModel.DataAnnotations
 
 <div class="auto-input-container">
-    <div class="summary-mode mb-3">
-        <div class="form-check form-check-inline">            <input class="form-check-input" 
+    @* <div class="summary-mode mb-3">
+        <div class="form-check form-check-inline">            
+            <input class="form-check-input" 
                    type="radio" 
                    name="summaryMode" 
                    id="individualSummary" 
@@ -14,7 +15,8 @@
                 Summarize URLs Individually
             </label>
         </div>
-        <div class="form-check form-check-inline">            <input class="form-check-input" 
+        <div class="form-check form-check-inline">            
+            <input class="form-check-input" 
                    type="radio" 
                    name="summaryMode" 
                    id="combinedSummary" 
@@ -25,7 +27,7 @@
                 Summarize URLs Together
             </label>
         </div>
-    </div>
+    </div> *@
 
     <div class="auto-input-list">
         @for (var i = 0; i < Urls.Count; i++)
@@ -58,7 +60,7 @@
     }
 
     private List<string> Urls { get; set; } = new() { "" };
-    private SummaryMode CurrentSummaryMode { get; set; } = SummaryMode.Individual;
+    private SummaryMode CurrentSummaryMode { get; set; } = SummaryMode.Combined;
 
     [Parameter]
     public EventCallback<List<string>> OnUrlsChanged { get; set; }    

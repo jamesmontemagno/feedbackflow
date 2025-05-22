@@ -22,7 +22,7 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
         _storyIds = storyIds;
     }
 
-    public override async Task<(string rawComments, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         var processedIds = UrlParsing.ExtractHackerNewsId(_storyIds);
 
@@ -51,8 +51,10 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
         if (!articleThreads.Any() || articleThreads.All(thread => !thread.Any()))
         {
             UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
-            return ("No comments available", null);
+            return ("No comments available", 0, null);
         }
+
+        var totalComments = articleThreads.Sum(thread => Math.Max(0, thread.Count - 1)); // -1 for each story post
 
         var allComments = string.Join("\n\n", articleThreads.Select(thread =>
         {
@@ -66,18 +68,18 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
             return $"Story: {story.Title}\n{threadComments}";
         }));
 
-        return (allComments, articleThreads);
+        return (allComments, totalComments, articleThreads);
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
         if (string.IsNullOrWhiteSpace(comments))
         {
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
         }
 
-        // Calculate number of comments
-        var totalComments = comments.Split("\n\n").Length;
+        var totalComments = commentCount ?? comments.Split("\n").Count(line => line.StartsWith("Comment by"));
+        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {totalComments} comments...");
 
         // Analyze the comments
         var markdownResult = await AnalyzeCommentsInternal("hackernews", comments, totalComments);
@@ -87,7 +89,7 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         // Get comments
-        var (comments, additionalData) = await GetComments();
+        var (comments, commentCount, additionalData) = await GetComments();
         
         if (string.IsNullOrWhiteSpace(comments) || comments == "No comments available")
         {
@@ -95,6 +97,6 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
         }
 
         // Analyze comments
-        return await AnalyzeComments(comments, additionalData);
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 }

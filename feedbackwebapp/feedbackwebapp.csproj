@@ -7,7 +7,6 @@
     <RootNamespace>FeedbackWebApp</RootNamespace>
     <NoWarn>RZ10012</NoWarn>
     <UserSecretsId>43f34703-3b46-4575-8e01-1fb8ea4446b5</UserSecretsId>
-    <StaticWebAssetsEnableBackgroundPrecompression>false</StaticWebAssetsEnableBackgroundPrecompression>
   </PropertyGroup>
 
   <ItemGroup>

@@ -19,9 +19,32 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
     {
         _urls = urls;
         _serviceProvider = serviceProvider;
+    }    
+    
+    private string GetServiceType(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return "unknown";
+
+        if (UrlParsing.IsYouTubeUrl(url))
+            return "youtube";
+        if (UrlParsing.IsRedditUrl(url))
+            return "reddit";
+        if (UrlParsing.IsGitHubUrl(url))
+            return "github";
+        if (UrlParsing.IsDevBlogsUrl(url))
+            return "devblogs";
+        if (UrlParsing.IsTwitterUrl(url))
+            return "twitter";
+        if (UrlParsing.IsBlueSkyUrl(url))
+            return "bluesky";
+        if (UrlParsing.IsHackerNewsUrl(url))
+            return "hackernews";
+
+        return "unknown";
     }
 
-    public override async Task<(string rawComments, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         if (_urls == null || _urls.Length == 0)
         {
@@ -31,8 +54,10 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Analyzing source URLs...");
 
         var allComments = new List<string>();
+        var totalCommentCount = 0;
         var processedCount = 0;
         var totalUrls = _urls.Length;
+        var servicesUsed = new HashSet<string>();
 
         foreach (var url in _urls)
         {
@@ -41,8 +66,19 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
 
             try
             {
-                var comments = await ProcessUrl(url);
-                allComments.AddRange(comments);
+                var serviceType = GetServiceType(url);
+                servicesUsed.Add($"{serviceType}");
+
+                var service = ResolveFeedbackService(url);
+                if (service != null)
+                {
+                    var (comments, commentCount) = await GetCommentsFromUrl(url);
+                    if (!string.IsNullOrWhiteSpace(comments))
+                    {
+                        allComments.Add(comments);
+                        totalCommentCount += commentCount;
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -56,12 +92,12 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
             throw new InvalidOperationException("No valid comments were found from the provided URLs");
         }
 
-        // Join all comments together
+        // Join all comments together and return total count along with services used
         var combinedComments = string.Join("\n---\n", allComments);
-        return (combinedComments, allComments.Count);
+        return (combinedComments, totalCommentCount, servicesUsed.ToList().Distinct());
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
         if (string.IsNullOrWhiteSpace(comments))
         {
@@ -69,19 +105,26 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         }
 
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing feedback...");
-
-        // Use the comment count if provided in additionalData
-        var commentCount = additionalData is int count ? count : comments.Split("\n---\n").Length;
+        
+        // Calculate comment count if not provided
+        int totalComments = commentCount ?? comments.Split("\n---\n").Length;
+        
+        // Determine service type based on additionalData
+        string serviceType = "auto";
+        if (additionalData is List<string> services && services.Count == 1)
+        {
+            serviceType = services[0];
+        }
         
         // Analyze the combined comments
-        var markdown = await AnalyzeCommentsInternal("auto", comments, commentCount);
+        var markdown = await AnalyzeCommentsInternal(serviceType, comments, totalComments);
         return (markdown, null);
     }
 
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         // Get comments from all sources
-        var (comments, additionalData) = await GetComments();
+        var (comments, commentCount, additionalData) = await GetComments();
         
         if (string.IsNullOrWhiteSpace(comments))
         {
@@ -89,75 +132,27 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         }
 
         // Analyze all comments together
-        return await AnalyzeComments(comments, additionalData);
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 
-    private async Task<List<string>> ProcessUrl(string url)
+    private async Task<(string comments, int commentCount)> GetCommentsFromUrl(string url)
     {
         if (string.IsNullOrEmpty(url))
-            return new List<string>();
+            return (string.Empty, 0);
 
         var service = ResolveFeedbackService(url);
         if (service != null)
         {
-            var (markdown, _) = await service.GetFeedback();
-            return new List<string> { markdown };
+            // Get the raw comments and count
+            var (rawComments, commentCount, _) = await service.GetComments();
+            if (!string.IsNullOrWhiteSpace(rawComments))
+            {
+                return (rawComments, commentCount);
+            }
         }
 
-        return new List<string>();
+        return (string.Empty, 0);
     }
 
-    private IFeedbackService? ResolveFeedbackService(string url)
-    {
-        if (UrlParsing.IsYouTubeUrl(url))
-        {
-            var videoId = UrlParsing.ExtractYouTubeId(url);
-            if (!string.IsNullOrEmpty(videoId))
-            {
-                return _serviceProvider.CreateYouTubeService(videoId, string.Empty, OnStatusUpdate);
-            }
-        }
-        else if (UrlParsing.IsGitHubUrl(url))
-        {
-            return _serviceProvider.CreateGitHubService(url, OnStatusUpdate);
-        }
-        else if (UrlParsing.IsRedditUrl(url))
-        {
-            var threadId = UrlParsing.ExtractRedditId(new[] { url });
-            if (!string.IsNullOrEmpty(threadId))
-            {
-                return _serviceProvider.CreateRedditService(new[] { threadId }, OnStatusUpdate);
-            }
-        }       
-        else if (UrlParsing.IsDevBlogsUrl(url))
-        {
-            return _serviceProvider.CreateDevBlogsService(url, OnStatusUpdate);
-        }
-        else if (UrlParsing.IsTwitterUrl(url))
-        {
-            var tweetId = TwitterUrlParser.ExtractTweetId(url);
-            if (!string.IsNullOrEmpty(tweetId))
-            {
-                return _serviceProvider.CreateTwitterService(tweetId, OnStatusUpdate);
-            }
-        }
-        else if (UrlParsing.IsBlueSkyUrl(url))
-        {
-            var postId = BlueSkyUrlParser.ExtractPostId(url);
-            if (!string.IsNullOrEmpty(postId))
-            {
-                return _serviceProvider.CreateBlueSkyService(postId, OnStatusUpdate);
-            }
-        }
-        else if (UrlParsing.IsHackerNewsUrl(url))
-        {
-            var itemId = UrlParsing.ExtractHackerNewsId(url);
-            if (!string.IsNullOrEmpty(itemId))
-            {
-                return _serviceProvider.CreateHackerNewsService(itemId, OnStatusUpdate);
-            }
-        }
-        
-        return null;
-    }
+    private IFeedbackService? ResolveFeedbackService(string url) => _serviceProvider.GetService(url);
 }

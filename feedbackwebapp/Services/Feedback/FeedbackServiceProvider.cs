@@ -1,5 +1,6 @@
 using FeedbackWebApp.Services.Interfaces;
 using FeedbackWebApp.Services.Mock;
+using SharedDump.Utils;
 
 namespace FeedbackWebApp.Services.Feedback;
 
@@ -82,5 +83,45 @@ public class FeedbackServiceProvider
         return _useMocks
             ? new MockAutoDataSourceFeedbackService(_http, _configuration, _userSettings, onStatusUpdate)
             : new AutoDataSourceFeedbackService(_http, _configuration, _userSettings, this, urls, onStatusUpdate);
+    }
+    public IFeedbackService? GetService(string url)
+    {
+        if (string.IsNullOrEmpty(url))
+            return null;
+
+        // YouTube URLs
+        if (UrlParsing.IsYouTubeUrl(url))
+        {
+            var videoId = UrlParsing.ExtractYouTubeId(url) ?? string.Empty;
+            return CreateYouTubeService(videoId, string.Empty);
+        }
+
+        // GitHub URLs
+        if (UrlParsing.IsGitHubUrl(url))
+            return CreateGitHubService(url);        // Reddit URLs
+        if (UrlParsing.IsRedditUrl(url))
+            return CreateRedditService(new[] { url });
+
+        // Hacker News URLs
+        if (UrlParsing.IsHackerNewsUrl(url))
+        {
+            var storyId = UrlParsing.ExtractHackerNewsId(url) ?? string.Empty;
+            return CreateHackerNewsService(storyId);
+        }
+
+        // Twitter URLs
+        if (UrlParsing.IsTwitterUrl(url))
+            return CreateTwitterService(url);
+
+        // BlueSky URLs
+        if (UrlParsing.IsBlueSkyUrl(url))
+            return CreateBlueSkyService(url);
+
+        // Dev.to or Microsoft DevBlogs URLs
+        if (UrlParsing.IsDevBlogsUrl(url))
+            return CreateDevBlogsService(url);
+
+        // If no specific service matches, treat it as a manual input
+        return CreateManualService(url);
     }
 }

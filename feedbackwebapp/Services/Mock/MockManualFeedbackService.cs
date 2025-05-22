@@ -16,20 +16,20 @@ public class MockManualFeedbackService : FeedbackService, IManualFeedbackService
         FeedbackStatusUpdate? onStatusUpdate = null)
         : base(http, configuration, userSettings, onStatusUpdate) { }
 
-    public override async Task<(string rawComments, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Processing manual input...");
         await Task.Delay(500); // Simulate network delay
 
         if (string.IsNullOrWhiteSpace(Content))
         {
-            return ("", null);
+            return ("", 0, null);
         }
 
-        return (Content, null);
+        return (Content, 1, null);
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
         if (string.IsNullOrWhiteSpace(comments))
         {
@@ -77,7 +77,7 @@ The manual content analysis provides valuable insights that can guide your under
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         // Get comments
-        var (comments, additionalData) = await GetComments();
+        var (comments, commentCount, additionalData) = await GetComments();
         
         if (string.IsNullOrWhiteSpace(comments))
         {
@@ -85,6 +85,6 @@ The manual content analysis provides valuable insights that can guide your under
         }
 
         // Analyze comments
-        return await AnalyzeComments(comments, additionalData);
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 }

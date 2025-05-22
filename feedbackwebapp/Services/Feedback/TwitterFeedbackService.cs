@@ -19,7 +19,7 @@ public class TwitterFeedbackService : FeedbackService, ITwitterFeedbackService
         _tweetUrlOrId = tweetUrlOrId;
     }
 
-    public override async Task<(string rawComments, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         if (string.IsNullOrWhiteSpace(_tweetUrlOrId))
             throw new InvalidOperationException("Please enter a valid tweet URL or ID");
@@ -39,8 +39,10 @@ public class TwitterFeedbackService : FeedbackService, ITwitterFeedbackService
         if (feedback == null || feedback.Items == null || feedback.Items.Count == 0)
         {
             UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
-            return ("No comments available", null);
+            return ("No comments available", 0, null);
         }
+
+        var totalComments = feedback.Items.Sum(item => 1 + (item.Replies?.Count ?? 0)); // Count tweets and replies
 
         var allComments = string.Join("\n\n", feedback.Items.Select(item =>
         {
@@ -59,18 +61,18 @@ public class TwitterFeedbackService : FeedbackService, ITwitterFeedbackService
             return string.Join("\n", comments);
         }));
 
-        return (allComments, feedback);
+        return (allComments, totalComments, feedback);
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
         if (string.IsNullOrWhiteSpace(comments))
         {
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
         }
 
-        // Calculate number of comments based on line breaks
-        var totalComments = comments.Split("\n\n").Length;
+        var totalComments = commentCount ?? comments.Split("\n").Count(line => line.StartsWith("Tweet by") || line.StartsWith("Reply by"));
+        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {totalComments} tweets and replies...");
 
         // Analyze comments
         var markdownResult = await AnalyzeCommentsInternal("twitter", comments, totalComments);
@@ -80,7 +82,7 @@ public class TwitterFeedbackService : FeedbackService, ITwitterFeedbackService
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         // Get comments
-        var (comments, additionalData) = await GetComments();
+        var (comments, commentCount, additionalData) = await GetComments();
         
         if (string.IsNullOrWhiteSpace(comments) || comments == "No comments available")
         {
@@ -88,6 +90,6 @@ public class TwitterFeedbackService : FeedbackService, ITwitterFeedbackService
         }
 
         // Analyze comments
-        return await AnalyzeComments(comments, additionalData);
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 }

@@ -20,7 +20,13 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
         _threadIds = threadIds;
     }
 
-    public override async Task<(string rawComments, object? additionalData)> GetComments()
+    private int CountCommentsAndReplies(List<RedditCommentModel>? comments)
+    {
+        if (comments == null || !comments.Any()) return 0;
+        return comments.Count + comments.Sum(c => CountCommentsAndReplies(c.Replies));
+    }
+
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         var processedIds = UrlParsing.ExtractRedditId(_threadIds);
 
@@ -48,13 +54,7 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
         if (threads == null || !threads.Any())
         {
             UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
-            return ("No comments available", null);
-        }
-
-        int CountCommentsAndReplies(List<RedditCommentModel>? comments)
-        {
-            if (comments == null || !comments.Any()) return 0;
-            return comments.Count + comments.Sum(c => CountCommentsAndReplies(c.Replies));
+            return ("No comments available", 0, null);
         }
 
         var totalComments = threads.Sum(t => CountCommentsAndReplies(t.Comments));
@@ -87,20 +87,20 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
             return string.Join("\n", threadComments);
         }));
 
-        return (allComments, threads);
+        return (allComments, totalComments + threads.Count, threads); // Add threads.Count to include original posts
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
         if (string.IsNullOrWhiteSpace(comments))
         {
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
         }
 
-        // Calculate number of comments
-        var totalComments = comments.Split("\n\n").Length;
+        var totalComments = commentCount ?? comments.Split("\n").Count(line => line.Contains("Comment by") || line.StartsWith("Thread:"));
+        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {totalComments} comments...");
 
-        // Analyze the comments
+        // Analyze comments
         var markdownResult = await AnalyzeCommentsInternal("reddit", comments, totalComments);
         return (markdownResult, additionalData);
     }
@@ -108,14 +108,14 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         // Get comments
-        var (comments, additionalData) = await GetComments();
+        var (comments, commentCount, additionalData) = await GetComments();
         
-        if (string.IsNullOrWhiteSpace(comments) || comments == "No comments available")
+        if (string.IsNullOrWhiteSpace(comments))
         {
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
         }
 
         // Analyze comments
-        return await AnalyzeComments(comments, additionalData);
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 }

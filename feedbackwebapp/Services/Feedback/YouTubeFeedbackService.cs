@@ -23,7 +23,7 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         _playlistIds = playlistIds;
     }
 
-    public override async Task<(string rawComments, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         var processedVideoIds = UrlParsing.ExtractVideoId(_videoIds);
         var processedPlaylistIds = UrlParsing.ExtractPlaylistId(_playlistIds);
@@ -67,7 +67,7 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         if (videos == null || !videos.Any())
         {
             UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
-            return ("No comments available", null);
+            return ("No comments available", 0, null);
         }
 
         var totalComments = videos.Sum(v => v.Comments.Count);
@@ -77,18 +77,18 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         var allComments = string.Join("\n\n", videos.SelectMany(v => 
             v.Comments.Select(c => $"Video: {v.Title}\nComment by {c.Author}: {c.Text}")));
 
-        return (allComments, videos);
+        return (allComments, totalComments, videos);
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
         if (string.IsNullOrWhiteSpace(comments))
         {
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
         }
 
-        // Calculate the number of comments based on newline separations
-        int totalComments = comments.Split(new[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries).Length;
+        // Calculate the number of comments if not provided
+        int totalComments = commentCount ?? comments.Split(new[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries).Length;
         
         // Analyze the comments
         var markdownResult = await AnalyzeCommentsInternal("YouTube", comments, totalComments);
@@ -98,7 +98,7 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         // Get comments
-        var (comments, additionalData) = await GetComments();
+        var (comments, commentCount, additionalData) = await GetComments();
         
         if (string.IsNullOrWhiteSpace(comments) || comments == "No comments available")
         {
@@ -106,6 +106,6 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         }
 
         // Analyze comments
-        return await AnalyzeComments(comments, additionalData);
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 }

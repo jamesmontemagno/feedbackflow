@@ -14,7 +14,7 @@ public class DevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackService
         ArticleUrl = articleUrl;
     }
 
-    public override async Task<(string rawComments, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching DevBlogs comments...");
         if (string.IsNullOrWhiteSpace(ArticleUrl))
@@ -30,10 +30,13 @@ public class DevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackService
         }
         var responseContent = await response.Content.ReadAsStringAsync();
         
-        return (responseContent, JsonSerializer.Deserialize<DevBlogsArticleModel>(responseContent));
+        var article = JsonSerializer.Deserialize<DevBlogsArticleModel>(responseContent);
+        var totalComments = article?.Comments != null ? CountComments(article.Comments) : 0;
+        
+        return (responseContent, totalComments, article);
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
         var article = JsonSerializer.Deserialize<DevBlogsArticleModel>(comments);
         if (article == null || article.Comments == null || article.Comments.Count == 0)
@@ -42,24 +45,23 @@ public class DevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackService
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
         }
 
-        // Count total comments including replies recursively
-        int CountComments(List<DevBlogsCommentModel> comments)
-        {
-            return comments.Sum(c => 1 + (c.Replies?.Count > 0 ? CountComments(c.Replies) : 0));
-        }
-
-        var totalComments = CountComments(article.Comments);
-        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing comments...");
+        var totalComments = commentCount ?? CountComments(article.Comments);
+        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {totalComments} comments...");
 
         // Analyze the comments and return both the markdown result and the comments list
         var markdown = await AnalyzeCommentsInternal("devblogs", comments, totalComments);
         return (markdown, article);
     }
 
+    private int CountComments(List<DevBlogsCommentModel> comments)
+    {
+        return comments.Sum(c => 1 + (c.Replies?.Count > 0 ? CountComments(c.Replies) : 0));
+    }
+
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         // Get comments
-        var (comments, additionalData) = await GetComments();
+        var (comments, commentCount, additionalData) = await GetComments();
         
         if (string.IsNullOrWhiteSpace(comments))
         {
@@ -67,6 +69,6 @@ public class DevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackService
         }
 
         // Analyze comments
-        return await AnalyzeComments(comments, additionalData);
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 }

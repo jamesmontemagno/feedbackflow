@@ -20,7 +20,7 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
         _url = url;
     }
 
-    public override async Task<(string rawComments, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         if (string.IsNullOrWhiteSpace(_url))
         {
@@ -40,6 +40,7 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
         feedbackResponse.EnsureSuccessStatusCode();
         
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
+        var totalComments = 0;
 
         // Determine if this is an issue/PR or a discussion
         if (_url.Contains("/discussions/"))
@@ -48,7 +49,7 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
             if (discussions == null || !discussions.Any())
             {
                 UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
-                return ("No comments available", null);
+                return ("No comments available", 0, null);
             }
 
             var allComments = string.Join("\n\n", discussions.Select(discussion =>
@@ -63,12 +64,13 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
                     comments.AddRange(discussion.Comments.Select(comment =>
                         $"Comment by {comment.Author}: {comment.Content}"
                     ));
+                    totalComments += discussion.Comments.Count();
                 }
 
                 return string.Join("\n", comments);
             }));
 
-            return (allComments, discussions);
+            return (allComments, totalComments, discussions);
         }
         else
         {
@@ -76,7 +78,7 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
             if (issues == null || !issues.Any())
             {
                 UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
-                return ("No comments available", null);
+                return ("No comments available", 0, null);
             }
 
             var allComments = string.Join("\n\n", issues.Select(issue =>
@@ -91,41 +93,42 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
                     comments.AddRange(issue.Comments.Select(comment =>
                         $"Comment by {comment.Author}: {comment.Content}"
                     ));
+                    totalComments += issue.Comments.Count() + 1; // +1 for the issue body
                 }
 
                 return string.Join("\n", comments);
             }));
 
-            return (allComments, issues);
+            return (allComments, totalComments, issues);
         }
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
         if (string.IsNullOrWhiteSpace(comments))
         {
-            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
+            UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
         }
 
-        // Calculate number of comments
-        var totalComments = comments.Split("\n\n").Length;
+        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {commentCount ?? 0} comments...");
 
-        // Analyze the comments
-        var markdownResult = await AnalyzeCommentsInternal("github", comments, totalComments);
-        return (markdownResult, additionalData);
+        // Analyze comments using the shared AnalyzeComments method
+        var markdown = await AnalyzeCommentsInternal("github", comments, commentCount ?? 0);
+        return (markdown, additionalData);
     }
 
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         // Get comments
-        var (comments, additionalData) = await GetComments();
+        var (comments, commentCount, additionalData) = await GetComments();
         
-        if (string.IsNullOrWhiteSpace(comments) || comments == "No comments available")
+        if (string.IsNullOrWhiteSpace(comments))
         {
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
         }
 
         // Analyze comments
-        return await AnalyzeComments(comments, additionalData);
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 }

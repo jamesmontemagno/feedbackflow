@@ -13,7 +13,7 @@ public class MockDevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackSer
     {
     }
 
-    public override async Task<(string rawComments, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock DevBlogs comments...");
         await Task.Delay(1000); // Simulate network delay
@@ -81,7 +81,10 @@ public class MockDevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackSer
         // Build comments string
         var comments = BuildCommentsString(mockArticle);
 
-        return (comments, mockArticle);
+        // Count total comments including all nested replies
+        int totalComments = CountComments(mockArticle.Comments);
+
+        return (comments, totalComments, mockArticle);
     }
 
     private static string BuildCommentsString(DevBlogsArticleModel article)
@@ -110,7 +113,21 @@ public class MockDevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackSer
         return string.Join("\n\n", commentsList);
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    private static int CountComments(List<DevBlogsCommentModel> comments)
+    {
+        int count = 0;
+        foreach (var comment in comments)
+        {
+            count++; // Count the comment itself
+            if (comment.Replies?.Any() == true)
+            {
+                count += CountComments(comment.Replies); // Add count of all replies
+            }
+        }
+        return count;
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
         if (string.IsNullOrWhiteSpace(comments))
         {
@@ -121,8 +138,7 @@ public class MockDevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackSer
         await Task.Delay(1000); // Simulate analysis time
 
         var article = additionalData as DevBlogsArticleModel;
-        var totalComments = article?.Comments.Sum(c => 
-            1 + (c.Replies?.Sum(r => 1 + (r.Replies?.Count ?? 0)) ?? 0)) ?? 0;
+        var totalComments = commentCount ?? (article?.Comments != null ? CountComments(article.Comments) : 0);
 
         var mockAnalysis = @$"# DevBlogs Article Feedback Analysis 📚
 
@@ -150,7 +166,7 @@ Overall Sentiment: Very Positive
 - Detailed explanations provided
 
 ## User Categories 👥
-1. Platform Developers
+1. Platform Developers ({totalComments} total engagements)
    - Interested in integration capabilities
    - Focus on technical implementation
 2. Blazor Developers
@@ -182,14 +198,14 @@ Overall Sentiment: Very Positive
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         // Get comments
-        var (comments, additionalData) = await GetComments();
+        var (comments, commentCount, additionalData) = await GetComments();
         
         if (string.IsNullOrWhiteSpace(comments))
         {
-            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
         }
 
-        // Analyze comments
-        return await AnalyzeComments(comments, additionalData);
+        // Analyze comments with count
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 }

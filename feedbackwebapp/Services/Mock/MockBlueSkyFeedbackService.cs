@@ -18,7 +18,7 @@ public class MockBlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackServi
     {
     }
 
-    public override async Task<(string rawComments, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock BlueSky comments...");
         await Task.Delay(1000); // Simulate network delay
@@ -89,10 +89,13 @@ public class MockBlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackServi
             return $"{item.AuthorName} (@{item.AuthorUsername}): {item.Content}\n{string.Join("\n", replies)}";
         }));
 
-        return (comments, mockFeedback);
+        var totalComments = mockFeedback.Items.Sum(item => 
+            1 + (item.Replies?.Sum(r => 1 + (r.Replies?.Count ?? 0)) ?? 0));
+
+        return (comments, totalComments, mockFeedback);
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
         if (string.IsNullOrWhiteSpace(comments))
         {
@@ -103,7 +106,7 @@ public class MockBlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackServi
         await Task.Delay(1000); // Simulate analysis time
 
         var feedback = additionalData as BlueSkyFeedbackResponse;
-        var totalComments = feedback?.Items.Sum(item => 
+        var totalComments = commentCount ?? feedback?.Items.Sum(item => 
             1 + (item.Replies?.Sum(r => 1 + (r.Replies?.Count ?? 0)) ?? 0)) ?? 0;
 
         var mockAnalysis = @$"# BlueSky Feedback Analysis 🦋
@@ -151,7 +154,7 @@ Overall Sentiment: Very Positive
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         // Get comments
-        var (comments, additionalData) = await GetComments();
+        var (comments, commentCount, additionalData) = await GetComments();
         
         if (string.IsNullOrWhiteSpace(comments))
         {
@@ -159,6 +162,6 @@ Overall Sentiment: Very Positive
         }
 
         // Analyze comments
-        return await AnalyzeComments(comments, additionalData);
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 }

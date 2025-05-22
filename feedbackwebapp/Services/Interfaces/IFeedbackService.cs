@@ -1,20 +1,20 @@
 namespace FeedbackWebApp.Services.Interfaces;
 
 public interface IFeedbackService
-{
-    /// <summary>
+{    /// <summary>
     /// Gets raw comments directly from the source
     /// </summary>
-    /// <returns>The raw comments and any additional data</returns>
-    Task<(string rawComments, object? additionalData)> GetComments();
+    /// <returns>The raw comments, total number of comments found, and any additional data</returns>
+    Task<(string rawComments, int commentCount, object? additionalData)> GetComments();
 
     /// <summary>
     /// Analyzes comments to produce insights
     /// </summary>
     /// <param name="comments">The comments to analyze</param>
+    /// <param name="commentCount">Optional total number of comments</param>
     /// <param name="additionalData">Optional additional data to help with analysis</param>
     /// <returns>Analysis result in markdown format and any additional processed data</returns>
-    Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null);
+    Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null);
 
     /// <summary>
     /// Gets and analyzes feedback in a single operation

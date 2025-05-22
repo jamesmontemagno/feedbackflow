@@ -212,7 +212,8 @@
                 "YouTube" or "youtube" => ServiceProvider.CreateYouTubeService(
                     youtubeInput?.VideoIds ?? string.Empty, 
                     youtubeInput?.PlaylistIds ?? string.Empty, 
-                    HandleStatusUpdate),                "Auto" or "auto" => ServiceProvider.CreateAutoDataSourceService(
+                    HandleStatusUpdate),                
+                "Auto" or "auto" => ServiceProvider.CreateAutoDataSourceService(
                     autoDataSourceForm?.GetUrls().ToArray() ?? Array.Empty<string>(),
                     HandleStatusUpdate),
                 "HackerNews" or "hackernews" => ServiceProvider.CreateHackerNewsService(

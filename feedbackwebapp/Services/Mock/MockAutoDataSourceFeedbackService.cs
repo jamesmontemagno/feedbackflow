@@ -14,7 +14,7 @@ public class MockAutoDataSourceFeedbackService : FeedbackService, IAutoDataSourc
     {
     }
 
-    public override async Task<(string rawComments, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching comments from multiple sources...");
         await Task.Delay(1000); // Simulate network delay
@@ -39,10 +39,13 @@ Comments:
 - How does it handle large volumes of feedback?
 - Does it support custom data sources?";
 
-        return (mockComments, null);
+        // Count total number of comments (lines starting with -)
+        int commentCount = mockComments.Split('\n').Count(line => line.Trim().StartsWith('-'));
+
+        return (mockComments, commentCount, null);
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, object? additionalData = null)
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
         if (string.IsNullOrWhiteSpace(comments))
         {
@@ -52,10 +55,13 @@ Comments:
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing feedback from multiple sources...");
         await Task.Delay(1000); // Simulate analysis time
 
-        var mockAnalysis = @"# Multi-Source Feedback Analysis 📊
+        // Use provided comment count or calculate
+        int totalComments = commentCount ?? comments.Split('\n').Count(line => line.Trim().StartsWith('-'));
+
+        var mockAnalysis = @$"# Multi-Source Feedback Analysis 📊
 
 ## Overview
-Analysis of feedback aggregated from multiple sources including YouTube, GitHub, and Dev.to.
+Analysis of {totalComments} feedback items aggregated from multiple sources including YouTube, GitHub, and Dev.to.
 
 ## Key Themes 🎯
 
@@ -76,7 +82,7 @@ Analysis of feedback aggregated from multiple sources including YouTube, GitHub,
 
 ## Engagement Statistics 📈
 - Total sources analyzed: 3
-- Total comments processed: 8
+- Total comments processed: {totalComments}
 - Average sentiment: Positive
 
 ## Recommendations 💡
@@ -96,14 +102,14 @@ Analysis of feedback aggregated from multiple sources including YouTube, GitHub,
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
     {
         // Get comments
-        var (comments, additionalData) = await GetComments();
+        var (comments, commentCount, additionalData) = await GetComments();
         
         if (string.IsNullOrWhiteSpace(comments))
         {
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
         }
 
-        // Analyze comments
-        return await AnalyzeComments(comments, additionalData);
+        // Analyze comments with count
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 }
