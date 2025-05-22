@@ -2,32 +2,6 @@
 @using System.ComponentModel.DataAnnotations
 
 <div class="auto-input-container">
-    @* <div class="summary-mode mb-3">
-        <div class="form-check form-check-inline">            
-            <input class="form-check-input" 
-                   type="radio" 
-                   name="summaryMode" 
-                   id="individualSummary" 
-                   value="@SummaryMode.Individual"                   
-                   checked="@(CurrentSummaryMode == SummaryMode.Individual)"
-                   @onchange="@(async (ChangeEventArgs e) => await HandleSummaryModeChange(SummaryMode.Individual))" />
-            <label class="form-check-label" for="individualSummary">
-                Summarize URLs Individually
-            </label>
-        </div>
-        <div class="form-check form-check-inline">            
-            <input class="form-check-input" 
-                   type="radio" 
-                   name="summaryMode" 
-                   id="combinedSummary" 
-                   value="@SummaryMode.Combined"
-                   checked="@(CurrentSummaryMode == SummaryMode.Combined)"
-                   @onchange="@(async (ChangeEventArgs e) => await HandleSummaryModeChange(SummaryMode.Combined))" />
-            <label class="form-check-label" for="combinedSummary">
-                Summarize URLs Together
-            </label>
-        </div>
-    </div> *@
 
     <div class="auto-input-list">
         @for (var i = 0; i < Urls.Count; i++)
@@ -55,21 +29,10 @@
     </button>
 </div>
 
-@code {
-    public enum SummaryMode
-    {
-        Individual,
-        Combined
-    }
-
-    private List<string> Urls { get; set; } = new() { "" };
-    private SummaryMode CurrentSummaryMode { get; set; } = SummaryMode.Combined;
+@code {    private List<string> Urls { get; set; } = new() { "" };
 
     [Parameter]
-    public EventCallback<List<string>> OnUrlsChanged { get; set; }    
-
-    [Parameter]
-    public EventCallback<SummaryMode> OnSummaryModeChanged { get; set; }
+    public EventCallback<List<string>> OnUrlsChanged { get; set; }
 
     public async Task HandleUrlChange(int index, string value)
     {
@@ -93,15 +56,7 @@
         }
     }
 
-    private async Task HandleSummaryModeChange(SummaryMode mode)
-    {
-        CurrentSummaryMode = mode;
-        await OnSummaryModeChanged.InvokeAsync(mode);
-    }
-
     public void RefreshUI() => StateHasChanged();
-
-    public List<string> GetUrls() => Urls.Where(u => !string.IsNullOrWhiteSpace(u)).ToList();
     
-    public SummaryMode GetSummaryMode() => CurrentSummaryMode;
+    public List<string> GetUrls() => Urls.Where(u => !string.IsNullOrWhiteSpace(u)).ToList();
 }
