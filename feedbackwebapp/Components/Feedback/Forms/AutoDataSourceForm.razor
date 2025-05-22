@@ -2,7 +2,6 @@
 @using System.ComponentModel.DataAnnotations
 
 <div class="auto-input-container">
-
     <div class="auto-input-list">
         @for (var i = 0; i < Urls.Count; i++)
         {            
@@ -29,7 +28,8 @@
     </button>
 </div>
 
-@code {    private List<string> Urls { get; set; } = new() { "" };
+@code {    
+    private List<string> Urls { get; set; } = new() { "" };
 
     [Parameter]
     public EventCallback<List<string>> OnUrlsChanged { get; set; }
