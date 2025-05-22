@@ -1,0 +1,41 @@
+/* SharedHistory styles */
+.shared-history-title {
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 2.2rem;
+}
+
+.loading-state, .empty-state {
+    text-align: center;
+    padding: 5rem 0;
+    color: var(--text-secondary);
+}
+
+.loading-state .spinner-border, 
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+    opacity: 0.8;
+}
+
+.service-icon {
+    font-size: 1.2rem;
+    color: var(--primary-color);
+}
+
+.source-badge {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: var(--border-radius-pill);
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+}

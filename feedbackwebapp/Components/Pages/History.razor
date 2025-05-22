@@ -1,6 +1,8 @@
 @page "/history"
 @inject FeedbackWebApp.Services.Interfaces.IHistoryService HistoryService
+@inject FeedbackWebApp.Services.Interfaces.IAnalysisSharingService SharingService
 @inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
 @using SharedDump.Models
 @using Markdig
 @using Microsoft.JSInterop
@@ -92,6 +94,9 @@
                             <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="() => CopyToClipboard(item)">
                                 <i class="bi bi-clipboard"></i>
                             </button>
+                            <button class="btn btn-sm btn-outline-info action-btn" title="Share Analysis" @onclick="() => ShareAnalysis(item)">
+                                <i class="bi bi-share"></i>
+                            </button>
                             @if(item.SourceType != "Manual")
                             {
                                 <a class="btn btn-sm btn-outline-primary action-btn" title="Open Source" target="_blank" rel="noopener noreferrer" href="@GetSourceUrl(item)">
@@ -136,13 +141,30 @@
     }
 </div>
 
+<ShareAnalysisModal 
+    IsVisible="@isShareModalVisible" 
+    IsVisibleChanged="@((value) => isShareModalVisible = value)" 
+    IsSharing="@isSharing" 
+    IsSharingChanged="@((value) => isSharing = value)"
+    ShareLink="@shareLink"
+    ShareLinkChanged="@((value) => shareLink = value)"
+    Error="@shareError"
+    ErrorChanged="@((value) => shareError = value)"
+    OnRetryShare="@ShareSelectedAnalysis" />
+
 @code {    private List<AnalysisHistoryItem>? historyItems;
     private List<AnalysisHistoryItem>? filteredItems => FilterHistoryItems();
     private HashSet<string> expandedItems = new();
     private string dateFilter = "all";
     private string sourceFilter = "all";
     private string searchTerm = string.Empty;
-
+    
+    // Share functionality
+    private bool isShareModalVisible = false;
+    private bool isSharing = false;
+    private string shareLink = string.Empty;
+    private string shareError = string.Empty;
+    private AnalysisHistoryItem? selectedAnalysis;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -283,6 +305,74 @@
         {
             await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", item.Summary);
             await ToastService.ShowSuccessAsync("Summary copied to clipboard", 3000);
+        }
+    }
+
+    private void ShareAnalysis(AnalysisHistoryItem item)
+    {
+        selectedAnalysis = item;
+        shareError = string.Empty;
+        shareLink = string.Empty;
+        isShareModalVisible = true;
+        
+        // Start the sharing process
+        _ = ShareSelectedAnalysis();
+    }
+
+    private async Task ShareSelectedAnalysis()
+    {
+        if (selectedAnalysis == null) return;
+
+        try
+        {
+            isSharing = true;
+            shareError = string.Empty;
+            shareLink = string.Empty;
+            
+            // Create an AnalysisData object from the history item
+            var analysisData = new AnalysisData
+            {
+                Id = selectedAnalysis.Id,
+                Title = $"{selectedAnalysis.SourceType} Analysis",
+                Summary = selectedAnalysis.Summary,
+                FullAnalysis = selectedAnalysis.FullAnalysis,
+                SourceType = selectedAnalysis.SourceType,
+                UserInput = selectedAnalysis.UserInput,
+                CreatedDate = selectedAnalysis.Timestamp
+            };
+            
+            // Share the analysis
+            var sharedId = await SharingService.ShareAnalysisAsync(analysisData);
+            
+            if (string.IsNullOrEmpty(sharedId))
+            {
+                shareError = "Failed to generate share link. Please try again.";
+                return;
+            }
+            
+            // Create the share link
+            var baseUrl = NavigationManager.BaseUri.TrimEnd('/');
+            shareLink = $"{baseUrl}/shared/{sharedId}";
+            
+            // Save to shared history
+            var sharedRecord = new SharedAnalysisRecord
+            {
+                Id = sharedId,
+                Title = $"{selectedAnalysis.SourceType} Analysis",
+                SourceType = selectedAnalysis.SourceType,
+                SourceId = selectedAnalysis.Id,
+                SharedDate = DateTime.UtcNow
+            };
+            
+            await SharingService.SaveSharedAnalysisToHistoryAsync(sharedRecord);
+        }
+        catch (Exception ex)
+        {
+            shareError = "An error occurred while sharing the analysis. Please try again.";
+        }
+        finally
+        {
+            isSharing = false;
         }
     }
 }
