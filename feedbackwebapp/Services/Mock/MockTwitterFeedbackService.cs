@@ -15,10 +15,10 @@ public class MockTwitterFeedbackService : FeedbackService, ITwitterFeedbackServi
     {
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
-        UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock Twitter/X data...");
-        await Task.Delay(500); // Simulate network delay
+        UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock Twitter/X comments...");
+        await Task.Delay(1000); // Simulate network delay
 
         var mockFeedback = new TwitterFeedbackResponse
         {
@@ -27,38 +27,145 @@ public class MockTwitterFeedbackService : FeedbackService, ITwitterFeedbackServi
                 new TwitterFeedbackItem
                 {
                     Id = "1234567890",
-                    Author = "@dotnetdev",
-                    Content = "Excited to announce .NET 9!",
-                    TimestampUtc = DateTime.UtcNow.AddMinutes(-30),
+                    Author = "@feedbackflow",
+                    AuthorName = "FeedbackFlow",
+                    Content = "🚀 Excited to announce our latest release! Built with #dotnet and @blazor, now with improved performance and even better feedback analysis!",
+                    TimestampUtc = DateTime.UtcNow.AddHours(-4),
                     Replies = new List<TwitterFeedbackItem>
                     {
                         new TwitterFeedbackItem
                         {
                             Id = "1234567891",
-                            Author = "@csharpfan",
-                            Content = "Congrats! Looking forward to the new features.",
-                            TimestampUtc = DateTime.UtcNow.AddMinutes(-28),
+                            Author = "@devuser",
+                            AuthorName = "Developer",
+                            Content = "Love the new features! How's the performance with large datasets?",
+                            TimestampUtc = DateTime.UtcNow.AddHours(-3),
                             ParentId = "1234567890"
                         },
                         new TwitterFeedbackItem
                         {
                             Id = "1234567892",
-                            Author = "@blazorenthusiast",
-                            Content = "Will Blazor get more love in this release?",
-                            TimestampUtc = DateTime.UtcNow.AddMinutes(-25),
+                            Author = "@feedbackflow",
+                            AuthorName = "FeedbackFlow",
+                            Content = "Thanks! We've optimized for large datasets - processing 10k+ comments is now 3x faster!",
+                            TimestampUtc = DateTime.UtcNow.AddHours(-3),
                             ParentId = "1234567890"
+                        }
+                    }
+                },
+                new TwitterFeedbackItem
+                {
+                    Id = "1234567893",
+                    Author = "@techexplorer",
+                    AuthorName = "Tech Explorer",
+                    Content = "Just tried @feedbackflow for our product feedback analysis. The insights are amazing! #ProductDevelopment",
+                    TimestampUtc = DateTime.UtcNow.AddHours(-2),
+                    Replies = new List<TwitterFeedbackItem>
+                    {
+                        new TwitterFeedbackItem
+                        {
+                            Id = "1234567894",
+                            Author = "@productmanager",
+                            AuthorName = "Product Lead",
+                            Content = "Agreed! We're using it for our weekly feedback reviews. Super helpful for prioritizing features.",
+                            TimestampUtc = DateTime.UtcNow.AddHours(-1),
+                            ParentId = "1234567893"
                         }
                     }
                 }
             }
         };
 
-        var totalComments = mockFeedback.Items.Sum(item => 1 + (item.Replies?.Count ?? 0));
-        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Found {totalComments} comments and replies (mock)...");
+        // Build comments string
+        var commentsList = new List<string>();
+        foreach (var item in mockFeedback.Items)
+        {
+            var responses = item.Replies?.Select(r => $"  > {r.AuthorName} (@{r.Author}): {r.Content}") ?? Array.Empty<string>();
+            commentsList.Add($"{item.AuthorName} (@{item.Author}): {item.Content}\n{string.Join("\n", responses)}");
+        }
+        var comments = string.Join("\n\n", commentsList);
 
-        var markdown = "# Twitter Feedback (Mock)\n\n" +
-            string.Join("\n\n", mockFeedback.Items.Select(item => $"**{item.Author}**: {item.Content}\n{string.Join("\n", item.Replies?.Select(r => $"> **{r.Author}**: {r.Content}") ?? Array.Empty<string>())}"));
+        // Count total comments including replies
+        int totalComments = mockFeedback.Items.Sum(i => 1 + (i.Replies?.Count ?? 0));
 
-        return (markdown, mockFeedback);
+        return (comments, totalComments, mockFeedback);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
+    {
+        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing Twitter/X feedback...");
+        await Task.Delay(1000); // Simulate analysis time
+
+        var feedback = additionalData as TwitterFeedbackResponse;
+        var totalComments = commentCount ?? feedback?.Items.Sum(i => 1 + (i.Replies?.Count ?? 0)) ?? 0;
+
+        var mockAnalysis = @$"# Twitter/X Feedback Analysis 🐦
+
+## Overview
+Total Engagements: {totalComments} tweets and replies
+Platform: Twitter/X
+Time Range: Last 4 hours
+
+## Key Themes 🎯
+
+### Performance & Features
+- Positive response to performance improvements
+- Interest in handling large datasets
+- New features well-received
+
+### User Adoption
+- Product teams implementing for feedback analysis
+- Active engagement from developers
+- Strong cross-role interest (developers, product managers)
+
+## User Categories 👥
+1. Developers
+   - Focus on performance metrics
+   - Technical implementation questions
+2. Product Teams
+   - Using for regular feedback review
+   - Feature prioritization use case
+3. Early Adopters
+   - Strong enthusiasm
+   - Sharing success stories
+
+## Engagement Metrics 📊
+- Direct feedback: {feedback?.Items.Count ?? 0} tweets
+- Community discussion: {feedback?.Items.Sum(i => i.Replies?.Count ?? 0) ?? 0} replies
+- Strong positive sentiment
+
+## Key Insights 💡
+- Performance improvements resonating with users
+- Product teams finding value
+- Developers interested in technical details
+- Positive feedback on performance improvements
+
+## Recommendations 📋
+1. Share more performance metrics
+2. Highlight use cases in documentation
+3. Consider creating case studies
+4. Continue engaging with technical queries
+
+### Future Engagement
+- Monitor for feature requests
+- Track performance feedback
+- Share success stories
+- Engage with product teams";
+
+        return (mockAnalysis, feedback);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    {
+        // Get comments
+        var (comments, commentCount, additionalData) = await GetComments();
+        
+        if (string.IsNullOrWhiteSpace(comments))
+        {
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
+        }
+
+        // Analyze comments with count
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 }

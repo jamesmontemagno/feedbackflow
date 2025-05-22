@@ -1,0 +1,107 @@
+@namespace FeedbackWebApp.Components.Feedback.Forms
+@using System.ComponentModel.DataAnnotations
+
+<div class="auto-input-container">
+    @* <div class="summary-mode mb-3">
+        <div class="form-check form-check-inline">            
+            <input class="form-check-input" 
+                   type="radio" 
+                   name="summaryMode" 
+                   id="individualSummary" 
+                   value="@SummaryMode.Individual"                   
+                   checked="@(CurrentSummaryMode == SummaryMode.Individual)"
+                   @onchange="@(async (ChangeEventArgs e) => await HandleSummaryModeChange(SummaryMode.Individual))" />
+            <label class="form-check-label" for="individualSummary">
+                Summarize URLs Individually
+            </label>
+        </div>
+        <div class="form-check form-check-inline">            
+            <input class="form-check-input" 
+                   type="radio" 
+                   name="summaryMode" 
+                   id="combinedSummary" 
+                   value="@SummaryMode.Combined"
+                   checked="@(CurrentSummaryMode == SummaryMode.Combined)"
+                   @onchange="@(async (ChangeEventArgs e) => await HandleSummaryModeChange(SummaryMode.Combined))" />
+            <label class="form-check-label" for="combinedSummary">
+                Summarize URLs Together
+            </label>
+        </div>
+    </div> *@
+
+    <div class="auto-input-list">
+        @for (var i = 0; i < Urls.Count; i++)
+        {            
+            var index = i;
+            <div class="input-group mb-2">                
+                <div class="form-floating flex-grow-1">
+                    <input type="url" 
+                           class="form-control" 
+                           id="url-@index"
+                           value="@Urls[index]"
+                           @onchange="@(async (ChangeEventArgs e) => await HandleUrlChange(index, e.Value?.ToString() ?? ""))" />
+                    <label for="url-@index">Enter URL (YouTube, Reddit, GitHub, etc.)</label>
+                </div>
+                <button class="btn btn-outline-danger" @onclick="@(() => RemoveUrl(index))" type="button">
+                    <i class="bi bi-x-lg"></i>
+                    <span class="visually-hidden">Remove URL</span>
+                </button>
+            </div>
+        }
+    </div>
+
+    <button class="btn btn-outline-primary mb-3" @onclick="AddUrl" type="button">
+        <i class="bi bi-plus-lg"></i> Add Another URL
+    </button>
+</div>
+
+@code {
+    public enum SummaryMode
+    {
+        Individual,
+        Combined
+    }
+
+    private List<string> Urls { get; set; } = new() { "" };
+    private SummaryMode CurrentSummaryMode { get; set; } = SummaryMode.Combined;
+
+    [Parameter]
+    public EventCallback<List<string>> OnUrlsChanged { get; set; }    
+
+    [Parameter]
+    public EventCallback<SummaryMode> OnSummaryModeChanged { get; set; }
+
+    public async Task HandleUrlChange(int index, string value)
+    {
+        Urls[index] = value;
+        await OnUrlsChanged.InvokeAsync(Urls);
+    }
+
+    private void AddUrl()
+    {
+        Urls.Add("");
+        StateHasChanged();
+    }
+
+    private async Task RemoveUrl(int index)
+    {
+        if (Urls.Count > 1)
+        {
+            Urls.RemoveAt(index);
+            await OnUrlsChanged.InvokeAsync(Urls);
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleSummaryModeChange(SummaryMode mode)
+    {
+        CurrentSummaryMode = mode;
+        await OnSummaryModeChanged.InvokeAsync(mode);
+    }
+
+    public void RefreshUI() => StateHasChanged();
+
+    public List<string> GetUrls() => Urls.Where(u => !string.IsNullOrWhiteSpace(u)).ToList();
+    
+    public SummaryMode GetSummaryMode() => CurrentSummaryMode;
+}

@@ -173,4 +173,120 @@ public static class UrlParsing
                id.Length <= 7 && 
                id.All(c => char.IsLetterOrDigit(c));
     }
+
+    public static bool IsYouTubeUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return false;
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return false;
+
+        return uri.Host.Contains("youtube.com", StringComparison.OrdinalIgnoreCase) ||
+               uri.Host.Contains("youtu.be", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool IsGitHubUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return false;
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return false;
+
+        return uri.Host.Contains("github.com", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool IsRedditUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return false;
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return false;
+
+        return uri.Host.Contains("reddit.com", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool IsDevBlogsUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return false;
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return false;
+
+        return uri.Host.Contains("devblogs.microsoft.com", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static string? ExtractYouTubeId(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return null;
+
+        try
+        {
+            if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
+                // Handle youtube.com/watch?v= format
+                if (uri.Host.Contains("youtube.com") && uri.Query.Contains("v="))
+                {
+                    var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                    return query["v"];
+                }
+                // Handle youtu.be/ format
+                else if (uri.Host == "youtu.be")
+                {
+                    return uri.AbsolutePath.TrimStart('/');
+                }
+                // Handle youtube.com/live/ format
+                else if (uri.Host.Contains("youtube.com") && uri.AbsolutePath.StartsWith("/live/"))
+                {
+                    return uri.AbsolutePath.Substring("/live/".Length).Split('?')[0];
+                }
+            }
+            // Try treating as a direct video ID if it's not a URL
+            else if (url.Length == 11 && url.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_'))
+            {
+                return url;
+            }
+        }
+        catch
+        {
+            return null;
+        }
+
+        return null;
+    }
+
+    public static bool IsTwitterUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return false;
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return false;
+
+        var host = uri.Host.ToLowerInvariant();
+        return host.Equals("twitter.com") || host.Equals("x.com");
+    }
+
+    public static bool IsBlueSkyUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return false;
+
+        return BlueSkyUrlParser.IsValidBlueSkyUrl(url);
+    }
+
+    public static bool IsHackerNewsUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return false;
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return false;
+
+        return uri.Host.Contains("ycombinator.com", StringComparison.OrdinalIgnoreCase);
+    }
 }

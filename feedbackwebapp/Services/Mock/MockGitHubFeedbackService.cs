@@ -15,7 +15,7 @@ public class MockGitHubFeedbackService : FeedbackService, IGitHubFeedbackService
     {
     }
 
-    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching GitHub feedback...");
         
@@ -25,7 +25,7 @@ public class MockGitHubFeedbackService : FeedbackService, IGitHubFeedbackService
         // Create mock GitHub issues
         var issues = new List<GithubIssueModel>
         {
-            new GithubIssueModel
+            new()
             {
                 Id = "42",
                 Title = "Fix dark mode contrast issues",
@@ -50,19 +50,19 @@ public class MockGitHubFeedbackService : FeedbackService, IGitHubFeedbackService
                     {
                         Id = "comment-2",
                         Author = "userC",
-                        Content = "Specifically the sidebar navigation has gray text (#7a7a7a) on a dark background (#222) which is only about 3.6:1 ratio.",
-                        CreatedAt = "2025-03-13T08:17:32Z",
+                        Content = "This is especially noticeable in the statistics dashboard. The light gray text is almost unreadable against the dark background.",
+                        CreatedAt = "2025-03-14T08:17:33Z",
                         Url = "https://github.com/sample/repo/issues/42#issuecomment-2"
                     }
                 }
             },
-            new GithubIssueModel
+            new()
             {
                 Id = "57",
                 Title = "Add keyboard shortcuts for common actions",
                 Author = "userD",
                 URL = "https://github.com/sample/repo/issues/57",
-                CreatedAt = new DateTime(2025, 3, 21, 16, 42, 11, DateTimeKind.Utc),
+                CreatedAt = new DateTime(2025, 3, 20, 15, 45, 12, DateTimeKind.Utc),
                 LastUpdated = new DateTime(2025, 4, 5, 11, 9, 27, DateTimeKind.Utc),
                 Body = "It would improve productivity to have keyboard shortcuts for frequently used actions like saving, creating new items, and navigation.",
                 Upvotes = 8,
@@ -92,7 +92,7 @@ public class MockGitHubFeedbackService : FeedbackService, IGitHubFeedbackService
         // Create mock GitHub discussions
         var discussions = new List<GithubDiscussionModel>
         {
-            new GithubDiscussionModel
+            new()
             {
                 Title = "Roadmap discussion for Q3 2025",
                 Url = "https://github.com/sample/repo/discussions/12",
@@ -134,21 +134,65 @@ public class MockGitHubFeedbackService : FeedbackService, IGitHubFeedbackService
             }
         };
 
-        // Create a response object that matches the API's response structure
-        var responseData = new
-        {
-            Issues = issues,
-            PullRequests = new List<GithubIssueModel>(), // Empty pull requests list
-            Discussions = discussions
-        };
+        // Build response data object
+        var responseData = new { Issues = issues, Discussions = discussions };
 
+        // Build the comments string
+        var allComments = string.Join("\n\n", issues.Select(issue =>
+        {
+            var comments = new List<string>
+            {
+                $"Issue: {issue.Title}",
+                $"Description: {issue.Body}"
+            };
+
+            if (issue.Comments != null)
+            {
+                comments.AddRange(issue.Comments.Select(comment =>
+                    $"Comment by {comment.Author}: {comment.Content}"
+                ));
+            }
+
+            return string.Join("\n", comments);
+        }));
+
+        allComments += "\n\n" + string.Join("\n\n", discussions.Select(discussion =>
+        {
+            var comments = new List<string>
+            {
+                $"Discussion: {discussion.Title}"
+            };
+
+            if (discussion.Comments != null)
+            {
+                comments.AddRange(discussion.Comments.Select(comment =>
+                    $"Comment by {comment.Author}: {comment.Content}"
+                ));
+            }
+
+            return string.Join("\n", comments);
+        }));
+
+        // Count total comments (issue comments + discussion comments + issues descriptions + discussions)
+        int totalComments = 
+            issues.Sum(i => (i.Comments?.Length ?? 0) + 1) + // Issue comments + descriptions
+            discussions.Sum(d => d.Comments?.Length ?? 0); // Discussion comments
+
+        return (allComments, totalComments, responseData);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
+    {
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Analyzing GitHub feedback...");
         await Task.Delay(2000);
 
-        var mockAnalysis = @"# GitHub Feedback Analysis
+        // Use provided comment count or calculate
+        int totalComments = commentCount ?? comments.Split('\n').Count(line => line.StartsWith("Comment by"));
+
+        var mockAnalysis = @$"# GitHub Feedback Analysis
 
 ## Overview
-Based on the GitHub issues and discussions, there are several key areas of focus:
+Based on {totalComments} GitHub issues, comments, and discussions, there are several key areas of focus:
 
 1. **Accessibility Improvements** - Particularly for dark mode
 2. **User Experience Enhancements** - Including keyboard shortcuts and UI clarity
@@ -157,28 +201,50 @@ Based on the GitHub issues and discussions, there are several key areas of focus
 ## Key Insights
 
 ### Accessibility
-Users report contrast issues in dark mode, specifically in the navigation sidebar. The current contrast ratio (3.6:1) falls below WCAG 2.1 AA standards (4.5:1). This should be prioritized as it impacts users with visual impairments.
+- Critical dark mode contrast issues affecting readability ({totalComments} total items of feedback)
+- Multiple users reporting WCAG compliance concerns
+- Statistics dashboard particularly problematic
 
 ### User Experience
-Multiple users have requested keyboard shortcuts for common actions. Suggestions include:
-- Following VS Code's shortcut patterns for familiarity
-- Making shortcuts configurable to accommodate different user preferences
+- Keyboard shortcuts highly requested
+- Preference for VS Code-like shortcut system
+- Need for customizable shortcuts
+- UI confusion reported by new users
 
-### Roadmap Priorities
-Based on community feedback, the top three requested features are:
+### Performance and Technical
+- Application performance degrading with updates
+- Need to balance new features with technical debt
+- Mobile responsiveness improvements needed
+
+### Feature Requests
 1. Dark mode improvements
-2. Mobile responsiveness
-3. Export to PDF functionality
+2. Mobile responsive design
+3. PDF export functionality
+4. Keyboard shortcuts
+5. Configurable UI elements
 
-## Recommendations
-1. Address the contrast issues in dark mode as a priority fix
-2. Implement keyboard shortcuts with configuration options
-3. Consider a focused UX review to identify confusing elements for new users
-4. Include performance optimization in the technical backlog
+## Community Engagement
+- Active discussion participation ({totalComments} contributions)
+- Detailed, constructive feedback
+- Strong interest in accessibility features
 
 ## Sentiment Analysis
 Overall sentiment is constructive rather than critical. Users are engaged and providing specific, actionable feedback.";
 
-        return (mockAnalysis, responseData);
+        return (mockAnalysis, additionalData);
+    }
+
+    public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
+    {
+        // Get comments
+        var (comments, commentCount, additionalData) = await GetComments();
+        
+        if (string.IsNullOrWhiteSpace(comments))
+        {
+            return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
+        }
+
+        // Analyze comments with count
+        return await AnalyzeComments(comments, commentCount, additionalData);
     }
 }

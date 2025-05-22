@@ -5,11 +5,9 @@ using FeedbackWebApp.Services.Interfaces;
 namespace FeedbackWebApp.Services;
 
 public class HistoryService : IHistoryService, IDisposable
-{
-    private readonly IJSRuntime _jsRuntime;
+{    private readonly IJSRuntime _jsRuntime;
     private readonly List<AnalysisHistoryItem> _inMemoryHistory;
     private const string StorageKey = "feedbackflow_analysis_history";
-    private bool _disposed;
     private bool _initialized;
 
     public HistoryService(IJSRuntime jsRuntime)
@@ -98,6 +96,7 @@ public class HistoryService : IHistoryService, IDisposable
 
     public void Dispose()
     {
-        _disposed = true;
+        // Nothing to dispose
+        GC.SuppressFinalize(this);
     }
 }

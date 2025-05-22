@@ -7,14 +7,6 @@
     resize: vertical;
     min-height: 175px !important;
     height: 175px !important;
-    border-radius: var(--border-radius-sm);
-    transition: all 0.3s ease;
-    border-color: rgba(var(--primary-color-rgb), 0.3);
-}
-
-.prompt-textarea:focus, .content-textarea:focus {
-    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.15);
-    border-color: var(--primary-color);
 }
 
 .content-textarea {
@@ -28,31 +20,7 @@
     color: var(--bs-danger);
 }
 
-/* Button styling */
-::deep .source-button {
-    transition: all 0.3s ease;
-}
-
-::deep .source-button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 15px rgba(var(--primary-color-rgb), 0.15) !important;
-}
-
-::deep .btn-primary {
-    border-color: var(--primary-color);
-    background: var(--primary-gradient);
-}
-
-::deep .btn-outline-secondary {
-    border-color: var(--bs-border-color);
-}
-
-/* Add ripple effect for buttons */
-button.action-btn {
-    position: relative;
-    overflow: hidden;
-}
-
+/* Button ripple effect */
 button.action-btn::after {
     content: '';
     position: absolute;
@@ -71,19 +39,6 @@ button.action-btn::after {
 button.action-btn:hover::after {
     transform: translate(-50%, -50%) scale(1);
     opacity: 1;
-}
-
-button.action-btn:hover i {
-    transform: scale(1.2) rotate(5deg);
-}
-
-button.action-btn i {
-    transition: all 0.3s ease;
-}
-
-.form-floating textarea.form-control {
-    padding-top: 1.625rem;
-    padding-bottom: 0.625rem;
 }
 
 .form-text {

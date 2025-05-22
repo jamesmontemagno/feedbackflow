@@ -1,0 +1,25 @@
+.auto-input-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.summary-mode {
+    border-radius: var(--bs-border-radius);
+    padding: 1rem;
+    background-color: rgba(var(--bs-primary-rgb), 0.05);
+    margin-bottom: 1.5rem;
+}
+
+.auto-input-list {
+    margin-bottom: 1rem;
+}
+
+::deep .input-group .btn-outline-danger {
+    border-color: var(--border-color);
+}
+
+::deep .input-group .btn-outline-danger:hover {
+    background-color: var(--bs-danger);
+    border-color: var(--bs-danger);
+    color: var(--bs-white);
+}

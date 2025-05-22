@@ -1,8 +1,14 @@
 ﻿@page "/"
+@namespace FeedbackWebApp.Components.Pages
 
-@using SharedDump.Models.DevBlogs
+@using System.Web
+@using Microsoft.AspNetCore.Components
+@using Microsoft.JSInterop
 @using FeedbackWebApp.Components.Feedback.Forms
 @using FeedbackWebApp.Components.Feedback.Results
+@using FeedbackWebApp.Services.Interfaces
+@using FeedbackWebApp.Services.Feedback
+@using SharedDump.Models.DevBlogs
 
 @inject IConfiguration Configuration
 @inject FeedbackServiceProvider ServiceProvider
@@ -30,6 +36,10 @@
                     @if (selectedSource.Equals("YouTube", StringComparison.OrdinalIgnoreCase))
                     {
                         <YouTubeInputForm @ref="youtubeInput"/>
+                    }
+                    else if (selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <AutoDataSourceForm @ref="autoDataSourceForm" />
                     }
                     else if (selectedSource.Equals("HackerNews", StringComparison.OrdinalIgnoreCase))
                     {
@@ -119,6 +129,7 @@
 </div>
 
 @code {
+    private AutoDataSourceForm? autoDataSourceForm;
     private YouTubeInputForm? youtubeInput;
     private HackerNewsInputForm? hackerNewsInputForm;
     private GitHubInputForm? githubInputForm;
@@ -172,7 +183,8 @@
             "HackerNews" => hackerNewsInputForm?.Value,
             "Twitter" => twitterInputForm?.RawInput,
             "BlueSky" => blueSkyInputForm?.RawInput,
-            "DevBlogs" => devBlogsInputForm?.ArticleUrl,
+            "DevBlogs" => devBlogsInputForm?.ArticleUrl,            
+            "Auto" => autoDataSourceForm?.GetUrls().FirstOrDefault(),
             _ => null
         };
     }
@@ -200,6 +212,9 @@
                 "YouTube" or "youtube" => ServiceProvider.CreateYouTubeService(
                     youtubeInput?.VideoIds ?? string.Empty, 
                     youtubeInput?.PlaylistIds ?? string.Empty, 
+                    HandleStatusUpdate),                
+                "Auto" or "auto" => ServiceProvider.CreateAutoDataSourceService(
+                    autoDataSourceForm?.GetUrls().ToArray() ?? Array.Empty<string>(),
                     HandleStatusUpdate),
                 "HackerNews" or "hackernews" => ServiceProvider.CreateHackerNewsService(
                     hackerNewsInputForm?.Value ?? string.Empty, 
@@ -323,7 +338,6 @@
         await Task.Delay(400); // Allow the UI to settle before executing the logic
         if (!string.IsNullOrEmpty(initialSource) && !string.IsNullOrEmpty(initialId))
         {
-            // Set the selected source first            
             selectedSource = initialSource.ToLower() switch
             {
                 "youtube" => "YouTube",
@@ -333,46 +347,56 @@
                 "twitter" => "Twitter",
                 "bluesky" => "BlueSky",
                 "manual" => "Manual",
+                "auto" => "Auto",
                 _ => selectedSource
             };
             StateHasChanged();
 
             // Allow time for the component to render
-            await Task.Delay(400);            // Now handle the specific source
-            if (selectedSource == "HackerNews" && hackerNewsInputForm != null)
+            await Task.Delay(400);
+
+            // Safely update form values
+            switch (selectedSource)
             {
-                hackerNewsInputForm.Value = initialId;
-                hackerNewsInputForm.RefreshUI();
-            }
-            else if (selectedSource == "YouTube" && youtubeInput != null)
-            {
-                youtubeInput.VideoIds = initialId;
-                youtubeInput.RefreshUI();
-            }
-            else if (selectedSource == "GitHub" && githubInputForm != null)
-            {
-                githubInputForm.Url = initialId;
-                githubInputForm.RefreshUI();
-            }
-            else if (selectedSource == "Reddit" && redditInputForm != null)
-            {
-                redditInputForm.ThreadsInput = initialId;
-                redditInputForm.RefreshUI();
-            }            
-            else if (selectedSource == "Twitter" && twitterInputForm != null)
-            {
-                twitterInputForm.TweetId = initialId;
-                twitterInputForm.RefreshUI();
-            }
-            else if (selectedSource == "BlueSky" && blueSkyInputForm != null)
-            {
-                blueSkyInputForm.PostId = initialId;
-                blueSkyInputForm.RefreshUI();
-            }
-            else if (selectedSource == "Manual" && manualInputForm != null)
-            {
-                manualInputForm.ContentInput = initialId;
-                manualInputForm.RefreshUI();
+                case "HackerNews" when hackerNewsInputForm != null:
+                    hackerNewsInputForm.Value = initialId;
+                    hackerNewsInputForm.RefreshUI();
+                    break;
+
+                case "Auto" when autoDataSourceForm != null:
+                    await autoDataSourceForm.HandleUrlChange(0, initialId);
+                    autoDataSourceForm.RefreshUI();
+                    break;
+
+                case "YouTube" when youtubeInput != null:
+                    youtubeInput.VideoIds = initialId;
+                    youtubeInput.RefreshUI();
+                    break;
+
+                case "GitHub" when githubInputForm != null:
+                    githubInputForm.Url = initialId;
+                    githubInputForm.RefreshUI();
+                    break;
+
+                case "Reddit" when redditInputForm != null:
+                    redditInputForm.ThreadsInput = initialId;
+                    redditInputForm.RefreshUI();
+                    break;
+
+                case "Twitter" when twitterInputForm != null:
+                    twitterInputForm.TweetId = initialId;
+                    twitterInputForm.RefreshUI();
+                    break;
+
+                case "BlueSky" when blueSkyInputForm != null:
+                    blueSkyInputForm.PostId = initialId;
+                    blueSkyInputForm.RefreshUI();
+                    break;
+
+                case "Manual" when manualInputForm != null:
+                    manualInputForm.ContentInput = initialId;
+                    manualInputForm.RefreshUI();
+                    break;
             }
 
             StateHasChanged();

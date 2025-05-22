@@ -1,45 +1,10 @@
 .hackernews-results {
-    animation: fadeIn 0.3s ease-in-out;
     --hn-accent-color: var(--bs-warning);
 }
 
-.card {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    transition: transform 0.2s ease-in-out;
-}
-
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--card-shadow);
-}
-
 .card-title {
-    color: var(--text-primary);
     font-size: 1.1rem;
     line-height: 1.4;
-}
-
-.btn-outline-light {
-    color: var(--text-primary);
-    border-color: var(--border-color);
-}
-
-.btn-outline-light:hover {
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
-    border-color: var(--warning-color);
-}
-
-.btn-outline-secondary {
-    color: var(--text-secondary);
-    border-color: var(--border-color);
-}
-
-.btn-outline-secondary:hover {
-    background-color: var(--bg-hover);
-    color: var(--text-primary);
-    border-color: var(--border-color);
 }
 
 .search-container {
@@ -48,14 +13,6 @@
 
 .item-meta {
     font-size: 0.85rem;
-}
-
-.comments-container {
-    animation: fadeIn 0.3s ease-in-out;
-}
-
-.text-muted {
-    color: var(--text-secondary) !important;
 }
 
 .item-content {
@@ -69,10 +26,6 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-}
-
-.btn-group .btn {
-    border-color: var(--border-color);
 }
 
 .date-filter input[type="date"] {
@@ -89,21 +42,9 @@
 .title-link {
     color: var(--text-primary);
     text-decoration: none;
-    transition: color 0.2s ease-in-out;
 }
 
 .title-link:hover {
     color: var(--warning-color);
     text-decoration: underline;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
 }
