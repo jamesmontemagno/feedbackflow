@@ -13,12 +13,20 @@
 <div class="container-lg py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="history-title mb-0">Analysis History</h1>
-        @if (historyItems is { Count: > 0 })
-        {
-            <button class="btn btn-danger clear-all-btn action-btn px-4 py-2" @onclick="ClearHistory">
-                <i class="bi bi-trash me-2"></i>Clear All History
-            </button>
-        }
+        <div class="d-flex align-items-center">
+            @if (historyItems?.Any(h => h.IsShared) == true)
+            {
+                <button class="btn btn-info me-2 action-btn px-4 py-2" @onclick="ShowSharedOnly">
+                    <i class="bi bi-share me-2"></i>Shared
+                </button>
+            }
+            @if (historyItems is { Count: > 0 })
+            {
+                <button class="btn btn-danger clear-all-btn action-btn px-4 py-2" @onclick="ClearHistory">
+                    <i class="bi bi-trash me-2"></i>Clear All
+                </button>
+            }
+        </div>
     </div>
       @if (historyItems is { Count: > 0 })
     {
@@ -59,6 +67,14 @@
                         <option value="Manual">Manual</option>
                     </select>
                 </div>
+                <div class="col-md-6">
+                    <label for="sharedFilter" class="form-label">Sharing Status</label>                    
+                    <select class="form-select" id="sharedFilter" @bind="sharedFilter" @bind:after="StateHasChanged">
+                        <option value="all">All Items</option>
+                        <option value="shared">Shared Only</option>
+                        <option value="notshared">Not Shared</option>
+                    </select>
+                </div>
             </div>
         </div>
     }
@@ -95,7 +111,11 @@
                                 <i class="bi bi-clipboard"></i>
                             </button>
                             <button class="btn btn-sm btn-outline-info action-btn" title="Share Analysis" @onclick="() => ShareAnalysis(item)">
-                                <i class="bi bi-share"></i>
+                                <i class="bi @(item.IsShared ? "bi-share-fill" : "bi-share")"></i>
+                                @if (item.IsShared)
+                                {
+                                    <span class="shared-badge ms-1">Shared</span>
+                                }
                             </button>
                             @if(item.SourceType != "Manual")
                             {
@@ -157,6 +177,7 @@
     private HashSet<string> expandedItems = new();
     private string dateFilter = "all";
     private string sourceFilter = "all";
+    private string sharedFilter = "all";
     private string searchTerm = string.Empty;
     
     // Share functionality
@@ -245,6 +266,17 @@
         // Apply source filter
         if (sourceFilter != "all")
             items = items.Where(x => x.SourceType == sourceFilter);
+        
+        // Apply shared filter
+        if (sharedFilter != "all")
+        {
+            items = sharedFilter switch
+            {
+                "shared" => items.Where(x => x.IsShared),
+                "notshared" => items.Where(x => !x.IsShared),
+                _ => items // all
+            };
+        }
             
         // Apply date filter
         var now = DateTime.Now;
@@ -277,12 +309,19 @@
     {
         dateFilter = "all";
         sourceFilter = "all";
+        sharedFilter = "all";
         searchTerm = string.Empty;
     }
     
     private void ClearSearch()
     {
         searchTerm = string.Empty;
+        StateHasChanged();
+    }
+
+    private void ShowSharedOnly()
+    {
+        sharedFilter = "shared";
         StateHasChanged();
     }
 
@@ -354,17 +393,12 @@
             var baseUrl = NavigationManager.BaseUri.TrimEnd('/');
             shareLink = $"{baseUrl}/shared/{sharedId}";
             
-            // Save to shared history
-            var sharedRecord = new SharedAnalysisRecord
-            {
-                Id = sharedId,
-                Title = $"{selectedAnalysis.SourceType} Analysis",
-                SourceType = selectedAnalysis.SourceType,
-                SourceId = selectedAnalysis.Id,
-                SharedDate = DateTime.UtcNow
-            };
+            // Update the history item with share info
+            await SharingService.UpdateHistoryItemWithShareInfoAsync(selectedAnalysis.Id, sharedId);
             
-            await SharingService.SaveSharedAnalysisToHistoryAsync(sharedRecord);
+            // Refresh the history list
+            historyItems = await HistoryService.GetHistoryAsync();
+            StateHasChanged();
         }
         catch (Exception ex)
         {

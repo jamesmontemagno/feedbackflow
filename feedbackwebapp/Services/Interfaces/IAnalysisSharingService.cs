@@ -6,6 +6,6 @@ public interface IAnalysisSharingService
 {
     Task<string> ShareAnalysisAsync(AnalysisData analysis);
     Task<AnalysisData?> GetSharedAnalysisAsync(string id);
-    Task<List<SharedAnalysisRecord>> GetSharedAnalysisHistoryAsync();
-    Task SaveSharedAnalysisToHistoryAsync(SharedAnalysisRecord record);
+    Task<List<AnalysisHistoryItem>> GetSharedAnalysisHistoryAsync();
+    Task UpdateHistoryItemWithShareInfoAsync(string historyItemId, string sharedId);
 }

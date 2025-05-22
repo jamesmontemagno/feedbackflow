@@ -8,12 +8,11 @@ namespace FeedbackWebApp.Services;
 
 public class AnalysisSharingService : IAnalysisSharingService, IDisposable
 {
-    private const string SharedHistoryStorageKey = "feedbackflow_shared_analysis_history";
+    private const string StorageKey = "feedbackflow_analysis_history";
     private readonly HttpClient _httpClient;
     private readonly IJSRuntime _jsRuntime;
     private readonly ILogger<AnalysisSharingService> _logger;
-    private readonly List<SharedAnalysisRecord> _inMemorySharedHistory;
-    private bool _initialized;
+    private readonly IHistoryService _historyService;
     private readonly string _shareFunctionUrl;
     private readonly string _sharingBaseUrl;
 
@@ -21,46 +20,23 @@ public class AnalysisSharingService : IAnalysisSharingService, IDisposable
         IHttpClientFactory httpClientFactory, 
         IJSRuntime jsRuntime, 
         ILogger<AnalysisSharingService> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHistoryService historyService)
     {
         _httpClient = httpClientFactory.CreateClient("DefaultClient");
         _jsRuntime = jsRuntime;
         _logger = logger;
-        _inMemorySharedHistory = new();
+        _historyService = historyService;
 
-        // Get the function URL from configuration
-        _shareFunctionUrl = configuration.GetValue<string>("ShareFunctionUrl") ?? 
-            "https://feedbackflow.azurewebsites.net/api/SaveSharedAnalysis";
+        // Get base URLs from configuration
+        var baseUrl = configuration.GetValue<string>("FeedbackApi:BaseUrl") ?? 
+            "https://feedbackflow.azurewebsites.net";
+        var saveSharedAnalysisCode = configuration.GetValue<string>("FeedbackApi:SaveSharedAnalysisCode") ?? 
+            "api/SaveSharedAnalysis";
 
-        // Get the base URL for sharing
-        _sharingBaseUrl = configuration.GetValue<string>("SharingBaseUrl") ?? 
-            "https://feedbackflow.azurewebsites.net/shared";
-    }
-
-    private async Task InitializeAsync()
-    {
-        if (_initialized) return;
-
-        try
-        {
-            var json = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", SharedHistoryStorageKey);
-            if (!string.IsNullOrEmpty(json))
-            {
-                var history = JsonSerializer.Deserialize<List<SharedAnalysisRecord>>(json);
-                if (history != null)
-                {
-                    _inMemorySharedHistory.Clear();
-                    _inMemorySharedHistory.AddRange(history);
-                }
-            }
-            _initialized = true;
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogError(ex, "Error initializing shared history");
-            // We're probably in prerendering, return empty list
-            _initialized = false;
-        }
+        // Build function URLs
+        _shareFunctionUrl = $"{baseUrl.TrimEnd('/')}/{saveSharedAnalysisCode.TrimStart('/')}";
+        _sharingBaseUrl = baseUrl.TrimEnd('/');
     }
 
     public async Task<string> ShareAnalysisAsync(AnalysisData analysis)
@@ -100,7 +76,8 @@ public class AnalysisSharingService : IAnalysisSharingService, IDisposable
         {
             _logger.LogInformation($"Getting shared analysis with ID: {id}");
             
-            var response = await _httpClient.GetAsync($"{_sharingBaseUrl}/shared/{id}");
+            var getSharedPath = $"{_sharingBaseUrl}/api/GetSharedAnalysis/{id}";
+            var response = await _httpClient.GetAsync(getSharedPath);
             
             if (!response.IsSuccessStatusCode)
             {
@@ -120,27 +97,39 @@ public class AnalysisSharingService : IAnalysisSharingService, IDisposable
         }
     }
 
-    public async Task<List<SharedAnalysisRecord>> GetSharedAnalysisHistoryAsync()
+    public async Task<List<AnalysisHistoryItem>> GetSharedAnalysisHistoryAsync()
     {
-        await InitializeAsync();
-        return new List<SharedAnalysisRecord>(_inMemorySharedHistory);
+        var allHistory = await _historyService.GetHistoryAsync();
+        return allHistory.Where(item => item.IsShared).ToList();
     }
 
-    public async Task SaveSharedAnalysisToHistoryAsync(SharedAnalysisRecord record)
+    public async Task UpdateHistoryItemWithShareInfoAsync(string historyItemId, string sharedId)
     {
-        await InitializeAsync();
-        _inMemorySharedHistory.RemoveAll(x => x.Id == record.Id);
-        _inMemorySharedHistory.Insert(0, record); // Most recent first
-
         try
         {
-            var json = JsonSerializer.Serialize(_inMemorySharedHistory);
-            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", SharedHistoryStorageKey, json);
+            var historyItems = await _historyService.GetHistoryAsync();
+            var item = historyItems.FirstOrDefault(i => i.Id == historyItemId);
+            
+            if (item == null)
+            {
+                _logger.LogWarning($"Could not find history item with ID {historyItemId} to update share status");
+                return;
+            }
+            
+            // Create a new item with the shared information
+            var updatedItem = item with 
+            { 
+                IsShared = true,
+                SharedId = sharedId,
+                SharedDate = DateTime.UtcNow
+            };
+            
+            // Save the updated item to history
+            await _historyService.SaveToHistoryAsync(updatedItem);
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            _logger.LogError(ex, "Error saving shared history");
-            // We're probably in prerendering, just keep in memory
+            _logger.LogError(ex, $"Error updating history item with share info: {ex.Message}");
         }
     }
 
