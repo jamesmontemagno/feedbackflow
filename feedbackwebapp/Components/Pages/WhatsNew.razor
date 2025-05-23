@@ -5,6 +5,7 @@
 @using System.Reflection
 @using Markdig
 @using Microsoft.Extensions.FileProviders
+@using Microsoft.JSInterop
 
 @inject IWebHostEnvironment Environment
 @inject IJSRuntime JSRuntime
@@ -12,7 +13,7 @@
 <PageTitle>What's New - FeedbackFlow</PageTitle>
 
 <div class="container">
-    <h1 class="mb-4">What's New</h1>
+    <h1 class="page-header">What's New in FeedbackFlow</h1>
 
     @if (isLoading)
     {
@@ -32,9 +33,16 @@
     }
     else
     {
-        <div class="whats-new-content">
-            <div class="markdown-content">
-                @((MarkupString)markdownHtml)
+        <div class="whats-new-content">            
+            <div class="card">
+                <div class="markdown-content">
+                    @((MarkupString)markdownHtml)
+                </div>
+            </div>
+            <div class="feedback-section">
+                <a href="https://github.com/jamesmontemagno/feedbackflow/issues" target="_blank" rel="noopener noreferrer" class="btn btn-primary feedback-button">
+                    <i class="bi bi-chat-right-text me-2"></i>Submit Feedback
+                </a>
             </div>
         </div>
     }
