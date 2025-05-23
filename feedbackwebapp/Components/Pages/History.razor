@@ -83,18 +83,20 @@
 
     @if (historyItems is null)
     {
-        <div class="loading-state">
+        <div class="loading-state card shadow-sm">
             <div class="spinner-border" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
-            <p class="mt-2">Loading history...</p>
+            <p>Loading your analysis history...</p>
+            <small>This will only take a moment</small>
         </div>
     }
     else if (!historyItems.Any())
     {
-        <div class="empty-state">
+        <div class="empty-state card shadow-sm">
             <i class="bi bi-clock-history"></i>
             <p>No analysis history found.</p>
+            <small>Create your first analysis to see it appear here!</small>
         </div>
     }    
     else if (filteredItems is { Count: > 0 })
