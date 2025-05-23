@@ -4,15 +4,29 @@ using Microsoft.Extensions.AI;
 
 namespace SharedDump.AI;
 
+/// <summary>
+/// Service for analyzing feedback using AI models
+/// </summary>
+/// <remarks>
+/// This service provides methods to analyze comments and feedback from various sources
+/// using AI capabilities. It supports both synchronous and streaming analysis.
+/// </remarks>
 public class FeedbackAnalyzerService : IFeedbackAnalyzerService
 {
     private readonly IChatClient _chatClient;
 
+    /// <summary>
+    /// Initializes a new instance of the FeedbackAnalyzerService class
+    /// </summary>
+    /// <param name="endpoint">The Azure OpenAI API endpoint URL</param>
+    /// <param name="apiKey">The API key for authentication</param>
+    /// <param name="deploymentModel">The model deployment name to use</param>
     public FeedbackAnalyzerService(string endpoint, string apiKey, string deploymentModel)
     {
         _chatClient = CreateClient(endpoint, apiKey, deploymentModel);
     }
 
+    /// <inheritdoc/>
     public IChatClient CreateClient(string endpoint, string apiKey, string deploymentModel)
     {
         ArgumentNullException.ThrowIfNull(endpoint);
@@ -26,6 +40,7 @@ public class FeedbackAnalyzerService : IFeedbackAnalyzerService
         return openAIClient.GetChatClient(deploymentModel).AsIChatClient();
     }
 
+    /// <inheritdoc/>
     public async Task<string> AnalyzeCommentsAsync(string serviceType, string comments)
     {
         return await AnalyzeCommentsAsync(serviceType, comments, null);

@@ -9,6 +9,14 @@ using Microsoft.Extensions.Logging;
 
 namespace FeedbackMCP;
 
+/// <summary>
+/// Model Context Protocol server tool for FeedbackFlow
+/// </summary>
+/// <remarks>
+/// This tool provides MCP capabilities for fetching and analyzing feedback 
+/// from various sources like GitHub, Hacker News, YouTube, Reddit, and Twitter.
+/// It's designed to be used with the ModelContextProtocol server framework.
+/// </remarks>
 [McpServerToolType]
 public class FeedbackFlowTool
 {
@@ -20,6 +28,12 @@ public class FeedbackFlowTool
     private readonly HttpClient _httpClient;
     private readonly TwitterFeedbackFetcher _twitterService;
 
+    /// <summary>
+    /// Initializes a new instance of the FeedbackFlowTool class
+    /// </summary>
+    /// <param name="configuration">API configuration containing keys and tokens</param>
+    /// <param name="httpClient">HTTP client for making API requests</param>
+    /// <param name="twitterLogger">Logger for Twitter API operations</param>
     public FeedbackFlowTool(ApiConfiguration configuration, HttpClient httpClient, ILogger<TwitterFeedbackFetcher> twitterLogger)
     {
         _configuration = configuration;
@@ -32,6 +46,24 @@ public class FeedbackFlowTool
     }
 
     [McpServerTool(Name = "github-comments")]
+    /// <summary>
+    /// Gets comments from a GitHub issue
+    /// </summary>
+    /// <param name="owner">The owner of the repository</param>
+    /// <param name="repo">The name of the repository</param>
+    /// <param name="issueNumber">The issue number to get comments from</param>
+    /// <returns>GitHub issue with comments</returns>
+    /// <remarks>
+    /// This method validates the repository existence before fetching comments.
+    /// It returns the issue details along with all its comments.
+    /// </remarks>
+    /// <exception cref="ArgumentException">Thrown when the repository does not exist or is not accessible</exception>
+    /// <example>
+    /// <code>
+    /// // Example MCP client usage
+    /// var githubComments = await feedbackTool.GetGitHubComments("dotnet", "maui", "123");
+    /// </code>
+    /// </example>
     [Description("Get comments from a GitHub issue")]
     public async Task<object> GetGitHubComments(
         [Description("The owner of the repository")] string owner,

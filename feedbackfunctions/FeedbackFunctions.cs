@@ -18,6 +18,13 @@ using SharedDump.Json;
 
 namespace FeedbackFunctions;
 
+/// <summary>
+/// Azure Functions for retrieving and analyzing feedback from various platforms
+/// </summary>
+/// <remarks>
+/// This class contains HTTP-triggered functions that interact with different content services
+/// to retrieve and analyze feedback from platforms like GitHub, YouTube, Reddit, etc.
+/// </remarks>
 public class FeedbackFunctions
 {
     private readonly ILogger<FeedbackFunctions> _logger;
@@ -31,6 +38,12 @@ public class FeedbackFunctions
     private readonly TwitterFeedbackFetcher _twitterService;
     private readonly BlueSkyFeedbackFetcher _blueSkyService;
 
+    /// <summary>
+    /// Initializes a new instance of the FeedbackFunctions class
+    /// </summary>
+    /// <param name="logger">Logger for diagnostic information</param>
+    /// <param name="configuration">Application configuration</param>
+    /// <param name="httpClientFactory">HTTP client factory for creating named clients</param>
     public FeedbackFunctions(ILogger<FeedbackFunctions> logger, IConfiguration configuration, IHttpClientFactory httpClientFactory)
     {
 #if DEBUG
@@ -81,6 +94,22 @@ public class FeedbackFunctions
         _blueSkyService.SetCredentials(blueSkyUsername, blueSkyAppPassword);
     }
 
+    /// <summary>
+    /// Retrieves feedback from GitHub repositories (issues, pull requests, discussions)
+    /// </summary>
+    /// <param name="req">HTTP request containing query parameters</param>
+    /// <returns>HTTP response with GitHub feedback data</returns>
+    /// <remarks>
+    /// Query parameters:
+    /// - repo: Required. Repository in format "owner/name"
+    /// - labels: Optional. Comma-separated list of issue/PR labels to filter by
+    /// - issues: Optional. Boolean (default: true) whether to include issues
+    /// - pulls: Optional. Boolean (default: false) whether to include pull requests
+    /// - discussions: Optional. Boolean (default: false) whether to include discussions
+    /// 
+    /// Example usage:
+    /// GET /api/GetGitHubFeedback?repo=dotnet/maui&amp;labels=bug,documentation&amp;pulls=true
+    /// </remarks>
     [Function("GetGitHubFeedback")]
     public async Task<HttpResponseData> GetGitHubFeedback(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
@@ -142,6 +171,18 @@ public class FeedbackFunctions
         }
     }
 
+    /// <summary>
+    /// Retrieves feedback from Hacker News stories and comments
+    /// </summary>
+    /// <param name="req">HTTP request containing query parameters</param>
+    /// <returns>HTTP response with Hacker News data</returns>
+    /// <remarks>
+    /// Query parameters:
+    /// - ids: Required. Comma-separated list of Hacker News story IDs
+    /// 
+    /// Example usage:
+    /// GET /api/GetHackerNewsFeedback?ids=123456,789012
+    /// </remarks>
     [Function("GetHackerNewsFeedback")]
     public async Task<HttpResponseData> GetHackerNewsFeedback(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
@@ -340,6 +381,26 @@ public class FeedbackFunctions
         }
     }
 
+    /// <summary>
+    /// Analyzes comments using AI to provide insights and summaries
+    /// </summary>
+    /// <param name="req">HTTP request with comment data to analyze</param>
+    /// <returns>HTTP response with markdown-formatted analysis</returns>
+    /// <remarks>
+    /// The request body should be a JSON object with the following properties:
+    /// - comments: Required. The text content to analyze
+    /// - serviceType: Required. The source platform (e.g., "github", "youtube", "manual")
+    /// - customPrompt: Optional. Custom system prompt to use for analysis
+    /// 
+    /// Example usage:
+    /// ```json
+    /// {
+    ///   "comments": "This is the content to analyze...",
+    ///   "serviceType": "github",
+    ///   "customPrompt": "Optional custom prompt to use"
+    /// }
+    /// ```
+    /// </remarks>
     [Function("AnalyzeComments")]
     public async Task<HttpResponseData> AnalyzeComments(
         [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
