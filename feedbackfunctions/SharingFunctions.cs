@@ -9,16 +9,49 @@ using System.Text.Json;
 
 namespace FeedbackFunctions;
 
+/// <summary>
+/// Azure Functions for sharing and retrieving analysis results
+/// </summary>
+/// <remarks>
+/// These functions provide endpoints for saving, retrieving, and managing
+/// shared analyses. The data is stored in Azure Blob Storage.
+/// </remarks>
 public class SharingFunctions
 {
     private const string ContainerName = "shared-analyses";
     private readonly ILogger<SharingFunctions> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the SharingFunctions class
+    /// </summary>
+    /// <param name="logger">Logger for diagnostic information</param>
     public SharingFunctions(ILogger<SharingFunctions> logger)
     {
         _logger = logger;
     }
 
+    /// <summary>
+    /// Saves an analysis to Azure Blob Storage for sharing
+    /// </summary>
+    /// <param name="req">HTTP request containing the analysis data</param>
+    /// <param name="containerClient">Azure Blob container client injected by the runtime</param>
+    /// <returns>HTTP response with the unique ID for accessing the shared analysis</returns>
+    /// <remarks>
+    /// The request body should contain a JSON representation of an AnalysisData object.
+    /// The function generates a unique ID and stores the analysis in Azure Blob Storage.
+    /// The ID is returned and can be used to retrieve the analysis later.
+    /// </remarks>
+    /// <example>
+    /// POST /api/SaveSharedAnalysis
+    /// Content-Type: application/json
+    /// 
+    /// {
+    ///   "title": "Analysis of GitHub Feedback",
+    ///   "content": "## Analysis Results\n\nKey findings...",
+    ///   "source": "GitHub",
+    ///   "createdAt": "2023-06-15T10:30:00Z"
+    /// }
+    /// </example>
     [Function("SaveSharedAnalysis")]
     public async Task<HttpResponseData> SaveSharedAnalysis(
         [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequestData req,

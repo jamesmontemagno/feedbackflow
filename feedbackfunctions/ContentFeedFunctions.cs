@@ -10,6 +10,14 @@ using SharedDump.Models.Reddit;
 
 namespace FeedbackFunctions;
 
+/// <summary>
+/// Azure Functions for retrieving content feeds from various platforms
+/// </summary>
+/// <remarks>
+/// This class provides HTTP-triggered functions to fetch content feeds from
+/// platforms like YouTube, Reddit, and Hacker News. It includes caching to
+/// improve performance and reduce API calls.
+/// </remarks>
 public class ContentFeedFunctions
 {
     private readonly ILogger<ContentFeedFunctions> _logger;
@@ -19,6 +27,12 @@ public class ContentFeedFunctions
     private readonly RedditService _redditService;
     private static readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(10);
 
+    /// <summary>
+    /// Initializes a new instance of the ContentFeedFunctions class
+    /// </summary>
+    /// <param name="logger">Logger for diagnostic information</param>
+    /// <param name="configuration">Application configuration</param>
+    /// <param name="httpClientFactory">HTTP client factory for creating named clients</param>
     public ContentFeedFunctions(
         ILogger<ContentFeedFunctions> logger,
         IConfiguration configuration,
@@ -48,6 +62,21 @@ public class ContentFeedFunctions
             redditClientSecret ?? throw new InvalidOperationException("Reddit client secret not configured"), httpClientFactory.CreateClient("Reddit"));
     }
 
+    /// <summary>
+    /// Gets recent YouTube videos for content analysis
+    /// </summary>
+    /// <param name="req">HTTP request with query parameters</param>
+    /// <returns>HTTP response with recent YouTube videos</returns>
+    /// <remarks>
+    /// Query parameters:
+    /// - days: Required. Number of days of history to retrieve (integer)
+    /// - query: Optional. Search query to filter videos
+    /// - channelId: Optional. YouTube channel ID to filter videos
+    /// - maxResults: Optional. Maximum number of results to return (default: 10)
+    /// 
+    /// Example usage:
+    /// GET /api/GetRecentYouTubeVideos?days=7&amp;query=dotnet&amp;maxResults=20
+    /// </remarks>
     [Function("GetRecentYouTubeVideos")]
     public async Task<HttpResponseData> GetRecentYouTubeVideos(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
