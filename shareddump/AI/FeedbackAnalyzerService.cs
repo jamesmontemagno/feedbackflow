@@ -1,18 +1,43 @@
 using Azure;
 using Azure.AI.OpenAI;
 using Microsoft.Extensions.AI;
+using SharedDump.Utils;
 
 namespace SharedDump.AI;
 
+/// <summary>
+/// Service for analyzing feedback comments using Azure OpenAI.
+/// </summary>
 public class FeedbackAnalyzerService : IFeedbackAnalyzerService
 {
     private readonly IChatClient _chatClient;
 
+    /// <summary>
+    /// Initializes a new instance of the FeedbackAnalyzerService with Azure OpenAI credentials.
+    /// </summary>
+    /// <param name="endpoint">The Azure OpenAI endpoint URL.</param>
+    /// <param name="apiKey">The Azure OpenAI API key.</param>
+    /// <param name="deploymentModel">The Azure OpenAI model deployment name.</param>
+    /// <example>
+    /// <code>
+    /// var endpoint = "https://your-resource.openai.azure.com/";
+    /// var apiKey = "your-api-key";
+    /// var deploymentModel = "your-deployment-name";
+    /// var analyzer = new FeedbackAnalyzerService(endpoint, apiKey, deploymentModel);
+    /// </code>
+    /// </example>
     public FeedbackAnalyzerService(string endpoint, string apiKey, string deploymentModel)
     {
         _chatClient = CreateClient(endpoint, apiKey, deploymentModel);
     }
 
+    /// <summary>
+    /// Creates an Azure OpenAI client for chat completions.
+    /// </summary>
+    /// <param name="endpoint">The Azure OpenAI endpoint URL.</param>
+    /// <param name="apiKey">The Azure OpenAI API key.</param>
+    /// <param name="deploymentModel">The Azure OpenAI model deployment name.</param>
+    /// <returns>A chat client for making API requests.</returns>
     public IChatClient CreateClient(string endpoint, string apiKey, string deploymentModel)
     {
         ArgumentNullException.ThrowIfNull(endpoint);
@@ -26,20 +51,39 @@ public class FeedbackAnalyzerService : IFeedbackAnalyzerService
         return openAIClient.GetChatClient(deploymentModel).AsIChatClient();
     }
 
+    /// <summary>
+    /// Analyzes comments using the default prompt for a specific service type.
+    /// </summary>
+    /// <param name="serviceType">The type of service (e.g., "youtube", "github").</param>
+    /// <param name="comments">The comments to analyze.</param>
+    /// <returns>Analysis results as a string.</returns>
     public async Task<string> AnalyzeCommentsAsync(string serviceType, string comments)
     {
         return await AnalyzeCommentsAsync(serviceType, comments, null);
     }
 
+    /// <summary>
+    /// Analyzes comments using a custom system prompt or the default for a service type.
+    /// </summary>
+    /// <param name="serviceType">The type of service (e.g., "youtube", "github").</param>
+    /// <param name="comments">The comments to analyze.</param>
+    /// <param name="customSystemPrompt">Optional custom system prompt to use instead of the default.</param>
+    /// <returns>Analysis results as a string.</returns>
     public async Task<string> AnalyzeCommentsAsync(string serviceType, string comments, string? customSystemPrompt)
     {
         var servicePrompt = customSystemPrompt ?? GetServiceSpecificPrompt(serviceType);
-        var prompt = BuildAnalysisPrompt(comments);
+        var prompt = PromptUtils.BuildAnalysisPrompt(comments);
         var messages = new[] { new ChatMessage(ChatRole.System, servicePrompt), new ChatMessage(ChatRole.User, prompt) };
         var response = await _chatClient.GetResponseAsync(messages);
         return response.ToString();
     }
 
+    /// <summary>
+    /// Gets a streaming analysis of comments using the default prompt for a service type.
+    /// </summary>
+    /// <param name="serviceType">The type of service (e.g., "youtube", "github").</param>
+    /// <param name="comments">The comments to analyze.</param>
+    /// <returns>A stream of analysis updates.</returns>
     public async IAsyncEnumerable<string> GetStreamingAnalysisAsync(string serviceType, string comments)
     {
         await foreach (var update in GetStreamingAnalysisAsync(serviceType, comments, null))
@@ -48,10 +92,17 @@ public class FeedbackAnalyzerService : IFeedbackAnalyzerService
         }
     }
 
+    /// <summary>
+    /// Gets a streaming analysis of comments using a custom system prompt or the default.
+    /// </summary>
+    /// <param name="serviceType">The type of service (e.g., "youtube", "github").</param>
+    /// <param name="comments">The comments to analyze.</param>
+    /// <param name="customSystemPrompt">Optional custom system prompt to use instead of the default.</param>
+    /// <returns>A stream of analysis updates.</returns>
     public async IAsyncEnumerable<string> GetStreamingAnalysisAsync(string serviceType, string comments, string? customSystemPrompt)
     {
         var servicePrompt = customSystemPrompt ?? GetServiceSpecificPrompt(serviceType);
-        var prompt = BuildAnalysisPrompt(comments);
+        var prompt = PromptUtils.BuildAnalysisPrompt(comments);
         var messages = new[] { new ChatMessage(ChatRole.System, servicePrompt), new ChatMessage(ChatRole.User, prompt) };
         await foreach (var update in _chatClient.GetStreamingResponseAsync(messages))
         {

@@ -17,6 +17,12 @@ public class ReportingFunctions
     private readonly IFeedbackAnalyzerService _analyzerService;
     private readonly IConfiguration _configuration;
 
+    /// <summary>
+    /// Initializes a new instance of the ReportingFunctions class.
+    /// </summary>
+    /// <param name="logger">The logger instance.</param>
+    /// <param name="configuration">The configuration instance.</param>
+    /// <param name="httpClientFactory">The HTTP client factory.</param>
     public ReportingFunctions(
         ILogger<ReportingFunctions> logger,
         IConfiguration configuration,
@@ -24,25 +30,35 @@ public class ReportingFunctions
     {
 
 #if DEBUG
-
         _configuration = new ConfigurationBuilder()
                     .AddJsonFile("local.settings.json")
                     .AddUserSecrets<Program>()
                     .Build();
 #else
-
         _configuration = configuration;
 #endif
         _logger = logger;
 
-        var redditClientId = _configuration["Reddit:ClientId"] ?? throw new InvalidOperationException("Reddit client ID not configured");
-        var redditClientSecret = _configuration["Reddit:ClientSecret"] ?? throw new InvalidOperationException("Reddit client secret not configured");
-        _redditService = new RedditService(redditClientId, redditClientSecret, httpClientFactory.CreateClient("Reddit"));
+        // Get required configuration values
+        var configValues = ConfigurationUtils.GetRequiredValues(_configuration, new Dictionary<string, string>
+        {
+            { "Reddit:ClientId", "Reddit client ID" },
+            { "Reddit:ClientSecret", "Reddit client secret" },
+            { "Azure:OpenAI:Endpoint", "Azure OpenAI endpoint" },
+            { "Azure:OpenAI:ApiKey", "Azure OpenAI API key" },
+            { "Azure:OpenAI:Deployment", "Azure OpenAI deployment name" }
+        });
 
-        var endpoint = _configuration["Azure:OpenAI:Endpoint"] ?? throw new InvalidOperationException("Azure OpenAI endpoint not configured");
-        var apiKey = _configuration["Azure:OpenAI:ApiKey"] ?? throw new InvalidOperationException("Azure OpenAI API key not configured");
-        var deployment = _configuration["Azure:OpenAI:Deployment"] ?? throw new InvalidOperationException("Azure OpenAI deployment name not configured");
-        _analyzerService = new FeedbackAnalyzerService(endpoint, apiKey, deployment);
+        // Initialize services
+        _redditService = new RedditService(
+            configValues["Reddit:ClientId"], 
+            configValues["Reddit:ClientSecret"], 
+            httpClientFactory.CreateClient("Reddit"));
+            
+        _analyzerService = new FeedbackAnalyzerService(
+            configValues["Azure:OpenAI:Endpoint"], 
+            configValues["Azure:OpenAI:ApiKey"], 
+            configValues["Azure:OpenAI:Deployment"]);
     }
 
     [Function("RedditReport")]
@@ -58,9 +74,7 @@ public class ReportingFunctions
         if (string.IsNullOrEmpty(subreddit))
         {
             _logger.LogWarning("Reddit Report request rejected - missing subreddit parameter");
-            var response = req.CreateResponse(HttpStatusCode.BadRequest);
-            await response.WriteStringAsync("Subreddit parameter is required");
-            return response;
+            return await HttpUtils.CreateErrorResponse(req, HttpStatusCode.BadRequest, "Subreddit parameter is required");
         }
 
         try
@@ -85,12 +99,14 @@ public class ReportingFunctions
                 _logger.LogDebug("Fetching full thread details for thread {ThreadId}: {ThreadTitle}", thread.Id, thread.Title);
                 var fullThread = await _redditService.GetThreadWithComments(thread.Id);
                 
-                var flatComments = FlattenComments(fullThread.Comments);
+                var flatComments = CommentProcessingUtils.FlattenComments(fullThread.Comments);
 
                 _logger.LogInformation("Thread {ThreadId} has {CommentCount} comments", thread.Id, flatComments.Count);
                 
-                var threadContent = $"Title: {fullThread.Title}\n\nContent: {fullThread.SelfText}\n\nComments:\n";
-                threadContent += string.Join("\n", flatComments.Select(c => $"Comment by {c.Author}: {c.Body}"));
+                var threadContent = CommentProcessingUtils.CombineThreadWithComments(
+                    fullThread.Title,
+                    fullThread.SelfText,
+                    flatComments);
 
                 var customPrompt = @"Analyze this Reddit thread and provide a concise summary in 3 short sections with use of emojis throughotu to add visual flair:
 
@@ -167,23 +183,10 @@ Keep each section very brief and focused. Total analysis should be no more than 
         {
             _logger.LogError(ex, "Error processing Reddit report for r/{Subreddit}. Processing time: {ProcessingTime:c}", 
                 subreddit, DateTime.UtcNow - startTime);
-            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await response.WriteStringAsync($"Error processing report: {ex.Message}");
-            return response;
+            return await HttpUtils.CreateErrorResponse(
+                req, 
+                HttpStatusCode.InternalServerError, 
+                $"Error processing report: {ex.Message}");
         }
-    }
-
-    private static List<RedditCommentModel> FlattenComments(List<RedditCommentModel> comments)
-    {
-        var flattened = new List<RedditCommentModel>();
-        foreach (var comment in comments)
-        {
-            flattened.Add(comment);
-            if (comment.Replies?.Any() == true)
-            {
-                flattened.AddRange(FlattenComments(comment.Replies));
-            }
-        }
-        return flattened;
     }
 }

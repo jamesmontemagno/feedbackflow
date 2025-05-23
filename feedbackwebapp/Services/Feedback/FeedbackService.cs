@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using FeedbackWebApp.Services.Interfaces;
+using SharedDump.Utils;
 
 namespace FeedbackWebApp.Services.Feedback;
 
@@ -103,10 +104,7 @@ public abstract class FeedbackService : IFeedbackService
             customPrompt = settings.ServicePrompts.GetValueOrDefault(serviceType.ToLower());
         }
 
-        if (customPrompt != null)
-        {
-            customPrompt = customPrompt.TrimEnd() + " Format your response in markdown.";
-        }
+        customPrompt = PromptUtils.FormatCustomPrompt(customPrompt);
 
         var analyzeRequestBody = JsonSerializer.Serialize(new
         {
