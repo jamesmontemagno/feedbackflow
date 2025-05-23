@@ -48,3 +48,34 @@
     color: var(--warning-color);
     text-decoration: underline;
 }
+
+/* Responsive layout for mobile devices */
+@media (max-width: 768px) {
+    .hackernews-results .d-flex.justify-content-between.align-items-center.mb-3.gap-3 {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 0.75rem !important;
+    }
+
+    .search-container {
+        max-width: none;
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+    .date-filter {
+        width: 100%;
+        margin-bottom: 0.75rem;
+    }
+
+    .btn-group {
+        width: 100%;
+    }
+
+    .btn-group .dropdown-toggle {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+}
