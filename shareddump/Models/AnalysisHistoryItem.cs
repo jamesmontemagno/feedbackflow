@@ -11,8 +11,4 @@ public record AnalysisHistoryItem
     public bool IsShared { get; init; } = false;
     public string? SharedId { get; init; } // ID for shared analysis reference
     public DateTime? SharedDate { get; init; } // Date when the analysis was shared
-
-    // Additional properties for sharing UI state
-    public bool IsProcessingShare { get; init; } = false;
-    public string ShareError { get; init; } = string.Empty;
 }

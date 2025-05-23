@@ -152,12 +152,6 @@
                         <div class="user-input mb-3">
                             <strong>Input:</strong> @item.UserInput
                         </div>
-                    }                    @if (!string.IsNullOrEmpty(item.ShareError))
-                    {
-                        <div class="alert alert-danger mt-2">
-                            @item.ShareError
-                            <button class="btn btn-sm btn-outline-danger ms-2" @onclick="() => ShareAnalysis(item)">Retry</button>
-                        </div>
                     }
 
                     <div class="analysis-content">
@@ -185,8 +179,8 @@
     }
 </div>
 
-@code {    
-  
+@code {
+
     private List<AnalysisHistoryItem>? historyItems;
     private List<AnalysisHistoryItem>? filteredItems => FilterHistoryItems();
     private HashSet<string> expandedItems = new();
@@ -211,7 +205,7 @@
         historyItems = await HistoryService.GetHistoryAsync();
         expandedItems.Remove(id);
     }    
-    
+
     private async Task ClearHistory()
     {
         if (await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to clear all history? This cannot be undone."))
@@ -229,17 +223,17 @@
             expandedItems.Remove(id);
         }
     }    
-      private List<AnalysisHistoryItem> FilterHistoryItems()
+    private List<AnalysisHistoryItem> FilterHistoryItems()
     {
         if (historyItems == null)
             return new List<AnalysisHistoryItem>();
-            
+
         var items = historyItems.AsEnumerable();
-        
+
         // Apply source filter
         if (sourceFilter != "all")
             items = items.Where(x => x.SourceType == sourceFilter);
-        
+
         // Apply shared filter
         if (sharedFilter != "all")
         {
@@ -250,7 +244,7 @@
                 _ => items // all
             };
         }
-            
+
         // Apply date filter
         var now = DateTime.Now;
         items = dateFilter switch
@@ -260,7 +254,7 @@
             "month" => items.Where(x => (now - x.Timestamp).TotalDays <= 30),
             _ => items // "all" or any other value
         };
-        
+
         // Apply search term filter if not empty
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -270,17 +264,17 @@
                 (x.FullAnalysis != null && x.FullAnalysis.ToLowerInvariant().Contains(term)) ||
                 (x.UserInput != null && x.UserInput.ToLowerInvariant().Contains(term)));
         }
-        
+
         return items.ToList();
     }
-    
+
     private void OpenAnalysis(AnalysisHistoryItem item)
     {
         // In a real implementation, you might navigate to a details page
         // or open a modal with the full analysis
         ToggleExpand(item.Id); // For now, just expand the item
     }
-    
+
     private void ResetFilters()
     {
         dateFilter = "all";
@@ -288,7 +282,7 @@
         sharedFilter = "all";
         searchTerm = string.Empty;
     }
-    
+
     private void ClearSearch()
     {
         searchTerm = string.Empty;
@@ -308,17 +302,15 @@
             await DeleteItem(id);
         }
     }
-  
-      
+
+
     private async Task ShareAnalysis(AnalysisHistoryItem item)
     {
         isProcessingShare = true;
-        var updatedItem = item with { ShareError = string.Empty };
-        await HistoryService.SaveToHistoryAsync(updatedItem);
         StateHasChanged();
 
         await Task.Delay(1000); // Simulate processing delay
-            
+
         try
         {
             var analysisData = new AnalysisData
@@ -331,15 +323,14 @@
                 UserInput = item.UserInput,
                 CreatedDate = item.Timestamp
             };
-            
+
             var sharedId = await SharingService.ShareAnalysisAsync(analysisData);
             await Task.Delay(1000); // Simulate processing delay
 
             if (string.IsNullOrEmpty(sharedId))
             {
-                updatedItem = updatedItem with { ShareError = "Failed to generate share link. Please try again." };
-                await HistoryService.SaveToHistoryAsync(updatedItem);
                 isProcessingShare = false;
+                await ToastService.ShowErrorAsync("Unable to save analysis.");
                 StateHasChanged();
                 return;
             }
@@ -354,8 +345,7 @@
         }
         catch (Exception ex)
         {
-            updatedItem = updatedItem with { ShareError = "An error occurred while sharing the analysis. Please try again." };
-            await HistoryService.SaveToHistoryAsync(updatedItem);
+            await ToastService.ShowErrorAsync($"Unable to save analysis: {ex.Message}");
         }
         finally
         {
