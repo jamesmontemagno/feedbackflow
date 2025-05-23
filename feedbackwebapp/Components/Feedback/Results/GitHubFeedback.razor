@@ -20,7 +20,7 @@
                     <div class="list-group">
                         @foreach (var issue in Issues)
                         {
-                            <div class="list-group-item issue-item">
+                            <div class="list-group-item issue-item" @key="issue.Id">
                                 <div class="d-flex w-100 justify-content-between mb-2">
                                     <h5 class="mb-1">
                                         #@issue.Id: @issue.Title
@@ -32,7 +32,7 @@
                                 <div class="mb-2 issue-labels">
                                     @foreach (var label in issue.Labels ?? Enumerable.Empty<string>())
                                     {
-                                        <span class="badge bg-info me-1">@label</span>
+                                        <span class="badge bg-info me-1" @key="label">@label</span>
                                     }
                                 </div>
                                 <p>@issue.Body</p>
@@ -45,17 +45,16 @@
                                         
                                         @if (ExpandedItems.Contains(issue.Id))
                                         {
-                                            <div class="comments-container">
-                                                @foreach (var comment in issue.Comments)
-                                                {
-                                                    <div class="comment-item p-3 mb-2 rounded">
+                                            <div class="comments-container" style="max-height: 400px; overflow-y: auto;">
+                                                <Virtualize Items="issue.Comments" Context="comment" ItemSize="100">
+                                                    <div class="comment-item p-3 mb-2 rounded" @key="comment.Id">
                                                         <div class="d-flex justify-content-between">
                                                             <strong>@comment.Author</strong>
                                                             <small>@comment.CreatedAt</small>
                                                         </div>
                                                         <p class="mt-2 mb-0">@comment.Content</p>
                                                     </div>
-                                                }
+                                                </Virtualize>
                                             </div>
                                         }
                                     </div>
@@ -88,7 +87,7 @@
                     <div class="list-group">
                         @foreach (var pr in PullRequests)
                         {
-                            <div class="list-group-item pr-item">
+                            <div class="list-group-item pr-item" @key="pr.Id">
                                 <div class="d-flex w-100 justify-content-between mb-2">
                                     <h5 class="mb-1">
                                         #@pr.Id: @pr.Title
@@ -100,7 +99,7 @@
                                 <div class="mb-2 pr-labels">
                                     @foreach (var label in pr.Labels ?? Enumerable.Empty<string>())
                                     {
-                                        <span class="badge bg-info me-1">@label</span>
+                                        <span class="badge bg-info me-1" @key="label">@label</span>
                                     }
                                 </div>
                                 <p>@pr.Body</p>
@@ -113,17 +112,16 @@
                                         
                                         @if (ExpandedItems.Contains(pr.Id))
                                         {
-                                            <div class="comments-container">
-                                                @foreach (var comment in pr.Comments)
-                                                {
-                                                    <div class="comment-item p-3 mb-2 rounded">
+                                            <div class="comments-container" style="max-height: 400px; overflow-y: auto;">
+                                                <Virtualize Items="pr.Comments" Context="comment" ItemSize="100">
+                                                    <div class="comment-item p-3 mb-2 rounded" @key="comment.Id">
                                                         <div class="d-flex justify-content-between">
                                                             <strong>@comment.Author</strong>
                                                             <small>@comment.CreatedAt</small>
                                                         </div>
                                                         <p class="mt-2 mb-0">@comment.Content</p>
                                                     </div>
-                                                }
+                                                </Virtualize>
                                             </div>
                                         }
                                     </div>
@@ -156,7 +154,7 @@
                     <div class="list-group">
                         @foreach (var discussion in Discussions)
                         {
-                            <div class="list-group-item discussion-item">
+                            <div class="list-group-item discussion-item" @key="discussion.Url">
                                 <div class="d-flex w-100 justify-content-between mb-2">
                                     <h5 class="mb-1">
                                         @discussion.Title
@@ -176,17 +174,16 @@
                                         
                                         @if (ExpandedItems.Contains(discussion.Url))
                                         {
-                                            <div class="comments-container">
-                                                @foreach (var comment in discussion.Comments)
-                                                {
-                                                    <div class="comment-item p-3 mb-2 rounded">
+                                            <div class="comments-container" style="max-height: 400px; overflow-y: auto;">
+                                                <Virtualize Items="discussion.Comments" Context="comment" ItemSize="100">
+                                                    <div class="comment-item p-3 mb-2 rounded" @key="comment.Id">
                                                         <div class="d-flex justify-content-between">
                                                             <strong>@comment.Author</strong>
                                                             <small>@comment.CreatedAt</small>
                                                         </div>
                                                         <p class="mt-2 mb-0">@comment.Content</p>
                                                     </div>
-                                                }
+                                                </Virtualize>
                                             </div>
                                         }
                                     </div>
