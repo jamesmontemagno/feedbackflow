@@ -4,12 +4,12 @@
 [data-theme='dark'] .filter-section .form-control:focus,
 [data-theme='dark'] .filter-section .form-select:focus {
     background-color: var(--bg-primary) !important;
-    color: #fff !important;
+    color: var(--text-primary) !important;
     border-color: var(--border-color) !important;
 }
 
 [data-theme='dark'] .filter-section .form-control::placeholder {
-    color: rgba(255, 255, 255, 0.6) !important;
+    color: var(--text-secondary) !important;
 }
 
 /* History.razor.css - Slimmed down, Bootstrap-aligned, and theme-respecting */
@@ -63,7 +63,7 @@
 
 .source-badge {
     background: var(--primary-gradient);
-    color: #fff;
+    color: var(--bg-secondary);
     font-weight: 600;
     font-size: 0.75rem;
     padding: 0.4em 0.8em;
@@ -102,7 +102,7 @@
 
 /* Clear History Button */
 .clear-all-btn {
-    background: linear-gradient(135deg, #e98a97, #d96674);
+    background: linear-gradient(135deg, var(--danger-color), var(--danger-color-rgb, 215, 102, 116));
     border: none;
 }
 
@@ -128,15 +128,15 @@
 /* Shared badge styling */
 .shared-badge {
     font-size: 0.7rem;
-    background-color: #28a745;
-    color: white;
+    background-color: var(--success-color);
+    color: var(--text-primary);
     padding: 0.1rem 0.4rem;
     border-radius: 0.25rem;
     vertical-align: middle;
 }
 
 [data-theme='dark'] .shared-badge {
-    background-color: #3ea854;
+    background-color: var(--success-color);
 }
 
 /* Shared item styles */
@@ -151,7 +151,7 @@
     gap: 0.25rem;
     padding: 0.25rem 0.5rem;
     background-color: var(--primary-color);
-    color: #fff;
+    color: var(--bg-secondary);
     border-radius: 0.25rem;
     font-size: 0.875rem;
 }

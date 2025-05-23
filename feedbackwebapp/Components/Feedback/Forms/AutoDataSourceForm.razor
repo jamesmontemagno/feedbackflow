@@ -1,7 +1,8 @@
 @namespace FeedbackWebApp.Components.Feedback.Forms
 @using System.ComponentModel.DataAnnotations
 
-<div class="auto-input-container">
+<div class="auto-input-container" role="form" aria-labelledby="auto-input-title">
+    <h3 id="auto-input-title" class="visually-hidden">URL Input Form</h3>
     <div class="auto-input-list">
         @for (var i = 0; i < Urls.Count; i++)
         {            
@@ -12,19 +13,26 @@
                            class="form-control" 
                            id="url-@index"
                            value="@Urls[index]"
-                           @onchange="@(async (ChangeEventArgs e) => await HandleUrlChange(index, e.Value?.ToString() ?? ""))" />
+                           @onchange="@(async (ChangeEventArgs e) => await HandleUrlChange(index, e.Value?.ToString() ?? ""))"
+                           aria-label="URL for feedback source @(index + 1)" />
                     <label for="url-@index">Enter URL (YouTube, Reddit, GitHub, etc.)</label>
                 </div>
-                <button class="btn btn-outline-danger" @onclick="@(() => RemoveUrl(index))" type="button">
-                    <i class="bi bi-x-lg"></i>
+                <button class="btn btn-outline-danger" 
+                        @onclick="@(() => RemoveUrl(index))" 
+                        type="button"
+                        aria-label="Remove URL field @(index + 1)">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
                     <span class="visually-hidden">Remove URL</span>
                 </button>
             </div>
         }
     </div>
 
-    <button class="btn btn-outline-primary mb-3" @onclick="AddUrl" type="button">
-        <i class="bi bi-plus-lg"></i> Add Another URL
+    <button class="btn btn-outline-primary mb-3" 
+            @onclick="AddUrl" 
+            type="button"
+            aria-label="Add another URL field">
+        <i class="bi bi-plus-lg" aria-hidden="true"></i> Add Another URL
     </button>
 </div>
 

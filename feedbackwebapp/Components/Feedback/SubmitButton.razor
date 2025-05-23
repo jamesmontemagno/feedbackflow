@@ -1,6 +1,10 @@
 @if (!string.IsNullOrEmpty(ShowWhenSource))
 {
-    <button class="btn btn-primary btn-lg w-100 mt-3 source-button action-btn" @onclick="OnSubmit" disabled="@IsLoading">
+    <button class="btn btn-primary btn-lg w-100 mt-3 source-button action-btn" 
+            @onclick="OnSubmit" 
+            disabled="@IsLoading"
+            aria-busy="@IsLoading"
+            aria-label="@(IsLoading ? "Processing" : "Analyze Comments")">
         @if (IsLoading)
         {
             <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>

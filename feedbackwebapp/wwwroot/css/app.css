@@ -3,6 +3,7 @@
     /* Light theme (default) - Darker Pastel Purple Theme */
     --bg-primary: #f7f4ff;
     --bg-secondary: #ffffff;
+    --bg-secondary-rgb: 255, 255, 255;
     --text-primary: #2d2649;
     --text-secondary: #5d5777;
     --border-color: #d5cbe9;
@@ -31,6 +32,7 @@
 [data-theme="dark"] {
     --bg-primary: #16121f;
     --bg-secondary: #201729;
+    --bg-secondary-rgb: 32, 23, 41;
     --text-primary: #f5f3ff;
     --text-secondary: #c8c0e7;
     --border-color: #3e3363;
@@ -60,7 +62,8 @@ body {
 }
 
 h1:focus {
-    outline: none;
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
 }
 
 .valid.modified:not([type=checkbox]) {
@@ -86,7 +89,7 @@ h1:focus {
     }
 
 .darker-border-checkbox.form-check-input {
-    border-color: #929292;
+    border-color: var(--text-secondary);
 }
 
 /* Bootstrap Overrides - Consolidated in one place */
@@ -102,7 +105,7 @@ h1:focus {
     background: var(--primary-gradient);
     border-color: var(--primary-color);
     transition: all 0.2s;
-    color: #ffffff;
+    color: var(--bg-secondary);
     box-shadow: 0 3px 6px rgba(var(--primary-color-rgb), 0.2);
 }
 
@@ -215,7 +218,7 @@ h1:focus {
 
 .card-header {
     background: var(--primary-gradient) !important;
-    color: #ffffff !important;
+    color: var(--bg-secondary) !important;
     border-bottom: none !important;
     font-weight: 500 !important;
     padding: 1rem 1.25rem;
@@ -296,7 +299,7 @@ h1:focus {
 
 .nav-link:hover, 
 .nav-link.active {
-    background-color: rgba(255, 255, 255, 0.15);
+    background-color: rgba(var(--primary-color-rgb), 0.15);
 }
 
 /* Use :root for global styles */

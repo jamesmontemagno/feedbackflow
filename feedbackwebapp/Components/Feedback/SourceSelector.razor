@@ -1,4 +1,4 @@
-<div class="container py-3">
+<div class="container py-3" role="region" aria-label="Data Source Selection">
     <div class="row justify-content-center g-2">
         @foreach (var source in sources)
         {
@@ -6,9 +6,11 @@
                 <button type="button" 
                         class="btn w-100 py-2 source-button @GetButtonClass(source.Value)"
                         @onclick="() => OnSourceSelectedAsync(source.Value)"
-                        title="@source.Description">
+                        title="@source.Description"
+                        aria-label="@source.Description"
+                        aria-pressed="@(source.Value == SelectedSource ? "true" : "false")">
                     <div class="d-flex align-items-center justify-content-center w-100">
-                        <div class="source-icon me-2">
+                        <div class="source-icon me-2" aria-hidden="true">
                             <i class="bi @source.IconClass fs-4"></i>
                         </div>
                         <div class="fw-medium">@source.Name</div>

@@ -4,7 +4,7 @@
     overflow: hidden;
     background: var(--primary-gradient);
     border-color: var(--primary-color);
-    color: white;
+    color: var(--bg-secondary);
     border-radius: var(--border-radius-sm);
     padding: 0.75rem 1.5rem;
     font-weight: 500;
@@ -42,7 +42,7 @@
     top: 0;
     left: 0;
     pointer-events: none;
-    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.3) 10%, transparent 10.01%);
+    background-image: radial-gradient(circle, rgba(var(--bg-secondary-rgb, 255, 255, 255), 0.3) 10%, transparent 10.01%);
     background-repeat: no-repeat;
     background-position: 50%;
     transform: scale(10, 10);

@@ -18,38 +18,55 @@
         <div class="d-flex align-items-center">
             @if (historyItems?.Any(h => h.IsShared) == true)
             {
-                <button class="btn btn-info me-2 action-btn px-4 py-2" @onclick="ShowSharedOnly">
-                    <i class="bi bi-share me-2"></i>Shared
+                <button class="btn btn-info me-2 action-btn px-4 py-2" 
+                        @onclick="ShowSharedOnly" 
+                        aria-label="Show only shared items">
+                    <i class="bi bi-share me-2" aria-hidden="true"></i>Shared
                 </button>
             }
             @if (historyItems is { Count: > 0 })
             {
-                <button class="btn btn-danger clear-all-btn action-btn px-4 py-2" @onclick="ClearHistory">
-                    <i class="bi bi-trash me-2"></i>Clear All
+                <button class="btn btn-danger clear-all-btn action-btn px-4 py-2" 
+                        @onclick="ClearHistory" 
+                        aria-label="Clear all history items">
+                    <i class="bi bi-trash me-2" aria-hidden="true"></i>Clear All
                 </button>
             }
         </div>
     </div>
       @if (historyItems is { Count: > 0 })
     {
-        <div class="filter-section card mb-4 p-3 shadow-sm">
+        <div class="filter-section card mb-4 p-3 shadow-sm" role="search">
             <div class="row g-3">
                 <div class="col-12 mb-2">
                     <label for="searchFilter" class="form-label">Search Analysis Content</label>
                     <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" class="form-control" id="searchFilter" placeholder="Search through analysis content..." 
-                               @bind="searchTerm" @bind:event="oninput" @bind:after="StateHasChanged" />                        @if (!string.IsNullOrWhiteSpace(searchTerm))
+                        <span class="input-group-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                        <input type="text" 
+                               class="form-control" 
+                               id="searchFilter" 
+                               placeholder="Search through analysis content..." 
+                               @bind="searchTerm" 
+                               @bind:event="oninput" 
+                               @bind:after="StateHasChanged"
+                               aria-label="Search through analysis content" />                        @if (!string.IsNullOrWhiteSpace(searchTerm))
                         {
-                            <button class="btn btn-outline-secondary action-btn" type="button" @onclick="ClearSearch">
-                                <i class="bi bi-x-circle"></i>
+                            <button class="btn btn-outline-secondary action-btn" 
+                                    type="button" 
+                                    @onclick="ClearSearch"
+                                    aria-label="Clear search">
+                                <i class="bi bi-x-circle" aria-hidden="true"></i>
                             </button>
                         }
                     </div>
                 </div>
                 <div class="col-md-6">
                     <label for="dateFilter" class="form-label">Date Range</label>                    
-                    <select class="form-select" id="dateFilter" @bind="dateFilter" @bind:after="StateHasChanged">
+                    <select class="form-select" 
+                            id="dateFilter" 
+                            @bind="dateFilter" 
+                            @bind:after="StateHasChanged"
+                            aria-label="Filter by date range">
                         <option value="all">All Time</option>
                         <option value="today">Today</option>
                         <option value="week">Last 7 Days</option>
@@ -58,7 +75,11 @@
                 </div>
                 <div class="col-md-6">
                     <label for="sourceFilter" class="form-label">Service Type</label>                    
-                    <select class="form-select" id="sourceFilter" @bind="sourceFilter" @bind:after="StateHasChanged">
+                    <select class="form-select" 
+                            id="sourceFilter" 
+                            @bind="sourceFilter" 
+                            @bind:after="StateHasChanged"
+                            aria-label="Filter by service type">
                         <option value="all">All Services</option>
                         <option value="YouTube">YouTube</option>
                         <option value="GitHub">GitHub</option>
@@ -71,7 +92,11 @@
                 </div>
                 <div class="col-md-6">
                     <label for="sharedFilter" class="form-label">Sharing Status</label>                    
-                    <select class="form-select" id="sharedFilter" @bind="sharedFilter" @bind:after="StateHasChanged">
+                    <select class="form-select" 
+                            id="sharedFilter" 
+                            @bind="sharedFilter" 
+                            @bind:after="StateHasChanged"
+                            aria-label="Filter by sharing status">
                         <option value="all">All Items</option>
                         <option value="shared">Shared Only</option>
                         <option value="notshared">Not Shared</option>
@@ -83,8 +108,8 @@
 
     @if (historyItems is null)
     {
-        <div class="loading-state">
-            <div class="spinner-border" role="status">
+        <div class="loading-state" role="status" aria-live="polite">
+            <div class="spinner-border" role="status" aria-hidden="true">
                 <span class="visually-hidden">Loading...</span>
             </div>
             <p class="mt-2">Loading history...</p>
@@ -92,8 +117,8 @@
     }
     else if (!historyItems.Any())
     {
-        <div class="empty-state">
-            <i class="bi bi-clock-history"></i>
+        <div class="empty-state" role="status" aria-live="polite">
+            <i class="bi bi-clock-history" aria-hidden="true"></i>
             <p>No analysis history found.</p>
         </div>
     }    

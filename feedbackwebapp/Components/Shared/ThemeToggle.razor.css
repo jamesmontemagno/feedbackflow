@@ -9,26 +9,32 @@
     justify-content: center;
     border: none;
     border-radius: var(--border-radius-sm);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 3px 8px rgba(var(--primary-color-rgb), 0.15);
 }
 
 ::deep .theme-toggle-button:hover {
     transform: translateY(-3px) rotate(15deg);
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 6px 15px rgba(var(--primary-color-rgb), 0.2);
 }
 
 ::deep .theme-toggle-button:active {
     transform: translateY(0) rotate(0);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 3px 8px rgba(var(--primary-color-rgb), 0.15);
 }
 
 ::deep .theme-toggle-button:focus {
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3), 0 3px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.3), 0 3px 8px rgba(var(--primary-color-rgb), 0.15);
+    outline: none;
+}
+
+::deep .theme-toggle-button:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
 }
 
 /* Icon styling */
 ::deep .bi {
-    color: white;
+    color: var(--bg-secondary);
 }
 
 ::deep .theme-toggle-button:hover .bi {
@@ -37,5 +43,5 @@
 
 /* Override Bootstrap's btn-link color */
 ::deep .btn.theme-toggle-button:active {
-    color: white;
+    color: var(--bg-secondary);
 }
