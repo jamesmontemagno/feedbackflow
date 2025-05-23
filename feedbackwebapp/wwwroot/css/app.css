@@ -101,6 +101,11 @@ h1:focus {
     transition: all 0.2s;
 }
 
+.btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
 .btn-primary {
     background: var(--primary-gradient);
     border-color: var(--primary-color);
@@ -152,6 +157,8 @@ h1:focus {
     color: var(--text-primary);
     box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
     transform: translateY(-1px);
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
 }
 
 .form-check-input {
