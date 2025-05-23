@@ -1,0 +1,125 @@
+@page "/whats-new"
+@namespace FeedbackWebApp.Components.Pages
+
+@using System.IO
+@using System.Reflection
+@using Markdig
+@using Microsoft.Extensions.FileProviders
+@using Microsoft.JSInterop
+
+@inject IWebHostEnvironment Environment
+@inject IJSRuntime JSRuntime
+
+<PageTitle>What's New - FeedbackFlow</PageTitle>
+
+<div class="container">
+    <h1 class="page-header">What's New in FeedbackFlow</h1>
+
+    @if (isLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading updates...</p>
+        </div>
+    }
+    else if (loadError)
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            @errorMessage
+        </div>
+    }
+    else
+    {
+        <div class="whats-new-content">            
+            <div class="card">
+                <div class="markdown-content">
+                    @((MarkupString)markdownHtml)
+                </div>
+            </div>
+            <div class="feedback-section">
+                <a href="https://github.com/jamesmontemagno/feedbackflow/issues" target="_blank" rel="noopener noreferrer" class="btn btn-primary feedback-button">
+                    <i class="bi bi-chat-right-text me-2"></i>Submit Feedback
+                </a>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private bool loadError = false;
+    private string errorMessage = string.Empty;
+    private string markdownHtml = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadWhatsNewContent();
+    }
+
+    private async Task LoadWhatsNewContent()
+    {
+        try
+        {
+            isLoading = true;
+            
+            // Try multiple possible locations for the WHATSNEW.md file
+            string[] possiblePaths = new[]
+            {
+                Path.Combine(Environment.ContentRootPath, "WHATSNEW.md"),
+                Path.Combine(Environment.ContentRootPath, "..", "WHATSNEW.md"),
+                Path.Combine(Environment.WebRootPath, "WHATSNEW.md")
+            };
+            
+            string? markdownContent = null;
+            foreach (string path in possiblePaths)
+            {
+                if (File.Exists(path))
+                {
+                    markdownContent = await File.ReadAllTextAsync(path);
+                    break;
+                }
+            }
+            
+            if (markdownContent != null)
+            {
+                markdownHtml = ConvertMarkdownToHtml(markdownContent);
+            }
+            else 
+            {
+                // Fallback to default content if file doesn't exist in any location
+                markdownHtml = ConvertMarkdownToHtml(GetDefaultContent());
+            }
+        }
+        catch (Exception ex)
+        {
+            loadError = true;
+            errorMessage = "An error occurred while loading the What's New content.";
+            Console.Error.WriteLine($"Error loading What's New content: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string ConvertMarkdownToHtml(string markdown)
+    {
+        return Markdown.ToHtml(markdown ?? string.Empty, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build());
+    }
+    
+    private string GetDefaultContent()
+    {
+        return @"# What's New in FeedbackFlow
+
+## Recent Updates
+
+### Auto Mode for Multiple Articles
+Analyze multiple articles simultaneously with our new Auto Mode feature.
+
+### Share Analysis Feature
+You can now easily share your analysis results with others.";
+    }
+}
