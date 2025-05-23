@@ -8,4 +8,7 @@ public record AnalysisHistoryItem
     public string FullAnalysis { get; init; } = string.Empty;
     public string SourceType { get; init; } = string.Empty; // e.g., "Manual", "Reddit", etc.
     public string? UserInput { get; init; } // Only set for manual mode
+    public bool IsShared { get; init; } = false;
+    public string? SharedId { get; init; } // ID for shared analysis reference
+    public DateTime? SharedDate { get; init; } // Date when the analysis was shared
 }

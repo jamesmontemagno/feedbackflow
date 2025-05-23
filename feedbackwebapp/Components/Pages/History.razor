@@ -1,22 +1,34 @@
 @page "/history"
 @inject FeedbackWebApp.Services.Interfaces.IHistoryService HistoryService
+@inject FeedbackWebApp.Services.Interfaces.IAnalysisSharingService SharingService
 @inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@inject FeedbackWebApp.Services.IToastService ToastService
+@inject FeedbackWebApp.Services.IHistoryHelper HistoryHelper
 @using SharedDump.Models
 @using Markdig
 @using Microsoft.JSInterop
-@inject FeedbackWebApp.Services.IToastService ToastService
+@using FeedbackWebApp.Components.Shared
 
 <PageTitle>Analysis History</PageTitle>
 
 <div class="container-lg py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="history-title mb-0">Analysis History</h1>
-        @if (historyItems is { Count: > 0 })
-        {
-            <button class="btn btn-danger clear-all-btn action-btn px-4 py-2" @onclick="ClearHistory">
-                <i class="bi bi-trash me-2"></i>Clear All History
-            </button>
-        }
+        <div class="d-flex align-items-center">
+            @if (historyItems?.Any(h => h.IsShared) == true)
+            {
+                <button class="btn btn-info me-2 action-btn px-4 py-2" @onclick="ShowSharedOnly">
+                    <i class="bi bi-share me-2"></i>Shared
+                </button>
+            }
+            @if (historyItems is { Count: > 0 })
+            {
+                <button class="btn btn-danger clear-all-btn action-btn px-4 py-2" @onclick="ClearHistory">
+                    <i class="bi bi-trash me-2"></i>Clear All
+                </button>
+            }
+        </div>
     </div>
       @if (historyItems is { Count: > 0 })
     {
@@ -57,6 +69,14 @@
                         <option value="Manual">Manual</option>
                     </select>
                 </div>
+                <div class="col-md-6">
+                    <label for="sharedFilter" class="form-label">Sharing Status</label>                    
+                    <select class="form-select" id="sharedFilter" @bind="sharedFilter" @bind:after="StateHasChanged">
+                        <option value="all">All Items</option>
+                        <option value="shared">Shared Only</option>
+                        <option value="notshared">Not Shared</option>
+                    </select>
+                </div>
             </div>
         </div>
     }
@@ -82,19 +102,40 @@
         <div class="list-group">
             @foreach (var item in filteredItems)
             {
-                <div class="list-group-item" @key="item.Id">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="bi @GetServiceIcon(item.SourceType) service-icon"></i>
+                <div class="list-group-item @(item.IsShared ? "shared-item" : "")" @key="item.Id">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex align-items-center gap-2">                            <i class="bi @HistoryHelper.GetServiceIcon(item.SourceType) service-icon"></i>
                             <span class="source-badge">@item.SourceType</span>
                             <small class="text-muted">@item.Timestamp.ToLocalTime().ToString("g")</small>
-                        </div>                        <div class="d-flex align-items-center gap-2">
-                            <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="() => CopyToClipboard(item)">
+                            @if (item.IsShared)
+                            {
+                                <span class="shared-status">
+                                    <i class="bi bi-cloud-check"></i>
+                                    Shared
+                                </span>
+                            }
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="() => HistoryHelper.CopyToClipboard(item, JSRuntime, ToastService)">
                                 <i class="bi bi-clipboard"></i>
                             </button>
+                            @if (!item.IsShared)
+                            {
+                                <button class="btn btn-sm btn-outline-info action-btn" title="Create Share Link" @onclick="() => ShareAnalysis(item)">
+                                    <i class="bi bi-share"></i>
+                                    Share
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-outline-info action-btn" title="Copy Share Link" @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService)">
+                                    <i class="bi bi-link-45deg"></i>
+                                    Copy Link
+                                </button>
+                            }
                             @if(item.SourceType != "Manual")
                             {
-                                <a class="btn btn-sm btn-outline-primary action-btn" title="Open Source" target="_blank" rel="noopener noreferrer" href="@GetSourceUrl(item)">
+                                <a class="btn btn-sm btn-outline-primary action-btn" title="Open Source" target="_blank" rel="noopener noreferrer" href="@HistoryHelper.GetSourceUrl(item)">
                                     <i class="bi bi-box-arrow-up-right"></i>
                                 </a>
                             }
@@ -103,14 +144,15 @@
                             </button>
                         </div>
                     </div>
-                                
+                                        
                     @if (!string.IsNullOrWhiteSpace(item.UserInput) && item.SourceType != "Manual")
                     {
                         <div class="user-input mb-3">
                             <strong>Input:</strong> @item.UserInput
                         </div>
                     }
-                      <div class="analysis-content">
+
+                    <div class="analysis-content">
                         <button class="btn btn-sm mb-3 action-btn @(expandedItems.Contains(item.Id) ? "btn-outline-secondary" : "btn-outline-primary")" 
                                 @onclick="() => ToggleExpand(item.Id)">
                             <i class="bi @(expandedItems.Contains(item.Id) ? "bi-chevron-down" : "bi-chevron-right") me-1"></i>
@@ -122,8 +164,7 @@
                             {
                                 <div class="analysis-badge mb-2">Full Analysis</div>
                             }
-                            <div class="markdown-content">
-                                @((MarkupString)ConvertMarkdownToHtml(
+                            <div class="markdown-content">                                @((MarkupString)HistoryHelper.ConvertMarkdownToHtml(
                                     expandedItems.Contains(item.Id) && !string.IsNullOrEmpty(item.FullAnalysis) 
                                         ? item.FullAnalysis 
                                         : item.Summary))
@@ -131,24 +172,26 @@
                         </div>
                     </div>
                 </div>
-            }
+            }        
         </div>
     }
 </div>
 
-@code {    private List<AnalysisHistoryItem>? historyItems;
+@code {
+
+    private List<AnalysisHistoryItem>? historyItems;
     private List<AnalysisHistoryItem>? filteredItems => FilterHistoryItems();
     private HashSet<string> expandedItems = new();
     private string dateFilter = "all";
     private string sourceFilter = "all";
+    private string sharedFilter = "all";
     private string searchTerm = string.Empty;
-
+    private bool isProcessingShare = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            // Re-fetch in case we were prerendering and couldn't access localStorage
             historyItems = await HistoryService.GetHistoryAsync();
             StateHasChanged();
         }
@@ -160,7 +203,7 @@
         historyItems = await HistoryService.GetHistoryAsync();
         expandedItems.Remove(id);
     }    
-    
+
     private async Task ClearHistory()
     {
         if (await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to clear all history? This cannot be undone."))
@@ -178,52 +221,28 @@
             expandedItems.Remove(id);
         }
     }    
-    
-    private string ConvertMarkdownToHtml(string markdown)
-    {
-        return Markdown.ToHtml(markdown ?? string.Empty, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build());
-    }    
-    
-    private string GetServiceIcon(string sourceType)
-    {
-        return sourceType?.ToLowerInvariant() switch
-        {
-            "youtube" => "bi-youtube",
-            "github" => "bi-github",
-            "reddit" => "bi-reddit",
-            "twitter" => "bi-twitter",
-            "hackernews" => "bi-braces",
-            "devblogs" => "bi-journal-code",
-            "manual" => "bi-pencil-square",
-            _ => "bi-question-circle"
-        };
-    }
-
-    private string GetSourceUrl(AnalysisHistoryItem item)
-    {
-        // Format the URL based on the source type and item.Id
-        return item.SourceType?.ToLowerInvariant() switch
-        {
-            "youtube" => $"https://youtube.com/watch?v={item.Id}",
-            "github" => $"https://github.com/{item.Id}",
-            "reddit" => $"https://reddit.com/{item.Id}",
-            "twitter" => $"https://twitter.com/i/web/status/{item.Id}",
-            "hackernews" => $"https://news.ycombinator.com/item?id={item.Id}",
-            "devblogs" => $"https://devblogs.microsoft.com/{item.Id}",
-            _ => "#"
-        };
-    }
-      private List<AnalysisHistoryItem> FilterHistoryItems()
+    private List<AnalysisHistoryItem> FilterHistoryItems()
     {
         if (historyItems == null)
             return new List<AnalysisHistoryItem>();
-            
+
         var items = historyItems.AsEnumerable();
-        
+
         // Apply source filter
         if (sourceFilter != "all")
             items = items.Where(x => x.SourceType == sourceFilter);
-            
+
+        // Apply shared filter
+        if (sharedFilter != "all")
+        {
+            items = sharedFilter switch
+            {
+                "shared" => items.Where(x => x.IsShared),
+                "notshared" => items.Where(x => !x.IsShared),
+                _ => items // all
+            };
+        }
+
         // Apply date filter
         var now = DateTime.Now;
         items = dateFilter switch
@@ -233,7 +252,7 @@
             "month" => items.Where(x => (now - x.Timestamp).TotalDays <= 30),
             _ => items // "all" or any other value
         };
-        
+
         // Apply search term filter if not empty
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -243,24 +262,34 @@
                 (x.FullAnalysis != null && x.FullAnalysis.ToLowerInvariant().Contains(term)) ||
                 (x.UserInput != null && x.UserInput.ToLowerInvariant().Contains(term)));
         }
-        
+
         return items.ToList();
-    }private void OpenAnalysis(AnalysisHistoryItem item)
+    }
+
+    private void OpenAnalysis(AnalysisHistoryItem item)
     {
         // In a real implementation, you might navigate to a details page
         // or open a modal with the full analysis
         ToggleExpand(item.Id); // For now, just expand the item
     }
-      private void ResetFilters()
+
+    private void ResetFilters()
     {
         dateFilter = "all";
         sourceFilter = "all";
+        sharedFilter = "all";
         searchTerm = string.Empty;
     }
-    
+
     private void ClearSearch()
     {
         searchTerm = string.Empty;
+        StateHasChanged();
+    }
+
+    private void ShowSharedOnly()
+    {
+        sharedFilter = "shared";
         StateHasChanged();
     }
 
@@ -271,18 +300,63 @@
             await DeleteItem(id);
         }
     }
-    
-    private async Task CopyToClipboard(AnalysisHistoryItem item)
+
+
+    private async Task ShareAnalysis(AnalysisHistoryItem item)
     {
-        if (!string.IsNullOrEmpty(item.FullAnalysis))
+        if(isProcessingShare)
+            return;
+            
+        isProcessingShare = true;
+        StateHasChanged();
+
+        
+        await ToastService.ShowInfoAsync("Creating share link...", 3000);
+
+        try
         {
-            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", item.FullAnalysis);
-            await ToastService.ShowSuccessAsync("Analysis copied to clipboard", 3000);
+            var analysisData = new AnalysisData
+            {
+                Id = item.Id,
+                Title = $"{item.SourceType} Analysis",
+                Summary = item.Summary,
+                FullAnalysis = item.FullAnalysis,
+                SourceType = item.SourceType,
+                UserInput = item.UserInput,
+                CreatedDate = item.Timestamp
+            };
+
+            var sharedId = await SharingService.ShareAnalysisAsync(analysisData);
+            await Task.Delay(1000); // Simulate processing delay
+
+            if (string.IsNullOrEmpty(sharedId))
+            {
+                isProcessingShare = false;
+                await ToastService.ShowErrorAsync("Unable to save analysis.");
+                StateHasChanged();
+                return;
+            }
+            
+            await SharingService.UpdateHistoryItemWithShareInfoAsync(item.Id, sharedId);
+            
+            // Refresh the history list
+            historyItems = await HistoryService.GetHistoryAsync();            // Trigger confetti and show success message
+            JSRuntime.InvokeVoidAsync("confetti", new
+            {
+                particleCount = 100,
+                spread = 70,
+                origin = new { y = 0.6 }
+            }).ConfigureAwait(false);
+            await ToastService.ShowSuccessAsync("Share link created successfully! Click the 'Copy Link' button to copy it.", 5000);
         }
-        else if (!string.IsNullOrEmpty(item.Summary))
+        catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", item.Summary);
-            await ToastService.ShowSuccessAsync("Summary copied to clipboard", 3000);
+            await ToastService.ShowErrorAsync($"Unable to save analysis: {ex.Message}");
+        }
+        finally
+        {
+            isProcessingShare = false;
+            StateHasChanged();
         }
     }
 }

@@ -23,6 +23,7 @@ builder.Services.AddRazorComponents()
     
 // Register ToastService
 builder.Services.AddScoped<IToastService, ToastService>();
+builder.Services.AddScoped<IHistoryHelper, HistoryHelper>();
 
 builder.Services.AddHttpClient("DefaultClient")
     .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(3));
@@ -32,6 +33,7 @@ builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<UserSettingsService>();
 builder.Services.AddMemoryCache(); // Add this line for caching support
 builder.Services.AddScoped<IHistoryService, HistoryService>();
+builder.Services.AddScoped<IAnalysisSharingService, AnalysisSharingService>();
 
 var app = builder.Build();
 
