@@ -16,6 +16,11 @@ public class AnalysisSharingService : IAnalysisSharingService, IDisposable
     protected readonly string BaseUrl;
     protected readonly IConfiguration Configuration;
 
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     public AnalysisSharingService(
         IHttpClientFactory httpClientFactory, 
         IJSRuntime jsRuntime, 
@@ -55,7 +60,7 @@ public class AnalysisSharingService : IAnalysisSharingService, IDisposable
             response.EnsureSuccessStatusCode();
             
             var responseContent = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<ShareResponse>(responseContent);
+            var result = JsonSerializer.Deserialize<ShareResponse>(responseContent, _jsonOptions);
             
             if (result == null || string.IsNullOrEmpty(result.Id))
             {
@@ -80,7 +85,6 @@ public class AnalysisSharingService : IAnalysisSharingService, IDisposable
             var getSharedAnalysisCode = Configuration["FeedbackApi:GetSharedAnalysisCode"]
                 ?? throw new InvalidOperationException("GetSharedAnalysisCode API code not configured");
 
-
             var getSharedPath = $"{BaseUrl}/api/GetSharedAnalysis/{id}?code={Uri.EscapeDataString(getSharedAnalysisCode)}";
             var response = await _httpClient.GetAsync(getSharedPath);
             
@@ -91,7 +95,7 @@ public class AnalysisSharingService : IAnalysisSharingService, IDisposable
             }
             
             var responseContent = await response.Content.ReadAsStringAsync();
-            var analysisData = JsonSerializer.Deserialize<AnalysisData>(responseContent);
+            var analysisData = JsonSerializer.Deserialize<AnalysisData>(responseContent, _jsonOptions);
             
             return analysisData;
         }

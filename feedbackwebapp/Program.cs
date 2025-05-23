@@ -23,6 +23,7 @@ builder.Services.AddRazorComponents()
     
 // Register ToastService
 builder.Services.AddScoped<IToastService, ToastService>();
+builder.Services.AddScoped<IHistoryHelper, HistoryHelper>();
 
 builder.Services.AddHttpClient("DefaultClient")
     .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(3));
