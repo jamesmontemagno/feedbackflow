@@ -57,6 +57,9 @@
     border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
     background-color: var(--bg-secondary);
+    box-shadow: var(--card-shadow);
+}
+
 [data-theme='dark'] .loading-state p,
 [data-theme='dark'] .empty-state p,
 [data-theme='dark'] .loading-state small,
@@ -68,13 +71,11 @@
 [data-theme='dark'] .empty-state i {
     color: var(--primary-color);
 }
-    box-shadow: var(--card-shadow);
+
 .empty-state.card:hover {
     transform: translateY(-5px);
     box-shadow: 0 10px 20px rgba(var(--primary-color-rgb), 0.15);
     transition: all 0.3s ease;
-}
-}
 }
 
 .loading-state .spinner-border {
