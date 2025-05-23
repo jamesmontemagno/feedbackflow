@@ -47,6 +47,11 @@
     border-bottom: 1px solid var(--border-color);
 }
 
+.comments-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
 @keyframes slideDown {
     from {
         opacity: 0;
