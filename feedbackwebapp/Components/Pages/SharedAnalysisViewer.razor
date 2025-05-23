@@ -62,20 +62,10 @@
                 }
 
                 <div class="analysis-content">
-                    <button class="btn btn-sm mb-3 action-btn @(showFullAnalysis ? "btn-outline-secondary" : "btn-outline-primary")" 
-                            @onclick="ToggleView">
-                        <i class="bi @(showFullAnalysis ? "bi-chevron-down" : "bi-chevron-right") me-1"></i>
-                        @(showFullAnalysis ? "Show Summary" : "Show Full Analysis")
-                    </button>
-                    
                     <div class="content-wrapper">
-                        @if (showFullAnalysis && !string.IsNullOrEmpty(analysis.FullAnalysis))
-                        {
-                            <div class="analysis-badge mb-2">Full Analysis</div>
-                        }
                         <div class="markdown-content">
                             @((MarkupString)ConvertMarkdownToHtml(
-                                showFullAnalysis && !string.IsNullOrEmpty(analysis.FullAnalysis) 
+                                !string.IsNullOrEmpty(analysis.FullAnalysis) 
                                     ? analysis.FullAnalysis 
                                     : analysis.Summary))
                         </div>
@@ -94,7 +84,6 @@
     private bool isLoading = true;
     private bool loadError = false;
     private string errorMessage = "An error occurred while loading the analysis.";
-    private bool showFullAnalysis = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -137,11 +126,6 @@
     private string ConvertMarkdownToHtml(string markdown)
     {
         return Markdown.ToHtml(markdown ?? string.Empty, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build());
-    }
-
-    private void ToggleView()
-    {
-        showFullAnalysis = !showFullAnalysis;
     }
 
     private string GetServiceIcon(string sourceType)
