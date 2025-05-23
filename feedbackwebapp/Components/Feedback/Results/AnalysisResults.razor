@@ -6,7 +6,11 @@
 @inject ISpeechSynthesisService SpeechSynthesisService
 @inject FeedbackWebApp.Services.Interfaces.IHistoryService HistoryService
 @inject FeedbackWebApp.Services.IToastService ToastService
+@inject FeedbackWebApp.Services.Interfaces.IAnalysisSharingService SharingService
+@inject NavigationManager NavigationManager
 @implements IDisposable
+
+
 
 @if (!string.IsNullOrEmpty(Error))
 {
@@ -23,6 +27,10 @@
                 <button class="btn btn-sm btn-outline-light me-2 action-btn" @onclick="SaveToHistory">
                     <i class="bi bi-clock-history me-1"></i>
                     Save
+                </button>                
+                <button class="btn btn-sm btn-outline-light me-2 action-btn" @onclick="@(sharedId == null ? ShareAnalysis : CopyShareLink)">
+                    <i class="bi @(sharedId == null ? "bi-share" : "bi-link-45deg") me-1"></i>
+                    @(sharedId == null ? "Share" : "Copy Link")
                 </button>
                 <button class="btn btn-sm btn-outline-light me-2 action-btn @(_isSpeaking ? "btn-speak-active" : "")" @onclick="SpeakAnalysis">
                     <i class="bi @(_isSpeaking ? "bi-pause-fill" : "bi-volume-up-fill") me-1"></i>
@@ -57,6 +65,9 @@
     
     private string? _previousMarkdown;
     private bool _isSpeaking = false;
+    private string? sharedId;
+    private string? shareLink;
+    private bool isProcessingShare = false;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -164,6 +175,80 @@
                 _isSpeaking = false;
             }
             
+            StateHasChanged();
+        }
+    }
+
+    private async Task CopyShareLink()
+    {
+        if (!string.IsNullOrEmpty(shareLink))
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", shareLink);
+            await ToastService.ShowSuccessAsync("Share link copied to clipboard!", 3000);
+        }
+    }
+
+    private async Task ShareAnalysis()
+    {
+        if(isProcessingShare || string.IsNullOrEmpty(MarkdownResult))
+            return;
+            
+        isProcessingShare = true;
+        await ToastService.ShowInfoAsync("Creating share link...", 5000);
+
+        try
+        {
+            // First save to history if not already saved
+            var historyItem = new SharedDump.Models.AnalysisHistoryItem
+            {
+                Summary = MarkdownResult.Length > 300 ? MarkdownResult.Substring(0, 300) + "..." : MarkdownResult,
+                FullAnalysis = MarkdownResult,
+                SourceType = SourceType,
+                UserInput = UserInput
+            };
+            await HistoryService.SaveToHistoryAsync(historyItem);
+
+            var analysisData = new SharedDump.Models.AnalysisData
+            {
+                Id = historyItem.Id,
+                Title = $"{SourceType} Analysis",
+                Summary = historyItem.Summary,
+                FullAnalysis = historyItem.FullAnalysis,
+                SourceType = SourceType,
+                UserInput = UserInput,
+                CreatedDate = DateTime.UtcNow
+            };
+
+            sharedId = await SharingService.ShareAnalysisAsync(analysisData);
+
+            if (string.IsNullOrEmpty(sharedId))
+            {
+                await ToastService.ShowErrorAsync("Unable to create share link.");
+                return;
+            }
+            
+            await SharingService.UpdateHistoryItemWithShareInfoAsync(historyItem.Id, sharedId);
+            
+            // Store and copy share link
+            shareLink = $"{NavigationManager.BaseUri.TrimEnd('/')}/shared/{sharedId}";
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", shareLink);
+            
+            // Trigger confetti and show success message
+            await ToastService.ShowSuccessAsync("Share link copied to clipboard!", 5000);
+            TriggerConfetti().ContinueWith(_ =>
+            {
+                // Optionally, you can add more actions after confetti
+                // Example: Log the sharing activity
+                Console.WriteLine("Confetti triggered after sharing analysis.");
+            });
+        }
+        catch (Exception ex)
+        {
+            await ToastService.ShowErrorAsync($"Unable to create share link: {ex.Message}");
+        }
+        finally
+        {
+            isProcessingShare = false;
             StateHasChanged();
         }
     }

@@ -12,22 +12,6 @@
 
 <PageTitle>Analysis History</PageTitle>
 
-@if (isProcessingShare)
-{
-    <div class="modal-overlay">
-        <div class="modal-content" role="alertdialog" aria-modal="true">
-            <div class="loading-container">
-                <div class="pulse-ring"></div>
-                <div class="spinner"></div>
-            </div>
-            <div class="modal-message">
-                <i class="bi bi-share me-2"></i>
-                <p>Creating share link...</p>
-            </div>
-        </div>
-    </div>
-}
-
 <div class="container-lg py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="history-title mb-0">Analysis History</h1>
@@ -326,7 +310,8 @@
         isProcessingShare = true;
         StateHasChanged();
 
-        await Task.Delay(1000); // Simulate processing delay
+        
+        await ToastService.ShowInfoAsync("Creating share link...", 3000);
 
         try
         {
@@ -356,12 +341,12 @@
             
             // Refresh the history list
             historyItems = await HistoryService.GetHistoryAsync();            // Trigger confetti and show success message
-            await JSRuntime.InvokeVoidAsync("confetti", new
+            JSRuntime.InvokeVoidAsync("confetti", new
             {
                 particleCount = 100,
                 spread = 70,
                 origin = new { y = 0.6 }
-            });
+            }).ConfigureAwait(false);
             await ToastService.ShowSuccessAsync("Share link created successfully! Click the 'Copy Link' button to copy it.", 5000);
         }
         catch (Exception ex)
