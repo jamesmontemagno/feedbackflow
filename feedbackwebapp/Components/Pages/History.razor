@@ -6,7 +6,7 @@
 @using SharedDump.Models
 @using Markdig
 @using Microsoft.JSInterop
-@inject FeedbackWebApp.Services.IToastService ToastService
+@inject FeedbackWebApp.Services.IToastService
 
 <PageTitle>Analysis History</PageTitle>
 
@@ -100,23 +100,38 @@
         <div class="list-group">
             @foreach (var item in filteredItems)
             {
-                <div class="list-group-item" @key="item.Id">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="list-group-item @(item.IsShared ? "shared-item" : "")" @key="item.Id">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
                         <div class="d-flex align-items-center gap-2">
                             <i class="bi @GetServiceIcon(item.SourceType) service-icon"></i>
                             <span class="source-badge">@item.SourceType</span>
                             <small class="text-muted">@item.Timestamp.ToLocalTime().ToString("g")</small>
-                        </div>                        <div class="d-flex align-items-center gap-2">
+                            @if (item.IsShared)
+                            {
+                                <span class="shared-status">
+                                    <i class="bi bi-cloud-check"></i>
+                                    Shared
+                                </span>
+                            }
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
                             <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="() => CopyToClipboard(item)">
                                 <i class="bi bi-clipboard"></i>
                             </button>
-                            <button class="btn btn-sm btn-outline-info action-btn" title="Share Analysis" @onclick="() => ShareAnalysis(item)">
-                                <i class="bi @(item.IsShared ? "bi-share-fill" : "bi-share")"></i>
-                                @if (item.IsShared)
-                                {
-                                    <span class="shared-badge ms-1">Shared</span>
-                                }
-                            </button>
+                            @if (!item.IsShared)
+                            {
+                                <button class="btn btn-sm btn-outline-info action-btn" title="Create Share Link" @onclick="() => ShareAnalysis(item)">
+                                    <i class="bi bi-share"></i>
+                                    Share
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-outline-info action-btn" title="Copy Share Link" @onclick="() => CopyShareLink(item)">
+                                    <i class="bi bi-link-45deg"></i>
+                                    Copy Link
+                                </button>
+                            }
                             @if(item.SourceType != "Manual")
                             {
                                 <a class="btn btn-sm btn-outline-primary action-btn" title="Open Source" target="_blank" rel="noopener noreferrer" href="@GetSourceUrl(item)">
@@ -128,14 +143,32 @@
                             </button>
                         </div>
                     </div>
-                                
+                                        
                     @if (!string.IsNullOrWhiteSpace(item.UserInput) && item.SourceType != "Manual")
                     {
                         <div class="user-input mb-3">
                             <strong>Input:</strong> @item.UserInput
                         </div>
                     }
-                      <div class="analysis-content">
+
+                    @if (item.IsProcessingShare)
+                    {
+                        <div class="alert alert-info d-flex align-items-center mt-2">
+                            <div class="spinner-border spinner-border-sm me-2" role="status">
+                                <span class="visually-hidden">Creating share link...</span>
+                            </div>
+                            Creating share link...
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(item.ShareError))
+                    {
+                        <div class="alert alert-danger mt-2">
+                            @item.ShareError
+                            <button class="btn btn-sm btn-outline-danger ms-2" @onclick="() => ShareAnalysis(item)">Retry</button>
+                        </div>
+                    }
+
+                    <div class="analysis-content">
                         <button class="btn btn-sm mb-3 action-btn @(expandedItems.Contains(item.Id) ? "btn-outline-secondary" : "btn-outline-primary")" 
                                 @onclick="() => ToggleExpand(item.Id)">
                             <i class="bi @(expandedItems.Contains(item.Id) ? "bi-chevron-down" : "bi-chevron-right") me-1"></i>
@@ -156,42 +189,23 @@
                         </div>
                     </div>
                 </div>
-            }
-        </div>
+            }        </div>
     }
 </div>
 
-<ShareAnalysisModal 
-    IsVisible="@isShareModalVisible" 
-    IsVisibleChanged="@((value) => isShareModalVisible = value)" 
-    IsSharing="@isSharing" 
-    IsSharingChanged="@((value) => isSharing = value)"
-    ShareLink="@shareLink"
-    ShareLinkChanged="@((value) => shareLink = value)"
-    Error="@shareError"
-    ErrorChanged="@((value) => shareError = value)"
-    OnRetryShare="@ShareSelectedAnalysis" />
-
-@code {    private List<AnalysisHistoryItem>? historyItems;
+@code {    
+    private List<AnalysisHistoryItem>? historyItems;
     private List<AnalysisHistoryItem>? filteredItems => FilterHistoryItems();
     private HashSet<string> expandedItems = new();
     private string dateFilter = "all";
     private string sourceFilter = "all";
     private string sharedFilter = "all";
     private string searchTerm = string.Empty;
-    
-    // Share functionality
-    private bool isShareModalVisible = false;
-    private bool isSharing = false;
-    private string shareLink = string.Empty;
-    private string shareError = string.Empty;
-    private AnalysisHistoryItem? selectedAnalysis;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            // Re-fetch in case we were prerendering and couldn't access localStorage
             historyItems = await HistoryService.GetHistoryAsync();
             StateHasChanged();
         }
@@ -345,68 +359,65 @@
             await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", item.Summary);
             await ToastService.ShowSuccessAsync("Summary copied to clipboard", 3000);
         }
-    }
-
-    private void ShareAnalysis(AnalysisHistoryItem item)
+    }    
+      private async Task ShareAnalysis(AnalysisHistoryItem item)
     {
-        selectedAnalysis = item;
-        shareError = string.Empty;
-        shareLink = string.Empty;
-        isShareModalVisible = true;
-        
-        // Start the sharing process
-        _ = ShareSelectedAnalysis();
-    }
-
-    private async Task ShareSelectedAnalysis()
-    {
-        if (selectedAnalysis == null) return;
-
+        var updatedItem = item with { IsProcessingShare = true, ShareError = string.Empty };
+        await HistoryService.SaveToHistoryAsync(updatedItem);
+        StateHasChanged();
+            
         try
         {
-            isSharing = true;
-            shareError = string.Empty;
-            shareLink = string.Empty;
-            
-            // Create an AnalysisData object from the history item
             var analysisData = new AnalysisData
             {
-                Id = selectedAnalysis.Id,
-                Title = $"{selectedAnalysis.SourceType} Analysis",
-                Summary = selectedAnalysis.Summary,
-                FullAnalysis = selectedAnalysis.FullAnalysis,
-                SourceType = selectedAnalysis.SourceType,
-                UserInput = selectedAnalysis.UserInput,
-                CreatedDate = selectedAnalysis.Timestamp
+                Id = item.Id,
+                Title = $"{item.SourceType} Analysis",
+                Summary = item.Summary,
+                FullAnalysis = item.FullAnalysis,
+                SourceType = item.SourceType,
+                UserInput = item.UserInput,
+                CreatedDate = item.Timestamp
             };
             
-            // Share the analysis
             var sharedId = await SharingService.ShareAnalysisAsync(analysisData);
             
             if (string.IsNullOrEmpty(sharedId))
             {
-                shareError = "Failed to generate share link. Please try again.";
+                updatedItem = updatedItem with 
+                { 
+                    IsProcessingShare = false, 
+                    ShareError = "Failed to generate share link. Please try again." 
+                };
+                await HistoryService.SaveToHistoryAsync(updatedItem);
+                StateHasChanged();
                 return;
             }
             
-            // Create the share link
-            var baseUrl = NavigationManager.BaseUri.TrimEnd('/');
-            shareLink = $"{baseUrl}/shared/{sharedId}";
-            
-            // Update the history item with share info
-            await SharingService.UpdateHistoryItemWithShareInfoAsync(selectedAnalysis.Id, sharedId);
+            await SharingService.UpdateHistoryItemWithShareInfoAsync(item.Id, sharedId);
             
             // Refresh the history list
             historyItems = await HistoryService.GetHistoryAsync();
+
+            // Show success message
+            await ToastService.ShowSuccessAsync("Share link created successfully! Click the 'Copy Link' button to copy it.", 5000);
+        }
+        catch (Exception)
+        {
+            updatedItem = updatedItem with 
+            { 
+                IsProcessingShare = false, 
+                ShareError = "An error occurred while sharing the analysis. Please try again." 
+            };
+            await HistoryService.SaveToHistoryAsync(updatedItem);
             StateHasChanged();
         }
-        catch (Exception ex)
-        {
-            shareError = "An error occurred while sharing the analysis. Please try again.";
-        }
-        finally
-        {
-            isSharing = false;
-        }
+    }
+
+    private async Task CopyShareLink(AnalysisHistoryItem item)
+    {
+        var baseUrl = NavigationManager.BaseUri.TrimEnd('/');
+        var shareLink = $"{baseUrl}/shared/{item.SharedId}";
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", shareLink);
+        await ToastService.ShowSuccessAsync("Share link copied to clipboard!", 3000);
     }
 }

@@ -54,7 +54,7 @@ public class SharingFunctions
 
     [Function("GetSharedAnalysis")]
     public async Task<HttpResponseData> GetSharedAnalysis(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "shared/{id}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "GetSharedAnalysis/{id}")] HttpRequestData req,
         string id,
         [BlobInput($"{ContainerName}/{{id}}.json", Connection = "AzureWebJobsStorage")] string? analysisJson)
     {

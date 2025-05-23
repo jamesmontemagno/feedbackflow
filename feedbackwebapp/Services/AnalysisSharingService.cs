@@ -13,8 +13,8 @@ public class AnalysisSharingService : IAnalysisSharingService, IDisposable
     private readonly IJSRuntime _jsRuntime;
     private readonly ILogger<AnalysisSharingService> _logger;
     private readonly IHistoryService _historyService;
-    private readonly string _shareFunctionUrl;
-    private readonly string _sharingBaseUrl;
+    protected readonly string BaseUrl;
+    protected readonly IConfiguration Configuration;
 
     public AnalysisSharingService(
         IHttpClientFactory httpClientFactory, 
@@ -29,14 +29,9 @@ public class AnalysisSharingService : IAnalysisSharingService, IDisposable
         _historyService = historyService;
 
         // Get base URLs from configuration
-        var baseUrl = configuration.GetValue<string>("FeedbackApi:BaseUrl") ?? 
-            "https://feedbackflow.azurewebsites.net";
-        var saveSharedAnalysisCode = configuration.GetValue<string>("FeedbackApi:SaveSharedAnalysisCode") ?? 
-            "api/SaveSharedAnalysis";
-
-        // Build function URLs
-        _shareFunctionUrl = $"{baseUrl.TrimEnd('/')}/{saveSharedAnalysisCode.TrimStart('/')}";
-        _sharingBaseUrl = baseUrl.TrimEnd('/');
+        Configuration = configuration;
+        BaseUrl = Configuration?["FeedbackApi:BaseUrl"] 
+            ?? throw new InvalidOperationException("API base URL not configured");
     }
 
     public async Task<string> ShareAnalysisAsync(AnalysisData analysis)
@@ -50,7 +45,13 @@ public class AnalysisSharingService : IAnalysisSharingService, IDisposable
                 Encoding.UTF8,
                 "application/json");
 
-            var response = await _httpClient.PostAsync(_shareFunctionUrl, content);
+            
+            var saveSharedAnalysisCode = Configuration["FeedbackApi:SaveSharedAnalysisCode"]
+                ?? throw new InvalidOperationException("SaveSharedAnalysisCode API code not configured");
+
+            var saveSharedAnalysisUrl = $"{BaseUrl}/api/SaveSharedAnalysis?code={Uri.EscapeDataString(saveSharedAnalysisCode)}";
+
+            var response = await _httpClient.PostAsync(saveSharedAnalysisUrl, content);
             response.EnsureSuccessStatusCode();
             
             var responseContent = await response.Content.ReadAsStringAsync();
@@ -75,8 +76,12 @@ public class AnalysisSharingService : IAnalysisSharingService, IDisposable
         try
         {
             _logger.LogInformation($"Getting shared analysis with ID: {id}");
-            
-            var getSharedPath = $"{_sharingBaseUrl}/api/GetSharedAnalysis/{id}";
+
+            var getSharedAnalysisCode = Configuration["FeedbackApi:GetSharedAnalysisCode"]
+                ?? throw new InvalidOperationException("GetSharedAnalysisCode API code not configured");
+
+
+            var getSharedPath = $"{BaseUrl}/api/GetSharedAnalysis/{id}?code={Uri.EscapeDataString(getSharedAnalysisCode)}";
             var response = await _httpClient.GetAsync(getSharedPath);
             
             if (!response.IsSuccessStatusCode)
