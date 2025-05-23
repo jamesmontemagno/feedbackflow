@@ -10,6 +10,14 @@ using SharedDump.Utils;
 
 namespace FeedbackFunctions;
 
+/// <summary>
+/// Azure Functions for generating reports based on feedback data
+/// </summary>
+/// <remarks>
+/// This class contains functions that generate comprehensive reports
+/// by analyzing feedback from various platforms. The reports are typically
+/// formatted in markdown and may include sentiment analysis, trends, and key insights.
+/// </remarks>
 public class ReportingFunctions
 {
     private readonly ILogger<ReportingFunctions> _logger;
@@ -17,6 +25,12 @@ public class ReportingFunctions
     private readonly IFeedbackAnalyzerService _analyzerService;
     private readonly IConfiguration _configuration;
 
+    /// <summary>
+    /// Initializes a new instance of the ReportingFunctions class
+    /// </summary>
+    /// <param name="logger">Logger for diagnostic information</param>
+    /// <param name="configuration">Application configuration</param>
+    /// <param name="httpClientFactory">HTTP client factory for creating named clients</param>
     public ReportingFunctions(
         ILogger<ReportingFunctions> logger,
         IConfiguration configuration,
@@ -45,6 +59,24 @@ public class ReportingFunctions
         _analyzerService = new FeedbackAnalyzerService(endpoint, apiKey, deployment);
     }
 
+    /// <summary>
+    /// Generates a comprehensive report of a subreddit's threads and comments
+    /// </summary>
+    /// <param name="req">HTTP request with query parameters</param>
+    /// <returns>HTTP response with a markdown-formatted report</returns>
+    /// <remarks>
+    /// Query parameters:
+    /// - subreddit: Required. The name of the subreddit to analyze
+    /// - days: Optional. Number of days of history to analyze (default: 7)
+    /// - limit: Optional. Maximum number of threads to analyze (default: 25)
+    /// - sort: Optional. Sort method for threads ("hot", "new", "top", etc.)
+    /// 
+    /// The function fetches Reddit threads, analyzes their content using AI,
+    /// and returns a markdown-formatted report with insights, trends, and key takeaways.
+    /// </remarks>
+    /// <example>
+    /// GET /api/RedditReport?subreddit=dotnet&amp;days=30&amp;limit=50&amp;sort=top
+    /// </example>
     [Function("RedditReport")]
     public async Task<HttpResponseData> RedditReport(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
