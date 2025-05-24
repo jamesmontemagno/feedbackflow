@@ -38,75 +38,43 @@
 /* State blocks */
 .loading-state, .empty-state {
     text-align: center;
-    padding: 5rem 2rem;
     color: var(--text-secondary);
     animation: fadeIn 0.6s ease-in-out;
+    background-color: var(--bs-body-bg);
+    border-radius: var(--border-radius);
+    margin: 1rem 0;
+    min-height: 250px;
+}
+
+.loading-state .card-body,
+.empty-state .card-body {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-.loading-state small, .empty-state small {
-    color: var(--text-secondary);
-    opacity: 0.8;
-    margin-top: 0.5rem;
-    max-width: 80%;
-}
-.loading-state.card, .empty-state.card {
-    max-width: 600px;
-    margin: 2rem auto;
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border-color);
-    background-color: var(--bg-secondary);
-    box-shadow: var(--card-shadow);
-}
-
-[data-theme='dark'] .loading-state p,
-[data-theme='dark'] .empty-state p,
-[data-theme='dark'] .loading-state small,
-[data-theme='dark'] .empty-state small {
-    color: var(--text-secondary);
-}
-
-[data-theme='dark'] .loading-state .spinner-border,
-[data-theme='dark'] .empty-state i {
-    color: var(--primary-color);
-}
-
-.empty-state.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(var(--primary-color-rgb), 0.15);
-    transition: all 0.3s ease;
-}
-
-.loading-state .spinner-border {
-    font-size: 3rem;
-    margin-bottom: 1.5rem;
-    color: var(--primary-color);
-    opacity: 0.9;
-    width: 3.5rem;
-    height: 3.5rem;
-    animation: pulse 2s infinite;
-}
-
-.loading-state p {
-    font-size: 1.1rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-    margin: 1rem 0 0.5rem;
+    padding: 3rem;
 }
 
 .empty-state i {
-    font-size: 3rem;
-    opacity: 0.9;
-    color: var(--primary-color);
+    color: var(--text-secondary);
+    opacity: 0.7;
     margin-bottom: 1.5rem;
 }
 
 .empty-state p {
-    font-size: 1.1rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-    margin: 0.5rem 0;
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state small {
+    opacity: 0.8;
+}
+
+.card {
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
 }
 
 /* Filter section */

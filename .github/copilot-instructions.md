@@ -16,6 +16,22 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 - Use scoped CSS through the .razor.css pattern instead of global styles
 - Make sure light and dark theme are respected throughout by never using hard coded rgb or hex but that they are always defined in the main css
 
+## CSS Best Practices
+- Use Bootstrap's built-in spacing utilities (m-*, p-*) for consistent spacing
+- Always wrap card content in a .card-body element for consistent padding
+- Define common padding/margin values as CSS variables in app.css
+- Use semantic class names that describe the component's purpose
+- Avoid direct element styling, prefer class-based selectors
+- Keep component-specific styles in .razor.css files
+- Avoid fixed pixel values for responsive elements
+- Use CSS Grid or Flexbox for layout instead of absolute positioning
+- Style from the component's root element down to maintain CSS specificity
+- When adjusting padding/margin, check both light and dark themes
+- Use CSS variables for repeated values (spacing, border-radius, etc.)
+- Test responsive behavior across different viewport sizes
+- Use rem/em units for font sizes and spacing for better accessibility
+- Document any magic numbers or non-obvious style choices in comments
+
 ## Code Style
 - Prefer async/await over direct Task handling
 - Use nullable reference types

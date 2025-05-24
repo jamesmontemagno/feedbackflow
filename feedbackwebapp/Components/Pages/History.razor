@@ -94,9 +94,11 @@
     else if (!historyItems.Any())
     {
         <div class="empty-state card shadow-sm">
-            <i class="bi bi-clock-history"></i>
-            <p>No analysis history found.</p>
-            <small>Create your first analysis to see it appear here!</small>
+            <div class="card-body text-center">
+                <i class="bi bi-clock-history display-4 mb-3"></i>
+                <p class="mb-2">No analysis history found.</p>
+                <small class="text-muted d-block">Create your first analysis to see it appear here!</small>
+            </div>
         </div>
     }    
     else if (filteredItems is { Count: > 0 })

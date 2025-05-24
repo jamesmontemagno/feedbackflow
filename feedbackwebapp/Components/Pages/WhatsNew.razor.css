@@ -1,7 +1,6 @@
 .whats-new-content {
     max-width: 800px;
     margin: 2rem auto;
-    padding: 1.5rem;
 }
 
 .card {
@@ -10,16 +9,17 @@
     border-radius: 1rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     transition: transform 0.2s ease-in-out;
-    margin: 1rem 0;
-    padding: 2rem;
 }
 
 .card:hover {
     transform: translateY(-2px);
 }
 
+.card-body {
+    padding: 2rem;
+}
+
 .markdown-content {
-    padding: 2.5rem 4rem;
     line-height: 1.6;
 }
 
