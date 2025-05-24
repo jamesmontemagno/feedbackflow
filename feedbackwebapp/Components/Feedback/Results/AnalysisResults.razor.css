@@ -10,14 +10,15 @@
 }
 
 /* Custom button styles not in app.css */
-.btn-outline-light {    color: var(--bs-white);
-    border-color: var(--bs-white-rgb-50);
+.btn-outline-light {
+    color: var(--bg-secondary);
+    border-color: rgba(var(--bg-secondary-rgb, 255, 255, 255), 0.5);
     position: relative;
     overflow: hidden;
 }
 
 .btn-outline-light:hover:not(:disabled) {
-    background-color: var(--bs-white-rgb-15);
+    background-color: rgba(var(--bg-secondary-rgb, 255, 255, 255), 0.15);
 }
 
 .btn-outline-light:disabled {
@@ -26,7 +27,7 @@
 }
 
 .btn-outline-light:focus {
-    box-shadow: 0 0 0 0.25rem var(--bs-white-rgb-20);
+    box-shadow: 0 0 0 0.25rem rgba(var(--bg-secondary-rgb, 255, 255, 255), 0.2);
 }
 
 /* Markdown specific styles */

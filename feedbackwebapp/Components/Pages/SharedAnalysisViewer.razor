@@ -1,9 +1,11 @@
 @page "/shared/{Id}"
 @inject FeedbackWebApp.Services.Interfaces.IAnalysisSharingService SharingService
 @inject IJSRuntime JSRuntime
+@inject ILogger<SharedAnalysisViewer> Logger
 @using SharedDump.Models
 @using Markdig
 @using Microsoft.JSInterop
+@using Microsoft.Extensions.Logging
 
 <PageTitle>Shared Analysis</PageTitle>
 
@@ -101,6 +103,7 @@
             {
                 loadError = true;
                 errorMessage = "No analysis ID provided.";
+                Logger.LogWarning("Attempted to load shared analysis with empty ID");
                 return;
             }
 
@@ -110,12 +113,18 @@
             {
                 loadError = true;
                 errorMessage = "The requested analysis could not be found or has been removed.";
+                Logger.LogWarning("No analysis found for ID: {Id}", Id);
+            }
+            else
+            {
+                Logger.LogInformation("Successfully loaded analysis {Id}", Id);
             }
         }
         catch (Exception ex)
         {
             loadError = true;
             errorMessage = "An error occurred while loading the analysis.";
+            Logger.LogError(ex, "Error loading shared analysis {Id}", Id);
         }
         finally
         {

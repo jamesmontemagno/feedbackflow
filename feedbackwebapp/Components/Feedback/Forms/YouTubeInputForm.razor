@@ -1,35 +1,38 @@
 @namespace FeedbackWebApp.Components.Feedback.Forms
 
 <div class="youtube-input">
-    <div class="input-type-selector mb-3">
+    <fieldset class="input-type-selector mb-3">
+        <legend class="visually-hidden">Select YouTube input type</legend>
         <div class="form-check form-check-inline">
             <input class="form-check-input" type="radio" name="inputType" id="videoInput" value="video" 
                    checked="@(InputType == "video")" @onchange="@(() => ChangeInputType("video"))" />
             <label class="form-check-label" for="videoInput">
-                <i class="bi bi-play-btn me-1"></i>Video
+                <i class="bi bi-play-btn me-1" aria-hidden="true"></i>Video
             </label>
         </div>
         <div class="form-check form-check-inline">
             <input class="form-check-input" type="radio" name="inputType" id="playlistInput" value="playlist" 
                    checked="@(InputType == "playlist")" @onchange="@(() => ChangeInputType("playlist"))" />
             <label class="form-check-label" for="playlistInput">
-                <i class="bi bi-collection-play me-1"></i>Playlist
+                <i class="bi bi-collection-play me-1" aria-hidden="true"></i>Playlist
             </label>
         </div>
-    </div>
+    </fieldset>
 
     @if (InputType == "video")
     {
         <div class="form-floating">
-            <input type="text" class="form-control" id="videoIds" @bind="VideoIds"  />
+            <input type="text" class="form-control" id="videoIds" @bind="VideoIds" aria-describedby="videoIdsHelp" />
             <label for="videoIds">Video IDs or URLs (comma-separated)</label>
+            <div id="videoIdsHelp" class="form-text visually-hidden">Enter one or more YouTube video IDs or URLs separated by commas</div>
         </div>
     }
     else
     {
         <div class="form-floating">
-            <input type="text" class="form-control" id="playlistIds" @bind="PlaylistIds" />
+            <input type="text" class="form-control" id="playlistIds" @bind="PlaylistIds" aria-describedby="playlistIdsHelp" />
             <label for="playlistIds">Playlist IDs or URLs (comma-separated)</label>
+            <div id="playlistIdsHelp" class="form-text visually-hidden">Enter one or more YouTube playlist IDs or URLs separated by commas</div>
         </div>
     }
 </div>

@@ -15,7 +15,7 @@
 @if (!string.IsNullOrEmpty(Error))
 {
     <div class="alert alert-danger mt-4" role="alert">
-        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>
         @Error
     </div>
 }
@@ -23,27 +23,38 @@
 @if (!string.IsNullOrEmpty(MarkdownResult))
 {
     <div class="card mt-4 shadow-sm">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">            <h5 class="card-title mb-0">Analysis Summary</h5>            <div class="d-flex">
-                <button class="btn btn-sm btn-outline-light me-2 action-btn" @onclick="SaveToHistory">
-                    <i class="bi bi-clock-history me-1"></i>
+        <header class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h2 class="card-title mb-0 h5">Analysis Summary</h2>
+            <div class="d-flex">
+                <button class="btn btn-sm btn-outline-light me-2 action-btn" 
+                        @onclick="SaveToHistory" 
+                        aria-label="Save to history">
+                    <i class="bi bi-clock-history me-1" aria-hidden="true"></i>
                     Save
                 </button>                
-                <button class="btn btn-sm btn-outline-light me-2 action-btn" @onclick="@(sharedId == null ? ShareAnalysis : CopyShareLink)">
-                    <i class="bi @(sharedId == null ? "bi-share" : "bi-link-45deg") me-1"></i>
+                <button class="btn btn-sm btn-outline-light me-2 action-btn" 
+                        @onclick="@(sharedId == null ? ShareAnalysis : CopyShareLink)"
+                        aria-label="@(sharedId == null ? "Share analysis" : "Copy share link")">
+                    <i class="bi @(sharedId == null ? "bi-share" : "bi-link-45deg") me-1" aria-hidden="true"></i>
                     @(sharedId == null ? "Share" : "Copy Link")
                 </button>
-                <button class="btn btn-sm btn-outline-light me-2 action-btn @(_isSpeaking ? "btn-speak-active" : "")" @onclick="SpeakAnalysis">
-                    <i class="bi @(_isSpeaking ? "bi-pause-fill" : "bi-volume-up-fill") me-1"></i>
+                <button class="btn btn-sm btn-outline-light me-2 action-btn @(_isSpeaking ? "btn-speak-active" : "")" 
+                        @onclick="SpeakAnalysis"
+                        aria-label="@(_isSpeaking ? "Stop speaking" : "Speak analysis")"
+                        aria-pressed="@_isSpeaking.ToString().ToLower()">
+                    <i class="bi @(_isSpeaking ? "bi-pause-fill" : "bi-volume-up-fill") me-1" aria-hidden="true"></i>
                     @(_isSpeaking ? "Stop" : "Speak")
                 </button>
-                <button class="btn btn-sm btn-outline-light action-btn" @onclick="CopyToClipboard">
-                    <i class="bi bi-clipboard me-1"></i>
+                <button class="btn btn-sm btn-outline-light action-btn" 
+                        @onclick="CopyToClipboard"
+                        aria-label="Copy to clipboard">
+                    <i class="bi bi-clipboard me-1" aria-hidden="true"></i>
                     Copy
                 </button>
             </div>
-        </div>
+        </header>
         <div class="card-body">
-            <div class="markdown-body">
+            <div class="markdown-body" tabindex="0">
                 @((MarkupString)Markdown.ToHtml(MarkdownResult))
             </div>
         </div>
