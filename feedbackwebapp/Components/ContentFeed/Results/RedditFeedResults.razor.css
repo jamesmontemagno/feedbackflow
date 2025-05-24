@@ -3,6 +3,10 @@
     padding: 1rem 0;
 }
 
+.reddit-results > div {
+    max-height: 800px;
+}
+
 .card {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
