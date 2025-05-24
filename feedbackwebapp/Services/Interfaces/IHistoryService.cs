@@ -40,26 +40,30 @@ public interface IHistoryService
     /// <summary>
     /// Retrieves the history of analyses performed
     /// </summary>
+    /// <param name="cancellationToken">Cancellation token to cancel the operation</param>
     /// <returns>A list of analysis history items</returns>
-    Task<List<AnalysisHistoryItem>> GetHistoryAsync();
+    Task<List<AnalysisHistoryItem>> GetHistoryAsync(CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Saves an analysis result to history
     /// </summary>
     /// <param name="item">The analysis history item to save</param>
+    /// <param name="cancellationToken">Cancellation token to cancel the operation</param>
     /// <returns>A task representing the asynchronous operation</returns>
-    Task SaveToHistoryAsync(AnalysisHistoryItem item);
+    Task SaveToHistoryAsync(AnalysisHistoryItem item, CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Deletes a specific history item by ID
     /// </summary>
     /// <param name="id">The ID of the history item to delete</param>
+    /// <param name="cancellationToken">Cancellation token to cancel the operation</param>
     /// <returns>A task representing the asynchronous operation</returns>
-    Task DeleteHistoryItemAsync(string id);
+    Task DeleteHistoryItemAsync(string id, CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Clears all history items
     /// </summary>
+    /// <param name="cancellationToken">Cancellation token to cancel the operation</param>
     /// <returns>A task representing the asynchronous operation</returns>
-    Task ClearHistoryAsync();
+    Task ClearHistoryAsync(CancellationToken cancellationToken = default);
 }

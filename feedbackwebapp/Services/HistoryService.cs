@@ -16,13 +16,13 @@ public class HistoryService : IHistoryService, IDisposable
         _inMemoryHistory = new();
     }
 
-    private async Task InitializeAsync()
+    private async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         if (_initialized) return;
 
         try
         {
-            var json = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", StorageKey);
+            var json = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", cancellationToken, StorageKey);
             if (!string.IsNullOrEmpty(json))
             {
                 var history = System.Text.Json.JsonSerializer.Deserialize<List<AnalysisHistoryItem>>(json);
@@ -41,15 +41,15 @@ public class HistoryService : IHistoryService, IDisposable
         }
     }
 
-    public async Task<List<AnalysisHistoryItem>> GetHistoryAsync()
+    public async Task<List<AnalysisHistoryItem>> GetHistoryAsync(CancellationToken cancellationToken = default)
     {
-        await InitializeAsync();
+        await InitializeAsync(cancellationToken);
         return new List<AnalysisHistoryItem>(_inMemoryHistory);
     }
 
-    public async Task SaveToHistoryAsync(AnalysisHistoryItem item)
+    public async Task SaveToHistoryAsync(AnalysisHistoryItem item, CancellationToken cancellationToken = default)
     {
-        await InitializeAsync();
+        await InitializeAsync(cancellationToken);
         _inMemoryHistory.RemoveAll(x => x.Id == item.Id);
         _inMemoryHistory.Insert(0, item); // Most recent first
 
@@ -64,7 +64,7 @@ public class HistoryService : IHistoryService, IDisposable
         }
     }
 
-    public async Task DeleteHistoryItemAsync(string id)
+    public async Task DeleteHistoryItemAsync(string id, CancellationToken cancellationToken = default)
     {
         await InitializeAsync();
         _inMemoryHistory.RemoveAll(x => x.Id == id);
@@ -80,7 +80,7 @@ public class HistoryService : IHistoryService, IDisposable
         }
     }
 
-    public async Task ClearHistoryAsync()
+    public async Task ClearHistoryAsync(CancellationToken cancellationToken = default)
     {
         _inMemoryHistory.Clear();
         try

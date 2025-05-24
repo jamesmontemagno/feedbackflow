@@ -79,7 +79,8 @@ public class ContentFeedFunctions
     /// </remarks>
     [Function("GetRecentYouTubeVideos")]
     public async Task<HttpResponseData> GetRecentYouTubeVideos(
-        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req,
+        CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Processing recent YouTube videos request");
 
