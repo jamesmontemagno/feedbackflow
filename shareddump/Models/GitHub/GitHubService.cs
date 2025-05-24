@@ -4,11 +4,12 @@ using SharedDump.Json;
 
 namespace SharedDump.Models.GitHub;
 
-public class GitHubService
+public class GitHubService : IDisposable
 {
     private readonly HttpClient _client;
     private readonly string _accessToken;
     private readonly int _maxRetries = 5;
+    private bool _disposed;
 
     public GitHubService(string accessToken, HttpClient client)
     {
@@ -18,7 +19,7 @@ public class GitHubService
         _client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("ghdump", "1.0.0"));
     }
 
-    public async Task<bool> CheckRepositoryValid(string repoOwner, string repoName)
+    public async Task<bool> CheckRepositoryValid(string repoOwner, string repoName, CancellationToken cancellationToken = default)
     {
         var checkRepoQuery = @"
         query($owner: String!, $name: String!) {
@@ -44,7 +45,7 @@ public class GitHubService
         return result?.Data.Repository is not null;
     }
 
-    public async Task<List<GithubDiscussionModel>> GetDiscussionsAsync(string repoOwner, string repoName)
+    public async Task<List<GithubDiscussionModel>> GetDiscussionsAsync(string repoOwner, string repoName, CancellationToken cancellationToken = default)
     {
         var discussionsList = new List<GithubDiscussionModel>();
         var hasMorePages = true;
@@ -195,7 +196,7 @@ public class GitHubService
         return discussionsList;
     }
 
-    public async Task<List<GithubIssueModel>> GetIssuesAsync(string repoOwner, string repoName, string[] labels)
+    public async Task<List<GithubIssueModel>> GetIssuesAsync(string repoOwner, string repoName, string[] labels, CancellationToken cancellationToken = default)
     {
         var issuesList = new List<GithubIssueModel>();
         var hasMorePages = true;
@@ -350,7 +351,7 @@ public class GitHubService
         return issuesList;
     }
 
-    public async Task<List<GithubIssueModel>> GetPullRequestsAsync(string repoOwner, string repoName, string[] labels)
+    public async Task<List<GithubIssueModel>> GetPullRequestsAsync(string repoOwner, string repoName, string[] labels, CancellationToken cancellationToken = default)
     {
         var pullsList = new List<GithubIssueModel>();
         var hasMorePages = true;
@@ -512,7 +513,7 @@ public class GitHubService
     /// <param name="repoName">Repository name</param>
     /// <param name="issueNumber">Issue number</param>
     /// <returns>List of comments for the specified issue</returns>
-    public async Task<List<GithubCommentModel>> GetIssueCommentsAsync(string repoOwner, string repoName, int issueNumber)
+    public async Task<List<GithubCommentModel>> GetIssueCommentsAsync(string repoOwner, string repoName, int issueNumber, CancellationToken cancellationToken = default)
     {
         var commentsList = new List<GithubCommentModel>();
         var hasMorePages = true;
@@ -649,7 +650,7 @@ public class GitHubService
     /// <param name="repoName">Repository name</param>
     /// <param name="pullNumber">Pull request number</param>
     /// <returns>List of comments for the specified pull request</returns>    
-    public async Task<List<GithubCommentModel>> GetPullRequestCommentsAsync(string repoOwner, string repoName, int pullNumber)
+    public async Task<List<GithubCommentModel>> GetPullRequestCommentsAsync(string repoOwner, string repoName, int pullNumber, CancellationToken cancellationToken = default)
     {
         var commentsList = new List<GithubCommentModel>();
         var hasMorePages = true;
@@ -837,7 +838,7 @@ public class GitHubService
     /// <param name="repoName">Repository name</param>
     /// <param name="discussionNumber">Discussion number</param>
     /// <returns>List of comments for the specified discussion</returns>
-    public async Task<List<GithubCommentModel>> GetDiscussionCommentsAsync(string repoOwner, string repoName, int discussionNumber)
+    public async Task<List<GithubCommentModel>> GetDiscussionCommentsAsync(string repoOwner, string repoName, int discussionNumber, CancellationToken cancellationToken = default)
     {
         var commentsList = new List<GithubCommentModel>();
         var hasMorePages = true;
@@ -975,16 +976,26 @@ public class GitHubService
         return commentsList;
     }
 
-    private static async Task HandleRateLimit(HttpResponseMessage response)
+    private static async Task HandleRateLimit(HttpResponseMessage response, CancellationToken cancellationToken = default)
     {
         if (response.Headers.RetryAfter is { } retryAfter)
         {
             var delay = retryAfter.Delta ?? TimeSpan.FromSeconds(60);
-            await Task.Delay(delay);
+            await Task.Delay(delay, cancellationToken);
         }
         else
         {
-            await Task.Delay(TimeSpan.FromSeconds(60));
+            await Task.Delay(TimeSpan.FromSeconds(60), cancellationToken);
         }
+    }
+
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            _client.Dispose();
+            _disposed = true;
+        }
+        GC.SuppressFinalize(this);
     }
 }

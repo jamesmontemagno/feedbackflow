@@ -23,7 +23,7 @@ public sealed class RedditService : IDisposable
         _client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("FeedbackFlow", "1.0.0"));
     }
 
-    private async Task EnsureAuthenticated()
+    private async Task EnsureAuthenticated(CancellationToken cancellationToken = default)
     {
         if (!_client.DefaultRequestHeaders.Contains("Authorization"))
         {
@@ -39,10 +39,10 @@ public sealed class RedditService : IDisposable
             };
             request.Headers.Authorization = new AuthenticationHeaderValue("Basic", auth);
 
-            var response = await _client.SendAsync(request);
+            var response = await _client.SendAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
             
-            var token = await response.Content.ReadFromJsonAsync<RedditTokenResponse>();
+            var token = await response.Content.ReadFromJsonAsync<RedditTokenResponse>(cancellationToken: cancellationToken);
             if (token?.AccessToken == null)
                 throw new InvalidOperationException("Failed to get Reddit access token");
 
@@ -50,7 +50,7 @@ public sealed class RedditService : IDisposable
         }
     }
 
-    private async Task EnsureValidTokenAsync()
+    private async Task EnsureValidTokenAsync(CancellationToken cancellationToken = default)
     {
         if (_accessToken != null && _tokenExpiry > DateTimeOffset.UtcNow)
             return;
@@ -67,7 +67,7 @@ public sealed class RedditService : IDisposable
             })
         };
 
-        var response = await _client.SendAsync(tokenRequest);
+        var response = await _client.SendAsync(tokenRequest, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         var tokenData = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -76,7 +76,7 @@ public sealed class RedditService : IDisposable
         _tokenExpiry = DateTimeOffset.UtcNow.AddSeconds(expiresIn);
     }
 
-    public async Task<RedditThreadModel> GetThreadWithComments(string threadId)
+    public async Task<RedditThreadModel> GetThreadWithComments(string threadId, CancellationToken cancellationToken = default)
     {
 
         threadId = SharedDump.Utils.RedditUrlParser.ParseUrl(threadId) ?? threadId;
@@ -86,11 +86,11 @@ public sealed class RedditService : IDisposable
         {
             try
             {
-                await EnsureAuthenticated();
+                await EnsureAuthenticated(cancellationToken);
                 
-                var responseMessage = await _client.GetAsync($"https://oauth.reddit.com/comments/{threadId}?depth=100&limit=500");
+                var responseMessage = await _client.GetAsync($"https://oauth.reddit.com/comments/{threadId}?depth=100&limit=500", cancellationToken);
                 responseMessage.EnsureSuccessStatusCode();
-                var content = await responseMessage.Content.ReadAsStringAsync();
+                var content = await responseMessage.Content.ReadAsStringAsync(cancellationToken);
 
                 var response = System.Text.Json.JsonSerializer.Deserialize(
                     content, RedditJsonContext.Default.RedditListingArray);
@@ -160,14 +160,14 @@ public sealed class RedditService : IDisposable
         }
     }
 
-    public async Task<List<RedditThreadModel>> GetSubredditThreadsBasicInfo(string subreddit, string sortBy = "hot", DateTimeOffset? cutoffDate = null)
+    public async Task<List<RedditThreadModel>> GetSubredditThreadsBasicInfo(string subreddit, string sortBy = "hot", DateTimeOffset? cutoffDate = null, CancellationToken cancellationToken = default)
     {
-        await EnsureValidTokenAsync();
+        await EnsureValidTokenAsync(cancellationToken);
 
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
 
         var url = $"https://oauth.reddit.com/r/{subreddit}/{sortBy}";
-        var response = await _client.GetStringAsync(url);
+        var response = await _client.GetStringAsync(url, cancellationToken);
         
         var listing = JsonSerializer.Deserialize(response, RedditJsonContext.Default.RedditListing);
         if (listing?.Data?.Children == null)

@@ -3,11 +3,13 @@ using System.Text.Json;
 
 namespace FeedbackWebApp.Services;
 
-public class UserSettingsService
+public class UserSettingsService : IAsyncDisposable
 {
     private readonly IJSRuntime _jsRuntime;
     private const string SETTINGS_KEY = "feedbackflow_settings";
     private UserSettings? _cachedSettings;
+    private bool _disposed;
+    private IJSObjectReference? _jsModule;
     public class UserSettings
     {
         public int MaxCommentsToAnalyze { get; set; } = 1200;
@@ -31,16 +33,16 @@ public class UserSettingsService
         _jsRuntime = jsRuntime;
     }
 
-    public async Task<UserSettings> GetSettingsAsync()
+    public async Task<UserSettings> GetSettingsAsync(CancellationToken cancellationToken = default)
     {
         if (_cachedSettings != null)
             return _cachedSettings;
 
-        var stored = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", SETTINGS_KEY);
+        var stored = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", cancellationToken, SETTINGS_KEY);
         if (string.IsNullOrEmpty(stored))
         {
             _cachedSettings = new UserSettings();
-            await SaveSettingsAsync(_cachedSettings);
+            await SaveSettingsAsync(_cachedSettings, cancellationToken);
             return _cachedSettings;
         }
 
@@ -78,7 +80,7 @@ public class UserSettingsService
             // Save if any prompts were reset
             if (hasEmptyPrompts)
             {
-                await SaveSettingsAsync(_cachedSettings);
+                await SaveSettingsAsync(_cachedSettings, cancellationToken);
             }
 
             return _cachedSettings;
@@ -86,27 +88,48 @@ public class UserSettingsService
         catch
         {
             _cachedSettings = new UserSettings();
-            await SaveSettingsAsync(_cachedSettings);
+            await SaveSettingsAsync(_cachedSettings, cancellationToken);
             return _cachedSettings;
         }
     }
-    public async Task SaveSettingsAsync(UserSettings settings)
+    public async Task SaveSettingsAsync(UserSettings settings, CancellationToken cancellationToken = default)
     {
         var json = JsonSerializer.Serialize(settings);
-        await _jsRuntime.InvokeVoidAsync("localStorage.setItem", SETTINGS_KEY, json);
+        await _jsRuntime.InvokeVoidAsync("localStorage.setItem", cancellationToken, SETTINGS_KEY, json);
         _cachedSettings = settings;
     }
     
-    public async Task<string?> GetPreferredVoiceAsync()
+    public async Task<string?> GetPreferredVoiceAsync(CancellationToken cancellationToken = default)
     {
-        var settings = await GetSettingsAsync();
+        var settings = await GetSettingsAsync(cancellationToken);
         return settings.PreferredVoice;
     }
     
-    public async Task SetPreferredVoiceAsync(string? voiceUri)
+    public async Task SetPreferredVoiceAsync(string? voiceUri, CancellationToken cancellationToken = default)
     {
-        var settings = await GetSettingsAsync();
+        var settings = await GetSettingsAsync(cancellationToken);
         settings.PreferredVoice = voiceUri;
-        await SaveSettingsAsync(settings);
+        await SaveSettingsAsync(settings, cancellationToken);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!_disposed)
+        {
+            if (_jsModule != null)
+            {
+                try
+                {
+                    await _jsModule.DisposeAsync();
+                    _jsModule = null;
+                }
+                catch
+                {
+                    // Ignore errors during disposal
+                }
+            }
+            
+            _disposed = true;
+        }
     }
 }
