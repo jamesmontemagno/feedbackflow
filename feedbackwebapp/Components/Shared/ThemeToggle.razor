@@ -3,14 +3,16 @@
 <div class="d-inline-block">
     <button @onclick="ToggleThemeAsync" 
             class="theme-toggle-button btn rounded-circle" 
-            aria-label="Toggle dark mode">
+            aria-label="@(IsDarkMode ? "Switch to light mode" : "Switch to dark mode")"
+            aria-pressed="@IsDarkMode.ToString().ToLower()"
+            tabindex="0">
         @if (IsDarkMode)
         {
-            <i class="bi bi-moon-stars-fill text-white fs-5"></i>
+            <i class="bi bi-moon-stars-fill fs-5" aria-hidden="true"></i>
         }
         else
         {
-            <i class="bi bi-sun-fill text-white fs-5"></i>
+            <i class="bi bi-sun-fill fs-5" aria-hidden="true"></i>
         }
     </button>
 </div>
