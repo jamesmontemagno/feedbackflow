@@ -3,12 +3,43 @@
     margin: 2rem auto;
 }
 
+/* Add consistent title styling matching other pages */
+.history-title {
+    font-size: 2.25rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    position: relative;
+    display: inline-block;
+}
+
+.history-title::after {
+    content: '';
+    position: absolute;
+    bottom: -0.5rem;
+    left: 0;
+    width: 50%;
+    height: 3px;
+    background: var(--primary-gradient);
+    border-radius: 3px;
+}
+
+/* Card styles with explicit dark mode handling */
 .card {
-    background-color: var(--bs-body-bg);
+    background-color: var(--bs-body-bg) !important;
+    color: var(--bs-body-color) !important;
     border: 1px solid var(--bs-border-color);
     border-radius: 1rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     transition: transform 0.2s ease-in-out;
+}
+
+/* Explicit dark mode overrides */
+[data-theme='dark'] .card,
+[data-theme='dark'] .card.bg-body {
+    background-color: #212529 !important; /* Nearly black to match other cards */
+    color: var(--bs-light) !important;
+    border-color: #495057 !important; /* Darker border */
 }
 
 .card:hover {
@@ -23,15 +54,7 @@
     line-height: 1.6;
 }
 
-.page-header {
-    font-size: 2.5rem;
-    font-weight: 700;
-    text-align: center;
-    margin: 1.5rem 0 3rem 0;
-    padding: 1rem;
-    color: var(--bs-primary);
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
+/* Removed custom page header styling in favor of shared history-title style */
 
 .markdown-content h1 {
     display: none; /* Hide the H1 since we have a page header */
@@ -86,6 +109,26 @@
     font-size: 0.9em;
 }
 
+/* Custom dark mode styles for Markdown content elements */
+[data-theme='dark'] .markdown-content h2 {
+    border-bottom-color: #495057;
+    color: #e9ecef;
+}
+
+[data-theme='dark'] .markdown-content h3 {
+    color: #e9ecef;
+}
+
+[data-theme='dark'] .markdown-content p,
+[data-theme='dark'] .markdown-content li {
+    color: #ced4da;
+}
+
+[data-theme='dark'] .markdown-content code {
+    background-color: #343a40;
+    color: #f8f9fa;
+}
+
 .markdown-content a {
     color: var(--bs-primary);
     text-decoration: none;
@@ -123,4 +166,48 @@
 
 .feedback-button i {
     font-size: 1.2rem;
+}
+
+/* Dark theme card specific styles */
+.dark-theme-card {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+[data-theme='dark'] .dark-theme-card {
+    background-color: #212529 !important; /* Nearly black to match other cards */
+    color: var(--bs-light) !important;
+    border-color: #495057 !important; /* Darker border */
+}
+
+[data-theme='dark'] .dark-theme-card .card-body {
+    color: var(--bs-light) !important;
+}
+
+[data-theme='dark'] .dark-theme-card .text-muted {
+    color: #adb5bd !important; /* Lighter gray for better readability */
+    opacity: 1;
+}
+
+/* Loading state */
+.loading-state {
+    text-align: center;
+    color: var(--bs-body-color);
+    animation: fadeIn 0.6s ease-in-out;
+    background-color: var(--bs-body-bg) !important;
+    border-radius: var(--border-radius);
+    margin: 1rem 0;
+    min-height: 250px;
+}
+
+.loading-state .card-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }

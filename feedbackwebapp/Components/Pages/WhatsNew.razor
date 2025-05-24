@@ -12,29 +12,38 @@
 
 <PageTitle>What's New - FeedbackFlow</PageTitle>
 
-<div class="container">
-    <h1 class="page-header">What's New in FeedbackFlow</h1>
+<div class="container-lg py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="history-title mb-0">What's New in FeedbackFlow</h1>
+    </div>
 
     @if (isLoading)
     {
-        <div class="text-center my-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
+        <div class="loading-state card bg-body dark-theme-card shadow-sm">
+            <div class="card-body">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Loading updates...</p>
+                <small>This will only take a moment</small>
             </div>
-            <p class="mt-2">Loading updates...</p>
         </div>
     }
     else if (loadError)
     {
-        <div class="alert alert-danger" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            @errorMessage
+        <div class="card bg-body dark-theme-card shadow-sm">
+            <div class="card-body">
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    @errorMessage
+                </div>
+            </div>
         </div>
     }
     else
     {
         <div class="whats-new-content">            
-            <div class="card">
+            <div class="card bg-body dark-theme-card">
                 <div class="card-body">
                     <div class="markdown-content">
                         @((MarkupString)markdownHtml)

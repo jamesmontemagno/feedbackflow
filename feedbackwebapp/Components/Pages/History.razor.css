@@ -12,6 +12,47 @@
     color: rgba(255, 255, 255, 0.6) !important;
 }
 
+/* Explicit dark mode card overrides */
+[data-theme='dark'] .card,
+[data-theme='dark'] .card.bg-body,
+[data-theme='dark'] .loading-state.card,
+[data-theme='dark'] .empty-state.card {
+    background-color: #212529 !important; /* Nearly black to match other cards */
+    color: var(--bs-light) !important;
+    border-color: #495057 !important; /* Darker border */
+}
+
+[data-theme='dark'] .list-group-item {
+    background-color: #212529 !important; /* Nearly black to match other cards */
+    border-color: #495057 !important; /* Darker border */
+}
+
+/* Dark theme card specific styles */
+.dark-theme-card {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+[data-theme='dark'] .dark-theme-card {
+    background-color: #212529 !important; /* Nearly black to match other cards */
+    color: var(--bs-light) !important;
+    border-color: #495057 !important; /* Darker border */
+}
+
+[data-theme='dark'] .dark-theme-card .card-body {
+    color: var(--bs-light) !important;
+}
+
+[data-theme='dark'] .dark-theme-card .text-muted {
+    color: #adb5bd !important; /* Lighter gray for better readability */
+    opacity: 1;
+}
+
+/* Empty state specific styling for dark mode */
+[data-theme='dark'] .empty-state small.text-muted {
+    color: #adb5bd !important; /* Even lighter for this specific text */
+    font-weight: 400;
+}
+
 /* History.razor.css - Slimmed down, Bootstrap-aligned, and theme-respecting */
 
 /* History title styling */
@@ -38,9 +79,9 @@
 /* State blocks */
 .loading-state, .empty-state {
     text-align: center;
-    color: var(--text-secondary);
+    color: var(--bs-body-color);
     animation: fadeIn 0.6s ease-in-out;
-    background-color: var(--bs-body-bg);
+    background-color: var(--bs-body-bg) !important;
     border-radius: var(--border-radius);
     margin: 1rem 0;
     min-height: 250px;
@@ -71,7 +112,8 @@
 }
 
 .card {
-    background-color: var(--bs-body-bg);
+    background-color: var(--bs-body-bg) !important;
+    color: var(--bs-body-color) !important;
     border: 1px solid var(--bs-border-color);
     border-radius: var(--border-radius);
     margin-bottom: 1.5rem;
@@ -252,4 +294,14 @@
     background-color: var(--danger-light);
     border-color: var(--danger);
     color: var(--danger-dark);
+}
+
+/* Empty state hint text */
+.empty-state-hint {
+    font-size: 0.95rem;
+}
+
+[data-theme='dark'] .empty-state-hint {
+    color: #ced4da !important; /* Even lighter color for this specific message */
+    font-weight: 400;
 }

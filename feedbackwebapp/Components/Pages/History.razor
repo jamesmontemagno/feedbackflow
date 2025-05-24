@@ -32,7 +32,7 @@
     </div>
       @if (historyItems is { Count: > 0 })
     {
-        <div class="filter-section card mb-4 p-3 shadow-sm">
+        <div class="filter-section card bg-body dark-theme-card mb-4 p-3 shadow-sm">
             <div class="row g-3">
                 <div class="col-12 mb-2">
                     <label for="searchFilter" class="form-label">Search Analysis Content</label>
@@ -83,21 +83,23 @@
 
     @if (historyItems is null)
     {
-        <div class="loading-state card shadow-sm">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
+        <div class="loading-state card bg-body dark-theme-card shadow-sm">
+            <div class="card-body">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Loading your analysis history...</p>
+                <small>This will only take a moment</small>
             </div>
-            <p>Loading your analysis history...</p>
-            <small>This will only take a moment</small>
         </div>
     }
     else if (!historyItems.Any())
     {
-        <div class="empty-state card shadow-sm">
+        <div class="empty-state card bg-body dark-theme-card shadow-sm">
             <div class="card-body text-center">
                 <i class="bi bi-clock-history display-4 mb-3"></i>
                 <p class="mb-2">No analysis history found.</p>
-                <small class="text-muted d-block">Create your first analysis to see it appear here!</small>
+                <small class="text-muted empty-state-hint d-block">Create your first analysis to see it appear here!</small>
             </div>
         </div>
     }    

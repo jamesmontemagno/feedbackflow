@@ -2,51 +2,45 @@
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 
-<div class="page">
-    <nav class="navbar navbar-expand-lg navbar-dark mb-4" aria-label="Main navigation">
+<div class="page d-flex flex-column min-vh-100">
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
         <div class="container">
-            <a href="/" class="navbar-brand d-flex align-items-center" aria-label="FeedbackFlow Home">
+            <a href="/" class="navbar-brand d-flex align-items-center">
                 <img src="logo-feedbackflow.svg" alt="FeedbackFlow Logo" width="36" height="36" class="me-2" style="filter: brightness(0) invert(1);" />
                 <span>FeedbackFlow</span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
-                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link @(IsActive("/") ? "active" : "")" href="/" 
-                           aria-current="@(IsActive("/") ? "page" : "false")">
-                            <i class="bi bi-chat-dots me-1" aria-hidden="true"></i>
+                        <a class="nav-link @(IsActive("/") ? "active" : "")" href="/">
+                            <i class="bi bi-chat-dots me-1"></i>
                             Feedback Analysis
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link @(IsActive("/content-feeds") ? "active" : "")" href="/content-feeds" 
-                           aria-current="@(IsActive("/content-feeds") ? "page" : "false")">
-                            <i class="bi bi-collection me-1" aria-hidden="true"></i>
+                        <a class="nav-link @(IsActive("/content-feeds") ? "active" : "")" href="/content-feeds">
+                            <i class="bi bi-collection me-1"></i>
                             Content Feeds
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link @(IsActive("/history") ? "active" : "")" href="/history" 
-                           aria-current="@(IsActive("/history") ? "page" : "false")">
-                            <i class="bi bi-clock-history me-1" aria-hidden="true"></i>
+                        <a class="nav-link @(IsActive("/history") ? "active" : "")" href="/history">
+                            <i class="bi bi-clock-history me-1"></i>
                             History
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link @(IsActive("/whats-new") ? "active" : "")" href="/whats-new" 
-                           aria-current="@(IsActive("/whats-new") ? "page" : "false")">
-                            <i class="bi bi-stars me-1" aria-hidden="true"></i>
+                        <a class="nav-link @(IsActive("/whats-new") ? "active" : "")" href="/whats-new">
+                            <i class="bi bi-stars me-1"></i>
                             What's New
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link @(IsActive("/settings") ? "active" : "")" href="/settings" 
-                           aria-current="@(IsActive("/settings") ? "page" : "false")">
-                            <i class="bi bi-gear me-1" aria-hidden="true"></i>
+                        <a class="nav-link @(IsActive("/settings") ? "active" : "")" href="/settings">
+                            <i class="bi bi-gear me-1"></i>
                             Settings
                         </a>
                     </li>
@@ -57,10 +51,11 @@
             </div>
         </div>
     </nav>    
-    <main class="container pb-4">
+    <main class="container pb-4 flex-grow-1">
         @Body
     </main>
     
+    <Footer />
     <ToastNotification />
 </div>
 
