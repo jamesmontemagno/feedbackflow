@@ -12,36 +12,37 @@ namespace FeedbackWebApp.Services.Interfaces;
 /// <code>
 /// public class MyFeedbackService : IFeedbackService
 /// {
-///     public async Task&lt;(string rawComments, int commentCount, object? additionalData)&gt; GetComments()
+///     public async Task&lt;(string rawComments, int commentCount, object? additionalData)&gt; GetComments(CancellationToken cancellationToken = default)
 ///     {
 ///         // Retrieve comments from your source
-///         var comments = await FetchCommentsFromSource();
+///         var comments = await FetchCommentsFromSource(cancellationToken);
 ///         return (comments, 1, null);
 ///     }
 ///     
 ///     public async Task&lt;(string markdownResult, object? additionalData)&gt; AnalyzeComments(
-///         string comments, int? commentCount = null, object? additionalData = null)
+///         string comments, int? commentCount = null, object? additionalData = null, CancellationToken cancellationToken = default)
 ///     {
 ///         // Analyze the comments
-///         var analysis = await ProcessComments(comments);
+///         var analysis = await ProcessComments(comments, cancellationToken);
 ///         return (analysis, null);
 ///     }
 ///     
-///     public async Task&lt;(string markdownResult, object? additionalData)&gt; GetFeedback()
+///     public async Task&lt;(string markdownResult, object? additionalData)&gt; GetFeedback(CancellationToken cancellationToken = default)
 ///     {
 ///         // Get comments and analyze them in one operation
-///         var (comments, count, data) = await GetComments();
-///         return await AnalyzeComments(comments, count, data);
+///         var (comments, count, data) = await GetComments(cancellationToken);
+///         return await AnalyzeComments(comments, count, data, cancellationToken);
 ///     }
 /// }
 /// </code>
 /// </example>
-public interface IFeedbackService
+public interface IFeedbackService : IDisposable
 {    /// <summary>
 	 /// Gets raw comments directly from the source
 	 /// </summary>
+	 /// <param name="cancellationToken">Cancellation token to cancel the operation</param>
 	 /// <returns>The raw comments, total number of comments found, and any additional data</returns>
-	Task<(string rawComments, int commentCount, object? additionalData)> GetComments();
+	Task<(string rawComments, int commentCount, object? additionalData)> GetComments(CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Analyzes comments to produce insights
@@ -49,14 +50,20 @@ public interface IFeedbackService
 	/// <param name="comments">The comments to analyze</param>
 	/// <param name="commentCount">Optional total number of comments</param>
 	/// <param name="additionalData">Optional additional data to help with analysis</param>
+	/// <param name="cancellationToken">Cancellation token to cancel the operation</param>
 	/// <returns>Analysis result in markdown format and any additional processed data</returns>
-	Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null);
+	Task<(string markdownResult, object? additionalData)> AnalyzeComments(
+        string comments, 
+        int? commentCount = null, 
+        object? additionalData = null, 
+        CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Gets and analyzes feedback in a single operation
 	/// </summary>
+	/// <param name="cancellationToken">Cancellation token to cancel the operation</param>
 	/// <returns>Analysis result in markdown format and any additional data</returns>
-	Task<(string markdownResult, object? additionalData)> GetFeedback();
+	Task<(string markdownResult, object? additionalData)> GetFeedback(CancellationToken cancellationToken = default);
 }
 
 /// <summary>
