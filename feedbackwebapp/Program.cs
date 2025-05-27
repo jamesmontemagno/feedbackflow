@@ -4,6 +4,7 @@ using FeedbackWebApp.Services.Authentication;
 using FeedbackWebApp.Services.ContentFeed;
 using FeedbackWebApp.Services.Feedback;
 using FeedbackWebApp.Services.Interfaces;
+using Microsoft.AspNetCore.Rewrite;
 
 var builder = WebApplication.CreateBuilder(args);
 
