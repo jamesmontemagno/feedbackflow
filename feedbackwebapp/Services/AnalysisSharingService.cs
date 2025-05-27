@@ -78,32 +78,46 @@ public class AnalysisSharingService : IAnalysisSharingService, IDisposable
 
     public async Task<AnalysisData?> GetSharedAnalysisAsync(string id)
     {
-        try
+        const int maxRetries = 3;
+        var delay = TimeSpan.FromSeconds(3);
+        for (var attempt = 1; attempt <= maxRetries; attempt++)
         {
-            _logger.LogInformation($"Getting shared analysis with ID: {id}");
-
-            var getSharedAnalysisCode = Configuration["FeedbackApi:GetSharedAnalysisCode"]
-                ?? throw new InvalidOperationException("GetSharedAnalysisCode API code not configured");
-
-            var getSharedPath = $"{BaseUrl}/api/GetSharedAnalysis/{id}?code={Uri.EscapeDataString(getSharedAnalysisCode)}";
-            var response = await _httpClient.GetAsync(getSharedPath);
-            
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                _logger.LogWarning($"Failed to get shared analysis: {response.StatusCode}");
+                _logger.LogInformation($"Getting shared analysis with ID: {id}, attempt {attempt}");
+
+                var getSharedAnalysisCode = Configuration["FeedbackApi:GetSharedAnalysisCode"]
+                    ?? throw new InvalidOperationException("GetSharedAnalysisCode API code not configured");
+
+                var getSharedPath = $"{BaseUrl}/api/GetSharedAnalysis/{id}?code={Uri.EscapeDataString(getSharedAnalysisCode)}";
+                var response = await _httpClient.GetAsync(getSharedPath);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning($"Failed to get shared analysis: {response.StatusCode} (attempt {attempt})");
+                    if (attempt == maxRetries)
+                        return null;
+                }
+                else
+                {
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    var analysisData = JsonSerializer.Deserialize<AnalysisData>(responseContent, _jsonOptions);
+                    return analysisData;
+                }
+            }
+            catch (Exception ex) when (attempt < maxRetries)
+            {
+                _logger.LogWarning(ex, $"Error getting shared analysis (attempt {attempt}), will retry");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting shared analysis");
                 return null;
             }
-            
-            var responseContent = await response.Content.ReadAsStringAsync();
-            var analysisData = JsonSerializer.Deserialize<AnalysisData>(responseContent, _jsonOptions);
-            
-            return analysisData;
+            await Task.Delay(delay);
+            delay = delay * 2;
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting shared analysis");
-            return null;
-        }
+        return null;
     }
 
     public async Task<List<AnalysisHistoryItem>> GetSharedAnalysisHistoryAsync()

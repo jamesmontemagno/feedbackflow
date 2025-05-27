@@ -20,6 +20,7 @@ public class SharingFunctions
 {
     private const string ContainerName = "shared-analyses";
     private readonly ILogger<SharingFunctions> _logger;
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _sharedAnalysisCache = new();
 
     /// <summary>
     /// Initializes a new instance of the SharingFunctions class
@@ -77,7 +78,10 @@ public class SharingFunctions
         var blobClient = containerClient.GetBlobClient($"{id}.json");
         using var ms = new MemoryStream(Encoding.UTF8.GetBytes(requestBody));
         await blobClient.UploadAsync(ms, overwrite: true);
-        
+
+        // Add to in-memory cache
+        _sharedAnalysisCache[id] = requestBody;
+
         var response = req.CreateResponse(HttpStatusCode.OK);
         response.Headers.Add("Content-Type", "application/json");
         await response.WriteStringAsync(JsonSerializer.Serialize(new { id }));
@@ -92,6 +96,15 @@ public class SharingFunctions
         [BlobInput($"{ContainerName}/{{id}}.json", Connection = "AzureWebJobsStorage")] string? analysisJson)
     {
         _logger.LogInformation($"Retrieving shared analysis with ID: {id}");
+
+        // Check in-memory cache first
+        if (_sharedAnalysisCache.TryGetValue(id, out var cachedJson))
+        {
+            var cachedResponse = req.CreateResponse(HttpStatusCode.OK);
+            cachedResponse.Headers.Add("Content-Type", "application/json");
+            await cachedResponse.WriteStringAsync(cachedJson);
+            return cachedResponse;
+        }
         
         if (string.IsNullOrEmpty(analysisJson))
         {
@@ -99,6 +112,9 @@ public class SharingFunctions
             await notFoundResponse.WriteStringAsync("Shared analysis not found");
             return notFoundResponse;
         }
+
+        // Add to cache for future requests
+        _sharedAnalysisCache[id] = analysisJson;
         
         var response = req.CreateResponse(HttpStatusCode.OK);
         response.Headers.Add("Content-Type", "application/json");
