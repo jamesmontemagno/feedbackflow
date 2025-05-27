@@ -87,12 +87,41 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
         }
 
-        // Calculate the number of comments if not provided
+
+        // Analyze all commetns from the video
         int totalComments = commentCount ?? comments.Split(new[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries).Length;
-        
-        // Analyze the comments
         var markdownResult = await AnalyzeCommentsInternal("YouTube", comments, totalComments);
-        return (markdownResult, additionalData);
+
+        // Get the videos from additionalData and if we just have 1 then just return that one.
+        var videos = additionalData as List<YouTubeOutputVideo>;
+        if (videos is null || !videos.Any() || videos.Count == 1)
+        {
+            return (markdownResult, additionalData);
+        }
+
+        var markdownResults = new List<string>();
+        
+        markdownResults.Add(markdownResult);
+        
+        // Analyze each video separately if they have comments
+        foreach (var video in videos)
+        {
+            if (video.Comments.Count == 0)
+                continue;
+
+            // Build comments string for this video
+            var videoComments = $"Video: {video.Title}\n\n" + string.Join("\n\n", video.Comments.Select(c => $"Comment by {c.Author}: {c.Text}"));
+
+            UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {video.Comments.Count} comments for video: {video.Title}...");
+            await Task.Delay(500); // Simulate some processing delay
+            var videoMarkdown = await AnalyzeCommentsInternal($"YouTube", videoComments, video.Comments.Count);
+            markdownResults.Add(videoMarkdown);
+        }
+
+        // Combine all results
+        var combinedMarkdown = string.Join("\n\n---\n\n", markdownResults);
+        
+        return (combinedMarkdown, additionalData);
     }
 
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
