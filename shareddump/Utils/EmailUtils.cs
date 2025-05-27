@@ -172,7 +172,7 @@ public static class EmailUtils
             </div>
             <div class='action-buttons'>
                 <a href='{1}' class='feedback-button'>View on Reddit</a>
-                <a href='https://feedbackwebapp20250414225345-f6bxcxgvh9ergkf0.canadacentral-01.azurewebsites.net/?source=reddit&id={6}' class='feedback-button'>Open in FeedbackFlow</a>
+                <a href='https://www.feedbackflow.app/?source=reddit&id={6}' class='feedback-button'>Open in FeedbackFlow</a>
             </div>
             <div class='analysis'>
                 {7}
