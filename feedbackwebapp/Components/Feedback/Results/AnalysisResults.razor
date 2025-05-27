@@ -94,6 +94,9 @@
             if(_previousMarkdown != MarkdownResult)
             {               
                 await TriggerConfetti();
+                sharedId = null;
+                shareLink = null;
+                isProcessingShare = false;
                 _previousMarkdown = MarkdownResult;
             }
         }
