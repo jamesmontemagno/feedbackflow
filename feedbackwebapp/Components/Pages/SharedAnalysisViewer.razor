@@ -1,5 +1,7 @@
 @page "/shared/{Id}"
 @inject FeedbackWebApp.Services.Interfaces.IAnalysisSharingService SharingService
+@inject FeedbackWebApp.Services.Interfaces.IHistoryService HistoryService
+@inject FeedbackWebApp.Services.IToastService ToastService
 @inject IJSRuntime JSRuntime
 @inject ILogger<SharedAnalysisViewer> Logger
 @using SharedDump.Models
@@ -48,10 +50,12 @@
                         <i class="bi @GetServiceIcon(analysis.SourceType) service-icon"></i>
                         <span class="source-badge">@analysis.SourceType</span>
                         <small class="text-muted">@analysis.CreatedDate.ToLocalTime().ToString("g")</small>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
+                    </div>                    <div class="d-flex align-items-center gap-2">
                         <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="CopyToClipboard">
                             <i class="bi bi-clipboard"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary action-btn" title="Save to History" @onclick="SaveToHistoryAsync">
+                            <i class="bi bi-bookmark-plus"></i>
                         </button>
                     </div>
                 </div>
@@ -132,6 +136,34 @@
         finally
         {
             isLoading = false;
+        }
+    }
+
+    private async Task SaveToHistoryAsync()
+    {
+        if (analysis == null) return;
+        
+        try
+        {
+            var historyItem = new AnalysisHistoryItem
+            {
+                Id = Id,
+                UserInput = analysis.UserInput,
+                Summary = analysis.Summary,
+                FullAnalysis = analysis.FullAnalysis,
+                SourceType = analysis.SourceType,
+                Timestamp = analysis.CreatedDate,
+                IsShared = true,
+                SharedId = Id
+            };
+
+            await HistoryService.SaveToHistoryAsync(historyItem);
+            await ToastService.ShowSuccessAsync("Analysis saved to history");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving analysis to history");
+            await ToastService.ShowErrorAsync("Failed to save analysis to history");
         }
     }
 
