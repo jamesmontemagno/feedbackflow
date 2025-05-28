@@ -21,7 +21,7 @@ Analyze multiple articles simultaneously with our new Auto Mode feature. Simply 
 
 - Switched to single single URL entry to simplify flow
 - YouTube playlist will output analysis of each individual video
-- Switch to IndexedDB for saving history
+- Switch to IndexedDB for saving history to improve performance and large summaries
 
 ## 📅 April 2025
 
