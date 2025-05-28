@@ -4,16 +4,15 @@ using FeedbackWebApp.Services.Interfaces;
 
 namespace FeedbackWebApp.Services;
 
-public class HistoryService : IHistoryService, IDisposable
-{    private readonly IJSRuntime _jsRuntime;
-    private readonly List<AnalysisHistoryItem> _inMemoryHistory;
-    private const string StorageKey = "feedbackflow_analysis_history";
+public class HistoryService : IHistoryService, IAsyncDisposable
+{
+    private readonly IJSRuntime _jsRuntime;
+    private IJSObjectReference? _module;
     private bool _initialized;
-
+    private const string StorageKey = "feedbackflow_analysis_history";
     public HistoryService(IJSRuntime jsRuntime)
     {
         _jsRuntime = jsRuntime;
-        _inMemoryHistory = new();
     }
 
     private async Task InitializeAsync()
@@ -22,81 +21,85 @@ public class HistoryService : IHistoryService, IDisposable
 
         try
         {
-            var json = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", StorageKey);
-            if (!string.IsNullOrEmpty(json))
-            {
-                var history = System.Text.Json.JsonSerializer.Deserialize<List<AnalysisHistoryItem>>(json);
-                if (history != null)
-                {
-                    _inMemoryHistory.Clear();
-                    _inMemoryHistory.AddRange(history);
-                }
-            }
+            _module = await _jsRuntime.InvokeAsync<IJSObjectReference>("import", "./js/indexedDb.js");
+            // Try to migrate data from localStorage if it exists
+            await _module.InvokeVoidAsync("migrateFromLocalStorage", StorageKey);
             _initialized = true;
         }
         catch (InvalidOperationException)
         {
-            // We're probably in prerendering, return empty list
+            // We're probably in prerendering
             _initialized = false;
         }
-    }
-
-    public async Task<List<AnalysisHistoryItem>> GetHistoryAsync()
+    }    public async Task<List<AnalysisHistoryItem>> GetHistoryAsync()
     {
         await InitializeAsync();
-        return new List<AnalysisHistoryItem>(_inMemoryHistory);
+        if (_module == null) return new List<AnalysisHistoryItem>();
+
+        try
+        {
+            var items = await _module.InvokeAsync<List<AnalysisHistoryItem>>("getAllHistoryItems");
+            return items.OrderByDescending(x => x.Timestamp).ToList(); // Most recent first
+        }
+        catch (InvalidOperationException)
+        {
+            return new List<AnalysisHistoryItem>();
+        }
     }
 
     public async Task SaveToHistoryAsync(AnalysisHistoryItem item)
     {
         await InitializeAsync();
-        _inMemoryHistory.RemoveAll(x => x.Id == item.Id);
-        _inMemoryHistory.Insert(0, item); // Most recent first
+        if (_module == null) return;
 
         try
         {
-            var json = System.Text.Json.JsonSerializer.Serialize(_inMemoryHistory);
-            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", StorageKey, json);
+            await _module.InvokeVoidAsync("saveHistoryItem", item);
         }
         catch (InvalidOperationException)
         {
-            // We're probably in prerendering, just keep in memory
+            // We're probably in prerendering
         }
     }
 
     public async Task DeleteHistoryItemAsync(string id)
     {
         await InitializeAsync();
-        _inMemoryHistory.RemoveAll(x => x.Id == id);
+        if (_module == null) return;
 
         try
         {
-            var json = System.Text.Json.JsonSerializer.Serialize(_inMemoryHistory);
-            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", StorageKey, json);
+            await _module.InvokeVoidAsync("deleteHistoryItem", id);
         }
         catch (InvalidOperationException)
         {
-            // We're probably in prerendering, just keep in memory
+            // We're probably in prerendering
         }
     }
 
     public async Task ClearHistoryAsync()
     {
-        _inMemoryHistory.Clear();
+        await InitializeAsync();
+        if (_module == null) return;
+
         try
         {
-            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", StorageKey);
+            await _module.InvokeVoidAsync("clearHistory");
         }
         catch (InvalidOperationException)
         {
-            // We're probably in prerendering, just keep in memory
+            // We're probably in prerendering
         }
         _initialized = false;
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        // Nothing to dispose
+        if (_module is not null)
+        {
+            await _module.DisposeAsync();
+        }
+
         GC.SuppressFinalize(this);
     }
 }
