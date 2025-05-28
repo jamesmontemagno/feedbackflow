@@ -87,7 +87,7 @@
     public string Id { get; set; } = string.Empty;
 
     private AnalysisData? analysis;
-    private bool isLoading = false;
+    private bool isLoading = true;
     private bool loadError = false;
     private string errorMessage = "An error occurred while loading the analysis.";
 
@@ -98,11 +98,11 @@
 
     private async Task LoadAnalysisAsync()
     {
-        if(isLoading)
-            return;
-
         try
         {
+            if(analysis is not null)
+                return;
+
             isLoading = true;
             loadError = false;
             
@@ -141,7 +141,8 @@
 
     private async Task SaveToHistoryAsync()
     {
-        if (analysis == null) return;
+        if (analysis == null) 
+            return;
         
         try
         {
@@ -180,6 +181,7 @@
             "github" => "bi-github",
             "reddit" => "bi-reddit",
             "twitter" => "bi-twitter",
+            "bluesky" => "bi-cloud",
             "hackernews" => "bi-braces",
             "devblogs" => "bi-journal-code",
             "manual" => "bi-pencil-square",
@@ -189,7 +191,8 @@
 
     private async Task CopyToClipboard()
     {
-        if (analysis == null) return;
+        if (analysis == null) 
+            return;
         
         if (!string.IsNullOrEmpty(analysis.FullAnalysis))
         {
@@ -200,6 +203,6 @@
             await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", analysis.Summary);
         }
         
-        // Provide feedback that the content was copied (could use a toast service if available)
+        await ToastService.ShowSuccessAsync("Analysis copied to clipboard");
     }
 }
