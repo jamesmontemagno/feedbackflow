@@ -19,7 +19,7 @@ builder.Services.AddRazorComponents()
     .AddHubOptions(options =>
     {
         options.EnableDetailedErrors = true;
-        options.MaximumReceiveMessageSize = 204_800; // 200 KB or more
+        options.MaximumReceiveMessageSize = 204_800; // 100 KB or more
     });
     
 // Register ToastService
