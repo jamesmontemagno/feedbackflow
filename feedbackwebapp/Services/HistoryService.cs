@@ -15,23 +15,55 @@ public class HistoryService : IHistoryService, IAsyncDisposable
         _jsRuntime = jsRuntime;
     }
 
+    private async Task MigrateFromLocalStorageAsync()
+    {
+        try
+        {
+            // Get the data from localStorage
+            var json = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", StorageKey);
+            if (string.IsNullOrEmpty(json))
+                return;
+
+            // Parse the JSON into our model
+            var items = System.Text.Json.JsonSerializer.Deserialize<List<AnalysisHistoryItem>>(json);
+            if (items == null || !items.Any())
+                return;
+
+            // Save each item to IndexedDB
+            foreach (var item in items)
+            {
+                await _module!.InvokeVoidAsync("saveHistoryItem", item);
+            }
+
+            // Clear the localStorage
+            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", StorageKey);
+        }
+        catch (Exception)
+        {
+            // If anything fails during migration, we'll just continue without migrating
+        }
+    }
+
     private async Task InitializeAsync()
     {
-        if (_initialized) return;
+        if (_initialized)
+            return;
 
         try
         {
-            _module = await _jsRuntime.InvokeAsync<IJSObjectReference>("import", "./js/indexedDb.js");
-            // Try to migrate data from localStorage if it exists
-            await _module.InvokeVoidAsync("migrateFromLocalStorage", StorageKey);
             _initialized = true;
+            _module = await _jsRuntime.InvokeAsync<IJSObjectReference>("import", "./js/indexedDb.js");
+            // After initializing IndexedDB, try to migrate any existing data
+            await MigrateFromLocalStorageAsync();
         }
         catch (InvalidOperationException)
         {
             // We're probably in prerendering
             _initialized = false;
         }
-    }    public async Task<List<AnalysisHistoryItem>> GetHistoryAsync()
+    }
+
+    public async Task<List<AnalysisHistoryItem>> GetHistoryAsync()
     {
         await InitializeAsync();
         if (_module == null) return new List<AnalysisHistoryItem>();
