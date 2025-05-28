@@ -52,25 +52,10 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
                 return ("No comments available", 0, null);
             }
 
-            var allComments = string.Join("\n\n", discussions.Select(discussion =>
-            {
-                var comments = new List<string>
-                {
-                    $"Discussion: {discussion.Title}\nURL: {discussion.Url}"
-                };
+            totalComments = discussions.Sum(discussion => 
+                (discussion.Comments?.Count() ?? 0) + 1); // +1 for the discussion body
 
-                if (discussion.Comments != null)
-                {
-                    comments.AddRange(discussion.Comments.Select(comment =>
-                        $"Comment by {comment.Author}: {comment.Content}"
-                    ));
-                    totalComments += discussion.Comments.Count();
-                }
-
-                return string.Join("\n", comments);
-            }));
-
-            return (allComments, totalComments, discussions);
+            return (responseContent, totalComments, discussions);
         }
         else
         {
@@ -81,25 +66,10 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
                 return ("No comments available", 0, null);
             }
 
-            var allComments = string.Join("\n\n", issues.Select(issue =>
-            {
-                var comments = new List<string>
-                {
-                    $"Issue: {issue.Title}\nAuthor: {issue.Author}\nContent: {issue.Body}"
-                };
+            totalComments = issues.Sum(issue => 
+                (issue.Comments?.Count() ?? 0) + 1); // +1 for the issue body
 
-                if (issue.Comments != null)
-                {
-                    comments.AddRange(issue.Comments.Select(comment =>
-                        $"Comment by {comment.Author}: {comment.Content}"
-                    ));
-                    totalComments += issue.Comments.Count() + 1; // +1 for the issue body
-                }
-
-                return string.Join("\n", comments);
-            }));
-
-            return (allComments, totalComments, issues);
+            return (responseContent, totalComments, issues);
         }
     }
 

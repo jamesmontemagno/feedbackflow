@@ -1,4 +1,5 @@
 ﻿@page "/"
+@* Updated to handle single URLs instead of comma-separated lists *@
 @namespace FeedbackWebApp.Components.Pages
 
 @using System.Web
@@ -9,6 +10,10 @@
 @using FeedbackWebApp.Services.Interfaces
 @using FeedbackWebApp.Services.Feedback
 @using SharedDump.Models.DevBlogs
+@using SharedDump.Models.GitHub
+@using SharedDump.Models.HackerNews
+@using SharedDump.Models.Reddit
+@using SharedDump.Models.YouTube
 
 @inject IConfiguration Configuration
 @inject FeedbackServiceProvider ServiceProvider
@@ -177,13 +182,13 @@
         return selectedSource switch
         {
             "Manual" => manualInputForm?.ContentInput,
-            "YouTube" => !string.IsNullOrWhiteSpace(youtubeInput?.VideoIds) ? youtubeInput?.VideoIds : youtubeInput?.PlaylistIds,
+            "YouTube" => !string.IsNullOrWhiteSpace(youtubeInput?.VideoId) ? youtubeInput?.VideoId : youtubeInput?.PlaylistId,
             "GitHub" => githubInputForm?.Url,
-            "Reddit" => !string.IsNullOrWhiteSpace(redditInputForm?.ThreadsInput) ? redditInputForm?.ThreadsInput : (redditInputForm?.ThreadIds != null ? string.Join(",", redditInputForm.ThreadIds) : null),
+            "Reddit" => redditInputForm?.ThreadInput,
             "HackerNews" => hackerNewsInputForm?.Value,
             "Twitter" => twitterInputForm?.RawInput,
             "BlueSky" => blueSkyInputForm?.RawInput,
-            "DevBlogs" => devBlogsInputForm?.ArticleUrl,            
+            "DevBlogs" => devBlogsInputForm?.ArticleUrl,
             "Auto" => autoDataSourceForm?.GetUrls().FirstOrDefault(),
             _ => null
         };
@@ -210,24 +215,25 @@
             IFeedbackService service = selectedSource switch
             {
                 "YouTube" or "youtube" => ServiceProvider.CreateYouTubeService(
-                    youtubeInput?.VideoIds ?? string.Empty, 
-                    youtubeInput?.PlaylistIds ?? string.Empty, 
-                    HandleStatusUpdate),                
+                    youtubeInput?.VideoId ?? string.Empty,
+                    youtubeInput?.PlaylistId ?? string.Empty,
+                    HandleStatusUpdate),
                 "Auto" or "auto" => ServiceProvider.CreateAutoDataSourceService(
                     autoDataSourceForm?.GetUrls().ToArray() ?? Array.Empty<string>(),
                     HandleStatusUpdate),
                 "HackerNews" or "hackernews" => ServiceProvider.CreateHackerNewsService(
-                    hackerNewsInputForm?.Value ?? string.Empty, 
+                    hackerNewsInputForm?.Value ?? string.Empty,
                     HandleStatusUpdate),
                 "GitHub" or "github" => ServiceProvider.CreateGitHubService(
                     githubInputForm?.Url ?? string.Empty,
                     HandleStatusUpdate),
                 "Reddit" or "reddit" => ServiceProvider.CreateRedditService(
-                    redditInputForm?.ThreadIds ?? Array.Empty<string>(),
+                    redditInputForm?.ThreadInput ?? string.Empty,
                     HandleStatusUpdate),
                 "DevBlogs" or "devblogs" => ServiceProvider.CreateDevBlogsService(
                     devBlogsInputForm?.ArticleUrl ?? string.Empty,
-                    HandleStatusUpdate),                "Twitter" or "twitter" => ServiceProvider.CreateTwitterService(
+                    HandleStatusUpdate),
+                "Twitter" or "twitter" => ServiceProvider.CreateTwitterService(
                     twitterInputForm?.TweetId ?? string.Empty,
                     HandleStatusUpdate),
                 "BlueSky" or "bluesky" => ServiceProvider.CreateBlueSkyService(
@@ -366,20 +372,16 @@
                 case "Auto" when autoDataSourceForm != null:
                     await autoDataSourceForm.HandleUrlChange(0, initialId);
                     autoDataSourceForm.RefreshUI();
-                    break;
-
-                case "YouTube" when youtubeInput != null:
-                    youtubeInput.VideoIds = initialId;
+                    break;                case "YouTube" when youtubeInput != null:
+                    youtubeInput.VideoId = initialId;
                     youtubeInput.RefreshUI();
                     break;
 
                 case "GitHub" when githubInputForm != null:
                     githubInputForm.Url = initialId;
                     githubInputForm.RefreshUI();
-                    break;
-
-                case "Reddit" when redditInputForm != null:
-                    redditInputForm.ThreadsInput = initialId;
+                    break;                case "Reddit" when redditInputForm != null:
+                    redditInputForm.ThreadInput = initialId;
                     redditInputForm.RefreshUI();
                     break;
 

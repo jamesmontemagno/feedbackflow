@@ -343,15 +343,12 @@
             }
             
             await SharingService.UpdateHistoryItemWithShareInfoAsync(item.Id, sharedId);
+              // Refresh the history list
+            historyItems = await HistoryService.GetHistoryAsync();
             
-            // Refresh the history list
-            historyItems = await HistoryService.GetHistoryAsync();            // Trigger confetti and show success message
-            JSRuntime.InvokeVoidAsync("confetti", new
-            {
-                particleCount = 100,
-                spread = 70,
-                origin = new { y = 0.6 }
-            }).ConfigureAwait(false);
+            // Trigger confetti and show success message
+            var confettiOptions = new { particleCount = 100, spread = 70, origin = new { y = 0.6 } };
+            await JSRuntime.InvokeVoidAsync("confetti", confettiOptions);
             await ToastService.ShowSuccessAsync("Share link created successfully! Click the 'Copy Link' button to copy it.", 5000);
         }
         catch (Exception ex)

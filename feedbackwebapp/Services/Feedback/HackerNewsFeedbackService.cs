@@ -9,26 +9,26 @@ public record HackerNewsAnalysis(string MarkdownResult, List<HackerNewsItem> Sto
 
 public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackService
 {
-    private readonly string _storyIds;
+    private readonly string _storyId;
 
     public HackerNewsFeedbackService(
         IHttpClientFactory http, 
         IConfiguration configuration,
         UserSettingsService userSettings,
-        string storyIds,
+        string storyId,
         FeedbackStatusUpdate? onStatusUpdate = null) 
         : base(http, configuration, userSettings, onStatusUpdate)
     {
-        _storyIds = storyIds;
+        _storyId = storyId;
     }
 
     public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
-        var processedIds = UrlParsing.ExtractHackerNewsId(_storyIds);
+        var processedId = UrlParsing.ExtractHackerNewsId(_storyId);
 
-        if (string.IsNullOrWhiteSpace(processedIds))
+        if (string.IsNullOrWhiteSpace(processedId))
         {
-            throw new InvalidOperationException("Please enter at least one valid Hacker News story ID or URL");
+            throw new InvalidOperationException("Please enter a valid Hacker News story ID or URL");
         }
 
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching Hacker News comments...");
@@ -39,36 +39,30 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
         var maxComments = await GetMaxCommentsToAnalyze();
 
         // Get comments from the Hacker News API
-        var getFeedbackUrl = $"{BaseUrl}/api/GetHackerNewsFeedback?code={Uri.EscapeDataString(hnCode)}&ids={Uri.EscapeDataString(processedIds)}&maxComments={maxComments}";
+        var getFeedbackUrl = $"{BaseUrl}/api/GetHackerNewsFeedback?code={Uri.EscapeDataString(hnCode)}&ids={Uri.EscapeDataString(processedId)}&maxComments={maxComments}";
         var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
         feedbackResponse.EnsureSuccessStatusCode();
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
 
-        // Parse the Hacker News response as List<List<HackerNewsItem>>        
-        var articleThreads = JsonSerializer.Deserialize<List<List<HackerNewsItem>>>(responseContent)
+        // Parse the Hacker News response        
+        var articleThread = JsonSerializer.Deserialize<List<List<HackerNewsItem>>>(responseContent)?.FirstOrDefault()
             ?? throw new InvalidOperationException("Failed to deserialize Hacker News response");
 
-        if (!articleThreads.Any() || articleThreads.All(thread => !thread.Any()))
+        if (!articleThread.Any())
         {
             UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
             return ("No comments available", 0, null);
         }
 
-        var totalComments = articleThreads.Sum(thread => Math.Max(0, thread.Count - 1)); // -1 for each story post
-
-        var allComments = string.Join("\n\n", articleThreads.Select(thread =>
+        // Calculate total comments recursively (excluding the story post)
+        int CountComments(IEnumerable<HackerNewsItem> items)
         {
-            var story = thread.FirstOrDefault();
-            if (story == null) return string.Empty;
+            return items.Skip(1).Sum(item => 1 + (item.Kids?.Count ?? 0));
+        }
 
-            var threadComments = string.Join("\n", thread.Skip(1).Select(comment => 
-                $"Comment by {comment.By}: {comment.Text ?? ""}"
-            ));
+        var totalComments = CountComments(articleThread);
 
-            return $"Story: {story.Title}\n{threadComments}";
-        }));
-
-        return (allComments, totalComments, articleThreads);
+        return (responseContent, totalComments, articleThread);
     }
 
     public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)

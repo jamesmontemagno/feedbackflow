@@ -6,137 +6,87 @@ public static class UrlParsing
     {
         if (string.IsNullOrWhiteSpace(input)) return null;
 
-        var items = input.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var results = new List<string>();
-
-        foreach (var item in items)
+        input = input.Trim();
+        
+        if (Uri.TryCreate(input, UriKind.Absolute, out var uri))
         {
-            if (Uri.TryCreate(item, UriKind.Absolute, out var uri))
+            if (uri.Host.Contains("youtube.com") && uri.Query.Contains("v="))
             {
-                // Handle youtube.com/watch?v= format
-                if (uri.Host.Contains("youtube.com") && uri.Query.Contains("v="))
-                {
-                    var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
-                    var id = query["v"];
-                    if (!string.IsNullOrEmpty(id)) results.Add(id);
-                }
-                else if (uri.Host.Contains("youtube.com") && uri.AbsolutePath.StartsWith("/live/"))
-                {
-                    var id = uri.AbsolutePath.Substring("/live/".Length);
-                    if (!string.IsNullOrEmpty(id)) results.Add(id);
-                }
-                // Handle youtu.be/ format
-                else if (uri.Host == "youtu.be")
-                {
-                    var id = uri.AbsolutePath.Trim('/');
-                    if (!string.IsNullOrEmpty(id)) results.Add(id);
-                }
+                var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                return query["v"];
             }
-            else
+            else if (uri.Host.Contains("youtube.com") && uri.AbsolutePath.StartsWith("/live/"))
             {
-                // Treat as raw ID
-                results.Add(item.Trim());
+                return uri.AbsolutePath.Substring("/live/".Length);
+            }
+            else if (uri.Host == "youtu.be")
+            {
+                return uri.AbsolutePath.Trim('/');
             }
         }
-
-        return results.Count > 0 ? string.Join(",", results) : null;
+        
+        // If not a URL, return as raw ID
+        return input;
     }
 
     public static string? ExtractPlaylistId(string input)
     {
         if (string.IsNullOrWhiteSpace(input)) return null;
 
-        var items = input.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var results = new List<string>();
-
-        foreach (var item in items)
+        input = input.Trim();
+        
+        if (Uri.TryCreate(input, UriKind.Absolute, out var uri))
         {
-            if (Uri.TryCreate(item, UriKind.Absolute, out var uri))
+            if (uri.Host.Contains("youtube.com"))
             {
-                if (uri.Host.Contains("youtube.com"))
-                {
-                    var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
-                    var id = query["list"];
-                    if (!string.IsNullOrEmpty(id)) results.Add(id);
-                }
-            }
-            else
-            {
-                // Treat as raw ID
-                results.Add(item.Trim());
+                var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                return query["list"];
             }
         }
-
-        return results.Count > 0 ? string.Join(",", results) : null;
+        
+        // If not a URL, return as raw ID
+        return input;
     }
 
     public static string? ExtractHackerNewsId(string input)
     {
         if (string.IsNullOrWhiteSpace(input)) return null;
 
-        var items = input.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var results = new List<string>();
-
-        foreach (var item in items)
+        input = input.Trim();
+        
+        if (Uri.TryCreate(input, UriKind.Absolute, out var uri))
         {
-            if (Uri.TryCreate(item, UriKind.Absolute, out var uri))
+            if (uri.Host.Contains("ycombinator.com") && uri.AbsolutePath.Contains("/item"))
             {
-                // Handle news.ycombinator.com/item?id= format
-                if (uri.Host.Contains("ycombinator.com") && uri.AbsolutePath.Contains("/item"))
-                {
-                    var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
-                    var id = query["id"];
-                    if (!string.IsNullOrEmpty(id)) results.Add(id);
-                }
-            }
-            else
-            {
-                // Treat as raw ID
-                if (long.TryParse(item.Trim(), out _))
-                {
-                    results.Add(item.Trim());
-                }
+                var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                return query["id"];
             }
         }
-
-        return results.Count > 0 ? string.Join(",", results) : null;
+        
+        // Only return as raw ID if it's a number
+        return long.TryParse(input, out _) ? input : null;
     }
 
-    public static string ExtractRedditId(string[] urls)
+    public static string? ExtractRedditId(string url)
     {
-        if (urls == null || urls.Length == 0)
-            return string.Empty;
+        if (string.IsNullOrWhiteSpace(url))
+            return null;
 
-        var processedIds = new List<string>();
+        // Handle direct thread IDs
+        if (url.StartsWith("t3_"))
+            return url[3..];
 
-        foreach (var url in urls)
-        {
-            if (string.IsNullOrWhiteSpace(url))
-                continue;
+        // Handle full Reddit URLs
+        if (TryParseRedditUrl(url, out var threadId))
+            return threadId;
+            
+        if (IsValidRedditId(url))
+            return url;
+            
+        if (RedditUrlParser.IsRedditShortUrl(url))
+            return url;
 
-            // Handle direct thread IDs
-            if (url.StartsWith("t3_"))
-            {
-                processedIds.Add(url[3..]);
-                continue;
-            }
-
-            // Handle full Reddit URLs
-            if (TryParseRedditUrl(url, out var threadId))
-            {
-                processedIds.Add(threadId);
-            }
-            else if (IsValidRedditId(url))
-            {
-                processedIds.Add(url);
-            }
-            else if (RedditUrlParser.IsRedditShortUrl(url))
-            {
-                processedIds.Add(url);
-            }
-        }
-
-        return string.Join(",", processedIds);
+        return null;
     }
 
     private static bool TryParseRedditUrl(string url, out string threadId)
@@ -217,46 +167,6 @@ public static class UrlParsing
             return false;
 
         return uri.Host.Contains("devblogs.microsoft.com", StringComparison.OrdinalIgnoreCase);
-    }
-
-    public static string? ExtractYouTubeId(string url)
-    {
-        if (string.IsNullOrWhiteSpace(url))
-            return null;
-
-        try
-        {
-            if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
-            {
-                // Handle youtube.com/watch?v= format
-                if (uri.Host.Contains("youtube.com") && uri.Query.Contains("v="))
-                {
-                    var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
-                    return query["v"];
-                }
-                // Handle youtu.be/ format
-                else if (uri.Host == "youtu.be")
-                {
-                    return uri.AbsolutePath.TrimStart('/');
-                }
-                // Handle youtube.com/live/ format
-                else if (uri.Host.Contains("youtube.com") && uri.AbsolutePath.StartsWith("/live/"))
-                {
-                    return uri.AbsolutePath.Substring("/live/".Length).Split('?')[0];
-                }
-            }
-            // Try treating as a direct video ID if it's not a URL
-            else if (url.Length == 11 && url.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_'))
-            {
-                return url;
-            }
-        }
-        catch
-        {
-            return null;
-        }
-
-        return null;
     }
 
     public static bool IsTwitterUrl(string url)

@@ -17,6 +17,12 @@ Analyze multiple articles simultaneously with our new Auto Mode feature. Simply 
 - 🔄 Supports all content types (YouTube, GitHub, Reddit, Twitter, etc.)
 - 📊 Creates a combined analysis across all provided sources
 
+### 🔨 Optimizations
+
+- Switched to single single URL entry to simplify flow
+- YouTube playlist will output analysis of each individual video
+- Switch to IndexedDB for saving history
+
 ## 📅 April 2025
 
 ### 🎉 Initial Release

@@ -7,17 +7,17 @@ namespace FeedbackWebApp.Services.Feedback;
 
 public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
 {
-    private readonly string[] _threadIds;
+    private readonly string _threadId;
 
     public RedditFeedbackService(
-        string[] threadIds,
+        string threadId,
         IHttpClientFactory http,
         IConfiguration configuration,
         UserSettingsService userSettings,
         FeedbackStatusUpdate? onStatusUpdate = null)
         : base(http, configuration, userSettings, onStatusUpdate)
     {
-        _threadIds = threadIds;
+        _threadId = threadId;
     }
 
     private int CountCommentsAndReplies(List<RedditCommentModel>? comments)
@@ -28,11 +28,11 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
 
     public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
-        var processedIds = UrlParsing.ExtractRedditId(_threadIds);
+        var processedId = UrlParsing.ExtractRedditId(_threadId);
 
-        if (string.IsNullOrWhiteSpace(processedIds))
+        if (string.IsNullOrWhiteSpace(processedId))
         {
-            throw new InvalidOperationException("Please enter at least one valid Reddit thread ID or URL");
+            throw new InvalidOperationException("Please enter a valid Reddit thread ID or URL");
         }
 
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching Reddit comments...");
@@ -43,7 +43,7 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
         var maxComments = await GetMaxCommentsToAnalyze();
 
         // Get comments from the Reddit API
-        var getFeedbackUrl = $"{BaseUrl}/api/GetRedditFeedback?code={Uri.EscapeDataString(redditCode)}&threads={Uri.EscapeDataString(processedIds)}&maxComments={maxComments}";
+        var getFeedbackUrl = $"{BaseUrl}/api/GetRedditFeedback?code={Uri.EscapeDataString(redditCode)}&threads={Uri.EscapeDataString(processedId)}&maxComments={maxComments}";
         var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
         feedbackResponse.EnsureSuccessStatusCode();
         
@@ -57,37 +57,13 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
             return ("No comments available", 0, null);
         }
 
-        var totalComments = threads.Sum(t => CountCommentsAndReplies(t.Comments));
+        var thread = threads.First(); // Since we only passed one ID, we should only get one thread
+        var totalComments = CountCommentsAndReplies(thread.Comments);
         UpdateStatus(FeedbackProcessStatus.GatheringComments, $"Found {totalComments} comments...");
 
-        // Build the comments string
-        var allComments = string.Join("\n\n", threads.Select(t =>
-        {
-            var threadComments = new List<string>();
-            void AddComment(RedditCommentModel comment, int depth = 0)
-            {
-                var indent = new string(' ', depth * 2);
-                threadComments.Add($"{indent}Comment by {comment.Author}: {comment.Body}");
-                
-                if (comment.Replies?.Any() == true)
-                {
-                    foreach (var reply in comment.Replies)
-                    {
-                        AddComment(reply, depth + 1);
-                    }
-                }
-            }
+       
+        return (responseContent, totalComments + 1, thread); // +1 to include original post
 
-            threadComments.Add($"Thread: {t.Title}\nAuthor: {t.Author}\nContent: {t.SelfText}");
-            foreach (var comment in t.Comments)
-            {
-                AddComment(comment);
-            }
-
-            return string.Join("\n", threadComments);
-        }));
-
-        return (allComments, totalComments + threads.Count, threads); // Add threads.Count to include original posts
     }
 
     public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)

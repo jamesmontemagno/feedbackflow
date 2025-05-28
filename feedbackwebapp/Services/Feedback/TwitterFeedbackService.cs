@@ -42,26 +42,29 @@ public class TwitterFeedbackService : FeedbackService, ITwitterFeedbackService
             return ("No comments available", 0, null);
         }
 
-        var totalComments = feedback.Items.Sum(item => 1 + (item.Replies?.Count ?? 0)); // Count tweets and replies
-
-        var allComments = string.Join("\n\n", feedback.Items.Select(item =>
+        int CountRepliesRecursively(List<TwitterFeedbackItem> items)
         {
-            var comments = new List<string>
-            {
-                $"Tweet by {item.Author}: {item.Content}"
-            };
+            if (items == null || items.Count == 0)
+                return 0;
 
-            if (item.Replies?.Any() == true)
+            int count = items.Count;
+
+            foreach (var item in items)
             {
-                comments.AddRange(item.Replies.Select(reply =>
-                    $"Reply by {reply.Author}: {reply.Content}"
-                ));
+                if (item.Replies != null)
+                {
+                    count += CountRepliesRecursively(item.Replies);
+                }
             }
 
-            return string.Join("\n", comments);
-        }));
+            return count;
+        }
 
-        return (allComments, totalComments, feedback);
+        var totalComments = CountRepliesRecursively(feedback.Items);
+
+
+
+        return (responseContent, totalComments, feedback);
     }
 
     public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)

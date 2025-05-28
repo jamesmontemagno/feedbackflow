@@ -2,7 +2,8 @@
   "IsEncrypted": false,
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated"
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "AzureWebJobsSecretStorageType": "files"
   },
   "YouTube:ApiKey": "YOUR_API_KEY_HERE",
   "Reddit:ClientId": "YOUR_REDDIT_CLIENT_ID",
