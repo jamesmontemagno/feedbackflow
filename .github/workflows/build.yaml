@@ -6,7 +6,8 @@ on:
       - '**'
 
 jobs:
-  build:
+  build:    
+    name: Build All Projects
     runs-on: ubuntu-latest
 
     steps:
