@@ -97,9 +97,11 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
             return (markdownResult, additionalData);
         }
 
-        var markdownResults = new List<string>();
-        
-        markdownResults.Add(markdownResult);
+        var markdownResults = new List<string>
+        {
+            $"## YouTube Comments Analysis for Playlist\n",
+            markdownResult
+        };
 
         // Analyze each video separately if they have comments
         foreach (var video in videos)
