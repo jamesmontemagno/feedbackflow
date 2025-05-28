@@ -282,9 +282,9 @@
             
             // Store and copy share link
             shareLink = $"{NavigationManager.BaseUri.TrimEnd('/')}/shared/{sharedId}";
-            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", shareLink);
-              // Trigger confetti and show success message
-            await ToastService.ShowSuccessAsync("Share link copied to clipboard!", 5000);
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", shareLink);             
+             // Trigger confetti and show success message
+            await ToastService.ShowSuccessAsync("Share link copied to clipboard! The link will be valid for 30 days.", 5000);
             await TriggerConfetti();
         }
         catch (Exception ex)

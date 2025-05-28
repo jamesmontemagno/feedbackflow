@@ -122,4 +122,37 @@ public class SharingFunctions
         
         return response;
     }
+
+    /// <summary>
+    /// Timer-triggered function to clean up old shared analyses
+    /// </summary>
+    /// <param name="timerInfo">Timer information</param>
+    /// <param name="containerClient">Azure Blob container client injected by the runtime</param>
+    [Function("CleanupOldAnalyses")]
+    public async Task CleanupOldAnalyses(
+        [TimerTrigger("0 0 0 * * *")] TimerInfo timerInfo,  // Run at midnight every day
+        [BlobInput(ContainerName, Connection = "AzureWebJobsStorage")] BlobContainerClient containerClient)
+    {
+        _logger.LogInformation($"Starting cleanup of old analyses at: {DateTime.UtcNow}");
+
+        var cutoffDate = DateTime.UtcNow.AddDays(-30);
+        var deletedCount = 0;
+
+        await foreach (var blobItem in containerClient.GetBlobsAsync())
+        {
+            if (blobItem.Properties.LastModified <= cutoffDate)
+            {
+                var blobClient = containerClient.GetBlobClient(blobItem.Name);
+                await blobClient.DeleteIfExistsAsync();
+
+                // Remove from cache if present
+                var id = Path.GetFileNameWithoutExtension(blobItem.Name);
+                _sharedAnalysisCache.TryRemove(id, out _);
+
+                deletedCount++;
+            }
+        }
+
+        _logger.LogInformation($"Cleanup completed. Deleted {deletedCount} old analyses.");
+    }
 }
