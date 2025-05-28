@@ -55,27 +55,6 @@
 
 /* History.razor.css - Slimmed down, Bootstrap-aligned, and theme-respecting */
 
-/* History title styling */
-.history-title {
-    font-size: 2.25rem;
-    font-weight: 600;
-    color: var(--primary-color);
-    margin-bottom: 1rem;
-    position: relative;
-    display: inline-block;
-}
-
-.history-title::after {
-    content: '';
-    position: absolute;
-    bottom: -0.5rem;
-    left: 0;
-    width: 50%;
-    height: 3px;
-    background: var(--primary-gradient);
-    border-radius: 3px;
-}
-
 /* State blocks */
 .loading-state, .empty-state {
     text-align: center;
@@ -179,10 +158,6 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    .history-title {
-        font-size: 1.75rem;
-    }
-    
     .history-item {
         padding: 1rem;
     }

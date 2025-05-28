@@ -3,27 +3,6 @@
     margin: 2rem auto;
 }
 
-/* Add consistent title styling matching other pages */
-.history-title {
-    font-size: 2.25rem;
-    font-weight: 600;
-    color: var(--primary-color);
-    margin-bottom: 1rem;
-    position: relative;
-    display: inline-block;
-}
-
-.history-title::after {
-    content: '';
-    position: absolute;
-    bottom: -0.5rem;
-    left: 0;
-    width: 50%;
-    height: 3px;
-    background: var(--primary-gradient);
-    border-radius: 3px;
-}
-
 /* Card styles with explicit dark mode handling */
 .card {
     background-color: var(--bs-body-bg) !important;

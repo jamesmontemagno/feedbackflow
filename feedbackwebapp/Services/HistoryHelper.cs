@@ -1,6 +1,7 @@
 using Markdig;
 using Microsoft.JSInterop;
 using SharedDump.Models;
+using SharedDump.Utils;
 
 namespace FeedbackWebApp.Services;
 
@@ -42,14 +43,38 @@ public class HistoryHelper : IHistoryHelper
 
     public string GetSourceUrl(AnalysisHistoryItem item)
     {
-        return item.SourceType?.ToLowerInvariant() switch
+        if (string.IsNullOrEmpty(item.UserInput) || string.IsNullOrEmpty(item.SourceType))
+            return "#";
+
+        var id = item.UserInput;
+        var sourceType = item.SourceType.ToLowerInvariant();
+
+        // First check if the input is already a valid URL for the source type
+        var isValidUrl = sourceType switch
         {
-            "youtube" => $"https://youtube.com/watch?v={item.Id}",
-            "github" => $"https://github.com/{item.Id}",
-            "reddit" => $"https://reddit.com/{item.Id}",
-            "twitter" => $"https://twitter.com/i/web/status/{item.Id}",
-            "hackernews" => $"https://news.ycombinator.com/item?id={item.Id}",
-            "devblogs" => $"https://devblogs.microsoft.com/{item.Id}",
+            "youtube" => UrlParsing.IsYouTubeUrl(id),
+            "github" => UrlParsing.IsGitHubUrl(id),
+            "reddit" => UrlParsing.IsRedditUrl(id),
+            "twitter" => UrlParsing.IsTwitterUrl(id),
+            "hackernews" => UrlParsing.IsHackerNewsUrl(id),
+            "devblogs" => DevBlogsUrlValidator.IsValidDevBlogsUrl(id),
+            "bluesky" => UrlParsing.IsBlueSkyUrl(id),
+            _ => false
+        };
+
+        if (isValidUrl)
+            return id;
+
+        // If not a valid URL, construct one from the ID
+        return sourceType switch
+        {
+            "youtube" => $"https://youtube.com/watch?v={id}",
+            "github" => $"https://github.com/{id}",
+            "reddit" => $"https://reddit.com/{id}",
+            "twitter" => $"https://twitter.com/i/web/status/{id}",
+            "hackernews" => $"https://news.ycombinator.com/item?id={id}",
+            "devblogs" => $"https://devblogs.microsoft.com/{id}",
+            "bluesky" => $"https://bsky.app/profile/{id}",
             _ => "#"
         };
     }
@@ -65,6 +90,7 @@ public class HistoryHelper : IHistoryHelper
             "hackernews" => "bi-braces",
             "devblogs" => "bi-journal-code",
             "manual" => "bi-pencil-square",
+            "bluesky" => "bi-cloud",
             _ => "bi-question-circle"
         };
     }

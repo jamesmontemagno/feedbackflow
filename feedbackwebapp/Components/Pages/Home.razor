@@ -28,11 +28,13 @@
         <AuthenticationForm OnAuthenticated="HandleAuthenticated" />
     }
     else
-    {
-        <div class="mb-3">
-            <h2 class="h4 mb-2 text-center">Select Feedback Source</h2>
-            <SourceSelector @bind-SelectedSource="selectedSource" />
+    {        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="feedbackflow-title mb-0">Feedback Analysis</h1>
         </div>
+
+        <SourceSelector @bind-SelectedSource="selectedSource" />
+
 
         @if (!string.IsNullOrEmpty(selectedSource))
         {
@@ -144,7 +146,7 @@
     private BlueSkyInputForm? blueSkyInputForm;
     private ManualFeedbackInput? manualInputForm;
     private DevBlogsArticleModel? devBlogsArticle;
-    private string selectedSource = "YouTube";
+    private string selectedSource = "Auto";
     private string markdownResult = "";
     private string error = "";
     private bool isLoading = false;
@@ -372,7 +374,8 @@
                 case "Auto" when autoDataSourceForm != null:
                     await autoDataSourceForm.HandleUrlChange(0, initialId);
                     autoDataSourceForm.RefreshUI();
-                    break;                case "YouTube" when youtubeInput != null:
+                    break;                
+                case "YouTube" when youtubeInput != null:
                     youtubeInput.VideoId = initialId;
                     youtubeInput.RefreshUI();
                     break;
@@ -380,7 +383,8 @@
                 case "GitHub" when githubInputForm != null:
                     githubInputForm.Url = initialId;
                     githubInputForm.RefreshUI();
-                    break;                case "Reddit" when redditInputForm != null:
+                    break;
+                case "Reddit" when redditInputForm != null:
                     redditInputForm.ThreadInput = initialId;
                     redditInputForm.RefreshUI();
                     break;

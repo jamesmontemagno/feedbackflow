@@ -9,9 +9,9 @@
 
 <PageTitle>Settings - FeedbackFlow</PageTitle>
 
-<div class="container py-4">
+<div class="container py-4">    
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="mb-0">Settings</h1>
+        <h1 class="feedbackflow-title mb-0">Settings</h1>
         @if (settings != null && hasUnsavedChanges)
         {
             <button class="btn btn-outline-secondary" @onclick="ResetAllChanges" disabled="@(!hasUnsavedChanges)">

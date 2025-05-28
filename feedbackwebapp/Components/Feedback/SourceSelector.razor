@@ -24,12 +24,12 @@
     private string? _selectedSource;
 
     [Parameter]
-    public string? SelectedSource {get;set;} = "YouTube";
+    public string? SelectedSource {get;set;} = "Auto";
 
     [Parameter]
     public EventCallback<string> SelectedSourceChanged { get; set; }
 
-    private const string DefaultSource = "YouTube";
+    private const string DefaultSource = "Auto";
 
     private readonly SourceOption[] sources = new[]
     {

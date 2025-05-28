@@ -1,9 +1,4 @@
 /* SharedAnalysisViewer styles */
-.shared-analysis-title {
-    font-weight: 700;
-    color: var(--text-primary);
-    font-size: 2.2rem;
-}
 
 .loading-state, .empty-state, .error-state {
     text-align: center;
