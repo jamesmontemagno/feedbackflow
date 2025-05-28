@@ -102,7 +102,7 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         var markdownResults = new List<string>();
         
         markdownResults.Add(markdownResult);
-        
+
         // Analyze each video separately if they have comments
         foreach (var video in videos)
         {
@@ -113,9 +113,17 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
             var videoComments = $"Video: {video.Title}\n\n" + string.Join("\n\n", video.Comments.Select(c => $"Comment by {c.Author}: {c.Text}"));
 
             UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {video.Comments.Count} comments for video: {video.Title}...");
-            await Task.Delay(500); // Simulate some processing delay
-            var videoMarkdown = await AnalyzeCommentsInternal($"YouTube", videoComments, video.Comments.Count);
-            markdownResults.Add(videoMarkdown);
+            await Task.Delay(1500); // Simulate some processing delay
+            try
+            {
+                var videoMarkdown = await AnalyzeCommentsInternal($"YouTube", videoComments, video.Comments.Count);
+                markdownResults.Add(videoMarkdown);
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus(FeedbackProcessStatus.Completed, $"Error analyzing video {video.Title}: {ex.Message}");
+                markdownResults.Add($"## Error Analyzing Video: {video.Title}\n\n{ex.Message}");
+            }
         }
 
         // Combine all results
