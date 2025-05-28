@@ -97,7 +97,14 @@ public class HistoryService : IHistoryService, IAsyncDisposable
     {
         if (_module is not null)
         {
-            await _module.DisposeAsync();
+            try
+            {
+                await _module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Circuit is already disconnected, no need to dispose JS module
+            }
         }
 
         GC.SuppressFinalize(this);
