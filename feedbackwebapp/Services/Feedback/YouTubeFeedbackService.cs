@@ -117,6 +117,7 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
             try
             {
                 var videoMarkdown = await AnalyzeCommentsInternal($"YouTube", videoComments, video.Comments.Count);
+                markdownResults.Add($"## YouTube Comments Analysis for : {video.Title}\n");
                 markdownResults.Add(videoMarkdown);
             }
             catch (Exception ex)
