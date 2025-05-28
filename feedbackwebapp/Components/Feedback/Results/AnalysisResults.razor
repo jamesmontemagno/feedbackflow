@@ -25,12 +25,12 @@
     <div class="card mt-4 shadow-sm">
         <header class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h2 class="card-title mb-0 h5">Analysis Summary</h2>
-            <div class="d-flex">
-                <button class="btn btn-sm btn-outline-light me-2 action-btn" 
-                        @onclick="SaveToHistory" 
+            <div class="d-flex">                <button class="btn btn-sm btn-outline-light me-2 action-btn" 
+                        @onclick="SaveToHistory"
+                        disabled="@_isSaved"
                         aria-label="Save to history">
                     <i class="bi bi-clock-history me-1" aria-hidden="true"></i>
-                    Save
+                    @(_isSaved ? "Saved" : "Save")
                 </button>                
                 <button class="btn btn-sm btn-outline-light me-2 action-btn" 
                         @onclick="@(sharedId == null ? ShareAnalysis : CopyShareLink)"
@@ -79,6 +79,8 @@
     private string? sharedId;
     private string? shareLink;
     private bool isProcessingShare = false;
+    private bool _isSaved = false;
+    private string? _savedItemId;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -97,8 +99,28 @@
                 sharedId = null;
                 shareLink = null;
                 isProcessingShare = false;
+                _isSaved = false;
+                _savedItemId = null;
                 _previousMarkdown = MarkdownResult;
+                
+                // Check if this analysis is already saved
+                await CheckIfItemIsSaved();
             }
+        }
+    }
+
+    private async Task CheckIfItemIsSaved()
+    {
+        if (string.IsNullOrEmpty(MarkdownResult))
+            return;
+            
+        var historyItems = await HistoryService.GetHistoryAsync();
+        var existingItem = historyItems.FirstOrDefault(h => h.FullAnalysis == MarkdownResult);
+        if (existingItem != null)
+        {
+            _isSaved = true;
+            _savedItemId = existingItem.Id;
+            StateHasChanged();
         }
     }
 
@@ -119,8 +141,8 @@
             await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", MarkdownResult);
             await ToastService.ShowSuccessAsync("Analysis copied to clipboard", 3000);
         }
-    }
-
+    }    
+    
     private async Task SaveToHistory()
     {
         if (!string.IsNullOrEmpty(MarkdownResult))
@@ -133,6 +155,8 @@
                 UserInput = UserInput
             };
             await HistoryService.SaveToHistoryAsync(historyItem);
+            _isSaved = true;
+            _savedItemId = historyItem.Id;
             await ToastService.ShowSuccessAsync("Analysis saved to history", 3000);
         }
     }
@@ -200,8 +224,8 @@
             await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", shareLink);
             await ToastService.ShowSuccessAsync("Share link copied to clipboard!", 3000);
         }
-    }
-
+    }    
+    
     private async Task ShareAnalysis()
     {
         if(isProcessingShare || string.IsNullOrEmpty(MarkdownResult))
@@ -212,15 +236,28 @@
 
         try
         {
-            // First save to history if not already saved
-            var historyItem = new SharedDump.Models.AnalysisHistoryItem
+            SharedDump.Models.AnalysisHistoryItem historyItem;
+            
+            // If the item is already saved, use that instead of creating a new one
+            if (_isSaved && !string.IsNullOrEmpty(_savedItemId))
             {
-                Summary = MarkdownResult.Length > 300 ? MarkdownResult.Substring(0, 300) + "..." : MarkdownResult,
-                FullAnalysis = MarkdownResult,
-                SourceType = SourceType,
-                UserInput = UserInput
-            };
-            await HistoryService.SaveToHistoryAsync(historyItem);
+                var historyItems = await HistoryService.GetHistoryAsync();
+                historyItem = historyItems.First(h => h.Id == _savedItemId);
+            }
+            else
+            {
+                // Create and save new history item
+                historyItem = new SharedDump.Models.AnalysisHistoryItem
+                {
+                    Summary = MarkdownResult.Length > 300 ? MarkdownResult.Substring(0, 300) + "..." : MarkdownResult,
+                    FullAnalysis = MarkdownResult,
+                    SourceType = SourceType,
+                    UserInput = UserInput
+                };
+                await HistoryService.SaveToHistoryAsync(historyItem);
+                _isSaved = true;
+                _savedItemId = historyItem.Id;
+            }
 
             var analysisData = new SharedDump.Models.AnalysisData
             {
@@ -246,15 +283,9 @@
             // Store and copy share link
             shareLink = $"{NavigationManager.BaseUri.TrimEnd('/')}/shared/{sharedId}";
             await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", shareLink);
-            
-            // Trigger confetti and show success message
+              // Trigger confetti and show success message
             await ToastService.ShowSuccessAsync("Share link copied to clipboard!", 5000);
-            TriggerConfetti().ContinueWith(_ =>
-            {
-                // Optionally, you can add more actions after confetti
-                // Example: Log the sharing activity
-                Console.WriteLine("Confetti triggered after sharing analysis.");
-            });
+            await TriggerConfetti();
         }
         catch (Exception ex)
         {

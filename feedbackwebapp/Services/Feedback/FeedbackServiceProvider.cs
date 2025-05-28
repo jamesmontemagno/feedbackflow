@@ -37,13 +37,11 @@ public class FeedbackServiceProvider
         return _useMocks
             ? new MockGitHubFeedbackService(_http, _configuration, _userSettings, onStatusUpdate)
             : new GitHubFeedbackService(_http, _configuration, _userSettings, url, onStatusUpdate);
-    }
-
-    public IRedditFeedbackService CreateRedditService(string[] threadIds, FeedbackStatusUpdate? onStatusUpdate = null)
+    }    public IRedditFeedbackService CreateRedditService(string threadId, FeedbackStatusUpdate? onStatusUpdate = null)
     {
         return _useMocks
             ? new MockRedditFeedbackService(_http, _configuration, _userSettings, onStatusUpdate)
-            : new RedditFeedbackService(threadIds, _http, _configuration, _userSettings, onStatusUpdate);
+            : new RedditFeedbackService(threadId, _http, _configuration, _userSettings, onStatusUpdate);
     }
 
     public IDevBlogsFeedbackService CreateDevBlogsService(string articleUrl, FeedbackStatusUpdate? onStatusUpdate = null)
@@ -92,15 +90,15 @@ public class FeedbackServiceProvider
         // YouTube URLs
         if (UrlParsing.IsYouTubeUrl(url))
         {
-            var videoId = UrlParsing.ExtractYouTubeId(url) ?? string.Empty;
+            var videoId = UrlParsing.ExtractVideoId(url) ?? string.Empty;
             return CreateYouTubeService(videoId, string.Empty);
-        }
-
-        // GitHub URLs
+        }        // GitHub URLs
         if (UrlParsing.IsGitHubUrl(url))
-            return CreateGitHubService(url);        // Reddit URLs
+            return CreateGitHubService(url);        
+            
+        // Reddit URLs        
         if (UrlParsing.IsRedditUrl(url))
-            return CreateRedditService(new[] { url });
+            return CreateRedditService(url);
 
         // Hacker News URLs
         if (UrlParsing.IsHackerNewsUrl(url))

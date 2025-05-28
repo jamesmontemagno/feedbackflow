@@ -14,6 +14,24 @@
     transition: all 0.3s ease;
 }
 
+/* Responsive adjustments for mobile screens */
+@media (max-width: 768px) {
+    ::deep .source-button {
+        min-height: 40px;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
+        min-width: auto;
+    }
+
+    ::deep .source-button .source-icon {
+        font-size: 0.9em;
+    }
+
+    ::deep .source-button .fw-medium {
+        font-size: 0.9em;
+    }
+}
+
 /* Add enhanced hover effect to buttons */
 ::deep .btn {
     transition: all 0.3s ease;

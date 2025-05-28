@@ -7,30 +7,30 @@ namespace FeedbackWebApp.Services.Feedback;
 
 public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
 {
-    private readonly string _videoIds;
-    private readonly string _playlistIds;
+    private readonly string _videoId;
+    private readonly string _playlistId;
 
     public YouTubeFeedbackService(
         IHttpClientFactory http, 
         IConfiguration configuration,
         UserSettingsService userSettings,
-        string videoIds,
-        string playlistIds,
+        string videoId,
+        string playlistId,
         FeedbackStatusUpdate? onStatusUpdate = null) 
         : base(http, configuration, userSettings, onStatusUpdate)
     {
-        _videoIds = videoIds;
-        _playlistIds = playlistIds;
+        _videoId = videoId;
+        _playlistId = playlistId;
     }
 
     public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
-        var processedVideoIds = UrlParsing.ExtractVideoId(_videoIds);
-        var processedPlaylistIds = UrlParsing.ExtractPlaylistId(_playlistIds);
+        var processedVideoId = UrlParsing.ExtractVideoId(_videoId);
+        var processedPlaylistId = UrlParsing.ExtractPlaylistId(_playlistId);
 
-        if (string.IsNullOrWhiteSpace(processedVideoIds) && string.IsNullOrWhiteSpace(processedPlaylistIds))
+        if (string.IsNullOrWhiteSpace(processedVideoId) && string.IsNullOrWhiteSpace(processedPlaylistId))
         {
-            throw new InvalidOperationException("Please enter at least one valid video URL/ID or playlist URL/ID");
+            throw new InvalidOperationException("Please enter a valid video URL/ID or playlist URL/ID");
         }
 
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching YouTube comments...");
@@ -47,13 +47,13 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
             $"maxComments={maxComments}"
         };
         
-        if (!string.IsNullOrWhiteSpace(processedVideoIds))
+        if (!string.IsNullOrWhiteSpace(processedVideoId))
         {
-            queryParams.Add($"videos={Uri.EscapeDataString(processedVideoIds)}");
+            queryParams.Add($"videos={Uri.EscapeDataString(processedVideoId)}");
         }
-        if (!string.IsNullOrWhiteSpace(processedPlaylistIds))
+        if (!string.IsNullOrWhiteSpace(processedPlaylistId))
         {
-            queryParams.Add($"playlists={Uri.EscapeDataString(processedPlaylistIds)}");
+            queryParams.Add($"playlists={Uri.EscapeDataString(processedPlaylistId)}");
         }
 
         var getFeedbackUrl = $"{BaseUrl}/api/GetYouTubeFeedback?{string.Join("&", queryParams)}";
@@ -73,11 +73,9 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         var totalComments = videos.Sum(v => v.Comments.Count);
         UpdateStatus(FeedbackProcessStatus.GatheringComments, $"Found {totalComments} comments across {videos.Count} videos...");
         
-        // Build our comments string
-        var allComments = string.Join("\n\n", videos.SelectMany(v => 
-            v.Comments.Select(c => $"Video: {v.Title}\nComment by {c.Author}: {c.Text}")));
+   
 
-        return (allComments, totalComments, videos);
+        return (responseContent, totalComments, videos);
     }
 
     public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
