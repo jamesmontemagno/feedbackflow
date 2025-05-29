@@ -1,0 +1,22 @@
+.report-header {
+    padding: var(--default-padding);
+    background-color: var(--card-header-bg);
+    border-bottom: var(--border-width) solid var(--border-color);
+}
+
+.report-content {
+    padding: var(--default-padding);
+}
+
+.report-metadata {
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+.report-metadata strong {
+    color: var(--text-default);
+}
+
+.back-button {
+    padding: var(--spacing-2) var(--spacing-3);
+}

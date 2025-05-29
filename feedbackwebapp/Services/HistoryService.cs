@@ -125,6 +125,21 @@ public class HistoryService : IHistoryService, IAsyncDisposable
         _initialized = false;
     }
 
+    public async Task UpdateHistoryItemAsync(AnalysisHistoryItem item)
+    {
+        await InitializeAsync();
+        if (_module == null) return;
+
+        try
+        {
+            await _module.InvokeVoidAsync("updateHistoryItem", item);
+        }
+        catch (InvalidOperationException)
+        {
+            // We're probably in prerendering
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_module is not null)

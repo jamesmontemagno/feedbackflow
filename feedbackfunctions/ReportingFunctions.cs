@@ -217,15 +217,8 @@ Keep each section very brief and focused. Total analysis should be no more than 
             await blobClient.UploadAsync(ms, overwrite: true);
 
             var response = req.CreateResponse(HttpStatusCode.OK);
-            response.Headers.Add("Content-Type", "application/json");
-            await response.WriteStringAsync(JsonSerializer.Serialize(new { 
-                id = report.Id,
-                subSource = report.SubSource,
-                generatedAt = report.GeneratedAt,
-                threadCount = report.ThreadCount,
-                commentCount = report.CommentCount,
-                htmlContent = report.HtmlContent
-            }));
+            response.Headers.Add("Content-Type", "text/html; charset=utf-8");
+            await response.WriteStringAsync(emailHtml);
             return response;
         }
         catch (Exception ex)

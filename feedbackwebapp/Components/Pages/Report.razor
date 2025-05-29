@@ -1,0 +1,93 @@
+@page "/report/{Id}"
+@using FeedbackWebApp.Services
+@using SharedDump.Models.Reports
+@inject IReportService ReportService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Report Details - FeedbackFlow</PageTitle>
+
+<div class="container-fluid px-4">
+    @if (loading)
+    {
+        <div class="text-center mt-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (report == null)
+    {
+        <div class="alert alert-danger mt-4">
+            Report not found.
+        </div>
+    }
+    else
+    {
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <h1>Report Details</h1>            <button class="btn btn-secondary back-button" @onclick="GoBack">
+                <i class="fas fa-arrow-left"></i> Back to Reports
+            </button>
+        </div>
+        
+        <div class="card mb-4">            <div class="report-header">
+                <div class="row">
+                    <div class="col-md-3 report-metadata">
+                        <strong>Source:</strong> @report.Source
+                    </div>
+                    <div class="col-md-3 report-metadata">
+                        <strong>Subreddit:</strong> @report.SubSource
+                    </div>
+                    <div class="col-md-3 report-metadata">
+                        <strong>Generated:</strong> @report.GeneratedAt.LocalDateTime.ToString("g")
+                    </div>
+                    <div class="col-md-3 report-metadata">
+                        <strong>Analysis Period:</strong> @report.CutoffDate.LocalDateTime.ToString("d") - @report.GeneratedAt.LocalDateTime.ToString("d")
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-3 report-metadata">
+                        <strong>Thread Count:</strong> @report.ThreadCount
+                    </div>
+                    <div class="col-md-3 report-metadata">
+                        <strong>Comment Count:</strong> @report.CommentCount
+                    </div>
+                </div>
+            </div>
+            <div class="report-content">
+                @((MarkupString)report.HtmlContent)
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    private bool loading = true;
+    private ReportModel? report;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(Id))
+        {
+            NavigationManager.NavigateTo("/reports");
+            return;
+        }
+
+        try
+        {
+            loading = true;
+            report = await ReportService.GetReportAsync(Id);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/reports");
+    }
+}

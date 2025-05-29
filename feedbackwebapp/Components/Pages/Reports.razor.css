@@ -1,0 +1,131 @@
+.reports-table {
+    width: 100%;
+    margin-bottom: var(--spacing-4);
+    color: var(--text-default);
+    border-radius: var(--border-radius);
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid var(--border-color);
+}
+
+.reports-table thead tr {
+    background-color: var(--subtle-bg);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.reports-table th {
+    color: var(--text-default);
+    font-weight: 600;
+    padding: var(--spacing-3);
+    border-bottom: 2px solid var(--border-color);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+}
+
+.reports-table td {
+    padding: var(--spacing-3);
+    vertical-align: middle;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.15s ease-in-out;
+}
+
+.reports-table tbody tr:hover {
+    background-color: var(--hover-bg);
+}
+
+.reports-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Round the corners of the first and last cells in header */
+.reports-table thead tr th:first-child {
+    border-top-left-radius: calc(var(--border-radius) - 1px);
+}
+
+.reports-table thead tr th:last-child {
+    border-top-right-radius: calc(var(--border-radius) - 1px);
+}
+
+/* Round the corners of the first and last cells in the last row */
+.reports-table tbody tr:last-child td:first-child {
+    border-bottom-left-radius: calc(var(--border-radius) - 1px);
+}
+
+.reports-table tbody tr:last-child td:last-child {
+    border-bottom-right-radius: calc(var(--border-radius) - 1px);
+}
+
+/* Loading state styles */
+.loading-table td {
+    border-color: var(--border-color);
+}
+
+.loading-placeholder {
+    height: 1rem;
+    background: linear-gradient(
+        90deg,
+        var(--subtle-bg) 0%,
+        var(--hover-bg) 50%,
+        var(--subtle-bg) 100%
+    );
+    background-size: 200% 100%;
+    animation: loading-wave 2s infinite;
+    border-radius: var(--border-radius);
+}
+
+.button-placeholder {
+    width: 80px;
+    height: 1.75rem;
+}
+
+/* Action button styles */
+.btn-action {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    border-radius: var(--border-radius);
+    transition: all 0.2s ease-in-out;
+    background-color: var(--primary-button-bg);
+    color: var(--primary-button-text);
+    border: none;
+}
+
+.btn-action:hover {
+    background-color: var(--primary-button-hover-bg);
+    transform: translateY(-1px);
+}
+
+@keyframes loading-wave {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.filter-controls {
+    padding: var(--spacing-3);
+    margin-bottom: var(--spacing-4);
+}
+
+.filter-group {
+    min-width: 250px;
+}
+
+.filter-label {
+    background-color: var(--input-group-addon-bg);
+    color: var(--input-group-addon-color);
+    border-color: var(--input-border-color);
+}
+
+.form-select {
+    background-color: var(--input-bg);
+    color: var(--input-color);
+    border-color: var(--input-border-color);
+}
+
+.form-select:focus {
+    border-color: var(--input-focus-border-color);
+    box-shadow: 0 0 0 0.2rem var(--input-focus-box-shadow-color);
+}

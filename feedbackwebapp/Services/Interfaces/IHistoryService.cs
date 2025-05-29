@@ -1,4 +1,3 @@
-
 namespace FeedbackWebApp.Services.Interfaces;
 
 using SharedDump.Models;
@@ -62,4 +61,11 @@ public interface IHistoryService
     /// </summary>
     /// <returns>A task representing the asynchronous operation</returns>
     Task ClearHistoryAsync();
+    
+    /// <summary>
+    /// Updates a specific history item
+    /// </summary>
+    /// <param name="item">The history item to update</param>
+    /// <returns>A task representing the asynchronous operation</returns>
+    Task UpdateHistoryItemAsync(AnalysisHistoryItem item);
 }

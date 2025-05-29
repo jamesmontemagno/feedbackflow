@@ -232,13 +232,17 @@
             if (historyItems?.Any(h => h.IsShared) == true)
             {
                 var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
-                var expiredItems = historyItems.Where(h => h.IsShared && h.ShareDate <= thirtyDaysAgo).ToList();
+                var expiredItems = historyItems.Where(h => h.IsShared && h.SharedDate <= thirtyDaysAgo).ToList();
                 
                 foreach (var item in expiredItems)
                 {
-                    item.IsShared = false;
-                    item.SharedId = null;
-                    await HistoryService.UpdateHistoryItemAsync(item);
+                    var updatedItem = item with 
+                    { 
+                        IsShared = false,
+                        SharedId = null,
+                        SharedDate = null
+                    };
+                    await HistoryService.UpdateHistoryItemAsync(updatedItem);
                 }
                 
                 if (expiredItems.Any())
