@@ -45,6 +45,87 @@
     animation: slideIn 0.3s ease-out;
 }
 
+/* Dropdown styling */
+.dropdown-menu {
+    --bs-dropdown-padding-y: 0.5rem;
+    --bs-dropdown-padding-x: 0;
+    --bs-dropdown-bg: var(--primary-color);
+    --bs-dropdown-color: rgba(255, 255, 255, 0.85);
+    --bs-dropdown-link-color: rgba(255, 255, 255, 0.85);
+    --bs-dropdown-link-hover-color: rgba(255, 255, 255, 1);
+    --bs-dropdown-link-hover-bg: rgba(255, 255, 255, 0.1);
+    --bs-dropdown-link-active-color: #fff;
+    --bs-dropdown-link-active-bg: rgba(255, 255, 255, 0.2);
+    background-color: var(--primary-color);
+    border: none;
+    box-shadow: var(--card-shadow);
+    border-radius: var(--border-radius);
+    min-width: 220px;
+    margin-top: 0.5rem;
+    backdrop-filter: blur(8px);
+}
+
+.dropdown-item {
+    --bs-dropdown-item-padding-x: 1.25rem;
+    --bs-dropdown-item-padding-y: 0.75rem;
+    color: rgba(255, 255, 255, 0.85);
+    display: flex;
+    align-items: center;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+.dropdown-item i {
+    font-size: 1.1rem;
+    width: 1.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.9;
+}
+
+.dropdown-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    transform: translateX(4px);
+}
+
+.dropdown-item:hover i {
+    opacity: 1;
+}
+
+.dropdown-item.active {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font-weight: 500;
+}
+
+.dropdown-divider {
+    border-color: rgba(255, 255, 255, 0.2);
+    opacity: 1;
+    margin: 0.5rem 0;
+}
+
+/* Ensure the More dropdown toggle matches the theme */
+.nav-item.dropdown .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.nav-item.dropdown .nav-link:hover {
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.nav-item.dropdown .dropdown-toggle::after {
+    margin-left: 0.5rem;
+    transition: transform 0.2s ease;
+}
+
+.nav-item.dropdown .dropdown-toggle[aria-expanded="true"]::after {
+    transform: rotate(180deg);
+}
+
 @keyframes slideIn {
     from {
         transform: translateY(5px);
