@@ -8,7 +8,8 @@
 
 <PageTitle>Report Details - FeedbackFlow</PageTitle>
 
-<div class="container-fluid px-4">    @if (loading)
+<div class="container-lg py-4">
+    @if (loading)
     {
         <div class="text-center mt-5">
             <div class="spinner-border" role="status">
@@ -22,14 +23,15 @@
         <div class="alert alert-danger mt-4">
             <i class="bi bi-exclamation-triangle-fill me-2"></i>
             Report not found.
-        </div>
-    }else
+        </div>    }
+    else
     {
-        <div class="mt-4 mb-4">
-            <h1 class="feedbackflow-title">Report Details</h1>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="feedbackflow-title mb-0">Report Details</h1>
         </div>
         
-        <div class="card report-card mb-4">            <div class="card-header report-header">
+        <div class="card report-card mb-4">
+            <div class="card-header report-header">
                 <div class="row g-3">
                     <div class="col-md-3 report-metadata">
                         <div class="metadata-label">
@@ -68,9 +70,9 @@
                             <i class="bi bi-chat-dots me-2"></i>Comment Count
                         </div>
                         <div class="metadata-value">@report.CommentCount</div>
-                    </div>
-                </div>
-            </div>            <div class="card-body report-content">
+                    </div>                </div>
+            </div>
+            <div class="card-body report-content">
                 @((MarkupString)report.HtmlContent)
             </div>
         </div>

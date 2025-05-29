@@ -45,7 +45,8 @@
                 </div>
             </div>
         }
-          <div class="card mb-4">            <div class="card-header">
+          <div class="card mb-4">            
+            <div class="card-header">
                 <div>
                     <i class="bi bi-file-earmark-text me-1"></i>
                     Available Reports
@@ -93,7 +94,8 @@
                         @foreach (var report in FilteredReports)
                         {
                             <div class="report-item">
-                                <div class="report-item-header">                                    <div class="report-source">
+                                <div class="report-item-header">                                    
+                                    <div class="report-source">
                                         <div class="source-badge">
                                             <i class="bi @HistoryHelper.GetServiceIcon(report.Source) me-1"></i>
                                             @report.Source
@@ -151,6 +153,12 @@
     private async Task HandleAuthenticated(bool success)
     {
         isAuthenticated = success;
+        if (success)
+        {
+            await LoadReports();
+        }
+    }
+
     private string? errorMessage;
     private async Task LoadReports()
     {
@@ -165,14 +173,6 @@
         {
             errorMessage = $"Failed to load reports: {ex.Message}";
             reports = null;
-        }
-        finally
-        {
-            loading = false;
-        }
-    }
-            reports = await ReportService.ListReportsAsync();
-            sources = reports.Select(r => r.Source).ToHashSet();
         }
         finally
         {
