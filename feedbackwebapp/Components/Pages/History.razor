@@ -119,7 +119,8 @@
             <Virtualize Items="filteredItems" Context="item" ItemSize="250">
                 <div class="list-group-item @(item.IsShared ? "shared-item" : "")" @key="item.Id">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div class="d-flex align-items-center gap-2">                            <i class="bi @HistoryHelper.GetServiceIcon(item.SourceType) service-icon"></i>
+                        <div class="d-flex align-items-center gap-2">                            
+                            <i class="bi @HistoryHelper.GetServiceIcon(item.SourceType) service-icon"></i>
                             <span class="source-badge">@item.SourceType</span>
                             <small class="text-muted">@item.Timestamp.ToLocalTime().ToString("g")</small>
                             @if (item.IsShared)

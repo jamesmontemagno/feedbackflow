@@ -1,22 +1,219 @@
+/* Report component styles */
+
+.report-card {
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-color: var(--border-color);
+    background-color: var(--bg-secondary);
+}
+
+.report-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0.5rem 1.5rem rgba(var(--primary-color-rgb), 0.15);
+}
+
 .report-header {
-    padding: var(--default-padding);
-    background-color: var(--card-header-bg);
-    border-bottom: var(--border-width) solid var(--border-color);
+    padding: 1.5rem;
+    background: linear-gradient(to bottom, rgba(var(--primary-color-rgb), 0.05), transparent);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .report-content {
-    padding: var(--default-padding);
+    padding: 1.5rem;
+    color: var(--text-primary);
 }
 
 .report-metadata {
-    font-size: var(--font-size-sm);
-    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    padding: 0.75rem;
+    border-radius: var(--border-radius-sm);
+    transition: all 0.3s ease;
 }
 
-.report-metadata strong {
-    color: var(--text-default);
+.report-metadata:hover {
+    background-color: var(--hover-bg);
 }
 
-.back-button {
-    padding: var(--spacing-2) var(--spacing-3);
+.metadata-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.metadata-label i {
+    color: var(--primary-color);
+    margin-right: 0.5rem;
+    font-size: 1.1rem;
+    background-color: rgba(var(--primary-color-rgb), 0.1);
+    padding: 0.5rem;
+    border-radius: var(--border-radius-sm);
+    transition: all 0.3s ease;
+}
+
+.metadata-value {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    padding-left: 2.1rem;
+    transition: all 0.3s ease;
+}
+
+/* Light mode specific styles */
+:root .metadata-value {
+    color: #333;
+}
+
+/* Dark mode specific styles */
+[data-theme="dark"] .metadata-value {
+    color: #fff;
+}
+
+/* Hover effects */
+.report-metadata:hover .metadata-value {
+    transform: translateX(3px);
+    color: var(--primary-color);
+}
+
+.report-metadata:hover .metadata-label i {
+    transform: scale(1.1) rotate(5deg);
+    background-color: rgba(var(--primary-color-rgb), 0.2);
+}
+
+/* Back button styles removed as it's no longer needed */
+
+/* Markdown content styling */
+.report-content :deep(h1),
+.report-content :deep(h2),
+.report-content :deep(h3),
+.report-content :deep(h4),
+.report-content :deep(h5),
+.report-content :deep(h6) {
+    color: var(--text-primary);
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    font-weight: 700;
+}
+
+.report-content :deep(h1) {
+    font-size: 1.8rem;
+}
+
+.report-content :deep(h2) {
+    font-size: 1.5rem;
+}
+
+.report-content :deep(h3) {
+    font-size: 1.3rem;
+}
+
+.report-content :deep(ul), 
+.report-content :deep(ol) {
+    padding-left: 2rem;
+    margin-bottom: 1rem;
+}
+
+.report-content :deep(p) {
+    margin-bottom: 1rem;
+}
+
+.report-content :deep(pre) {
+    background-color: var(--code-bg);
+    padding: 1rem;
+    border-radius: var(--border-radius-sm);
+    margin-bottom: 1rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.report-content :deep(code) {
+    background-color: var(--code-bg);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+.report-content :deep(blockquote) {
+    border-left: 4px solid var(--primary-color);
+    padding-left: 1rem;
+    margin-left: 0;
+    margin-right: 0;
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+.report-content :deep(a) {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.report-content :deep(a:hover) {
+    text-decoration: underline;
+}
+
+.report-content :deep(hr) {
+    border-color: var(--border-color);
+    margin: 1.5rem 0;
+}
+
+.report-content :deep(table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+}
+
+.report-content :deep(th), 
+.report-content :deep(td) {
+    border: 1px solid var(--border-color);
+    padding: 0.75rem;
+}
+
+.report-content :deep(th) {
+    background-color: var(--hover-bg);
+}
+
+/* Separator between metadata sections */
+.report-header .row + .row {
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+    border-top: 1px dashed rgba(var(--primary-color-rgb), 0.2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .report-metadata {
+        padding: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .metadata-label {
+        font-size: 0.75rem;
+    }
+    
+    .metadata-label i {
+        padding: 0.3rem;
+        font-size: 0.9rem;
+    }
+    
+    .metadata-value {
+        font-size: 0.95rem;
+        padding-left: 1.8rem;
+    }
+    
+    .report-header, 
+    .report-content {
+        padding: 1rem;
+    }
+    
+    /* Improve spacing between rows on mobile */
+    .report-header .row + .row {
+        margin-top: 0.25rem;
+        padding-top: 0.75rem;
+    }
 }

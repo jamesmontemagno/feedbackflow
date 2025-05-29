@@ -294,7 +294,10 @@ Keep each section very brief and focused. Total analysis should be no more than 
                         id = report.Id,
                         source = report.Source,
                         subSource = report.SubSource,
-                        generatedAt = report.GeneratedAt
+                        generatedAt = report.GeneratedAt,
+                        threadCount = report.ThreadCount,
+                        commentCount = report.CommentCount,
+                        cutoffDate = report.CutoffDate
                     });
                 }
             }

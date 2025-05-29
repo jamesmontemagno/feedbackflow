@@ -1,59 +1,76 @@
 @page "/report/{Id}"
 @using FeedbackWebApp.Services
 @using SharedDump.Models.Reports
+@using System.Text.RegularExpressions
 @inject IReportService ReportService
 @inject NavigationManager NavigationManager
+@inject IHistoryHelper HistoryHelper
 
 <PageTitle>Report Details - FeedbackFlow</PageTitle>
 
-<div class="container-fluid px-4">
-    @if (loading)
+<div class="container-fluid px-4">    @if (loading)
     {
         <div class="text-center mt-5">
             <div class="spinner-border" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
+            <p class="mt-2">Loading report details...</p>
         </div>
     }
     else if (report == null)
     {
         <div class="alert alert-danger mt-4">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
             Report not found.
         </div>
-    }
-    else
+    }else
     {
-        <div class="d-flex justify-content-between align-items-center mt-4">
-            <h1>Report Details</h1>            <button class="btn btn-secondary back-button" @onclick="GoBack">
-                <i class="fas fa-arrow-left"></i> Back to Reports
-            </button>
+        <div class="mt-4 mb-4">
+            <h1 class="feedbackflow-title">Report Details</h1>
         </div>
         
-        <div class="card mb-4">            <div class="report-header">
-                <div class="row">
+        <div class="card report-card mb-4">            <div class="card-header report-header">
+                <div class="row g-3">
                     <div class="col-md-3 report-metadata">
-                        <strong>Source:</strong> @report.Source
+                        <div class="metadata-label">
+                            <i class="bi @HistoryHelper.GetServiceIcon(report.Source) me-2"></i>Source
+                        </div>
+                        <div class="metadata-value">@report.Source</div>
                     </div>
                     <div class="col-md-3 report-metadata">
-                        <strong>Subreddit:</strong> @report.SubSource
+                        <div class="metadata-label">
+                            <i class="bi bi-hash me-2"></i>Subreddit
+                        </div>
+                        <div class="metadata-value">@report.SubSource</div>
                     </div>
                     <div class="col-md-3 report-metadata">
-                        <strong>Generated:</strong> @report.GeneratedAt.LocalDateTime.ToString("g")
+                        <div class="metadata-label">
+                            <i class="bi bi-clock-history me-2"></i>Generated
+                        </div>
+                        <div class="metadata-value">@report.GeneratedAt.LocalDateTime.ToString("g")</div>
                     </div>
                     <div class="col-md-3 report-metadata">
-                        <strong>Analysis Period:</strong> @report.CutoffDate.LocalDateTime.ToString("d") - @report.GeneratedAt.LocalDateTime.ToString("d")
+                        <div class="metadata-label">
+                            <i class="bi bi-calendar-range me-2"></i>Analysis Period
+                        </div>
+                        <div class="metadata-value">@report.CutoffDate.LocalDateTime.ToString("d") - @report.GeneratedAt.LocalDateTime.ToString("d")</div>
                     </div>
                 </div>
-                <div class="row mt-2">
+                <div class="row g-3 mt-2">
                     <div class="col-md-3 report-metadata">
-                        <strong>Thread Count:</strong> @report.ThreadCount
+                        <div class="metadata-label">
+                            <i class="bi bi-chat-square-text me-2"></i>Thread Count
+                        </div>
+                        <div class="metadata-value">@report.ThreadCount</div>
                     </div>
                     <div class="col-md-3 report-metadata">
-                        <strong>Comment Count:</strong> @report.CommentCount
+                        <div class="metadata-label">
+                            <i class="bi bi-chat-dots me-2"></i>Comment Count
+                        </div>
+                        <div class="metadata-value">@report.CommentCount</div>
                     </div>
                 </div>
-            </div>
-            <div class="report-content">
+            </div>            <div class="card-body report-content">
                 @((MarkupString)report.HtmlContent)
             </div>
         </div>
@@ -79,15 +96,41 @@
         {
             loading = true;
             report = await ReportService.GetReportAsync(Id);
+            
+            if (report != null)
+            {
+                // Process HTML content to fix anchor links
+                report.HtmlContent = ProcessHtmlAnchors(report.HtmlContent);
+            }
         }
         finally
         {
             loading = false;
         }
     }
-
-    private void GoBack()
+    
+    /// <summary>
+    /// Processes HTML content to fix anchor links that only contain hash (#) references
+    /// by ensuring they include the current page URL
+    /// </summary>
+    private string ProcessHtmlAnchors(string htmlContent)
     {
-        NavigationManager.NavigateTo("/reports");
+        if (string.IsNullOrEmpty(htmlContent))
+            return htmlContent;
+            
+        // Get the current page URL without hash fragment
+        var currentUrl = NavigationManager.Uri;
+        if (currentUrl.Contains('#'))
+            currentUrl = currentUrl.Substring(0, currentUrl.IndexOf('#'));
+            
+        // Regex to find <a> tags with href that starts with # but doesn't contain a full URL
+        var pattern = "<a\\s+(?:[^>]*?\\s+)?href\\s*=\\s*([\"'])\\s*(#[^\"']+)\\s*\\1";
+        
+        return Regex.Replace(htmlContent, pattern, match => {
+            // Extract the hash fragment
+            var hash = match.Groups[2].Value;
+            // Replace with full URL + hash
+            return $"<a href=\"{currentUrl}{hash}\"";
+        });
     }
 }

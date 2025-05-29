@@ -6,6 +6,7 @@
 @inject IReportService ReportService
 @inject NavigationManager NavigationManager
 @inject AuthenticationService AuthService
+@inject IHistoryHelper HistoryHelper
 
 <PageTitle>Reports - FeedbackFlow</PageTitle>
 
@@ -44,76 +45,88 @@
                 </div>
             </div>
         }
-        
-        <div class="card mb-4">
-            <div class="card-header">
+          <div class="card mb-4">            <div class="card-header">
                 <div>
-                    <i class="fas fa-table me-1"></i>
+                    <i class="bi bi-file-earmark-text me-1"></i>
                     Available Reports
                 </div>
             </div>
             <div class="card-body">
                 @if (loading)
                 {
-                    <div class="table-responsive">
-                        <table class="table reports-table loading-table">
-                            <thead>
-                                <tr>
-                                    <th>Source</th>
-                                    <th>SubSource</th>
-                                    <th>Generated</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @for (int i = 0; i < 5; i++)
-                                {
-                                    <tr>
-                                        <td><div class="loading-placeholder"></div></td>
-                                        <td><div class="loading-placeholder"></div></td>
-                                        <td><div class="loading-placeholder"></div></td>
-                                        <td><div class="loading-placeholder button-placeholder"></div></td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                    <div class="reports-loading">
+                        @for (int i = 0; i < 3; i++)
+                        {
+                            <div class="report-item-skeleton">
+                                <div class="report-item-header">
+                                    <div class="loading-placeholder source-placeholder"></div>
+                                    <div class="loading-placeholder date-placeholder"></div>
+                                </div>
+                                <div class="report-item-body">
+                                    <div class="loading-placeholder"></div>
+                                    <div class="loading-placeholder"></div>
+                                </div>
+                                <div class="report-item-footer">
+                                    <div class="loading-placeholder button-placeholder"></div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else if (errorMessage != null)
+                {
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        @errorMessage
                     </div>
                 }
                 else if (reports == null || !reports.Any())
                 {
                     <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
                         No reports found.
                     </div>
                 }
                 else
                 {
-                    <div class="table-responsive">                    
-                        <table class="table reports-table">
-                            <thead>
-                                <tr>
-                                    <th>Source</th>
-                                    <th>SubSource</th>
-                                    <th>Generated</th>
-                                    <th class="text-end">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var report in FilteredReports)
-                                {
-                                    <tr>
-                                        <td>@report.Source</td>
-                                        <td>@report.SubSource</td>
-                                        <td>@report.GeneratedAt.LocalDateTime.ToString("g")</td>
-                                        <td class="text-end">
-                                            <button class="btn btn-action" @onclick="() => ViewReport(report.Id)">
-                                                <i class="fas fa-external-link-alt me-1"></i>
-                                                View
-                                            </button>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                    <div class="reports-container">
+                        @foreach (var report in FilteredReports)
+                        {
+                            <div class="report-item">
+                                <div class="report-item-header">                                    <div class="report-source">
+                                        <div class="source-badge">
+                                            <i class="bi @HistoryHelper.GetServiceIcon(report.Source) me-1"></i>
+                                            @report.Source
+                                        </div>
+                                        <span class="report-sub-source">@report.SubSource</span>
+                                    </div>                                    <div class="report-date">
+                                        <i class="bi bi-calendar me-1"></i>
+                                        @report.GeneratedAt.LocalDateTime.ToString("MMM d, yyyy")
+                                    </div>
+                                </div>
+                                <div class="report-item-body">
+                                    <div class="report-stats">
+                                        <div class="stat-item">
+                                            <div class="stat-label">Threads</div>
+                                            <div class="stat-value">@report.ThreadCount</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-label">Comments</div>
+                                            <div class="stat-value">@report.CommentCount</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-label">Period</div>
+                                            <div class="stat-value">@((report.GeneratedAt - report.CutoffDate).Days) days</div>
+                                        </div>
+                                    </div>
+                                </div>                                <div class="report-item-footer">
+                                    <button class="btn btn-action" @onclick="() => ViewReport(report.Id)">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>
+                                        View Report
+                                    </button>
+                                </div>
+                            </div>
+                        }
                     </div>
                 }
             </div>
@@ -138,19 +151,26 @@
     private async Task HandleAuthenticated(bool success)
     {
         isAuthenticated = success;
-        StateHasChanged();
-
-        if (success)
-        {
-            await LoadReports();
-        }
-    }
-
+    private string? errorMessage;
     private async Task LoadReports()
     {
         try
         {
             loading = true;
+            errorMessage = null;
+            reports = await ReportService.ListReportsAsync();
+            sources = reports.Select(r => r.Source).ToHashSet();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load reports: {ex.Message}";
+            reports = null;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
             reports = await ReportService.ListReportsAsync();
             sources = reports.Select(r => r.Source).ToHashSet();
         }
