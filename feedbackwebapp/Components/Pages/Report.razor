@@ -8,72 +8,85 @@
 
 <PageTitle>Report Details - FeedbackFlow</PageTitle>
 
-<div class="container-lg py-4">
+<div class="py-4">
     @if (loading)
     {
-        <div class="text-center mt-5">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
+        <div class="loading-container">
+            <div class="loading-spinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="loading-text">Loading report details...</p>
             </div>
-            <p class="mt-2">Loading report details...</p>
         </div>
     }
     else if (report == null)
     {
-        <div class="alert alert-danger mt-4">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            Report not found.
-        </div>    }
-    else
-    {
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="feedbackflow-title mb-0">Report Details</h1>
-        </div>
-        
-        <div class="card report-card mb-4">
-            <div class="card-header report-header">
-                <div class="row g-3">
-                    <div class="col-md-3 report-metadata">
-                        <div class="metadata-label">
-                            <i class="bi @HistoryHelper.GetServiceIcon(report.Source) me-2"></i>Source
-                        </div>
-                        <div class="metadata-value">@report.Source</div>
-                    </div>
-                    <div class="col-md-3 report-metadata">
-                        <div class="metadata-label">
-                            <i class="bi bi-hash me-2"></i>Subreddit
-                        </div>
-                        <div class="metadata-value">@report.SubSource</div>
-                    </div>
-                    <div class="col-md-3 report-metadata">
-                        <div class="metadata-label">
-                            <i class="bi bi-clock-history me-2"></i>Generated
-                        </div>
-                        <div class="metadata-value">@report.GeneratedAt.LocalDateTime.ToString("g")</div>
-                    </div>
-                    <div class="col-md-3 report-metadata">
-                        <div class="metadata-label">
-                            <i class="bi bi-calendar-range me-2"></i>Analysis Period
-                        </div>
-                        <div class="metadata-value">@report.CutoffDate.LocalDateTime.ToString("d") - @report.GeneratedAt.LocalDateTime.ToString("d")</div>
+        <div class="error-container">
+            <div class="alert alert-danger error-alert">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-exclamation-triangle-fill error-icon"></i>
+                    <div>
+                        <h5 class="mb-1">Report Not Found</h5>
+                        <p class="mb-0">The requested report could not be found or may have been removed.</p>
                     </div>
                 </div>
-                <div class="row g-3 mt-2">
-                    <div class="col-md-3 report-metadata">
-                        <div class="metadata-label">
-                            <i class="bi bi-chat-square-text me-2"></i>Thread Count
-                        </div>
-                        <div class="metadata-value">@report.ThreadCount</div>
-                    </div>
-                    <div class="col-md-3 report-metadata">
-                        <div class="metadata-label">
-                            <i class="bi bi-chat-dots me-2"></i>Comment Count
-                        </div>
-                        <div class="metadata-value">@report.CommentCount</div>
-                    </div>                </div>
             </div>
-            <div class="card-body report-content">
-                @((MarkupString)report.HtmlContent)
+        </div>
+    }
+    else
+    {
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="page-title">
+                    <i class="bi bi-file-earmark-text page-title-icon"></i>
+                    Report Details
+                </h1>
+                <button class="btn btn-outline-secondary btn-sm back-button" 
+                        onclick="history.back()" 
+                        title="Go back">
+                    <i class="bi bi-arrow-left me-1"></i>
+                    Back
+                </button>
+            </div>
+        </div>          <div class="report-container">
+            <!-- Report Summary Card -->
+            <div class="report-summary mb-3">
+                <div class="report-summary-pills">
+                    <span class="report-pill source-pill">
+                        <i class="bi @HistoryHelper.GetServiceIcon(report.Source)"></i>
+                        @report.Source
+                    </span>
+                    <span class="report-pill">
+                        <i class="bi bi-hash"></i>
+                        @report.SubSource
+                    </span>
+                    <span class="report-pill">
+                        <i class="bi bi-chat-square-text"></i>
+                        @report.ThreadCount.ToString("N0") threads
+                    </span>
+                    <span class="report-pill">
+                        <i class="bi bi-chat-dots"></i>
+                        @report.CommentCount.ToString("N0") comments
+                    </span>
+                    <span class="report-pill">
+                        <i class="bi bi-calendar-range"></i>
+                        @report.CutoffDate.LocalDateTime.ToString("MMM d") - 
+                        @report.GeneratedAt.LocalDateTime.ToString("MMM d, yyyy")
+                    </span>
+                </div>
+            </div>
+              <!-- Report Content Card -->
+            <div class="card report-content-card">
+                <div class="card-header report-content-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-file-text me-2"></i>
+                        Analysis Report
+                    </h5>
+                </div>
+                <div class="card-body report-content">
+                    @((MarkupString)report.HtmlContent)
+                </div>
             </div>
         </div>
     }
