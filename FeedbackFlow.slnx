@@ -5,14 +5,14 @@
     <Platform Name="x86" />
   </Configurations>
   <Folder Name="/Aspire/">
-    <Project Path="../../../../../../../../GitHub/feedbackflow/FeedbackFlow.AppHost/FeedbackFlow.AppHost.csproj" />
-    <Project Path="../../../../../../../../GitHub/feedbackflow/FeedbackFlow.ServiceDefaults/FeedbackFlow.ServiceDefaults.csproj" />
+    <Project Path="FeedbackFlow.AppHost/FeedbackFlow.AppHost.csproj" />
+    <Project Path="FeedbackFlow.ServiceDefaults/FeedbackFlow.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/CLI/">
-    <Project Path="../../../../../../../../GitHub/feedbackflow/ghdump/ghdump.csproj" />
-    <Project Path="../../../../../../../../GitHub/feedbackflow/hndump/hndump.csproj" />
-    <Project Path="../../../../../../../../GitHub/feedbackflow/rddump/rddump.csproj" />
-    <Project Path="../../../../../../../../GitHub/feedbackflow/ytdump/ytdump.csproj" />
+    <Project Path="ghdump/ghdump.csproj" />
+    <Project Path="hndump/hndump.csproj" />
+    <Project Path="rddump/rddump.csproj" />
+    <Project Path="ytdump/ytdump.csproj" />
   </Folder>
   <Folder Name="/.github/">
     <File Path=".github/copilot-instructions.md" />
@@ -26,9 +26,9 @@
     <File Path="GitVersion.yml" />
     <File Path="README.md" />
   </Folder>
-  <Project Path="../../../../../../../../GitHub/feedbackflow/feedbackflow.tests/feedbackflow.tests.csproj" />
-  <Project Path="../../../../../../../../GitHub/feedbackflow/feedbackfunctions/feedbackfunctions.csproj" />
-  <Project Path="../../../../../../../../GitHub/feedbackflow/feedbackmcp/feedbackmcp.csproj" />
-  <Project Path="../../../../../../../../GitHub/feedbackflow/feedbackwebapp/feedbackwebapp.csproj" />
-  <Project Path="../../../../../../../../GitHub/feedbackflow/shareddump/shareddump.csproj" />
+  <Project Path="feedbackflow.tests/feedbackflow.tests.csproj" />
+  <Project Path="feedbackfunctions/feedbackfunctions.csproj" />
+  <Project Path="feedbackmcp/feedbackmcp.csproj" />
+  <Project Path="feedbackwebapp/feedbackwebapp.csproj" />
+  <Project Path="shareddump/shareddump.csproj" />
 </Solution>
