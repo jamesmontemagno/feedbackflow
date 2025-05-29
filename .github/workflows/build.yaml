@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:    
-    name: Build All Projects
+    name: Build and Test Solution
     runs-on: ubuntu-latest
     permissions:
       contents: read #This is required for actions/checkout
@@ -22,7 +22,10 @@ jobs:
         dotnet-version: '9.0.x'
 
     - name: Install dependencies
-      run: dotnet restore
+      run: dotnet restore FeedbackFlow.slnx
 
     - name: Build solution
-      run: dotnet build --configuration Release
+      run: dotnet build FeedbackFlow.slnx --configuration Release --no-restore
+
+    - name: Run tests
+      run: dotnet test FeedbackFlow.slnx --configuration Release --no-build
