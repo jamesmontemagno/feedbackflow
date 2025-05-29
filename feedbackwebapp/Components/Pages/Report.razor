@@ -8,7 +8,23 @@
 
 <PageTitle>Report Details - FeedbackFlow</PageTitle>
 
-<div class="py-4">
+<div class="container-lg py-4">
+
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="page-title">
+                <i class="bi bi-file-earmark-text page-title-icon"></i>
+                Report Details
+            </h1>
+            <button class="btn btn-outline-secondary btn-sm back-button" 
+                    onclick="history.back()" 
+                    title="Go back">
+                <i class="bi bi-arrow-left me-1"></i>
+                Back
+            </button>
+        </div>
+    </div>  
+
     @if (loading)
     {
         <div class="loading-container">
@@ -35,58 +51,44 @@
         </div>
     }
     else
-    {
-        <div class="page-header">
-            <div class="d-flex justify-content-between align-items-center">
-                <h1 class="page-title">
-                    <i class="bi bi-file-earmark-text page-title-icon"></i>
-                    Report Details
-                </h1>
-                <button class="btn btn-outline-secondary btn-sm back-button" 
-                        onclick="history.back()" 
-                        title="Go back">
-                    <i class="bi bi-arrow-left me-1"></i>
-                    Back
-                </button>
+    {               
+        <!-- Report Summary Pills -->
+        <div class="report-summary mb-3">
+            <div class="report-summary-pills">
+                <span class="report-pill source-pill">
+                    <i class="bi @HistoryHelper.GetServiceIcon(report.Source)"></i>
+                    @report.Source
+                </span>
+                <span class="report-pill">
+                    <i class="bi bi-hash"></i>
+                    @report.SubSource
+                </span>
+                <span class="report-pill">
+                    <i class="bi bi-chat-square-text"></i>
+                    @report.ThreadCount.ToString("N0") threads
+                </span>
+                <span class="report-pill">
+                    <i class="bi bi-chat-dots"></i>
+                    @report.CommentCount.ToString("N0") comments
+                </span>
+                <span class="report-pill">
+                    <i class="bi bi-calendar-range"></i>
+                    @report.CutoffDate.LocalDateTime.ToString("MMM d") - 
+                    @report.GeneratedAt.LocalDateTime.ToString("MMM d, yyyy")
+                </span>
             </div>
-        </div>          <div class="report-container">
-            <!-- Report Summary Card -->
-            <div class="report-summary mb-3">
-                <div class="report-summary-pills">
-                    <span class="report-pill source-pill">
-                        <i class="bi @HistoryHelper.GetServiceIcon(report.Source)"></i>
-                        @report.Source
-                    </span>
-                    <span class="report-pill">
-                        <i class="bi bi-hash"></i>
-                        @report.SubSource
-                    </span>
-                    <span class="report-pill">
-                        <i class="bi bi-chat-square-text"></i>
-                        @report.ThreadCount.ToString("N0") threads
-                    </span>
-                    <span class="report-pill">
-                        <i class="bi bi-chat-dots"></i>
-                        @report.CommentCount.ToString("N0") comments
-                    </span>
-                    <span class="report-pill">
-                        <i class="bi bi-calendar-range"></i>
-                        @report.CutoffDate.LocalDateTime.ToString("MMM d") - 
-                        @report.GeneratedAt.LocalDateTime.ToString("MMM d, yyyy")
-                    </span>
-                </div>
+        </div>
+        
+        <!-- Report Content Card -->
+        <div class="card report-content-card">
+            <div class="card-header report-content-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-file-text me-2"></i>
+                    Analysis Report
+                </h5>
             </div>
-              <!-- Report Content Card -->
-            <div class="card report-content-card">
-                <div class="card-header report-content-header">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-file-text me-2"></i>
-                        Analysis Report
-                    </h5>
-                </div>
-                <div class="card-body report-content">
-                    @((MarkupString)report.HtmlContent)
-                </div>
+            <div class="card-body report-content">
+                @((MarkupString)report.HtmlContent)
             </div>
         </div>
     }
@@ -114,8 +116,9 @@
             
             if (report != null)
             {
-                // Process HTML content to fix anchor links
+                // Process HTML content to fix anchor links and clean CSS
                 report.HtmlContent = ProcessHtmlAnchors(report.HtmlContent);
+                report.HtmlContent = ProcessHtmlCss(report.HtmlContent);
             }
         }
         finally
@@ -124,6 +127,29 @@
         }
     }
     
+    /// <summary>
+    /// Processes HTML content to remove specific CSS properties from the body style
+    /// </summary>
+    private string ProcessHtmlCss(string htmlContent)
+    {
+        if (string.IsNullOrEmpty(htmlContent))
+            return htmlContent;
+            
+        // Pattern to match the body CSS style block
+        var pattern = @"body\s*{\s*([^}]+)\s*}";
+        
+        return Regex.Replace(htmlContent, pattern, match => {
+            var cssContent = match.Groups[1].Value;
+            
+            // Remove max-width and padding properties while preserving other styles
+            var cssProperties = cssContent.Split(';')
+                .Where(prop => !prop.Contains("max-width") && !prop.Contains("padding"))
+                .Where(prop => !string.IsNullOrWhiteSpace(prop));
+                
+            return $"body {{ {string.Join(";", cssProperties)} }}";
+        });
+    }
+
     /// <summary>
     /// Processes HTML content to fix anchor links that only contain hash (#) references
     /// by ensuring they include the current page URL
