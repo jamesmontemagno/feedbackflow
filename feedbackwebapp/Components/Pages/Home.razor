@@ -202,42 +202,44 @@
         var uri = new Uri(NavigationManager.Uri);
         var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
 
-        initialSource = query["source"];
+        initialSource = query["source"]?.ToLower();
         initialId = query["id"];
+        var url = query["url"];
+        
+        // If URL is provided, switch to Auto mode and use the URL
+        if (!string.IsNullOrEmpty(url))
+        {
+            initialSource = "auto";
+            initialId = url;
+        }
 
         await base.OnInitializedAsync();
-    }
-    private async Task HandleQueryNav()
+    }    private async Task HandleQueryNav()
     {
-        await Task.Delay(400); // Allow the UI to settle before executing the logic
-        if (!string.IsNullOrEmpty(initialSource) && !string.IsNullOrEmpty(initialId))
+        if (string.IsNullOrEmpty(initialSource) || string.IsNullOrEmpty(initialId))
+            return;
+
+        selectedSource = initialSource.ToLower() switch
         {
-            selectedSource = initialSource.ToLower() switch
+            "auto" or "hackernews" or "reddit" or "youtube" => "Auto",
+            _ => selectedSource
+        };
+        StateHasChanged();        if (selectedSource == "Auto")
+        {
+            // Wait for autoDataSourceForm to be initialized, up to 10 attempts
+            var attempts = 0;
+            while (autoDataSourceForm is null && attempts < 10)
             {
-                "manual" => "Manual",
-                "auto" => "Auto",
-                _ => selectedSource
-            };
-            StateHasChanged();
-
-            // Allow time for the component to render
-            await Task.Delay(400);
-
-            // Safely update form values
-            switch (selectedSource)
-            {
-                case "Auto" when autoDataSourceForm != null:
-                    await autoDataSourceForm.HandleUrlChange(0, initialId);
-                    autoDataSourceForm.RefreshUI();
-                    break;
-
-                case "Manual" when manualInputForm != null:
-                    manualInputForm.ContentInput = initialId;
-                    manualInputForm.RefreshUI();
-                    break;
+                await Task.Delay(250);
+                attempts++;
             }
 
-            StateHasChanged();
+            if (autoDataSourceForm is not null)
+            {
+                await autoDataSourceForm.HandleUrlChange(0, initialId);
+                autoDataSourceForm.RefreshUI();
+                StateHasChanged();
+            }
         }
     }
 }

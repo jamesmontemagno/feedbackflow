@@ -171,7 +171,7 @@ public static class EmailUtils
             </div>
             <div class='action-buttons'>
                 <a href='{1}' class='feedback-button'>View on Reddit</a>
-                <a href='https://www.feedbackflow.app/?source=reddit&id={6}' class='feedback-button'>Open in FeedbackFlow</a>
+                <a href='https://www.feedbackflow.app/?source=auto&id={6}' class='feedback-button'>Open in FeedbackFlow</a>
             </div>
             <div class='analysis'>
                 {7}
@@ -183,7 +183,7 @@ public static class EmailUtils
                 thread.Score,
                 thread.NumComments,
                 thread.Author,
-                thread.Id,
+                Uri.EscapeDataString(thread.Url),
                 ConvertMarkdownToHtml(analysis));
         }
         emailBuilder.AppendLine(@"

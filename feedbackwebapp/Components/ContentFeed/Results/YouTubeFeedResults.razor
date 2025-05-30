@@ -253,7 +253,8 @@
 
     private void NavigateToAnalyze(string videoId)
     {
-        NavigationManager.NavigateTo($"/?source=youtube&id={videoId}");
+        var url = $"https://www.youtube.com/watch?v={videoId}";
+        NavigationManager.NavigateTo($"/?source=auto&url={Uri.EscapeDataString(url)}");
     }
 
     public void Dispose()

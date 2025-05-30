@@ -68,7 +68,7 @@
                                 <a href="@item.Url" target="_blank" class="btn btn-sm btn-outline-secondary" title="Open thread">
                                     <i class="bi bi-box-arrow-up-right"></i>
                                 </a>
-                                <a href="javascript:void(0)" class="btn btn-sm btn-outline-secondary" @onclick="() => NavigateToAnalyze(item.Id.ToString())" title="Analyze thread">
+                                <a href="javascript:void(0)" class="btn btn-sm btn-outline-secondary" @onclick="() => NavigateToAnalyze(item)" title="Analyze thread">
                                     <i class="bi bi-graph-up"></i>
                                 </a>
                             </div>
@@ -242,9 +242,10 @@
         };
     }
 
-    private void NavigateToAnalyze(string id)
+    private void NavigateToAnalyze(HackerNewsItem item)
     {
-        NavigationManager.NavigateTo($"/?source=hackernews&id={id}");
+        var url = $"https://news.ycombinator.com/item?id={item.Id}";
+        NavigationManager.NavigateTo($"/?source=auto&url={Uri.EscapeDataString(url)}");
     }
 
     public void Dispose()
