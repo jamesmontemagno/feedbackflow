@@ -23,25 +23,56 @@
         @if (reports != null && reports.Any())
         {
             <div class="filter-controls mb-4">
-                <div class="d-flex gap-3 flex-wrap">
-                    <div class="filter-group input-group">
-                        <span class="input-group-text filter-label">Source</span>
-                        <select class="form-select" @bind="selectedSource">
-                            <option value="">All Sources</option>
-                            @foreach (var source in sources)
-                            {
-                                <option value="@source">@source</option>
-                            }
-                        </select>
+                <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                        <div class="filter-group">
+                            <label class="form-label">Source</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-funnel"></i>
+                                </span>
+                                <select class="form-select" @bind="selectedSource">
+                                    <option value="">All Sources</option>
+                                    @foreach (var source in sources)
+                                    {
+                                        <option value="@source">@source</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                    <div class="filter-group input-group">
-                        <span class="input-group-text filter-label">Date Range</span>
-                        <select class="form-select" @bind="selectedDateRange">
-                            <option value="all">All Time</option>
-                            <option value="today">Today</option>
-                            <option value="week">Last 7 Days</option>
-                            <option value="month">Last 30 Days</option>
-                        </select>
+                    <div class="col-12 col-md-4">
+                        <div class="filter-group">
+                            <label class="form-label">SubSource</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-filter"></i>
+                                </span>
+                                <select class="form-select" @bind="selectedSubSource">
+                                    <option value="">All SubSources</option>
+                                    @foreach (var subSource in subSources)
+                                    {
+                                        <option value="@subSource">@subSource</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <div class="filter-group">
+                            <label class="form-label">Date Range</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-calendar-range"></i>
+                                </span>
+                                <select class="form-select" @bind="selectedDateRange">
+                                    <option value="all">All Time</option>
+                                    <option value="today">Today</option>
+                                    <option value="week">Last 7 Days</option>
+                                    <option value="month">Last 30 Days</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -142,12 +173,15 @@
     private bool isAuthenticated = false;
     private IEnumerable<ReportModel>? reports;
     private string selectedSource = "";
+    private string selectedSubSource = "";
     private string selectedDateRange = "all";
     private HashSet<string> sources = new();
+    private HashSet<string> subSources = new();
 
     private IEnumerable<ReportModel> FilteredReports =>
         reports?.Where(r => 
             (string.IsNullOrEmpty(selectedSource) || r.Source == selectedSource) &&
+            (string.IsNullOrEmpty(selectedSubSource) || r.SubSource == selectedSubSource) &&
             IsInDateRange(r.GeneratedAt)) 
         ?? Enumerable.Empty<ReportModel>();
 
@@ -169,6 +203,7 @@
             errorMessage = null;
             reports = await ReportService.ListReportsAsync();
             sources = reports.Select(r => r.Source).ToHashSet();
+            subSources = reports.Select(r => r.SubSource).ToHashSet();
         }
         catch (Exception ex)
         {
