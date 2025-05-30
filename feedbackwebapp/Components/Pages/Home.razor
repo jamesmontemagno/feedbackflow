@@ -31,22 +31,26 @@
     else
     {        
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="feedbackflow-title mb-0">Feedback Analysis</h1>
+            <h1 class="feedbackflow-title mb-0">Analyze</h1>
+            <SourceSelector @bind-SelectedSource="selectedSource" IsDisabled="@isLoading" />
         </div>
 
-        <SourceSelector @bind-SelectedSource="selectedSource" />
-
+        @if (selectedSource == "Auto")
+        {
+            <PlatformPills />
+        }
 
         @if (!string.IsNullOrEmpty(selectedSource))
-        {            <div class="card shadow-sm">
+        {            
+            <div class="card shadow-sm">
                 <div class="card-body">
                     @if (selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
                     {
-                        <AutoDataSourceForm @ref="autoDataSourceForm" />
+                        <AutoDataSourceForm @ref="autoDataSourceForm" IsDisabled="@isLoading" />
                     }
                     else if (selectedSource.Equals("Manual", StringComparison.OrdinalIgnoreCase))
                     {
-                        <ManualFeedbackInput @ref="manualInputForm" />
+                        <ManualFeedbackInput @ref="manualInputForm" IsDisabled="@isLoading" />
                     }
 
                     <SubmitButton ShowWhenSource="@selectedSource" IsLoading="@isLoading" OnSubmit="SubmitFeedbackRequest" />
@@ -55,21 +59,23 @@
                     {
                         <div class="alert alert-info mt-3">
                             <div class="d-flex align-items-center">
-                                <div class="spinner-border spinner-border-sm me-2" role="status">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
-                                <div>
-                                    <strong>@currentStatus</strong>
-                                    <div class="small">@currentStatusMessage</div>
-                                </div>
+                                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <div>
+                                <strong>@currentStatus</strong>
+                                <div class="small">@currentStatusMessage</div>
                             </div>
                         </div>
                     }                    
-                        <AnalysisResults 
+                        
+                    <AnalysisResults 
                         Error="@error" 
                         MarkdownResult="@markdownResult" 
                         SourceType="@selectedSource"
-                        UserInput="@GetUserInputForSource()" />                    @* Display additional data from FeedbackSourceData list *@
+                        UserInput="@GetUserInputForSource()" /> 
+
+                    @* Display additional data from FeedbackSourceData list *@
                     @if (feedbackSources != null && feedbackSources.Any())
                     {
                         foreach (var source in feedbackSources)

@@ -26,6 +26,9 @@
     --border-radius-sm: 12px;
     --border-radius-lg: 24px;
     --border-radius-pill: 50rem;
+    --platform-pill-bg: var(--bg-secondary);
+    --platform-pill-border: var(--border-color);
+    --platform-pill-text: var(--text-secondary);
 }
 
 [data-theme="dark"] {
@@ -51,6 +54,9 @@
     --info-color-rgb: 133, 165, 231;
     --code-bg: rgba(165, 139, 216, 0.15);
     --bs-secondary: #c8c0e7;
+    --platform-pill-bg: var(--bg-secondary);
+    --platform-pill-border: var(--border-color);
+    --platform-pill-text: var(--text-secondary);
 }
 
 /* Base styles */

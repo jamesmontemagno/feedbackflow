@@ -1,41 +1,17 @@
-<div class="container py-3" role="group" aria-label="Select feedback source">
-    <div class="row justify-content-center g-2">
+<div class="segmented-control-container" role="group" aria-label="Select feedback source">
+    <div class="segmented-control @(IsDisabled ? "disabled" : "")">
         @foreach (var source in sources)
         {
-            <div class="col-lg-auto col-md-4 col-sm-6">
-                <button type="button" 
-                        class="btn w-100 py-2 source-button @GetButtonClass(source.Value)"
-                        @onclick="() => OnSourceSelectedAsync(source.Value)"
-                        aria-pressed="@(source.Value == SelectedSource ? "true" : "false")"
-                        title="@source.Description">
-                    <div class="d-flex align-items-center justify-content-center w-100">
-                        <div class="source-icon me-2">
-                            <i class="bi @source.IconClass fs-4" aria-hidden="true"></i>
-                        </div>
-                        <div class="fw-medium">@source.Name</div>
-                    </div>
-                </button>
-            </div>
-        }
-    </div>
-    
-    @if (SelectedSource == "Auto")
-    {
-        <div class="platform-pills-container mt-4">
-            <div class="text-center mb-3">
-                <small class="text-muted fw-medium">Supported Platforms</small>
-            </div>
-            <div class="d-flex flex-wrap justify-content-center gap-2">
-                @foreach (var platform in supportedPlatforms)
-                {
-                    <div class="platform-pill" title="@platform.Name">
-                        <i class="bi @platform.IconClass platform-icon" aria-hidden="true"></i>
-                        <span class="platform-name">@platform.Name</span>
-                    </div>
-                }
-            </div>
-        </div>
-    }
+            <button type="button" 
+                    class="segment-button @GetButtonClass(source.Value)"
+                    @onclick="() => OnSourceSelectedAsync(source.Value)"
+                    aria-pressed="@(source.Value == SelectedSource ? "true" : "false")"
+                    disabled="@IsDisabled"
+                    title="@source.Description">
+                <i class="bi @source.IconClass" aria-hidden="true"></i>
+                <span>@source.Name</span>
+            </button>
+        }    </div>
 </div>
 
 @code {
@@ -45,9 +21,11 @@
     [Parameter]
     public EventCallback<string> SelectedSourceChanged { get; set; }
 
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
     private const string DefaultSource = "Auto";
-    
-    private readonly SourceOption[] sources = new[]
+      private readonly SourceOption[] sources = new[]
     {
         new SourceOption(
             "Auto", 
@@ -59,17 +37,6 @@
             "bi-pencil-square",
             "Manually enter content and customize the analysis prompt",
             "Manual")
-    };
-
-    private readonly PlatformOption[] supportedPlatforms = new[]
-    {
-        new PlatformOption("YouTube", "bi-youtube", "#FF0000"),
-        new PlatformOption("GitHub", "bi-github", "#333333"),
-        new PlatformOption("Reddit", "bi-reddit", "#FF4500"),
-        new PlatformOption("HackerNews", "bi-braces", "#FF6600"),
-        new PlatformOption("DevBlogs", "bi-journal-richtext", "#0078D4"),
-        new PlatformOption("Twitter", "bi-twitter-x", "#1DA1F2"),
-        new PlatformOption("BlueSky", "bi-cloud-fill", "#00A8E8")
     };
     
     private string GetButtonClass(string source) => 
@@ -95,8 +62,5 @@
             SelectedSource = DefaultSource;
             await SelectedSourceChanged.InvokeAsync(DefaultSource);
         }
-    }
-
-    private record SourceOption(string Name, string IconClass, string Description, string Value);
-    private record PlatformOption(string Name, string IconClass, string Color);
+    }    private record SourceOption(string Name, string IconClass, string Description, string Value);
 }
