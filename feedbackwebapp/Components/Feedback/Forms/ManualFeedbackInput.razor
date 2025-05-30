@@ -3,35 +3,41 @@
 @inject UserSettingsService UserSettingsService
 
 <div class="manual-feedback-form">
-    <div class="form-floating mb-3">        <textarea 
+    <div class="form-floating mb-3">        
+        <textarea 
             class="form-control prompt-textarea @(string.IsNullOrWhiteSpace(CustomPrompt) && _isInitialized ? "is-invalid" : "")"
             id="customPrompt" 
             placeholder="Enter analysis prompt instructions"
             style="min-height: 175px; height: 175px;"
+            disabled="@IsDisabled"
             @bind="CustomPrompt" 
             @bind:event="oninput"></textarea>
         <label for="customPrompt">Analysis Prompt</label>
         <div class="invalid-feedback">
             Please provide an analysis prompt.
         </div>
-        <div class="d-flex align-items-center justify-content-between mt-2">            <small class="form-text text-muted">
+        <div class="d-flex align-items-center justify-content-between mt-2">            
+            <small class="form-text text-muted">
                 <i class="bi bi-info-circle me-1"></i>
                 This prompt tells the AI how to analyze your content.
             </small>
             <button type="button" 
                     class="btn btn-sm btn-outline-secondary action-btn"
                     @onclick="SaveAsDefaultPrompt"
+                    disabled="@IsDisabled"
                     title="Save this prompt as the default for Manual entries">
                 <i class="bi bi-save me-1"></i> Save as Default
             </button>
         </div>
     </div>
     
-    <div class="form-floating mb-3">        <textarea 
+    <div class="form-floating mb-3">        
+        <textarea 
             class="form-control content-textarea @(string.IsNullOrWhiteSpace(ContentInput) && _isInitialized ? "is-invalid" : "")"
             id="contentInput" 
             placeholder="Paste your content here"
             style="min-height: 350px; height: 350px;"
+            disabled="@IsDisabled"
             @bind="ContentInput" 
             @bind:event="oninput"></textarea>
         <label for="contentInput">Content to Analyze</label>
@@ -49,6 +55,9 @@
     private string _customPrompt = string.Empty;
     private string _contentInput = string.Empty;
     private bool _isInitialized = false;
+
+    [Parameter]
+    public bool IsDisabled { get; set; }
 
     protected override async Task OnInitializedAsync()
     {

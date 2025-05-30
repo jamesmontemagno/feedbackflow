@@ -1,0 +1,31 @@
+@namespace FeedbackWebApp.Components.Feedback
+
+<div class="platform-pills-container mt-4">
+    <div class="text-center mb-3">
+        <small class="text-muted fw-medium">Supported Platforms</small>
+    </div>
+    <div class="d-flex flex-wrap justify-content-center gap-2">
+        @foreach (var platform in supportedPlatforms)
+        {
+            <div class="platform-pill" title="@platform.Name">
+                <i class="bi @platform.IconClass platform-icon" aria-hidden="true"></i>
+                <span class="platform-name">@platform.Name</span>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private readonly PlatformOption[] supportedPlatforms = new[]
+    {
+        new PlatformOption("YouTube", "bi-youtube", "#FF0000"),
+        new PlatformOption("GitHub", "bi-github", "#333333"),
+        new PlatformOption("Reddit", "bi-reddit", "#FF4500"),
+        new PlatformOption("HackerNews", "bi-braces", "#FF6600"),
+        new PlatformOption("DevBlogs", "bi-journal-richtext", "#0078D4"),
+        new PlatformOption("Twitter", "bi-twitter-x", "#1DA1F2"),
+        new PlatformOption("BlueSky", "bi-cloud-fill", "#00A8E8")
+    };
+
+    private record PlatformOption(string Name, string IconClass, string Color);
+}

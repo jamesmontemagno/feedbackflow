@@ -1,5 +1,24 @@
 This page tracks the latest features and improvements added to FeedbackFlow.
 
+## 📆 June 2025
+
+### 📊 Reports
+
+We've added a new Report section to FeedbackFlow!
+
+- 📈 Advanced sentiment trend analysis over time for reddit
+- 🔍 Deeper insight into user engagement patterns
+- 📆 Updated automatically every week
+
+### 🏠 Streamlined Home Experience
+
+We've simplified the home page to make feedback analysis even easier:
+
+- 🎯 Clean, focused URL input field
+- ⚡ Quick-access buttons for recent analyses
+- 🔄 Improved history organization
+- 📱 Better mobile responsiveness
+
 ## 📅 May 2025
 
 ### 🔗 Share Analysis Feature

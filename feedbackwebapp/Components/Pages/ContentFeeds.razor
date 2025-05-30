@@ -1,4 +1,24 @@
 @page "/content-feeds"
+@namespace FeedbackWebApp.Components.Pages
+
+@using Microsoft.AspNetCore.Components
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Web
+@using SharedDump.Models.YouTube
+@using SharedDump.Models.Reddit
+@using SharedDump.Models.HackerNews
+@using FeedbackWebApp.Components.Feedback
+@using FeedbackWebApp.Components.Feedback.Forms
+@using FeedbackWebApp.Components.ContentFeed.Forms
+@using FeedbackWebApp.Components.ContentFeed.Results
+@using FeedbackWebApp.Services
+@using FeedbackWebApp.Services.ContentFeed
+@using FeedbackWebApp.Services.Interfaces
+@using FeedbackWebApp.Components.Shared
+@using System.Threading.Tasks
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Forms
+
 @inject IConfiguration Configuration
 @inject ContentFeedServiceProvider ContentFeedProvider
 @inject IJSRuntime JSRuntime
@@ -19,20 +39,31 @@
                 </div>
                 <p class="text-muted mb-4">
                     Search and monitor content across different platforms. Select a source and configure your search parameters.
-                </p>
-
+                </p>                
                 <div class="mb-4">
-                    <h2 class="h4 mb-3">Select Content Source</h2>
-                    <div class="d-flex flex-wrap gap-2">
-                        @foreach (var source in contentSources)
-                        {
-                            <button class="btn @(selectedSource == source.Value ? "btn-primary" : "btn-outline-primary") source-button"
-                                    @onclick="() => SelectSource(source.Value)"
-                                    disabled="@isLoading">
-                                <i class="@source.IconClass me-2"></i>
-                                @source.Name
-                            </button>
-                        }
+                    <h2 class="h4 mb-3">Select Content Source</h2>                    <div class="segmented-control-container">
+                        <div class="segmented-control @(isLoading ? "disabled" : "")"
+                             role="radiogroup"
+                             aria-label="Select content source"
+                             aria-describedby="segmented-control-description">
+                            <span id="segmented-control-description" class="visually-hidden">
+                                Select a content source to search and monitor. Available options are YouTube for videos, Reddit for discussions, and Hacker News for tech news.
+                            </span>
+                            @foreach (var source in contentSources)
+                            {
+                                <button type="button" 
+                                        class="segment-button @(selectedSource == source.Value ? "btn-primary shadow-sm" : "btn-outline-primary")"
+                                        @onclick="() => SelectSource(source.Value)"
+                                        role="radio"
+                                        aria-checked="@(source.Value == selectedSource)"
+                                        disabled="@isLoading"
+                                        title="@source.Description"
+                                        aria-label="@source.Name">
+                                    <i class="@source.IconClass" aria-hidden="true"></i>
+                                    <span>@source.Name</span>
+                                </button>
+                            }
+                        </div>
                     </div>
                 </div>
 
@@ -106,17 +137,17 @@
 
     private YouTubeFeedForm? youtubeFeedForm;
     private RedditFeedForm? redditFeedForm;
-    private HackerNewsFeedForm? hackerNewsFeedForm;
-
-    private List<YouTubeOutputVideo>? youtubeVideos;
+    private HackerNewsFeedForm? hackerNewsFeedForm;    private List<YouTubeOutputVideo>? youtubeVideos;
     private List<RedditThreadModel>? redditThreads;
     private List<HackerNewsItem>? hackerNewsItems;
+    
+    private record SourceOption(string Name, string IconClass, string Value, string Description);
 
-    private readonly List<(string Name, string IconClass, string Value)> contentSources = new()
+    private readonly List<SourceOption> contentSources = new()
     {
-        ("YouTube", "bi bi-youtube", "youtube"),
-        ("Reddit", "bi bi-reddit", "reddit"),
-        ("Hacker News", "bi bi-newspaper", "hackernews")
+        new("YouTube", "bi bi-youtube", "youtube", "Search and analyze YouTube videos and comments"),
+        new("Reddit", "bi bi-reddit", "reddit", "Monitor Reddit subreddit discussions and feedback"),
+        new("Hacker News", "bi bi-newspaper", "hackernews", "Track tech discussions on Hacker News")
     };
 
     private void HandleAuthenticated(bool success)

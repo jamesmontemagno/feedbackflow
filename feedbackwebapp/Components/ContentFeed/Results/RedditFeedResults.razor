@@ -210,7 +210,8 @@
 
     private void OnAnalyzeClick(RedditThreadModel thread)
     {
-        NavigationManager.NavigateTo($"/?source=reddit&id={thread.Id}");
+        var url = $"https://www.reddit.com{thread.Permalink}";
+        NavigationManager.NavigateTo($"/?source=auto&url={Uri.EscapeDataString(url)}");
     }
 
     private void ToggleFullText(RedditThreadModel thread)
