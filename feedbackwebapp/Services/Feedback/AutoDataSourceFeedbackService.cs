@@ -53,11 +53,10 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
 
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Analyzing source URLs...");
 
-        var allComments = new List<string>();
+        var commentsByService = new Dictionary<string, List<string>>();
         var totalCommentCount = 0;
         var processedCount = 0;
         var totalUrls = _urls.Length;
-        var servicesUsed = new HashSet<string>();
 
         foreach (var url in _urls)
         {
@@ -67,15 +66,18 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
             try
             {
                 var serviceType = GetServiceType(url);
-                servicesUsed.Add($"{serviceType}");
-
                 var service = ResolveFeedbackService(url);
                 if (service != null)
                 {
                     var (comments, commentCount) = await GetCommentsFromUrl(url);
                     if (!string.IsNullOrWhiteSpace(comments))
                     {
-                        allComments.Add(comments);
+                        if (!commentsByService.ContainsKey(serviceType))
+                        {
+                            commentsByService[serviceType] = new List<string>();
+                        }
+                        // Add comments from each URL separately, even if we already have comments from this service
+                        commentsByService[serviceType].Add($"URL: {url}\n{comments}");
                         totalCommentCount += commentCount;
                     }
                 }
@@ -87,17 +89,20 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
             }
         }
 
-        if (!allComments.Any())
+        if (!commentsByService.Any())
         {
             throw new InvalidOperationException("No valid comments were found from the provided URLs");
         }
 
-        // Join all comments together and return total count along with services used
-        var combinedComments = string.Join("\n---\n", allComments);
-        return (combinedComments, totalCommentCount, servicesUsed.ToList().Distinct());
-    }
+        // Join comments for each service and then all services together
+        var allComments = commentsByService.Select(kvp => 
+            $"# {char.ToUpper(kvp.Key[0]) + kvp.Key[1..]} Comments\n{string.Join("\n---\n", kvp.Value)}"
+        );
+        var combinedComments = string.Join("\n\n", allComments);
 
-    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
+        // Return the combined comments, total count, and the dictionary of service types to comments
+        return (combinedComments, totalCommentCount, commentsByService);
+    }    public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
         if (string.IsNullOrWhiteSpace(comments))
         {
@@ -108,17 +113,42 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         
         // Calculate comment count if not provided
         int totalComments = commentCount ?? comments.Split("\n---\n").Length;
-        
-        // Determine service type based on additionalData
-        string serviceType = "auto";
-        if (additionalData is List<string> services && services.Count == 1)
+
+        // If we have the service dictionary, analyze based on number of URLs
+        if (additionalData is Dictionary<string, List<string>> commentsByService)
         {
-            serviceType = services[0];
+            // For a single URL, just analyze with the specific service type
+            if (commentsByService.Count == 1 && commentsByService.First().Value.Count == 1)
+            {
+                var (serviceType, serviceComments) = commentsByService.First();
+                var serviceCommentsText = serviceComments.First();
+                var markdown = await AnalyzeCommentsInternal(serviceType, serviceCommentsText, 1);
+                return ($"# {char.ToUpper(serviceType[0]) + serviceType[1..]} Feedback Analysis\n\n{markdown}", commentsByService);
+            }
+
+            // For multiple URLs, start with overall analysis then add per-service analysis
+            var analysisByService = new List<string>();
+            
+            // First do the overall analysis of everything
+            var allCommentsText = string.Join("\n---\n", commentsByService.SelectMany(kvp => kvp.Value));
+            var overallAnalysis = await AnalyzeCommentsInternal("auto", allCommentsText, totalComments);
+            analysisByService.Add("## Overall Analysis\n\n" + overallAnalysis);
+
+            // Then analyze each service separately
+            foreach (var (serviceType, serviceComments) in commentsByService)
+            {
+                var serviceCommentsText = string.Join("\n---\n", serviceComments);
+                var markdown = await AnalyzeCommentsInternal(serviceType, serviceCommentsText, serviceComments.Count);
+                analysisByService.Add($"## {char.ToUpper(serviceType[0]) + serviceType[1..]} Analysis\n\n{markdown}");
+            }
+
+            var combinedAnalysis = string.Join("\n\n", analysisByService);
+            return ($"# Multi-Source Feedback Analysis\n\n{combinedAnalysis}", commentsByService);
         }
         
-        // Analyze the combined comments
-        var markdown = await AnalyzeCommentsInternal(serviceType, comments, totalComments);
-        return (markdown, null);
+        // Fallback to regular analysis if we don't have the dictionary
+        var defaultMarkdown = await AnalyzeCommentsInternal("auto", comments, totalComments);
+        return (defaultMarkdown, null);
     }
 
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()

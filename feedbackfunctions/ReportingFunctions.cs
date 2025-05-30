@@ -1,12 +1,15 @@
 ﻿using System.Net;
+using System.Text;
 using System.Text.Json;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SharedDump.Models.Reddit;
+using SharedDump.Models.Reports;
 using SharedDump.AI;
 using SharedDump.Utils;
+using Azure.Storage.Blobs;
 
 namespace FeedbackFunctions;
 
@@ -24,6 +27,8 @@ public class ReportingFunctions
     private readonly RedditService _redditService;
     private readonly IFeedbackAnalyzerService _analyzerService;
     private readonly IConfiguration _configuration;
+    private const string ContainerName = "reports";
+    private readonly BlobContainerClient _containerClient;
 
     /// <summary>
     /// Initializes a new instance of the ReportingFunctions class
@@ -57,6 +62,12 @@ public class ReportingFunctions
         var apiKey = _configuration["Azure:OpenAI:ApiKey"] ?? throw new InvalidOperationException("Azure OpenAI API key not configured");
         var deployment = _configuration["Azure:OpenAI:Deployment"] ?? throw new InvalidOperationException("Azure OpenAI deployment name not configured");
         _analyzerService = new FeedbackAnalyzerService(endpoint, apiKey, deployment);
+        
+        // Initialize blob container
+        var storageConnection = _configuration["AzureWebJobsStorage"] ?? throw new InvalidOperationException("Storage connection string not configured");
+        var serviceClient = new BlobServiceClient(storageConnection);
+        _containerClient = serviceClient.GetBlobContainerClient(ContainerName);
+        _containerClient.CreateIfNotExists();
     }
 
     /// <summary>
@@ -178,17 +189,36 @@ Keep each section very brief and focused. Total analysis should be no more than 
             var weeklyAnalysis = await _analyzerService.AnalyzeCommentsAsync("reddit", weeklyContent, customWeeklyContentPrompt);
             _logger.LogDebug("Weekly analysis completed");
 
+            _logger.LogInformation("Creating report model");
+            var report = new ReportModel
+            {
+                Source = "reddit",
+                SubSource = subreddit,
+                ThreadCount = topThreads.Count,
+                CommentCount = allComments.Count,
+                CutoffDate = cutoffDate.UtcDateTime
+            };
+
             _logger.LogInformation("Generating HTML email report");
             var emailHtml = EmailUtils.GenerateRedditReportEmail(
                 subreddit, 
                 cutoffDate, 
                 weeklyAnalysis, 
                 threadAnalyses, 
-                topComments);
+                topComments,
+                report.Id.ToString());
 
             var processingTime = DateTime.UtcNow - startTime;
             _logger.LogInformation("Reddit Report processing completed for r/{Subreddit} in {ProcessingTime:c}. Analyzed {ThreadCount} threads and {CommentCount} comments", 
                 subreddit, processingTime, topThreads.Count, allComments.Count);
+            
+            report.HtmlContent = emailHtml;
+
+            // Save to blob storage
+            var blobClient = _containerClient.GetBlobClient($"{report.Id}.json");
+            var reportJson = JsonSerializer.Serialize(report);
+            await using var ms = new MemoryStream(Encoding.UTF8.GetBytes(reportJson));
+            await blobClient.UploadAsync(ms, overwrite: true);
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "text/html; charset=utf-8");
@@ -202,6 +232,91 @@ Keep each section very brief and focused. Total analysis should be no more than 
             var response = req.CreateResponse(HttpStatusCode.InternalServerError);
             await response.WriteStringAsync($"Error processing report: {ex.Message}");
             return response;
+        }
+    }    /// <summary>
+    /// Gets a report by its ID
+    /// </summary>
+    /// <param name="req">HTTP request containing the report ID</param>
+    /// <returns>HTTP response with the full report data</returns>
+    [Function("GetReport")]
+    public async Task<HttpResponseData> GetReport(
+        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "Report/{id}")] HttpRequestData req,
+        string id)
+    {
+        _logger.LogInformation("Getting Reddit report with ID: {Id}", id);
+
+        try
+        {
+            var blobClient = _containerClient.GetBlobClient($"{id}.json");
+            if (!await blobClient.ExistsAsync())
+            {
+                _logger.LogWarning("Report with ID {Id} not found", id);
+                var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+                await notFoundResponse.WriteStringAsync($"Report with ID {id} not found");
+                return notFoundResponse;
+            }
+
+            var blobContent = await blobClient.DownloadContentAsync();
+            var report = JsonSerializer.Deserialize<ReportModel>(blobContent.Value.Content);
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            response.Headers.Add("Content-Type", "application/json");
+            await response.WriteStringAsync(JsonSerializer.Serialize(report));
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving report with ID {Id}", id);
+            var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await errorResponse.WriteStringAsync($"Error retrieving report: {ex.Message}");
+            return errorResponse;
+        }
+    }    /// <summary>
+    /// Lists all reports with basic metadata
+    /// </summary>
+    /// <param name="req">HTTP request</param>
+    /// <returns>HTTP response with a list of report summaries</returns>
+    [Function("ListReports")]
+    public async Task<HttpResponseData> ListReports(
+        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+    {
+        _logger.LogInformation("Listing all Reddit reports");
+
+        try
+        {
+            var reports = new List<object>();
+            await foreach (var blob in _containerClient.GetBlobsAsync())
+            {
+                var blobClient = _containerClient.GetBlobClient(blob.Name);
+                var content = await blobClient.DownloadContentAsync();
+                var report = JsonSerializer.Deserialize<ReportModel>(content.Value.Content);
+
+                if (report != null)
+                {
+                    reports.Add(new
+                    {
+                        id = report.Id,
+                        source = report.Source,
+                        subSource = report.SubSource,
+                        generatedAt = report.GeneratedAt,
+                        threadCount = report.ThreadCount,
+                        commentCount = report.CommentCount,
+                        cutoffDate = report.CutoffDate
+                    });
+                }
+            }
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            response.Headers.Add("Content-Type", "application/json");
+            await response.WriteStringAsync(JsonSerializer.Serialize(new { reports }));
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error listing reports");
+            var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await errorResponse.WriteStringAsync($"Error listing reports: {ex.Message}");
+            return errorResponse;
         }
     }
 

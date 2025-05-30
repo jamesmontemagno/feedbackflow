@@ -1,0 +1,177 @@
+@page "/report/{Id}"
+@using FeedbackWebApp.Services
+@using SharedDump.Models.Reports
+@using System.Text.RegularExpressions
+@inject IReportService ReportService
+@inject NavigationManager NavigationManager
+@inject IHistoryHelper HistoryHelper
+
+<PageTitle>Report Details - FeedbackFlow</PageTitle>
+
+<div class="container-lg py-4">
+
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="page-title">
+                <i class="bi bi-file-earmark-text page-title-icon"></i>
+                Report Details
+            </h1>
+            <button class="btn btn-outline-secondary btn-sm back-button" 
+                    onclick="history.back()" 
+                    title="Go back">
+                <i class="bi bi-arrow-left me-1"></i>
+                Back
+            </button>
+        </div>
+    </div>  
+
+    @if (loading)
+    {
+        <div class="loading-container">
+            <div class="loading-spinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="loading-text">Loading report details...</p>
+            </div>
+        </div>
+    }
+    else if (report == null)
+    {
+        <div class="error-container">
+            <div class="alert alert-danger error-alert">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-exclamation-triangle-fill error-icon"></i>
+                    <div>
+                        <h5 class="mb-1">Report Not Found</h5>
+                        <p class="mb-0">The requested report could not be found or may have been removed.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {               
+        <!-- Report Summary Pills -->
+        <div class="report-summary mb-3">
+            <div class="report-summary-pills">
+                <span class="report-pill source-pill">
+                    <i class="bi @HistoryHelper.GetServiceIcon(report.Source)"></i>
+                    @report.Source
+                </span>
+                <span class="report-pill">
+                    <i class="bi bi-hash"></i>
+                    @report.SubSource
+                </span>
+                <span class="report-pill">
+                    <i class="bi bi-chat-square-text"></i>
+                    @report.ThreadCount.ToString("N0") threads
+                </span>
+                <span class="report-pill">
+                    <i class="bi bi-chat-dots"></i>
+                    @report.CommentCount.ToString("N0") comments
+                </span>
+                <span class="report-pill">
+                    <i class="bi bi-calendar-range"></i>
+                    @report.CutoffDate.LocalDateTime.ToString("MMM d") - 
+                    @report.GeneratedAt.LocalDateTime.ToString("MMM d, yyyy")
+                </span>
+            </div>
+        </div>
+        
+        <!-- Report Content Card -->
+        <div class="card report-content-card">
+            <div class="card-header report-content-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-file-text me-2"></i>
+                    Analysis Report
+                </h5>
+            </div>
+            <div class="card-body report-content">
+                @((MarkupString)report.HtmlContent)
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    private bool loading = true;
+    private ReportModel? report;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(Id))
+        {
+            NavigationManager.NavigateTo("/reports");
+            return;
+        }
+
+        try
+        {
+            loading = true;
+            report = await ReportService.GetReportAsync(Id);
+            
+            if (report != null)
+            {
+                // Process HTML content to fix anchor links and clean CSS
+                report.HtmlContent = ProcessHtmlAnchors(report.HtmlContent);
+                report.HtmlContent = ProcessHtmlCss(report.HtmlContent);
+            }
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+    
+    /// <summary>
+    /// Processes HTML content to remove specific CSS properties from the body style
+    /// </summary>
+    private string ProcessHtmlCss(string htmlContent)
+    {
+        if (string.IsNullOrEmpty(htmlContent))
+            return htmlContent;
+            
+        // Pattern to match the body CSS style block
+        var pattern = @"body\s*{\s*([^}]+)\s*}";
+        
+        return Regex.Replace(htmlContent, pattern, match => {
+            var cssContent = match.Groups[1].Value;
+            
+            // Remove max-width and padding properties while preserving other styles
+            var cssProperties = cssContent.Split(';')
+                .Where(prop => !prop.Contains("max-width") && !prop.Contains("padding"))
+                .Where(prop => !string.IsNullOrWhiteSpace(prop));
+                
+            return $"body {{ {string.Join(";", cssProperties)} }}";
+        });
+    }
+
+    /// <summary>
+    /// Processes HTML content to fix anchor links that only contain hash (#) references
+    /// by ensuring they include the current page URL
+    /// </summary>
+    private string ProcessHtmlAnchors(string htmlContent)
+    {
+        if (string.IsNullOrEmpty(htmlContent))
+            return htmlContent;
+            
+        // Get the current page URL without hash fragment
+        var currentUrl = NavigationManager.Uri;
+        if (currentUrl.Contains('#'))
+            currentUrl = currentUrl.Substring(0, currentUrl.IndexOf('#'));
+            
+        // Regex to find <a> tags with href that starts with # but doesn't contain a full URL
+        var pattern = "<a\\s+(?:[^>]*?\\s+)?href\\s*=\\s*([\"'])\\s*(#[^\"']+)\\s*\\1";
+        
+        return Regex.Replace(htmlContent, pattern, match => {
+            // Extract the hash fragment
+            var hash = match.Groups[2].Value;
+            // Replace with full URL + hash
+            return $"<a href=\"{currentUrl}{hash}\"";
+        });
+    }
+}

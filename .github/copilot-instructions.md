@@ -17,20 +17,50 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 - Make sure light and dark theme are respected throughout by never using hard coded rgb or hex but that they are always defined in the main css
 
 ## CSS Best Practices
+
+### General Styling
 - Use Bootstrap's built-in spacing utilities (m-*, p-*) for consistent spacing
 - Always wrap card content in a .card-body element for consistent padding
+- Use semantic class names that describe the component's purpose (e.g., `report-metadata`, `history-item`)
+- Keep component-specific styles in .razor.css files with proper namespacing
 - Define common padding/margin values as CSS variables in app.css
-- Use semantic class names that describe the component's purpose
 - Avoid direct element styling, prefer class-based selectors
-- Keep component-specific styles in .razor.css files
-- Avoid fixed pixel values for responsive elements
-- Use CSS Grid or Flexbox for layout instead of absolute positioning
+- Use animation keyframes for transitions (fadeIn, slideIn, pulse)
 - Style from the component's root element down to maintain CSS specificity
-- When adjusting padding/margin, check both light and dark themes
-- Use CSS variables for repeated values (spacing, border-radius, etc.)
-- Test responsive behavior across different viewport sizes
+
+### Theme Support
+- Use CSS variables defined in app.css for colors, never hard-coded RGB or HEX values
+- Support both light and dark themes via the [data-theme="dark"] selector
+- Test all components in both light and dark themes before committing
+- Use rgba(var(--primary-color-rgb), opacity) for transparent colors
+- Apply color transitions with `transition: color 0.3s ease, background-color 0.3s ease`
+
+### Icons & UI Elements
+- Use Bootstrap Icons (bi bi-*) with consistent sizing and spacing
+- Add icon animations on hover using transform properties
+- Format icon containers with proper alignment: `d-flex align-items-center gap-2`
+- Include appropriate ARIA attributes on interactive icons
+
+### Card & Component Design
+- Apply consistent border-radius using var(--border-radius) variables
+- Use var(--card-shadow) for box-shadow on cards and raised elements
+- Apply subtle hover effects: transform, box-shadow, or background-color changes
+- Create clean card headers with the primary gradient background
+- Use primary-gradient for accent elements: `background: var(--primary-gradient)`
+
+### Responsive Design
+- Use responsive grids with Bootstrap's column system or CSS Grid
+- Implement dedicated media queries for mobile adjustments at standard breakpoints
+- Test on multiple viewport sizes: desktop, tablet, and mobile
+- Avoid fixed pixel values for responsive elements, prefer rem/em units
+- Adapt to smaller screens by adjusting spacing, font size, and layout
+
+### Best Practices
 - Use rem/em units for font sizes and spacing for better accessibility
 - Document any magic numbers or non-obvious style choices in comments
+- Maintain semantic HTML structure with proper heading hierarchy
+- Include responsive adjustments at the bottom of CSS files
+- Group related CSS rules together with clear comments
 
 ## Code Style
 - Prefer async/await over direct Task handling

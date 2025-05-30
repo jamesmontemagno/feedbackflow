@@ -1,0 +1,212 @@
+@page "/reports"
+@using FeedbackWebApp.Services
+@using FeedbackWebApp.Services.Authentication
+@using FeedbackWebApp.Components.Feedback.Forms
+@using SharedDump.Models.Reports
+@inject IReportService ReportService
+@inject NavigationManager NavigationManager
+@inject AuthenticationService AuthService
+@inject IHistoryHelper HistoryHelper
+
+<PageTitle>Reports - FeedbackFlow</PageTitle>
+
+<div class="container px-4">
+    @if (!isAuthenticated)
+    {
+        <AuthenticationForm OnAuthenticated="HandleAuthenticated" />
+    }
+    else
+    {
+        <h1 class="mt-4 feedbackflow-title">Reports</h1>
+        <p class="text-muted mb-4">Reports are generated Monday morning for select communities</p>
+        
+        @if (reports != null && reports.Any())
+        {
+            <div class="filter-controls mb-4">
+                <div class="d-flex gap-3 flex-wrap">
+                    <div class="filter-group input-group">
+                        <span class="input-group-text filter-label">Source</span>
+                        <select class="form-select" @bind="selectedSource">
+                            <option value="">All Sources</option>
+                            @foreach (var source in sources)
+                            {
+                                <option value="@source">@source</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="filter-group input-group">
+                        <span class="input-group-text filter-label">Date Range</span>
+                        <select class="form-select" @bind="selectedDateRange">
+                            <option value="all">All Time</option>
+                            <option value="today">Today</option>
+                            <option value="week">Last 7 Days</option>
+                            <option value="month">Last 30 Days</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        }
+          <div class="card mb-4">            
+            <div class="card-header">
+                <div>
+                    <i class="bi bi-file-earmark-text me-1"></i>
+                    Available Reports
+                </div>
+            </div>
+            <div class="card-body">
+                @if (loading)
+                {
+                    <div class="reports-loading">
+                        @for (int i = 0; i < 3; i++)
+                        {
+                            <div class="report-item-skeleton">
+                                <div class="report-item-header">
+                                    <div class="loading-placeholder source-placeholder"></div>
+                                    <div class="loading-placeholder date-placeholder"></div>
+                                </div>
+                                <div class="report-item-body">
+                                    <div class="loading-placeholder"></div>
+                                    <div class="loading-placeholder"></div>
+                                </div>
+                                <div class="report-item-footer">
+                                    <div class="loading-placeholder button-placeholder"></div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else if (errorMessage != null)
+                {
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        @errorMessage
+                    </div>
+                }
+                else if (reports == null || !reports.Any())
+                {
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        No reports found.
+                    </div>
+                }
+                else
+                {
+                    <div class="reports-container">
+                        @foreach (var report in FilteredReports)
+                        {
+                            <div class="report-item">
+                                <div class="report-item-header">                                    
+                                    <div class="report-source">
+                                        <div class="source-badge">
+                                            <i class="bi @HistoryHelper.GetServiceIcon(report.Source) me-1"></i>
+                                            @report.Source
+                                        </div>
+                                        <span class="report-sub-source">@report.SubSource</span>
+                                    </div>                                    <div class="report-date">
+                                        <i class="bi bi-calendar me-1"></i>
+                                        @report.GeneratedAt.LocalDateTime.ToString("MMM d, yyyy")
+                                    </div>
+                                </div>
+                                <div class="report-item-body">
+                                    <div class="report-stats">
+                                        <div class="stat-item">
+                                            <div class="stat-label">Threads</div>
+                                            <div class="stat-value">@report.ThreadCount</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-label">Comments</div>
+                                            <div class="stat-value">@report.CommentCount</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-label">Period</div>
+                                            <div class="stat-value">@((report.GeneratedAt - report.CutoffDate).Days) days</div>
+                                        </div>
+                                    </div>
+                                </div>                                <div class="report-item-footer">
+                                    <button class="btn btn-action" @onclick="() => ViewReport(report.Id)">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>
+                                        View Report
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool loading = true;
+    private bool isAuthenticated = false;
+    private IEnumerable<ReportModel>? reports;
+    private string selectedSource = "";
+    private string selectedDateRange = "all";
+    private HashSet<string> sources = new();
+
+    private IEnumerable<ReportModel> FilteredReports =>
+        reports?.Where(r => 
+            (string.IsNullOrEmpty(selectedSource) || r.Source == selectedSource) &&
+            IsInDateRange(r.GeneratedAt)) 
+        ?? Enumerable.Empty<ReportModel>();
+
+    private async Task HandleAuthenticated(bool success)
+    {
+        isAuthenticated = success;
+        if (success)
+        {
+            await LoadReports();
+        }
+    }
+
+    private string? errorMessage;
+    private async Task LoadReports()
+    {
+        try
+        {
+            loading = true;
+            errorMessage = null;
+            reports = await ReportService.ListReportsAsync();
+            sources = reports.Select(r => r.Source).ToHashSet();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load reports: {ex.Message}";
+            reports = null;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+            
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (isAuthenticated)
+            {
+                await LoadReports();
+                StateHasChanged();
+            }
+        }
+    }
+
+    private void ViewReport(Guid id)
+    {
+        NavigationManager.NavigateTo($"/report/{id}");
+    }
+
+    private bool IsInDateRange(DateTimeOffset date)
+    {
+        return selectedDateRange switch
+        {
+            "today" => date >= DateTimeOffset.Now.Date,
+            "week" => date >= DateTimeOffset.Now.AddDays(-7),
+            "month" => date >= DateTimeOffset.Now.AddDays(-30),
+            _ => true
+        };
+    }
+}

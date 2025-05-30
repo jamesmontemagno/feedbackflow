@@ -15,14 +15,13 @@ public static class EmailUtils
     private static string ConvertMarkdownToHtml(string markdown)
     {
         return Markdown.ToHtml(markdown, _markdownPipeline);
-    }
-
-    public static string GenerateRedditReportEmail(
+    }    public static string GenerateRedditReportEmail(
         string subreddit, 
         DateTimeOffset cutoffDate, 
         string weeklyAnalysis, 
         List<(RedditThreadModel Thread, string Analysis)> threadAnalyses,
-        List<TopCommentInfo> topComments)
+        List<TopCommentInfo> topComments,
+        string reportId)
     {
         var emailBuilder = new StringBuilder();
         emailBuilder.AppendLine(@"<!DOCTYPE html>
@@ -73,11 +72,11 @@ public static class EmailUtils
 <body>");
 
         // Header
-        emailBuilder.AppendFormat(@"
-    <div class='header'>
+        emailBuilder.AppendFormat(@"    <div class='header'>
         <h1>Weekly r/<a href='https://reddit.com/r/{0}' style='color: white; text-decoration: none;'>{0}</a> Report</h1>
         <p>Analysis for {1:MMMM dd, yyyy} - {2:MMMM dd, yyyy}</p>
-    </div>", subreddit, cutoffDate, DateTimeOffset.UtcNow);
+        <a href='https://www.feedbackflow.app/report/{3}' class='feedback-button' style='background-color: white; color: #FF4500;'>Share report</a>
+    </div>", subreddit, cutoffDate, DateTimeOffset.UtcNow, reportId);
 
         // Top Posts Quick Links
         emailBuilder.AppendLine(@"
