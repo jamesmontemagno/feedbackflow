@@ -10,6 +10,7 @@
 @using FeedbackWebApp.Services.Interfaces
 @using FeedbackWebApp.Services.Feedback
 @using SharedDump.Models
+@using SharedDump.Models.BlueSkyFeedback
 @using SharedDump.Models.DevBlogs
 @using SharedDump.Models.GitHub
 @using SharedDump.Models.HackerNews
@@ -105,6 +106,10 @@
                                 else if (source.AdditionalData is DevBlogsArticleModel article)
                                 {
                                     <DevBlogsFeedbackResults Article="@article" />
+                                }
+                                else if(source.AdditionalData is BlueSkyFeedbackResponse blueSkyFeedbackResponse)
+                                {
+                                    <BlueSkyFeedbackResults Response="@blueSkyFeedbackResponse" />
                                 }
                             }
                         }

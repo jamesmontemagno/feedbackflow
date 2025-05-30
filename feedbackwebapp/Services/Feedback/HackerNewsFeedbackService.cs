@@ -62,7 +62,16 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
 
         var totalComments = CountComments(articleThread);
 
-        return (responseContent, totalComments, articleThread);
+        // Create HackerNewsAnalysis objects for each story thread
+        var analyses = new List<HackerNewsAnalysis>
+        {
+            new HackerNewsAnalysis(
+                MarkdownResult: string.Empty, // This will be filled in during AnalyzeComments
+                Stories: articleThread
+            )
+        };
+
+        return (responseContent, totalComments, analyses);
     }
 
     public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
@@ -77,6 +86,14 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
 
         // Analyze the comments
         var markdownResult = await AnalyzeCommentsInternal("hackernews", comments, totalComments);
+
+        // If we have analyses, update their MarkdownResult
+        if (additionalData is List<HackerNewsAnalysis> analyses && analyses.Any())
+        {
+            analyses[0] = analyses[0] with { MarkdownResult = markdownResult };
+            return (markdownResult, analyses);
+        }
+
         return (markdownResult, additionalData);
     }
 

@@ -14,12 +14,58 @@
     margin-bottom: 1rem;
 }
 
-::deep .input-group .btn-outline-danger {
+.input-group .btn-outline-danger {
     border-color: var(--border-color);
 }
 
-::deep .input-group .btn-outline-danger:hover {
+.input-group .btn-outline-danger:hover {
     background-color: var(--bs-danger);
     border-color: var(--bs-danger);
     color: var(--bs-white);
+}
+
+/* Custom add URL button styling specific to this form */
+.btn-outline-primary.mb-3 {
+    width: 100%;
+    max-width: 200px;
+    margin-left: auto;
+    margin-right: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    background: linear-gradient(to right, transparent 50%, var(--primary-hover-bg) 50%);
+    background-size: 200% 100%;
+    background-position: left bottom;
+    transition: all 0.3s ease-out;
+    border: 1px dashed var(--primary-color);
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    color: var(--primary-color);
+}
+
+.btn-outline-primary.mb-3:hover:not(:disabled) {
+    background-position: right bottom;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.15);
+}
+
+.btn-outline-primary.mb-3:disabled {
+    opacity: 0.6;
+    background: transparent;
+    border-style: solid;
+    border-color: var(--border-color);
+    color: var(--text-muted);
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-outline-primary.mb-3 i {
+    font-size: 1.25rem;
+    transition: transform 0.3s ease;
+}
+
+.btn-outline-primary.mb-3:hover:not(:disabled) i {
+    transform: rotate(180deg) scale(1.2);
 }
