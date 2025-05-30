@@ -9,6 +9,7 @@
 @using FeedbackWebApp.Components.Feedback.Results
 @using FeedbackWebApp.Services.Interfaces
 @using FeedbackWebApp.Services.Feedback
+@using SharedDump.Models
 @using SharedDump.Models.DevBlogs
 @using SharedDump.Models.GitHub
 @using SharedDump.Models.HackerNews
@@ -37,40 +38,11 @@
 
 
         @if (!string.IsNullOrEmpty(selectedSource))
-        {
-            <div class="card shadow-sm">
+        {            <div class="card shadow-sm">
                 <div class="card-body">
-                    @if (selectedSource.Equals("YouTube", StringComparison.OrdinalIgnoreCase))
-                    {
-                        <YouTubeInputForm @ref="youtubeInput"/>
-                    }
-                    else if (selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
+                    @if (selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
                     {
                         <AutoDataSourceForm @ref="autoDataSourceForm" />
-                    }
-                    else if (selectedSource.Equals("HackerNews", StringComparison.OrdinalIgnoreCase))
-                    {
-                        <HackerNewsInputForm @ref="hackerNewsInputForm" />
-                    }
-                    else if (selectedSource.Equals("GitHub", StringComparison.OrdinalIgnoreCase))
-                    {
-                        <GitHubInputForm @ref="githubInputForm" />
-                    }
-                    else if (selectedSource.Equals("Reddit", StringComparison.OrdinalIgnoreCase))
-                    {
-                        <RedditInputForm @ref="redditInputForm" />
-                    }
-                    else if (selectedSource.Equals("DevBlogs", StringComparison.OrdinalIgnoreCase))
-                    {
-                        <DevBlogsFeedbackForm @ref="devBlogsInputForm"  />
-                    }
-                    else if (selectedSource.Equals("Twitter", StringComparison.OrdinalIgnoreCase))
-                    {
-                        <TwitterInputForm @ref="twitterInputForm" />
-                    }
-                    else if (selectedSource.Equals("BlueSky", StringComparison.OrdinalIgnoreCase))
-                    {
-                        <BlueSkyInputForm @ref="blueSkyInputForm" />
                     }
                     else if (selectedSource.Equals("Manual", StringComparison.OrdinalIgnoreCase))
                     {
@@ -93,41 +65,43 @@
                             </div>
                         </div>
                     }                    
-                    
-
-                    <AnalysisResults 
+                        <AnalysisResults 
                         Error="@error" 
                         MarkdownResult="@markdownResult" 
                         SourceType="@selectedSource"
-                        UserInput="@GetUserInputForSource()" />
-                
-                    @if (selectedSource.Equals("HackerNews", StringComparison.OrdinalIgnoreCase))
+                        UserInput="@GetUserInputForSource()" />                    @* Display additional data from FeedbackSourceData list *@
+                    @if (feedbackSources != null && feedbackSources.Any())
                     {
-                        <HackerNewsResults Analyses="@hackerNewsAnalyses" />
-                    }
-                    else if (selectedSource.Equals("YouTube", StringComparison.OrdinalIgnoreCase))
-                    {
-                        <YouTubeComments Videos="@youtubeVideos" />
-                    }
-                    else if (selectedSource.Equals("GitHub", StringComparison.OrdinalIgnoreCase))
-                    {
-                        <GitHubFeedback Issues="@githubIssues" PullRequests="@githubPullRequests" Discussions="@githubDiscussions" />
-                    }
-                    else if (selectedSource.Equals("Reddit", StringComparison.OrdinalIgnoreCase))
-                    {
-                        <RedditComments Threads="@redditThreads" />
-                    }
-                    else if (selectedSource.Equals("DevBlogs", StringComparison.OrdinalIgnoreCase))
-                    {
-                        <DevBlogsFeedbackResults Article="devBlogsArticle" />
-                    }
-                    else if (selectedSource.Equals("Twitter", StringComparison.OrdinalIgnoreCase))
-                    {
-                        <TwitterFeedbackResults TweetUrlOrId="@twitterTweetUrlOrId" />
-                    }
-                    else if (selectedSource.Equals("BlueSky", StringComparison.OrdinalIgnoreCase))
-                    {
-                        <BlueSkyFeedbackResults PostUrlOrId="@blueSkyPostUrlOrId" />
+                        foreach (var source in feedbackSources)
+                        {
+                            if (source.AdditionalData != null)
+                            {
+                                @if (source.AdditionalData is List<YouTubeOutputVideo> videos)
+                                {
+                                    <YouTubeComments Videos="@videos" />
+                                }
+                                else if (source.AdditionalData is List<HackerNewsAnalysis> analyses)
+                                {
+                                    <HackerNewsResults Analyses="@analyses" />
+                                }
+                                else if (source.AdditionalData is List<GithubIssueModel> issues)
+                                {
+                                    <GitHubFeedback Issues="@issues" PullRequests="@null" Discussions="@null" />
+                                }
+                                else if (source.AdditionalData is List<GithubDiscussionModel> discussions)
+                                {
+                                    <GitHubFeedback Issues="@null" PullRequests="@null" Discussions="@discussions" />
+                                }
+                                else if (source.AdditionalData is List<RedditThreadModel> threads)
+                                {
+                                    <RedditComments Threads="@threads" />
+                                }
+                                else if (source.AdditionalData is DevBlogsArticleModel article)
+                                {
+                                    <DevBlogsFeedbackResults Article="@article" />
+                                }
+                            }
+                        }
                     }
                 </div>
             </div>
@@ -137,32 +111,17 @@
 
 @code {
     private AutoDataSourceForm? autoDataSourceForm;
-    private YouTubeInputForm? youtubeInput;
-    private HackerNewsInputForm? hackerNewsInputForm;
-    private GitHubInputForm? githubInputForm;
-    private RedditInputForm? redditInputForm;
-    private DevBlogsFeedbackForm? devBlogsInputForm;
-    private TwitterInputForm? twitterInputForm;
-    private BlueSkyInputForm? blueSkyInputForm;
     private ManualFeedbackInput? manualInputForm;
-    private DevBlogsArticleModel? devBlogsArticle;
     private string selectedSource = "Auto";
     private string markdownResult = "";
     private string error = "";
     private bool isLoading = false;
     private bool isAuthenticated = false;
-    private List<YouTubeOutputVideo>? youtubeVideos;
-    private List<GithubIssueModel>? githubIssues;
-    private List<GithubIssueModel>? githubPullRequests;
-    private List<GithubDiscussionModel>? githubDiscussions;
-    private List<RedditThreadModel>? redditThreads;
-    private List<HackerNewsAnalysis>? hackerNewsAnalyses;
+    private List<FeedbackSourceData>? feedbackSources;
     private FeedbackProcessStatus currentStatus;
     private string currentStatusMessage = "";
     private string? initialSource;
     private string? initialId;
-    private string? twitterTweetUrlOrId;
-    private string? blueSkyPostUrlOrId;
 
     private async Task HandleAuthenticated(bool success)
     {
@@ -177,69 +136,28 @@
         currentStatus = status;
         currentStatusMessage = message;
         StateHasChanged();
-    }
-
-    private string? GetUserInputForSource()
+    }    private string? GetUserInputForSource()
     {
         return selectedSource switch
         {
             "Manual" => manualInputForm?.ContentInput,
-            "YouTube" => !string.IsNullOrWhiteSpace(youtubeInput?.VideoId) ? youtubeInput?.VideoId : youtubeInput?.PlaylistId,
-            "GitHub" => githubInputForm?.Url,
-            "Reddit" => redditInputForm?.ThreadInput,
-            "HackerNews" => hackerNewsInputForm?.Value,
-            "Twitter" => twitterInputForm?.RawInput,
-            "BlueSky" => blueSkyInputForm?.RawInput,
-            "DevBlogs" => devBlogsInputForm?.ArticleUrl,
             "Auto" => autoDataSourceForm?.GetUrls().FirstOrDefault(),
             _ => null
         };
-    }
-
-    private async Task SubmitFeedbackRequest()
+    }    private async Task SubmitFeedbackRequest()
     {
         try
         {
             // Reset all previous data
             error = "";
             markdownResult = "";
-            youtubeVideos = null;
-            githubIssues = null;
-            githubPullRequests = null;
-            githubDiscussions = null;
-            redditThreads = null;
-            hackerNewsAnalyses = null;
-            devBlogsArticle = null;
-            twitterTweetUrlOrId = null;
-            blueSkyPostUrlOrId = null;
+            feedbackSources = null;
             isLoading = true;
 
             IFeedbackService service = selectedSource switch
             {
-                "YouTube" or "youtube" => ServiceProvider.CreateYouTubeService(
-                    youtubeInput?.VideoId ?? string.Empty,
-                    youtubeInput?.PlaylistId ?? string.Empty,
-                    HandleStatusUpdate),
                 "Auto" or "auto" => ServiceProvider.CreateAutoDataSourceService(
                     autoDataSourceForm?.GetUrls().ToArray() ?? Array.Empty<string>(),
-                    HandleStatusUpdate),
-                "HackerNews" or "hackernews" => ServiceProvider.CreateHackerNewsService(
-                    hackerNewsInputForm?.Value ?? string.Empty,
-                    HandleStatusUpdate),
-                "GitHub" or "github" => ServiceProvider.CreateGitHubService(
-                    githubInputForm?.Url ?? string.Empty,
-                    HandleStatusUpdate),
-                "Reddit" or "reddit" => ServiceProvider.CreateRedditService(
-                    redditInputForm?.ThreadInput ?? string.Empty,
-                    HandleStatusUpdate),
-                "DevBlogs" or "devblogs" => ServiceProvider.CreateDevBlogsService(
-                    devBlogsInputForm?.ArticleUrl ?? string.Empty,
-                    HandleStatusUpdate),
-                "Twitter" or "twitter" => ServiceProvider.CreateTwitterService(
-                    twitterInputForm?.TweetId ?? string.Empty,
-                    HandleStatusUpdate),
-                "BlueSky" or "bluesky" => ServiceProvider.CreateBlueSkyService(
-                    blueSkyInputForm?.PostId ?? string.Empty,
                     HandleStatusUpdate),
                 "Manual" or "manual" => ServiceProvider.CreateManualService(
                     manualInputForm?.GetContent() ?? string.Empty,
@@ -251,71 +169,10 @@
             var (result, additionalData) = await service.GetFeedback();
             markdownResult = result;
 
-            // Handle specific data formats based on the source type
-            if (selectedSource == "DevBlogs" && additionalData is DevBlogsArticleModel article)
+            // Handle feedbackSources for Auto source type
+            if (selectedSource == "Auto" && additionalData is List<FeedbackSourceData> sources)
             {
-                devBlogsArticle = article;
-            }
-            else if (additionalData is List<YouTubeOutputVideo> videos)
-            {
-                youtubeVideos = videos;
-            }
-            else if (selectedSource == "HackerNews" && additionalData is List<HackerNewsAnalysis> analyses)
-            {
-                hackerNewsAnalyses = analyses;
-            }
-            else if (selectedSource == "GitHub" && additionalData is List<GithubCommentModel> comments)
-            {
-                // For single GitHub items, we'll construct a minimal model to display the comments
-                var parseResult = GitHubUrlParser.ParseUrl(githubInputForm?.Url ?? string.Empty);
-                if (parseResult != null)
-                {
-                    var (owner, repo, type, number) = parseResult.Value;
-
-                    if (type == "issue" || type == "pull")
-                    {
-                        githubIssues = new List<GithubIssueModel> 
-                        {
-                            new()
-                            {
-                                Id = "single-item",
-                                Title = "Comments",
-                                Author = "N/A",
-                                Body = "",
-                                URL = githubInputForm?.Url ?? "",
-                                CreatedAt = DateTime.UtcNow,
-                                LastUpdated = DateTime.UtcNow,
-                                Upvotes = 0,
-                                Labels = Array.Empty<string>(),
-                                Comments = comments.ToArray()
-                            }
-                        };
-                    }
-                    else if (type == "discussion")
-                    {
-                        githubDiscussions = new List<GithubDiscussionModel>
-                        {
-                            new()
-                            {
-                                Title = "Comments",
-                                Url = githubInputForm?.Url ?? "",
-                                Comments = comments.ToArray()
-                            }
-                        };
-                    }
-                }
-            }            
-            else if (additionalData is List<RedditThreadModel> threads)
-            {
-                redditThreads = threads;
-            }            
-            else if (selectedSource == "Twitter" && additionalData != null)
-            {
-                twitterTweetUrlOrId = twitterInputForm?.TweetId ?? string.Empty;
-            }            
-            else if (selectedSource == "BlueSky" && additionalData != null)
-            {
-                blueSkyPostUrlOrId = blueSkyInputForm?.PostId ?? string.Empty;
+                feedbackSources = sources;
             }
         }
         catch (Exception ex)
@@ -339,8 +196,6 @@
 
         await base.OnInitializedAsync();
     }
-
-
     private async Task HandleQueryNav()
     {
         await Task.Delay(400); // Allow the UI to settle before executing the logic
@@ -348,12 +203,6 @@
         {
             selectedSource = initialSource.ToLower() switch
             {
-                "youtube" => "YouTube",
-                "hackernews" => "HackerNews",
-                "github" => "GitHub",
-                "reddit" => "Reddit",
-                "twitter" => "Twitter",
-                "bluesky" => "BlueSky",
                 "manual" => "Manual",
                 "auto" => "Auto",
                 _ => selectedSource
@@ -366,37 +215,9 @@
             // Safely update form values
             switch (selectedSource)
             {
-                case "HackerNews" when hackerNewsInputForm != null:
-                    hackerNewsInputForm.Value = initialId;
-                    hackerNewsInputForm.RefreshUI();
-                    break;
-
                 case "Auto" when autoDataSourceForm != null:
                     await autoDataSourceForm.HandleUrlChange(0, initialId);
                     autoDataSourceForm.RefreshUI();
-                    break;                
-                case "YouTube" when youtubeInput != null:
-                    youtubeInput.VideoId = initialId;
-                    youtubeInput.RefreshUI();
-                    break;
-
-                case "GitHub" when githubInputForm != null:
-                    githubInputForm.Url = initialId;
-                    githubInputForm.RefreshUI();
-                    break;
-                case "Reddit" when redditInputForm != null:
-                    redditInputForm.ThreadInput = initialId;
-                    redditInputForm.RefreshUI();
-                    break;
-
-                case "Twitter" when twitterInputForm != null:
-                    twitterInputForm.TweetId = initialId;
-                    twitterInputForm.RefreshUI();
-                    break;
-
-                case "BlueSky" when blueSkyInputForm != null:
-                    blueSkyInputForm.PostId = initialId;
-                    blueSkyInputForm.RefreshUI();
                     break;
 
                 case "Manual" when manualInputForm != null:

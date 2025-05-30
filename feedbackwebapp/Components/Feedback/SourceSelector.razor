@@ -18,11 +18,27 @@
             </div>
         }
     </div>
+    
+    @if (SelectedSource == "Auto")
+    {
+        <div class="platform-pills-container mt-4">
+            <div class="text-center mb-3">
+                <small class="text-muted fw-medium">Supported Platforms</small>
+            </div>
+            <div class="d-flex flex-wrap justify-content-center gap-2">
+                @foreach (var platform in supportedPlatforms)
+                {
+                    <div class="platform-pill" title="@platform.Name">
+                        <i class="bi @platform.IconClass platform-icon" aria-hidden="true"></i>
+                        <span class="platform-name">@platform.Name</span>
+                    </div>
+                }
+            </div>
+        </div>
+    }
 </div>
 
 @code {
-    private string? _selectedSource;
-
     [Parameter]
     public string? SelectedSource {get;set;} = "Auto";
 
@@ -30,7 +46,7 @@
     public EventCallback<string> SelectedSourceChanged { get; set; }
 
     private const string DefaultSource = "Auto";
-
+    
     private readonly SourceOption[] sources = new[]
     {
         new SourceOption(
@@ -39,68 +55,48 @@
             "Analyze feedback from multiple sources automatically", 
             "Auto"),
         new SourceOption(
-            "YouTube", 
-            "bi-youtube",
-            "Analyze feedback from video comments and community discussions", 
-            "YouTube"),
-        new SourceOption(
-            "HN", 
-            "bi-braces",
-            "Gather insights from technical discussions and feedback", 
-            "HackerNews"),
-        new SourceOption(
-            "GitHub", 
-            "bi-github",
-            "Process feedback from issues, PRs, and discussions", 
-            "GitHub"),
-        new SourceOption(
-            "Reddit", 
-            "bi-reddit",
-            "Analyze community feedback and discussions", 
-            "Reddit"),
-        new SourceOption(
-            "DevBlogs", 
-            "bi-journal-richtext",
-            "Analyze comments and feedback from Microsoft DevBlogs articles", 
-            "DevBlogs"),
-        new SourceOption(
-            "Twitter",
-            "bi-twitter-x",
-            "Analyze feedback from Twitter/X posts and replies",
-            "Twitter"),
-        new SourceOption(
-            "BlueSky",
-            "bi-cloud-fill",
-            "Analyze feedback from BlueSky posts and replies",
-            "BlueSky"),
-        new SourceOption(
             "Manual",
             "bi-pencil-square",
             "Manually enter content and customize the analysis prompt",
             "Manual")
-    };    private string GetButtonClass(string source) => 
+    };
+
+    private readonly PlatformOption[] supportedPlatforms = new[]
+    {
+        new PlatformOption("YouTube", "bi-youtube", "#FF0000"),
+        new PlatformOption("GitHub", "bi-github", "#333333"),
+        new PlatformOption("Reddit", "bi-reddit", "#FF4500"),
+        new PlatformOption("HackerNews", "bi-braces", "#FF6600"),
+        new PlatformOption("DevBlogs", "bi-journal-richtext", "#0078D4"),
+        new PlatformOption("Twitter", "bi-twitter-x", "#1DA1F2"),
+        new PlatformOption("BlueSky", "bi-cloud-fill", "#00A8E8")
+    };
+    
+    private string GetButtonClass(string source) => 
         source == SelectedSource 
             ? "btn-primary shadow-sm" 
-            : "btn-outline-primary";
-
+            : "btn-outline-primary";    
+            
     private async Task OnSourceSelectedAsync(string value)
     {
         if (SelectedSource != value)
         {
             SelectedSource = value;
             await SelectedSourceChanged.InvokeAsync(value);
+            StateHasChanged();
         }
     }
 
     protected override async Task OnInitializedAsync()
     {
         // If no explicit selection was made, use the default and notify parent components
-        if (_selectedSource == null)
+        if (string.IsNullOrEmpty(SelectedSource))
         {
-            _selectedSource = DefaultSource;
+            SelectedSource = DefaultSource;
             await SelectedSourceChanged.InvokeAsync(DefaultSource);
         }
     }
 
     private record SourceOption(string Name, string IconClass, string Description, string Value);
+    private record PlatformOption(string Name, string IconClass, string Color);
 }

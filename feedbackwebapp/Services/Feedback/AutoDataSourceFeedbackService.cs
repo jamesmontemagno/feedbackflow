@@ -69,10 +69,10 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
                 var service = ResolveFeedbackService(url);
                 if (service != null)
                 {
-                    var (comments, commentCount) = await GetCommentsFromUrl(url);
+                    var (comments, commentCount, additionalData) = await GetCommentsFromUrl(url);
                     if (!string.IsNullOrWhiteSpace(comments))
                     {
-                        sourceData.Add(new FeedbackSourceData(serviceType, $"URL: {url}\n{comments}", commentCount));
+                        sourceData.Add(new FeedbackSourceData(serviceType, $"URL: {url}\n{comments}", commentCount, additionalData));
                         totalCommentCount += commentCount;
                     }
                 }
@@ -143,7 +143,7 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         
         // Fallback to regular analysis if we don't have the source data
         var defaultMarkdown = await AnalyzeCommentsInternal("auto", comments, totalComments);
-        return (defaultMarkdown, null);
+        return (defaultMarkdown, additionalData);
     }
 
     public override async Task<(string markdownResult, object? additionalData)> GetFeedback()
@@ -160,23 +160,23 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         return await AnalyzeComments(comments, commentCount, additionalData);
     }
 
-    private async Task<(string comments, int commentCount)> GetCommentsFromUrl(string url)
+    private async Task<(string comments, int commentCount, object? additionalData)> GetCommentsFromUrl(string url)
     {
         if (string.IsNullOrEmpty(url))
-            return (string.Empty, 0);
+            return (string.Empty, 0, null);
 
         var service = ResolveFeedbackService(url);
         if (service != null)
         {
             // Get the raw comments and count
-            var (rawComments, commentCount, _) = await service.GetComments();
+            var (rawComments, commentCount, additionalData) = await service.GetComments();
             if (!string.IsNullOrWhiteSpace(rawComments))
             {
-                return (rawComments, commentCount);
+                return (rawComments, commentCount, additionalData);
             }
         }
 
-        return (string.Empty, 0);
+        return (string.Empty, 0, null);
     }
 
     private IFeedbackService? ResolveFeedbackService(string url) => _serviceProvider.GetService(url);
@@ -184,4 +184,4 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
 
 
 
-public record FeedbackSourceData(string Source, string Comments, int CommentCount);
+public record FeedbackSourceData(string Source, string Comments, int CommentCount, object? AdditionalData);
