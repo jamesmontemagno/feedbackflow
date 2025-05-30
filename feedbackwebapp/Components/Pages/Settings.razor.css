@@ -47,3 +47,41 @@
     background: var(--primary-gradient);
     border-radius: 3px;
 }
+
+/* Custom toggle switch styling */
+.custom-switch {
+    padding-left: 3.5em;
+    margin-bottom: 1rem;
+}
+
+.custom-switch .form-check-input {
+    width: 3em;
+    height: 1.5em;
+    margin-left: -3.5em;
+    background-position: left center;
+    border-radius: 2em;
+    transition: background-position .15s ease-in-out, 
+                background-color .15s ease-in-out,
+                border-color .15s ease-in-out;
+}
+
+.custom-switch .form-check-input:checked {
+    background-position: right center;
+}
+
+.custom-switch .form-check-label {
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+    padding-top: 0.25em;
+}
+
+.custom-switch:hover .form-check-input:not(:disabled) {
+    cursor: pointer;
+    filter: brightness(95%);
+}
+
+.custom-switch .text-muted {
+    margin-top: 0.25rem;
+    margin-left: 0.1rem;
+}

@@ -189,26 +189,30 @@ Keep each section very brief and focused. Total analysis should be no more than 
             var weeklyAnalysis = await _analyzerService.AnalyzeCommentsAsync("reddit", weeklyContent, customWeeklyContentPrompt);
             _logger.LogDebug("Weekly analysis completed");
 
+            _logger.LogInformation("Creating report model");
+            var report = new ReportModel
+            {
+                Source = "reddit",
+                SubSource = subreddit,
+                ThreadCount = topThreads.Count,
+                CommentCount = allComments.Count,
+                CutoffDate = cutoffDate.UtcDateTime
+            };
+
             _logger.LogInformation("Generating HTML email report");
             var emailHtml = EmailUtils.GenerateRedditReportEmail(
                 subreddit, 
                 cutoffDate, 
                 weeklyAnalysis, 
                 threadAnalyses, 
-                topComments);
+                topComments,
+                report.Id.ToString());
 
             var processingTime = DateTime.UtcNow - startTime;
             _logger.LogInformation("Reddit Report processing completed for r/{Subreddit} in {ProcessingTime:c}. Analyzed {ThreadCount} threads and {CommentCount} comments", 
-                subreddit, processingTime, topThreads.Count, allComments.Count);            // Create and save the report model
-            var report = new ReportModel
-            {
-                Source = "reddit",
-                SubSource = subreddit,
-                HtmlContent = emailHtml,
-                ThreadCount = topThreads.Count,
-                CommentCount = allComments.Count,
-                CutoffDate = cutoffDate.UtcDateTime
-            };
+                subreddit, processingTime, topThreads.Count, allComments.Count);
+            
+            report.HtmlContent = emailHtml;
 
             // Save to blob storage
             var blobClient = _containerClient.GetBlobClient($"{report.Id}.json");
