@@ -28,7 +28,7 @@
     @if (loading)
     {
         <div class="loading-container">
-            <div class="loading-spinner">
+        <div class="loading-spinner">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
@@ -116,9 +116,10 @@
             
             if (report != null)
             {
+                var content = ProcessHtmlAnchors(report.HtmlContent);
+                content = ProcessHtmlCss(content);
                 // Process HTML content to fix anchor links and clean CSS
-                report.HtmlContent = ProcessHtmlAnchors(report.HtmlContent);
-                report.HtmlContent = ProcessHtmlCss(report.HtmlContent);
+                report.HtmlContent = content;
             }
         }
         finally
@@ -134,20 +135,46 @@
     {
         if (string.IsNullOrEmpty(htmlContent))
             return htmlContent;
-            
-        // Pattern to match the body CSS style block
-        var pattern = @"body\s*{\s*([^}]+)\s*}";
-        
-        return Regex.Replace(htmlContent, pattern, match => {
-            var cssContent = match.Groups[1].Value;
-            
-            // Remove max-width and padding properties while preserving other styles
-            var cssProperties = cssContent.Split(';')
-                .Where(prop => !prop.Contains("max-width") && !prop.Contains("padding"))
-                .Where(prop => !string.IsNullOrWhiteSpace(prop));
-                
-            return $"body {{ {string.Join(";", cssProperties)} }}";
+
+        // Remove body style block entirely
+        htmlContent = Regex.Replace(htmlContent, @"<style[^>]*>.*?body\s*{[^}]+}.*?</style>", m =>
+        {
+            // Remove only the body style, keep other styles
+            var style = m.Value;
+            var bodyPattern = @"body\s*{[^}]+}";
+            style = Regex.Replace(style, bodyPattern, "");
+            return style;
+        }, RegexOptions.Singleline);
+
+        // Remove inline body style attribute if present
+        htmlContent = Regex.Replace(htmlContent, @"<body[^>]*style=""[^\\""]*""", match =>
+        {
+            // Remove style attribute from <body>
+            return Regex.Replace(match.Value, "style=\"[^\"]*\"", "");
         });
+
+        // Replace hardcoded color/background-color in classes with CSS variables for dark mode support
+        var colorMap = new Dictionary<string, string>
+        {
+            { "#333", "var(--text-primary)" },
+            { "#FF4500", "var(--primary-color)" },
+            { "#f8f9fa", "var(--bg-secondary)" },
+            { "#fff", "var(--bg-secondary)" },
+            { "#1a1a1b", "var(--text-primary)" },
+            { "#7c7c7c", "var(--text-secondary)" },
+            { "#f0f8ff", "var(--info-color)" },
+            { "#eee", "var(--border-color)" },
+            { "#fff3e0", "var(--warning-color)" },
+            { "#0366d6", "var(--primary-color)" },
+            { "#0255b3", "var(--primary-hover)" }
+        };
+
+        foreach (var kvp in colorMap)
+        {
+            htmlContent = htmlContent.Replace(kvp.Key, kvp.Value);
+        }
+
+        return htmlContent;
     }
 
     /// <summary>
