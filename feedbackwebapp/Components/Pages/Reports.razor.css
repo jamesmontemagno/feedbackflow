@@ -157,11 +157,13 @@
     background-color: var(--input-bg);
     color: var(--text-color);
     border-color: var(--border-color);
+    transition: color 0.3s ease, background-color 0.3s ease;
 }
 
-.filter-group .form-select:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 0.2rem rgba(var(--primary-color-rgb), 0.25);
+[data-theme="dark"] .filter-group .form-select {
+    background-color: var(--input-bg-dark, #23272b);
+    color: var(--text-color-dark, #f8f9fa);
+    border-color: var(--border-color-dark, #444950);
 }
 
 /* Loading state styles */
@@ -181,66 +183,226 @@
     flex-direction: column;
 }
 
-.loading-placeholder {
-    height: 1rem;
-    background: linear-gradient(
-        90deg,
-        var(--hover-bg) 0%,
-        var(--bg-secondary) 50%,
-        var(--hover-bg) 100%
-    );
-    background-size: 200% 100%;
-    animation: loading-wave 2s infinite;
+/* Table styles */
+.reports-table {
+    width: 100%;
+    margin-bottom: 0;
+}
+
+.reports-table th,
+.reports-table td {
+    vertical-align: middle;
+    padding: 0.75rem;
+}
+
+/* Source badge styles */
+.reports-table .source-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--border-radius-pill);
+    font-size: 0.875rem;
+    font-weight: 600;
+    background: var(--primary-gradient);
+    color: white;
+    white-space: nowrap;
+    transition: all 0.3s ease;
+}
+
+.reports-table .source-badge i {
+    font-size: 1rem;
+}
+
+.reports-table .report-date,
+.reports-table .report-sub-source {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
+}
+
+/* Stats styles */
+.reports-table .stat-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+/* Action button styles */
+.reports-table .btn-action {
+    padding: 0.4rem;
+    font-size: 0.875rem;
     border-radius: var(--border-radius-sm);
-    margin-bottom: 0.5rem;
+    background: var(--primary-gradient);
+    color: white;
+    border: none;
+    box-shadow: 0 3px 6px rgba(var(--primary-color-rgb), 0.18);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    transition: all 0.3s ease;
+}
+
+.reports-table .btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(var(--primary-color-rgb), 0.22);
+    filter: brightness(1.05);
+}
+
+/* Loading state styles */
+.reports-table.loading td {
+    padding: 0.75rem;
+    background-color: var(--bg-secondary);
+}
+
+.loading-placeholder {
+    position: relative;
+    overflow: hidden;
+    background: var(--border-color);
+    border-radius: var(--border-radius-sm);
+}
+
+.loading-placeholder::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+        90deg,
+        rgba(var(--primary-color-rgb), 0) 0,
+        rgba(var(--primary-color-rgb), 0.05) 20%,
+        rgba(var(--primary-color-rgb), 0.2) 60%,
+        rgba(var(--primary-color-rgb), 0.05) 80%,
+        rgba(var(--primary-color-rgb), 0) 100%
+    );
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    100% {
+        transform: translateX(100%);
+    }
 }
 
 .source-placeholder {
+    width: 120px;
+    height: 32px;
+}
+
+.subsource-placeholder {
     width: 100px;
-    height: 1.5rem;
+    height: 20px;
 }
 
 .date-placeholder {
-    width: 150px;
+    width: 140px;
+    height: 20px;
+}
+
+.stat-placeholder {
+    width: 50px;
+    height: 24px;
+    margin: 0 auto;
 }
 
 .button-placeholder {
-    width: 100px;
-    height: 2rem;
+    width: 80px;
+    height: 32px;
     margin-left: auto;
-}
-
-@keyframes loading-wave {
-    0% {
-        background-position: 200% 0;
-    }
-    100% {
-        background-position: -200% 0;
-    }
+    background: var(--primary-color);
+    opacity: 0.2;
 }
 
 /* Responsive adjustments */
-@media (max-width: 768px) {
-    .reports-container, 
-    .reports-loading {
-        grid-template-columns: 1fr;
+@media (max-width: 991.98px) {
+    .reports-table th,
+    .reports-table td {
+        padding: 0.625rem;
     }
-    
-    .report-stats {
-        flex-wrap: wrap;
+
+    .reports-table .source-badge {
+        padding: 0.25rem 0.5rem;
     }
-    
-    .stat-item {
-        flex: 1 0 30%;
+
+    .reports-table .stat-value {
+        font-size: 1rem;
     }
 }
 
-@media (max-width: 576px) {
-    .filter-controls .d-flex {
-        flex-direction: column;
+@media (max-width: 767.98px) {
+    .reports-table th,
+    .reports-table td {
+        padding: 0.5rem 0.375rem;
+    }
+
+    .reports-table .source-badge {
+        font-size: 0.8125rem;
+    }
+
+    .reports-table .report-date,
+    .reports-table .report-sub-source {
+        font-size: 0.8125rem;
+    }
+
+    .reports-table .stat-value {
+        font-size: 0.9375rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .reports-table th,
+    .reports-table td {
+        padding: 0.5rem 0.25rem;
+    }
+
+    .reports-table .source-badge {
+        padding: 0.25rem 0.375rem;
+        font-size: 0.75rem;
+    }
+
+    .reports-table .report-date,
+    .reports-table .report-sub-source {
+        font-size: 0.75rem;
+    }
+
+    .reports-table .stat-value {
+        font-size: 0.875rem;
     }
     
-    .filter-group {
-        width: 100%;
+    .reports-table .btn-action {
+        width: 28px;
+        height: 28px;
+        padding: 0.3rem;
     }
+}
+
+[data-theme="dark"] .reports-table {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+[data-theme="dark"] .reports-table th,
+[data-theme="dark"] .reports-table td {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+[data-theme="dark"] .reports-table .source-badge {
+    background: var(--primary-gradient);
+    color: var(--bg-secondary);
+}
+[data-theme="dark"] .reports-table .report-date,
+[data-theme="dark"] .reports-table .report-sub-source {
+    color: var(--text-secondary);
+}
+[data-theme="dark"] .reports-table .btn-action {
+    background: var(--primary-gradient);
+    color: var(--bg-secondary);
 }

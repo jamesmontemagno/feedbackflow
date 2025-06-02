@@ -63,7 +63,15 @@
                 @if (!string.IsNullOrWhiteSpace(analysis.UserInput))
                 {
                     <div class="user-input mb-3">
-                        <strong>Input:</strong> @analysis.UserInput
+                        <strong>Input:</strong>
+                        @if (IsValidUrl(analysis.UserInput))
+                        {
+                            <a href="@analysis.UserInput" target="_blank" rel="noopener noreferrer">@analysis.UserInput</a>
+                        }
+                        else
+                        {
+                            @analysis.UserInput
+                        }
                     </div>
                 }
 
@@ -204,5 +212,13 @@
         }
         
         await ToastService.ShowSuccessAsync("Analysis copied to clipboard");
+    }
+
+    private static bool IsValidUrl(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return false;
+        return Uri.TryCreate(input, UriKind.Absolute, out var uriResult)
+            && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
     }
 }
