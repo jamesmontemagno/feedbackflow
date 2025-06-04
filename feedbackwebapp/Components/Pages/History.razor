@@ -190,10 +190,11 @@
                                     <div class="url-list">
                                         @foreach (var url in urls)
                                         {
-                                            <div class="url-item">                                                @{
+                                            <div class="url-item">                                                
+                                                @{
+                                                    var isYouTube = UrlParsing.IsYouTubeUrl(url);
                                                     var videoId = UrlParsing.ExtractVideoId(url);
-                                                    var urlSourceTypes = item.SourceType.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                                                    if (urlSourceTypes.Any(s => s.Equals("YouTube", StringComparison.OrdinalIgnoreCase)) && !string.IsNullOrEmpty(videoId))
+                                                    if (isYouTube && !string.IsNullOrWhiteSpace(videoId))
                                                     {
                                                         <div class="youtube-thumbnail-container">
                                                             <a href="@url" target="_blank" rel="noopener noreferrer" class="d-block">
