@@ -73,7 +73,7 @@
                     <AnalysisResults 
                         Error="@error" 
                         MarkdownResult="@markdownResult" 
-                        SourceType="@selectedSource"
+                        SourceType="@selectedSourceFinal"
                         UserInput="@GetUserInputForSource()" /> 
 
                     @* Display additional data from FeedbackSourceData list *@
@@ -147,15 +147,56 @@
         currentStatus = status;
         currentStatusMessage = message;
         StateHasChanged();
-    }    private string? GetUserInputForSource()
+    }
+
+    private string? GetUserInputForSource()
     {
         return selectedSource switch
         {
             "Manual" => manualInputForm?.ContentInput,
-            "Auto" => autoDataSourceForm?.GetUrls().FirstOrDefault(),
+            "Auto" => autoDataSourceForm?.GetUrls() is { } urls && urls.Any() ? string.Join(", ", urls) : null,
             _ => null
         };
-    }    private async Task SubmitFeedbackRequest()
+    }
+
+    private string selectedSourceFinal => selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase)
+        ? GetSourcesFromUrls()
+        : selectedSource;
+
+    private string GetSourcesFromUrls()
+    {
+        if (autoDataSourceForm?.GetUrls() is not { } urls || !urls.Any())
+            return "Auto";
+            
+        var sources = new List<string>();
+        
+        foreach (var url in urls)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                continue;
+                
+            if (UrlParsing.IsYouTubeUrl(url))
+                sources.Add("YouTube");
+            else if (url.Contains("reddit.com"))
+                sources.Add("Reddit");
+            else if (url.Contains("news.ycombinator.com") || url.Contains("hackernews"))
+                sources.Add("HackerNews");
+            else if (url.Contains("github.com"))
+                sources.Add("GitHub");
+            else if (url.Contains("devblogs.microsoft.com"))
+                sources.Add("DevBlogs");
+            else if (url.Contains("bsky.app"))
+                sources.Add("BlueSky");
+            else
+                sources.Add("Web");
+        }
+        
+        // Return unique sources as comma-separated list, or "Auto" if no sources identified
+        return sources.Distinct().Any() ? string.Join(", ", sources.Distinct()) : "Auto";
+    }
+
+
+    private async Task SubmitFeedbackRequest()
     {
         try
         {
@@ -214,7 +255,9 @@
         }
 
         await base.OnInitializedAsync();
-    }    private async Task HandleQueryNav()
+    }    
+    
+    private async Task HandleQueryNav()
     {
         if (string.IsNullOrEmpty(initialSource) || string.IsNullOrEmpty(initialId))
             return;
@@ -224,7 +267,8 @@
             "auto" or "hackernews" or "reddit" or "youtube" => "Auto",
             _ => selectedSource
         };
-        StateHasChanged();        if (selectedSource == "Auto")
+        StateHasChanged();        
+        if (selectedSource == "Auto")
         {
             // Wait for autoDataSourceForm to be initialized, up to 10 attempts
             var attempts = 0;

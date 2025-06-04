@@ -51,10 +51,17 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div class="d-flex align-items-center gap-2">
-                        <i class="bi @GetServiceIcon(analysis.SourceType) service-icon"></i>
-                        <span class="source-badge">@analysis.SourceType</span>
+                        @{
+                            var sourceTypes = analysis.SourceType.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                            foreach (var sourceType in sourceTypes)
+                            {
+                                <i class="bi @GetServiceIcon(sourceType) service-icon"></i>
+                            }
+                            <span class="source-badge">@analysis.SourceType</span>
+                        }
                         <small class="text-muted">@analysis.CreatedDate.ToLocalTime().ToString("g")</small>
-                    </div>                    <div class="d-flex align-items-center gap-2">
+                    </div>                    
+                    <div class="d-flex align-items-center gap-2">
                         <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="CopyToClipboard">
                             <i class="bi bi-clipboard"></i>
                         </button>
@@ -63,7 +70,8 @@
                         </button>
                     </div>
                 </div>
-                              @if (!string.IsNullOrWhiteSpace(analysis.UserInput))
+                              
+                @if (!string.IsNullOrWhiteSpace(analysis.UserInput))
                 {
                     <div class="user-input mb-3">
                         <strong>Input:</strong>
@@ -74,9 +82,10 @@
                                 <div class="url-list">
                                     @foreach (var url in urls)
                                     {
-                                        <div class="url-item">
-                                            @{                                                var videoId = UrlParsing.ExtractVideoId(url);
-                                                if (analysis.SourceType.Equals("YouTube", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(videoId))
+                                        <div class="url-item">                                            @{
+                                                var videoId = UrlParsing.ExtractVideoId(url);
+                                                var urlSourceTypes = analysis.SourceType.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                                                if (urlSourceTypes.Any(s => s.Equals("YouTube", StringComparison.OrdinalIgnoreCase)) && !string.IsNullOrEmpty(videoId))
                                                 {
                                                     <div class="youtube-thumbnail-container">
                                                         <a href="@url" target="_blank" rel="noopener noreferrer" class="d-block">
@@ -199,10 +208,14 @@
             Logger.LogError(ex, "Error saving analysis to history");
             await ToastService.ShowErrorAsync("Failed to save analysis to history");
         }
-    }    private string ConvertMarkdownToHtml(string markdown)
+    }    
+    
+    private string ConvertMarkdownToHtml(string markdown)
     {
         return SharedDump.Utils.MarkdownRenderer.ConvertToHtml(markdown);
-    }    private string GetServiceIcon(string sourceType)
+    }    
+    
+    private string GetServiceIcon(string sourceType)
     {
         return ServiceIconHelper.GetServiceIcon(sourceType);
     }

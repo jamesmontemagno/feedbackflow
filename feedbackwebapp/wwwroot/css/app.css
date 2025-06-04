@@ -473,8 +473,8 @@ These styles are shared across multiple components
 .service-icon {
     font-size: 1.2rem;
     color: var(--primary-color);
-    margin-right: 0.75rem;
     opacity: 0.9;
+    /* Removed margin-right since we're using gap in the flex container */
 }
 
 .source-badge {
@@ -484,6 +484,7 @@ These styles are shared across multiple components
     font-size: 0.75rem;
     padding: 0.4em 0.8em;
     border-radius: var(--border-radius-pill);
+    margin-left: 0.5rem; /* Add spacing after the icons */
 }
 
 /* Action buttons */

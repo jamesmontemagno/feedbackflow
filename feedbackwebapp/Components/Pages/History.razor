@@ -123,9 +123,15 @@
             <Virtualize Items="filteredItems" Context="item" ItemSize="250">
                 <div class="list-group-item @(item.IsShared ? "shared-item" : "")" @key="item.Id">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div class="d-flex align-items-center gap-2">                            
-                            <i class="bi @HistoryHelper.GetServiceIcon(item.SourceType) service-icon"></i>
-                            <span class="source-badge">@item.SourceType</span>
+                        <div class="d-flex align-items-center gap-2">
+                            @{
+                                var sourceTypes = item.SourceType.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                                foreach (var sourceType in sourceTypes)
+                                {
+                                    <i class="bi @HistoryHelper.GetServiceIcon(sourceType) service-icon"></i>
+                                }
+                                <span class="source-badge">@item.SourceType</span>
+                            }
                             <small class="text-muted">@item.Timestamp.ToLocalTime().ToString("g")</small>
                             @if (item.IsShared)
                             {
@@ -162,8 +168,7 @@
                                     <i class="bi bi-link-45deg"></i>
                                     Copy Link
                                 </button>
-                            }
-                            @if(item.SourceType != "Manual")
+                            }                            @if(item.SourceType != "Manual")
                             {
                                 <a class="btn btn-sm btn-outline-primary action-btn" title="Open Source" target="_blank" rel="noopener noreferrer" href="@HistoryHelper.GetSourceUrl(item)">
                                     <i class="bi bi-box-arrow-up-right"></i>
@@ -185,8 +190,10 @@
                                     <div class="url-list">
                                         @foreach (var url in urls)
                                         {
-                                            <div class="url-item">                                                @{                                                    var videoId = UrlParsing.ExtractVideoId(url);
-                                                    if (item.SourceType.Equals("YouTube", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(videoId))
+                                            <div class="url-item">                                                @{
+                                                    var videoId = UrlParsing.ExtractVideoId(url);
+                                                    var urlSourceTypes = item.SourceType.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                                                    if (urlSourceTypes.Any(s => s.Equals("YouTube", StringComparison.OrdinalIgnoreCase)) && !string.IsNullOrEmpty(videoId))
                                                     {
                                                         <div class="youtube-thumbnail-container">
                                                             <a href="@url" target="_blank" rel="noopener noreferrer" class="d-block">
@@ -286,9 +293,7 @@
             
             StateHasChanged();
         }
-    }
-
-    private async Task DeleteItem(string id)
+    }    private async Task DeleteItem(string id)
     {
         await HistoryService.DeleteHistoryItemAsync(id);
         historyItems = await HistoryService.GetHistoryAsync();
@@ -326,7 +331,10 @@
 
         // Apply source filter
         if (sourceFilter != "all")
-            items = items.Where(x => x.SourceType == sourceFilter);
+        {
+            items = items.Where(x => x.SourceType.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                            .Any(s => s.Equals(sourceFilter, StringComparison.OrdinalIgnoreCase)));
+        }
 
         // Apply shared filter
         if (sharedFilter != "all")
