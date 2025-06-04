@@ -199,4 +199,17 @@ public static class UrlParsing
 
         return uri.Host.Contains("ycombinator.com", StringComparison.OrdinalIgnoreCase);
     }
+
+    public static bool IsValidUrl(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return false;
+        return Uri.TryCreate(input, UriKind.Absolute, out var uriResult)
+            && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
+    }
+    
+    public static string GetYouTubeThumbnailUrl(string videoId)
+    {
+        return $"https://i.ytimg.com/vi/{videoId}/mqdefault.jpg";
+    }
 }

@@ -77,25 +77,10 @@ public class HistoryHelper : IHistoryHelper
             "bluesky" => $"https://bsky.app/profile/{id}",
             _ => "#"
         };
-    }
-
-    public string GetServiceIcon(string sourceType)
+    }    public string GetServiceIcon(string sourceType)
     {
-        return sourceType?.ToLowerInvariant() switch
-        {
-            "youtube" => "bi-youtube",
-            "github" => "bi-github",
-            "reddit" => "bi-reddit",
-            "twitter" => "bi-twitter",
-            "hackernews" => "bi-braces",
-            "devblogs" => "bi-journal-code",
-            "manual" => "bi-pencil-square",
-            "bluesky" => "bi-cloud",
-            _ => "bi-question-circle"
-        };
-    }
-
-    public string ConvertMarkdownToHtml(string? markdown)
+        return ServiceIconHelper.GetServiceIcon(sourceType);
+    }public string ConvertMarkdownToHtml(string? markdown)
     {
         return Markdown.ToHtml(markdown ?? string.Empty, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build());
     }

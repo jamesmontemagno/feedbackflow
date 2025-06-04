@@ -9,7 +9,11 @@
 @using SharedDump.Models
 @using Markdig
 @using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components
 @using FeedbackWebApp.Components.Shared
+@using SharedDump.Utils
+@using FeedbackWebApp.Utils
+@using FeedbackWebApp.Services
 
 <PageTitle>Analysis History</PageTitle>
 
@@ -170,11 +174,39 @@
                             </button>
                         </div>
                     </div>
-                                        
-                    @if (!string.IsNullOrWhiteSpace(item.UserInput) && item.SourceType != "Manual")
+                                          @if (!string.IsNullOrWhiteSpace(item.UserInput) && item.SourceType != "Manual")
                     {
                         <div class="user-input mb-3">
-                            <strong>Input:</strong> @item.UserInput
+                            <strong>Input:</strong>
+                            @{
+                                var urls = item.UserInput.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                                if (urls.All(url => UrlParsing.IsValidUrl(url)))
+                                {
+                                    <div class="url-list">
+                                        @foreach (var url in urls)
+                                        {
+                                            <div class="url-item">                                                @{                                                    var videoId = UrlParsing.ExtractVideoId(url);
+                                                    if (item.SourceType.Equals("YouTube", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(videoId))
+                                                    {
+                                                        <div class="youtube-thumbnail-container">
+                                                            <a href="@url" target="_blank" rel="noopener noreferrer" class="d-block">
+                                                                <img src="@FeedbackWebApp.Utils.UrlHelpers.GetYouTubeThumbnailUrl(videoId)" alt="YouTube Video Thumbnail" class="rounded shadow-sm" />
+                                                            </a>
+                                                        </div>
+                                                    }
+                                                }
+                                                <div class="url-link">
+                                                    <a href="@url" target="_blank" rel="noopener noreferrer">@url</a>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    @item.UserInput
+                                }
+                            }
                         </div>
                     }
 
@@ -396,13 +428,13 @@
             await onConfirmAction();
         }
         onConfirmAction = null;
-    }
-
+    }    
+    
     private void NavigateToLogin()
     {
         NavigationManager.NavigateTo("/");
     }
-
+  
     private async Task ShareAnalysis(AnalysisHistoryItem item)
     {
         if(isProcessingShare)
