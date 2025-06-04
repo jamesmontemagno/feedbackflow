@@ -103,21 +103,8 @@
     margin-bottom: 1.5rem;
 }
 
-/* Service icon and badge */
-.service-icon {
-    font-size: 1.2rem;
-    color: var(--primary-color);
-    margin-right: 0.75rem;
-    opacity: 0.9;
-}
-
-.source-badge {
-    background: var(--primary-gradient);
-    color: #fff;
-    font-weight: 600;
-    font-size: 0.75rem;
-    padding: 0.4em 0.8em;
-}
+/* Note: Shared styles for YouTube thumbnails, URL list, service icons, etc. 
+   have been moved to app.css */
 
 /* History item styles */
 .history-item {
@@ -233,18 +220,8 @@
         transform: translateY(0);
     }
 }
-.action-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    transition: all 0.2s ease-in-out;
-    min-width: 32px;
-    justify-content: center;
-}
 
-.action-btn:hover {
-    transform: translateY(-1px);
-}
+/* Note: .action-btn styles have been moved to app.css */
 
 /* Loading spinner */
 .spinner-border-sm {

@@ -494,3 +494,6 @@ $RECYCLE.BIN/
 /feedbackfunctions/local.settings.json
 __azurite_db_blob*
 __blobstorage__/*
+__azurite_db_table__.json
+.gitignore
+AzuriteConfig

@@ -39,31 +39,25 @@ public class HistoryHelper : IHistoryHelper
             await jsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", item.Summary);
             await toastService.ShowSuccessAsync("Summary copied to clipboard", 3000);
         }
-    }
-
-    public string GetSourceUrl(AnalysisHistoryItem item)
+    }    public string GetSourceUrl(AnalysisHistoryItem item)
     {
         if (string.IsNullOrEmpty(item.UserInput) || string.IsNullOrEmpty(item.SourceType))
             return "#";
 
-        var id = item.UserInput;
-        var sourceType = item.SourceType.ToLowerInvariant();
-
-        // First check if the input is already a valid URL for the source type
-        var isValidUrl = sourceType switch
+        // Handle multiple comma-delimited URLs
+        var urls = item.UserInput.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var url in urls)
         {
-            "youtube" => UrlParsing.IsYouTubeUrl(id),
-            "github" => UrlParsing.IsGitHubUrl(id),
-            "reddit" => UrlParsing.IsRedditUrl(id),
-            "twitter" => UrlParsing.IsTwitterUrl(id),
-            "hackernews" => UrlParsing.IsHackerNewsUrl(id),
-            "devblogs" => DevBlogsUrlValidator.IsValidDevBlogsUrl(id),
-            "bluesky" => UrlParsing.IsBlueSkyUrl(id),
-            _ => false
-        };
+            if (UrlParsing.IsValidUrl(url))
+                return url;
+        }
 
-        if (isValidUrl)
-            return id;
+        // If no valid URL found, use the first input as ID
+        var id = urls.FirstOrDefault() ?? item.UserInput;
+        
+        // Use the first source type for URL construction
+        var sourceTypes = item.SourceType.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var sourceType = sourceTypes.FirstOrDefault()?.ToLowerInvariant() ?? "";
 
         // If not a valid URL, construct one from the ID
         return sourceType switch
@@ -77,25 +71,10 @@ public class HistoryHelper : IHistoryHelper
             "bluesky" => $"https://bsky.app/profile/{id}",
             _ => "#"
         };
-    }
-
-    public string GetServiceIcon(string sourceType)
+    }public string GetServiceIcon(string sourceType)
     {
-        return sourceType?.ToLowerInvariant() switch
-        {
-            "youtube" => "bi-youtube",
-            "github" => "bi-github",
-            "reddit" => "bi-reddit",
-            "twitter" => "bi-twitter",
-            "hackernews" => "bi-braces",
-            "devblogs" => "bi-journal-code",
-            "manual" => "bi-pencil-square",
-            "bluesky" => "bi-cloud",
-            _ => "bi-question-circle"
-        };
-    }
-
-    public string ConvertMarkdownToHtml(string? markdown)
+        return ServiceIconHelper.GetServiceIcon(sourceType);
+    }public string ConvertMarkdownToHtml(string? markdown)
     {
         return Markdown.ToHtml(markdown ?? string.Empty, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build());
     }
