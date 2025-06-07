@@ -22,22 +22,62 @@ public class HistoryHelper : IHistoryHelper
         {
             var baseUrl = baseUri.TrimEnd('/');
             var shareLink = $"{baseUrl}/shared/{item.SharedId}";
-            await jsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", shareLink);
-            await toastService.ShowSuccessAsync("Share link copied to clipboard!", 3000);
+            
+            try
+            {
+                var success = await jsRuntime.InvokeAsync<bool>("copyToClipboard", shareLink);
+                if (success)
+                {
+                    await toastService.ShowSuccessAsync("Share link copied to clipboard!", 3000);
+                }
+                else
+                {
+                    await toastService.ShowErrorAsync("Failed to copy share link. Please try again.");
+                }
+            }
+            catch (Exception ex)
+            {
+                await toastService.ShowErrorAsync($"Failed to copy share link: {ex.Message}");
+            }
         }
     }
 
     public async Task CopyToClipboard(AnalysisHistoryItem item, IJSRuntime jsRuntime, IToastService toastService)
     {
-        if (!string.IsNullOrEmpty(item.FullAnalysis))
+        try
         {
-            await jsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", item.FullAnalysis);
-            await toastService.ShowSuccessAsync("Analysis copied to clipboard", 3000);
+            string textToCopy = "";
+            string successMessage = "";
+            
+            if (!string.IsNullOrEmpty(item.FullAnalysis))
+            {
+                textToCopy = item.FullAnalysis;
+                successMessage = "Analysis copied to clipboard";
+            }
+            else if (!string.IsNullOrEmpty(item.Summary))
+            {
+                textToCopy = item.Summary;
+                successMessage = "Summary copied to clipboard";
+            }
+            else
+            {
+                await toastService.ShowErrorAsync("Nothing to copy - no analysis or summary available.");
+                return;
+            }
+            
+            var success = await jsRuntime.InvokeAsync<bool>("copyToClipboard", textToCopy);
+            if (success)
+            {
+                await toastService.ShowSuccessAsync(successMessage, 3000);
+            }
+            else
+            {
+                await toastService.ShowErrorAsync("Failed to copy to clipboard. Please try again.");
+            }
         }
-        else if (!string.IsNullOrEmpty(item.Summary))
+        catch (Exception ex)
         {
-            await jsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", item.Summary);
-            await toastService.ShowSuccessAsync("Summary copied to clipboard", 3000);
+            await toastService.ShowErrorAsync($"Failed to copy to clipboard: {ex.Message}");
         }
     }    public string GetSourceUrl(AnalysisHistoryItem item)
     {
