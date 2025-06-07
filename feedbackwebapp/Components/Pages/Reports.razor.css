@@ -213,6 +213,25 @@
     font-size: 1rem;
 }
 
+/* Source and subsource link styles */
+.source-link,
+.subsource-link {
+    transition: all 0.3s ease;
+    display: inline-block;
+}
+
+.source-link:hover .source-badge {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.3);
+    filter: brightness(1.1);
+}
+
+.subsource-link:hover .report-sub-source {
+    color: var(--primary-color) !important;
+    text-decoration: underline;
+    transform: translateX(2px);
+}
+
 .reports-table .report-date,
 .reports-table .report-sub-source {
     font-size: 0.875rem;
@@ -221,6 +240,7 @@
     align-items: center;
     gap: 0.25rem;
     white-space: nowrap;
+    transition: all 0.3s ease;
 }
 
 /* Stats styles */

@@ -11,10 +11,14 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="MSTest" />
+    <PackageReference Include="NSubstitute" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\shareddump\shareddump.csproj" />
+    <ProjectReference Include="..\feedbackwebapp\feedbackwebapp.csproj" />
   </ItemGroup>
 
   <ItemGroup>

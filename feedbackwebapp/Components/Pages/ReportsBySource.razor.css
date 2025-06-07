@@ -1,0 +1,113 @@
+/* ReportsBySource specific styles */
+
+.feedbackflow-title {
+    color: var(--text-primary);
+    font-weight: 700;
+    margin-bottom: 0;
+}
+
+/* Card header customization for filtered view */
+.card-header {
+    background: var(--primary-gradient);
+    color: white;
+    border-bottom: none;
+    padding: 1rem 1.25rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.card-header i {
+    font-size: 1.1rem;
+}
+
+/* Alert customization */
+.alert-info {
+    border-color: rgba(var(--primary-color-rgb), 0.2);
+    background-color: rgba(var(--primary-color-rgb), 0.08);
+    color: var(--text-primary);
+}
+
+.alert-info i {
+    color: var(--primary-color);
+}
+
+[data-theme="dark"] .alert-info {
+    background-color: rgba(var(--primary-color-rgb), 0.12);
+    border-color: rgba(var(--primary-color-rgb), 0.25);
+    color: var(--text-primary);
+}
+
+/* Source restriction notice */
+.text-danger {
+    color: var(--danger-color) !important;
+}
+
+.bi-reddit {
+    opacity: 0.9;
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+    .feedbackflow-title {
+        font-size: 1.5rem;
+    }
+    
+    .bi-reddit {
+        font-size: 3rem !important;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .feedbackflow-title {
+        font-size: 1.25rem;
+    }
+    
+    .bi-reddit {
+        font-size: 2.5rem !important;
+    }
+    
+    .card-body.text-center.py-5 {
+        padding: 2rem 1rem !important;
+    }
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 767.98px) {
+    .reports-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .btn-outline-primary {
+        align-self: flex-start;
+        font-size: 0.875rem;
+        padding: 0.4rem 0.8rem;
+    }
+    
+    .feedbackflow-title {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .reports-header {
+        margin-bottom: 1rem;
+    }
+    
+    .feedbackflow-title {
+        font-size: 1.25rem;
+    }
+    
+    .btn-outline-primary {
+        font-size: 0.8125rem;
+        padding: 0.375rem 0.75rem;
+    }
+    
+    .card-header {
+        padding: 0.875rem 1rem;
+        font-size: 0.9375rem;
+    }
+}
