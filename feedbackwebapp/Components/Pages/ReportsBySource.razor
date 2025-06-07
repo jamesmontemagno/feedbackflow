@@ -2,6 +2,7 @@
 @using FeedbackWebApp.Services
 @using FeedbackWebApp.Services.Authentication
 @using FeedbackWebApp.Components.Feedback.Forms
+@using FeedbackWebApp.Components.Shared
 @using SharedDump.Models.Reports
 @inject IReportService ReportService
 @inject NavigationManager NavigationManager
@@ -15,10 +16,52 @@
     {
         <AuthenticationForm OnAuthenticated="HandleAuthenticated" />
     }
+    else if (!IsValidSource())
+    {
+        <div class="reports-header">
+            <div class="reports-header-title">
+                <h1 class="feedbackflow-title mb-2">Unsupported Source</h1>
+                <p class="text-muted mb-0">Only Reddit reports are currently supported</p>
+            </div>
+            <a href="/reports" class="btn btn-outline-primary">
+                <i class="bi bi-arrow-left me-2"></i>
+                Back to All Reports
+            </a>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <div>
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Source Restriction Notice
+                </div>
+            </div>
+            <div class="card-body text-center py-5">
+                <div class="mb-4">
+                    <i class="bi bi-reddit text-danger" style="font-size: 4rem;"></i>
+                </div>
+                <h3 class="mb-3">Reddit Reports Only</h3>
+                <p class="text-muted mb-4">
+                    The filtered reports feature is currently limited to Reddit content only. 
+                    We're working on expanding support for other platforms.
+                </p>
+                <div class="d-flex justify-content-center gap-3 flex-wrap">
+                    <a href="/reports/reddit" class="btn btn-primary">
+                        <i class="bi bi-reddit me-2"></i>
+                        View Reddit Reports
+                    </a>
+                    <a href="/reports" class="btn btn-outline-secondary">
+                        <i class="bi bi-list me-2"></i>
+                        View All Reports
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
     else
     {
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
+        <div class="reports-header">
+            <div class="reports-header-title">
                 <h1 class="feedbackflow-title mb-2">@GetPageTitle()</h1>
                 <p class="text-muted mb-0">Filtered reports for specific source and subsource</p>
             </div>
@@ -164,10 +207,16 @@
     private IEnumerable<ReportModel>? reports;
     private string? errorMessage;
 
+    private bool IsValidSource()
+    {
+        return !string.IsNullOrEmpty(Source) && 
+               Source.Equals("reddit", StringComparison.OrdinalIgnoreCase);
+    }
+
     private async Task HandleAuthenticated(bool success)
     {
         isAuthenticated = success;
-        if (success)
+        if (success && IsValidSource())
         {
             await LoadReports();
         }
@@ -175,6 +224,11 @@
 
     private async Task LoadReports()
     {
+        if (!IsValidSource())
+        {
+            return;
+        }
+        
         try
         {
             loading = true;
@@ -197,7 +251,7 @@
         if (firstRender)
         {
             isAuthenticated = await AuthService.IsAuthenticatedAsync();
-            if (isAuthenticated)
+            if (isAuthenticated && IsValidSource())
             {
                 await LoadReports();
                 StateHasChanged();
@@ -207,7 +261,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (isAuthenticated)
+        if (isAuthenticated && IsValidSource())
         {
             await LoadReports();
         }
