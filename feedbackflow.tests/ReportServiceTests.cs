@@ -2,8 +2,7 @@ using System.Net;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Moq;
-using Moq.Protected;
+using NSubstitute;
 using FeedbackWebApp.Services;
 using SharedDump.Models.Reports;
 
@@ -12,25 +11,25 @@ namespace feedbackflow.tests;
 [TestClass]
 public class ReportServiceTests
 {
-    private Mock<HttpMessageHandler> _mockHttpMessageHandler;
+    private TestHttpMessageHandler _testHttpMessageHandler;
     private HttpClient _httpClient;
-    private Mock<IConfiguration> _mockConfiguration;
+    private IConfiguration _configuration;
     private ReportService _reportService;
 
     [TestInitialize]
     public void Setup()
     {
-        _mockHttpMessageHandler = new Mock<HttpMessageHandler>();
-        _httpClient = new HttpClient(_mockHttpMessageHandler.Object);
+        _testHttpMessageHandler = new TestHttpMessageHandler();
+        _httpClient = new HttpClient(_testHttpMessageHandler);
         
-        _mockConfiguration = new Mock<IConfiguration>();
-        _mockConfiguration.Setup(c => c["FeedbackApi:BaseUrl"]).Returns("https://api.test.com");
-        _mockConfiguration.Setup(c => c["FeedbackApi:ListReportsCode"]).Returns("test-code");
+        _configuration = Substitute.For<IConfiguration>();
+        _configuration["FeedbackApi:BaseUrl"].Returns("https://api.test.com");
+        _configuration["FeedbackApi:ListReportsCode"].Returns("test-code");
 
-        var mockHttpClientFactory = new Mock<IHttpClientFactory>();
-        mockHttpClientFactory.Setup(f => f.CreateClient("DefaultClient")).Returns(_httpClient);
+        var httpClientFactory = Substitute.For<IHttpClientFactory>();
+        httpClientFactory.CreateClient("DefaultClient").Returns(_httpClient);
 
-        _reportService = new ReportService(mockHttpClientFactory.Object, _mockConfiguration.Object);
+        _reportService = new ReportService(httpClientFactory, _configuration);
     }
 
     [TestCleanup]
@@ -51,17 +50,11 @@ public class ReportServiceTests
         };
         var responseContent = JsonSerializer.Serialize(new { reports });
 
-        _mockHttpMessageHandler
-            .Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync(new HttpResponseMessage
-            {
-                StatusCode = HttpStatusCode.OK,
-                Content = new StringContent(responseContent)
-            });
+        _testHttpMessageHandler.SetResponse(new HttpResponseMessage
+        {
+            StatusCode = HttpStatusCode.OK,
+            Content = new StringContent(responseContent)
+        });
 
         // Act
         var result = await _reportService.ListReportsAsync();
@@ -69,17 +62,14 @@ public class ReportServiceTests
         // Assert
         Assert.IsNotNull(result);
         Assert.AreEqual(3, result.Count());
-        _mockHttpMessageHandler
-            .Protected()
-            .Verify(
-                "SendAsync",
-                Times.Once(),
-                ItExpr.Is<HttpRequestMessage>(req => 
-                    req.Method == HttpMethod.Get && 
-                    req.RequestUri!.ToString().Contains("ListReports?code=test-code") &&
-                    !req.RequestUri!.ToString().Contains("source=") &&
-                    !req.RequestUri!.ToString().Contains("subsource=")),
-                ItExpr.IsAny<CancellationToken>());
+        
+        // Verify the request was made correctly
+        var capturedRequest = _testHttpMessageHandler.LastRequest;
+        Assert.IsNotNull(capturedRequest);
+        Assert.AreEqual(HttpMethod.Get, capturedRequest.Method);
+        Assert.IsTrue(capturedRequest.RequestUri!.ToString().Contains("ListReports?code=test-code"));
+        Assert.IsFalse(capturedRequest.RequestUri!.ToString().Contains("source="));
+        Assert.IsFalse(capturedRequest.RequestUri!.ToString().Contains("subsource="));
     }
 
     [TestMethod]
@@ -93,17 +83,11 @@ public class ReportServiceTests
         };
         var responseContent = JsonSerializer.Serialize(new { reports });
 
-        _mockHttpMessageHandler
-            .Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync(new HttpResponseMessage
-            {
-                StatusCode = HttpStatusCode.OK,
-                Content = new StringContent(responseContent)
-            });
+        _testHttpMessageHandler.SetResponse(new HttpResponseMessage
+        {
+            StatusCode = HttpStatusCode.OK,
+            Content = new StringContent(responseContent)
+        });
 
         // Act
         var result = await _reportService.ListReportsAsync("reddit");
@@ -111,16 +95,13 @@ public class ReportServiceTests
         // Assert
         Assert.IsNotNull(result);
         Assert.AreEqual(2, result.Count());
-        _mockHttpMessageHandler
-            .Protected()
-            .Verify(
-                "SendAsync",
-                Times.Once(),
-                ItExpr.Is<HttpRequestMessage>(req => 
-                    req.Method == HttpMethod.Get && 
-                    req.RequestUri!.ToString().Contains("source=reddit") &&
-                    !req.RequestUri!.ToString().Contains("subsource=")),
-                ItExpr.IsAny<CancellationToken>());
+        
+        // Verify the request was made correctly
+        var capturedRequest = _testHttpMessageHandler.LastRequest;
+        Assert.IsNotNull(capturedRequest);
+        Assert.AreEqual(HttpMethod.Get, capturedRequest.Method);
+        Assert.IsTrue(capturedRequest.RequestUri!.ToString().Contains("source=reddit"));
+        Assert.IsFalse(capturedRequest.RequestUri!.ToString().Contains("subsource="));
     }
 
     [TestMethod]
@@ -133,17 +114,11 @@ public class ReportServiceTests
         };
         var responseContent = JsonSerializer.Serialize(new { reports });
 
-        _mockHttpMessageHandler
-            .Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync(new HttpResponseMessage
-            {
-                StatusCode = HttpStatusCode.OK,
-                Content = new StringContent(responseContent)
-            });
+        _testHttpMessageHandler.SetResponse(new HttpResponseMessage
+        {
+            StatusCode = HttpStatusCode.OK,
+            Content = new StringContent(responseContent)
+        });
 
         // Act
         var result = await _reportService.ListReportsAsync("reddit", "dotnet");
@@ -151,16 +126,13 @@ public class ReportServiceTests
         // Assert
         Assert.IsNotNull(result);
         Assert.AreEqual(1, result.Count());
-        _mockHttpMessageHandler
-            .Protected()
-            .Verify(
-                "SendAsync",
-                Times.Once(),
-                ItExpr.Is<HttpRequestMessage>(req => 
-                    req.Method == HttpMethod.Get && 
-                    req.RequestUri!.ToString().Contains("source=reddit") &&
-                    req.RequestUri!.ToString().Contains("subsource=dotnet")),
-                ItExpr.IsAny<CancellationToken>());
+        
+        // Verify the request was made correctly
+        var capturedRequest = _testHttpMessageHandler.LastRequest;
+        Assert.IsNotNull(capturedRequest);
+        Assert.AreEqual(HttpMethod.Get, capturedRequest.Method);
+        Assert.IsTrue(capturedRequest.RequestUri!.ToString().Contains("source=reddit"));
+        Assert.IsTrue(capturedRequest.RequestUri!.ToString().Contains("subsource=dotnet"));
     }
 
     [TestMethod]
@@ -174,17 +146,11 @@ public class ReportServiceTests
         };
         var responseContent = JsonSerializer.Serialize(new { reports });
 
-        _mockHttpMessageHandler
-            .Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync(new HttpResponseMessage
-            {
-                StatusCode = HttpStatusCode.OK,
-                Content = new StringContent(responseContent)
-            });
+        _testHttpMessageHandler.SetResponse(new HttpResponseMessage
+        {
+            StatusCode = HttpStatusCode.OK,
+            Content = new StringContent(responseContent)
+        });
 
         // Act
         var result = await _reportService.ListReportsAsync(null, "dotnet");
@@ -192,16 +158,13 @@ public class ReportServiceTests
         // Assert
         Assert.IsNotNull(result);
         Assert.AreEqual(2, result.Count());
-        _mockHttpMessageHandler
-            .Protected()
-            .Verify(
-                "SendAsync",
-                Times.Once(),
-                ItExpr.Is<HttpRequestMessage>(req => 
-                    req.Method == HttpMethod.Get && 
-                    req.RequestUri!.ToString().Contains("subsource=dotnet") &&
-                    req.RequestUri!.ToString().Contains("code=test-code")),
-                ItExpr.IsAny<CancellationToken>());
+        
+        // Verify the request was made correctly
+        var capturedRequest = _testHttpMessageHandler.LastRequest;
+        Assert.IsNotNull(capturedRequest);
+        Assert.AreEqual(HttpMethod.Get, capturedRequest.Method);
+        Assert.IsTrue(capturedRequest.RequestUri!.ToString().Contains("subsource=dotnet"));
+        Assert.IsTrue(capturedRequest.RequestUri!.ToString().Contains("code=test-code"));
     }
 
     [TestMethod]
@@ -211,32 +174,40 @@ public class ReportServiceTests
         var reports = new ReportModel[0];
         var responseContent = JsonSerializer.Serialize(new { reports });
 
-        _mockHttpMessageHandler
-            .Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync(new HttpResponseMessage
-            {
-                StatusCode = HttpStatusCode.OK,
-                Content = new StringContent(responseContent)
-            });
+        _testHttpMessageHandler.SetResponse(new HttpResponseMessage
+        {
+            StatusCode = HttpStatusCode.OK,
+            Content = new StringContent(responseContent)
+        });
 
         // Act
         var result = await _reportService.ListReportsAsync("test source", "test&subsource");
 
         // Assert
         Assert.IsNotNull(result);
-        _mockHttpMessageHandler
-            .Protected()
-            .Verify(
-                "SendAsync",
-                Times.Once(),
-                ItExpr.Is<HttpRequestMessage>(req => 
-                    req.Method == HttpMethod.Get && 
-                    req.RequestUri!.ToString().Contains("source=test source") &&
-                    req.RequestUri!.ToString().Contains("subsource=test%26subsource")),
-                ItExpr.IsAny<CancellationToken>());
+        
+        // Verify the request was made correctly
+        var capturedRequest = _testHttpMessageHandler.LastRequest;
+        Assert.IsNotNull(capturedRequest);
+        Assert.AreEqual(HttpMethod.Get, capturedRequest.Method);
+        Assert.IsTrue(capturedRequest.RequestUri!.ToString().Contains("source=test source"));
+        Assert.IsTrue(capturedRequest.RequestUri!.ToString().Contains("subsource=test%26subsource"));
+    }
+}
+
+public class TestHttpMessageHandler : HttpMessageHandler
+{
+    private HttpResponseMessage? _response;
+    public HttpRequestMessage? LastRequest { get; private set; }
+
+    public void SetResponse(HttpResponseMessage response)
+    {
+        _response = response;
+    }
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        LastRequest = request;
+        return Task.FromResult(_response ?? new HttpResponseMessage(HttpStatusCode.NotFound));
     }
 }
