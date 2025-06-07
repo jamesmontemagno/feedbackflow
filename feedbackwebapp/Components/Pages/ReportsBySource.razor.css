@@ -1,0 +1,171 @@
+/* ReportsBySource specific styles, extends Reports.razor.css */
+
+/* Header section */
+.reports-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.reports-header-title {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.feedbackflow-title {
+    color: var(--text-primary);
+    font-weight: 700;
+    margin-bottom: 0;
+}
+
+/* Back button styles */
+.btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+    background-color: transparent;
+    border-width: 2px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+}
+
+.btn-outline-primary:hover {
+    background: var(--primary-gradient);
+    border-color: var(--primary-color);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.2);
+}
+
+.btn-outline-primary:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+.btn-outline-primary i {
+    font-size: 0.875rem;
+    transition: transform 0.3s ease;
+}
+
+.btn-outline-primary:hover i {
+    transform: translateX(-2px);
+}
+
+/* Card header customization for filtered view */
+.card-header {
+    background: var(--primary-gradient);
+    color: white;
+    border-bottom: none;
+    padding: 1rem 1.25rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.card-header i {
+    font-size: 1.1rem;
+}
+
+/* Source/subsource indicator styling */
+.filter-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.8rem;
+    background: rgba(var(--primary-color-rgb), 0.1);
+    border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+    border-radius: var(--border-radius);
+    color: var(--primary-color);
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+/* Table responsiveness for filtered view */
+.reports-table tbody tr:hover {
+    background-color: rgba(var(--primary-color-rgb), 0.04);
+    transition: background-color 0.2s ease;
+}
+
+/* Alert customization */
+.alert-info {
+    border-color: rgba(var(--primary-color-rgb), 0.2);
+    background-color: rgba(var(--primary-color-rgb), 0.08);
+    color: var(--text-primary);
+}
+
+.alert-info i {
+    color: var(--primary-color);
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+[data-theme="dark"] .btn-outline-primary:hover {
+    background: var(--primary-gradient);
+    color: var(--bg-primary);
+}
+
+[data-theme="dark"] .filter-indicator {
+    background: rgba(var(--primary-color-rgb), 0.15);
+    border-color: rgba(var(--primary-color-rgb), 0.3);
+    color: var(--primary-color);
+}
+
+[data-theme="dark"] .reports-table tbody tr:hover {
+    background-color: rgba(var(--primary-color-rgb), 0.08);
+}
+
+[data-theme="dark"] .alert-info {
+    background-color: rgba(var(--primary-color-rgb), 0.12);
+    border-color: rgba(var(--primary-color-rgb), 0.25);
+    color: var(--text-primary);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 767.98px) {
+    .reports-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .btn-outline-primary {
+        align-self: flex-start;
+        font-size: 0.875rem;
+        padding: 0.4rem 0.8rem;
+    }
+    
+    .feedbackflow-title {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .reports-header {
+        margin-bottom: 1rem;
+    }
+    
+    .feedbackflow-title {
+        font-size: 1.25rem;
+    }
+    
+    .btn-outline-primary {
+        font-size: 0.8125rem;
+        padding: 0.375rem 0.75rem;
+    }
+    
+    .card-header {
+        padding: 0.875rem 1rem;
+        font-size: 0.9375rem;
+    }
+}
