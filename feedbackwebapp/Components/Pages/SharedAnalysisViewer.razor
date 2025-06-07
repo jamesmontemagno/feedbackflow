@@ -226,15 +226,37 @@
         if (analysis == null) 
             return;
         
-        if (!string.IsNullOrEmpty(analysis.FullAnalysis))
+        try
         {
-            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", analysis.FullAnalysis);
+            string textToCopy = "";
+            
+            if (!string.IsNullOrEmpty(analysis.FullAnalysis))
+            {
+                textToCopy = analysis.FullAnalysis;
+            }
+            else if (!string.IsNullOrEmpty(analysis.Summary))
+            {
+                textToCopy = analysis.Summary;
+            }
+            else
+            {
+                await ToastService.ShowErrorAsync("Nothing to copy - no analysis or summary available.");
+                return;
+            }
+            
+            var success = await JSRuntime.InvokeAsync<bool>("copyToClipboard", textToCopy);
+            if (success)
+            {
+                await ToastService.ShowSuccessAsync("Analysis copied to clipboard");
+            }
+            else
+            {
+                await ToastService.ShowErrorAsync("Failed to copy to clipboard. Please try again.");
+            }
         }
-        else if (!string.IsNullOrEmpty(analysis.Summary))
+        catch (Exception ex)
         {
-            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", analysis.Summary);
+            await ToastService.ShowErrorAsync($"Failed to copy to clipboard: {ex.Message}");
         }
-        
-        await ToastService.ShowSuccessAsync("Analysis copied to clipboard");
     }    // IsValidUrl and GetYouTubeThumbnailUrl methods have been moved to UrlParsing class
 }
