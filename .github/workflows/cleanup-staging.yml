@@ -1,0 +1,48 @@
+# Optional: Clean up staging resources when PR is closed
+name: Cleanup Staging
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+    paths:
+      - 'feedbackwebapp/**'
+      - 'shareddump/**'
+      - 'FeedbackFlow.ServiceDefaults/**'
+
+jobs:
+  cleanup-staging:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true || github.event.action == 'closed'
+    permissions:
+      pull-requests: write
+    
+    steps:
+      - name: Comment on closed PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = context.payload.pull_request.merged ? 'merged' : 'closed';
+            const emoji = context.payload.pull_request.merged ? '🎉' : '🧹';
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `${emoji} **PR ${status.charAt(0).toUpperCase() + status.slice(1)}**
+              
+              ${context.payload.pull_request.merged 
+                ? 'Your changes have been merged to main and will be deployed to production shortly!' 
+                : 'The staging deployment for this PR will remain available for a short time.'
+              }
+              
+              _The staging environment can be reused for future PRs._`
+            });
+
+      # Optional: Add steps here to actually clean up Azure resources
+      # For example, you could:
+      # 1. Stop the staging slot
+      # 2. Clear staging data
+      # 3. Reset staging environment
+      # This depends on your Azure setup and requirements

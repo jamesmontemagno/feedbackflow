@@ -30,50 +30,31 @@
                             <i class="bi bi-graph-up me-1"></i>
                             Reports
                         </a>
-                    </li>                    <li class="nav-item dropdown d-none d-lg-block">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-three-dots-vertical"></i>
-                            <span>More</span>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li>
-                                <a class="dropdown-item @(IsActive("/history") ? "active" : "")" href="/history">
-                                    <i class="bi bi-clock-history"></i>
-                                    <span>History</span>
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item @(IsActive("/whats-new") ? "active" : "")" href="/whats-new">
-                                    <i class="bi bi-stars"></i>
-                                    <span>What's New</span>
-                                </a>
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <a class="dropdown-item @(IsActive("/settings") ? "active" : "")" href="/settings">
-                                    <i class="bi bi-gear"></i>
-                                    <span>Settings</span>
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                    <!-- Mobile-only menu items -->
-                    <li class="nav-item d-lg-none">
+                    </li>                    
+                    @* Original implementation commented out for reference
+                    Previous dropdown and mobile implementation removed - see /docs/navigation-layout.md for details
+                    *@
+
+                    <li class="nav-item">
                         <a class="nav-link @(IsActive("/history") ? "active" : "")" href="/history">
                             <i class="bi bi-clock-history me-1"></i>
-                            History
+                            <span>Saved</span>
                         </a>
                     </li>
-                    <li class="nav-item d-lg-none">
-                        <a class="nav-link @(IsActive("/whats-new") ? "active" : "")" href="/whats-new">
-                            <i class="bi bi-stars me-1"></i>
-                            What's New
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("/whats-new") ? "active" : "")" 
+                           href="/whats-new"
+                           aria-label="What's New">
+                            <i class="bi bi-stars" aria-hidden="true"></i>
+                            <span class="visually-hidden">What's New</span>
                         </a>
                     </li>
-                    <li class="nav-item d-lg-none">
-                        <a class="nav-link @(IsActive("/settings") ? "active" : "")" href="/settings">
-                            <i class="bi bi-gear me-1"></i>
-                            Settings
+                    <li class="nav-item">
+                        <a class="nav-link @(IsActive("/settings") ? "active" : "")" 
+                           href="/settings"
+                           aria-label="Settings">
+                            <i class="bi bi-gear" aria-hidden="true"></i>
+                            <span class="visually-hidden">Settings</span>
                         </a>
                     </li>
                 </ul>

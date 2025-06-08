@@ -2,25 +2,20 @@
 @using FeedbackWebApp.Services
 @using SharedDump.Models.Reports
 @using System.Text.RegularExpressions
-@inject IReportService ReportService
+@inject IReportServiceProvider ReportServiceProvider
 @inject NavigationManager NavigationManager
 @inject IHistoryHelper HistoryHelper
 
 <PageTitle>Report Details - FeedbackFlow</PageTitle>
 
 <div class="container-lg py-4">
-
     <div class="page-header">
         <div class="d-flex justify-content-between align-items-center">
             <h1 class="page-title">
-                <i class="bi bi-file-earmark-text page-title-icon"></i>
-                Report Details
+                @(report?.Source ?? "Loading") Report
             </h1>
-            <button class="btn btn-outline-secondary btn-sm back-button" 
-                    onclick="history.back()" 
-                    title="Go back">
-                <i class="bi bi-arrow-left me-1"></i>
-                Back
+            <button class="btn btn-outline-secondary btn-sm back-button" @onclick="GoBack">
+                <i class="bi bi-arrow-left me-2"></i>Back to Reports
             </button>
         </div>
     </div>  
@@ -88,7 +83,7 @@
                 </h5>
             </div>
             <div class="card-body report-content">
-                @((MarkupString)report.HtmlContent)
+                @((MarkupString)ProcessHtmlAnchors(ProcessHtmlCss(report.HtmlContent)))
             </div>
         </div>
     }
@@ -100,6 +95,18 @@
 
     private bool loading = true;
     private ReportModel? report;
+    private IReportService? _reportService;
+
+    private async Task GoBack()
+    {
+        await Task.Run(() => NavigationManager.NavigateTo("reports"));
+    }
+
+    protected override void OnInitialized()
+    {
+        _reportService = ReportServiceProvider.GetService();
+        base.OnInitialized();
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -112,7 +119,7 @@
         try
         {
             loading = true;
-            report = await ReportService.GetReportAsync(Id);
+            report = await _reportService!.GetReportAsync(Id);
             
             if (report != null)
             {
@@ -197,8 +204,8 @@
         return Regex.Replace(htmlContent, pattern, match => {
             // Extract the hash fragment
             var hash = match.Groups[2].Value;
-            // Replace with full URL + hash
-            return $"<a href=\"{currentUrl}{hash}\"";
+            // Replace the hash-only href with full URL + hash
+            return match.Value.Replace(hash, $"{currentUrl}{hash}");
         });
     }
 }
