@@ -1,0 +1,98 @@
+@namespace FeedbackWebApp.Components.Shared
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+
+@if (IsVisible)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-clipboard-x me-2"></i>
+                        Copy Failed
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="OnClose" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Unable to copy to clipboard automatically. Please copy the @ContentType manually from the field below:
+                    </p>
+                    
+                    <div class="form-group">
+                        <label for="copyContent" class="form-label fw-semibold">@ContentType:</label>
+                        <div class="input-group">
+                            <textarea 
+                                id="copyContent" 
+                                class="form-control copy-content" 
+                                readonly 
+                                rows="@GetRowCount()" 
+                                @ref="textAreaRef">@Content</textarea>
+                            <button 
+                                class="btn btn-outline-primary" 
+                                type="button" 
+                                @onclick="SelectAllText"
+                                title="Select all text">
+                                <i class="bi bi-cursor-text"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            <i class="bi bi-lightbulb me-1"></i>
+                            Tip: Click in the text area and use Ctrl+A (or Cmd+A on Mac) to select all, then Ctrl+C (or Cmd+C) to copy.
+                        </div>
+                    </div>
+                    
+                    @if (IsUrl)
+                    {
+                        <div class="mt-3">
+                            <a href="@Content" target="_blank" rel="noopener noreferrer" class="btn btn-outline-info">
+                                <i class="bi bi-box-arrow-up-right me-2"></i>
+                                Open Link in New Window
+                            </a>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="OnClose">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public string Content { get; set; } = string.Empty;
+    [Parameter] public string ContentType { get; set; } = "Content";
+    [Parameter] public EventCallback OnClose { get; set; }
+    
+    private ElementReference textAreaRef;
+    
+    private bool IsUrl => !string.IsNullOrEmpty(Content) && 
+                         (Content.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
+                          Content.StartsWith("https://", StringComparison.OrdinalIgnoreCase));
+    
+    private int GetRowCount()
+    {
+        if (string.IsNullOrEmpty(Content))
+            return 3;
+            
+        var lines = Content.Split('\n').Length;
+        return Math.Max(3, Math.Min(10, lines + 1)); // Between 3 and 10 rows
+    }
+    
+    private async Task SelectAllText()
+    {
+        try
+        {
+            await textAreaRef.FocusAsync();
+            await JSRuntime.InvokeVoidAsync("selectAllText", textAreaRef);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error selecting text: {ex.Message}");
+        }
+    }
+}

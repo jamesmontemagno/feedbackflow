@@ -26,6 +26,12 @@
     OnConfirm="@HandleConfirmationDialogConfirm"
     OnCancel="@HandleConfirmationDialogCancel" />
 
+<CopyFailedDialog 
+    IsVisible="@showCopyFailedDialog"
+    Content="@failedCopyContent"
+    ContentType="@failedCopyContentType"
+    OnClose="@CloseCopyFailedDialog" />
+
 <div class="container-lg py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="feedbackflow-title mb-0">Analysis History</h1>
@@ -142,7 +148,7 @@
                             }
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="() => HistoryHelper.CopyToClipboard(item, JSRuntime, ToastService)">
+                            <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="() => HistoryHelper.CopyToClipboard(item, JSRuntime, ToastService, ShowCopyFailedDialog)">
                                 <i class="bi bi-clipboard"></i>
                             </button>
                             @if (!item.IsShared)
@@ -164,7 +170,7 @@
                             }
                             else
                             {
-                                <button class="btn btn-sm btn-outline-info action-btn" title="Copy Share Link" @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService)">
+                                <button class="btn btn-sm btn-outline-info action-btn" title="Copy Share Link" @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
                                     <i class="bi bi-link-45deg"></i>
                                     Copy Link
                                 </button>
@@ -262,6 +268,11 @@
     private string confirmationDialogConfirmText = "";
     private string confirmationDialogButtonClass = "";
     private Func<Task>? onConfirmAction;    
+    
+    // Copy failed dialog state
+    private bool showCopyFailedDialog = false;
+    private string failedCopyContent = string.Empty;
+    private string failedCopyContentType = string.Empty;
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -496,7 +507,9 @@
             }
             else
             {
-                await ToastService.ShowSuccessAsync("Share link created! Check the item for a 'Copy Link' button.", 5000);
+                // Show dialog instead of generic message
+                ShowCopyFailedDialog(shareLink, "Share Link");
+                await ToastService.ShowSuccessAsync("Share link created! The link will be valid for 30 days.", 5000);
             }
         }
         catch (Exception ex)
@@ -508,5 +521,21 @@
             isProcessingShare = false;
             StateHasChanged();
         }
+    }
+    
+    private void ShowCopyFailedDialog(string content, string contentType)
+    {
+        failedCopyContent = content;
+        failedCopyContentType = contentType;
+        showCopyFailedDialog = true;
+        StateHasChanged();
+    }
+
+    private void CloseCopyFailedDialog()
+    {
+        showCopyFailedDialog = false;
+        failedCopyContent = string.Empty;
+        failedCopyContentType = string.Empty;
+        StateHasChanged();
     }
 }
