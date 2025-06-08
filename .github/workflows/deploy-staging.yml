@@ -1,0 +1,177 @@
+# Deploy to staging environment for PR testing
+name: Deploy to Staging
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'feedbackwebapp/**'
+      - 'shareddump/**'
+      - 'FeedbackFlow.ServiceDefaults/**'
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to deploy (optional)'
+        required: false
+        type: string
+
+env:
+  WEB_APP_NAME: 'feedbackwebapp'
+  WEB_APP_PATH: './feedbackwebapp'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      pull-requests: write # Allow commenting on PRs
+
+    outputs:
+      pr-number: ${{ steps.pr-info.outputs.pr-number }}
+      
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get PR information
+        id: pr-info
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "pr-number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.pr_number }}" ]; then
+            echo "pr-number=${{ github.event.inputs.pr_number }}" >> $GITHUB_OUTPUT
+          else
+            echo "pr-number=manual" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Build with dotnet
+        run: dotnet build "${{env.WEB_APP_PATH}}" --configuration Release
+
+      - name: dotnet publish
+        run: dotnet publish "${{env.WEB_APP_PATH}}" -c Release -o "${{env.DOTNET_ROOT}}/${{env.WEB_APP_NAME}}"
+
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v4
+        with:
+          name: .net-app-staging
+          path: ${{env.DOTNET_ROOT}}/${{env.WEB_APP_NAME}}
+
+  deploy-staging:
+    runs-on: windows-latest
+    needs: build
+    environment:
+      name: 'Staging'
+      url: ${{ steps.deploy-to-staging.outputs.webapp-url }}
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: .net-app-staging
+      
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          # You'll need to create staging-specific secrets or use the same ones
+          client-id: ${{ secrets.AZUREAPPSERVICE_STAGING_CLIENTID || secrets.AZUREAPPSERVICE_CLIENTID_9AEF7D3FADCC4D44AAA741BBFA71E3BF }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_STAGING_TENANTID || secrets.AZUREAPPSERVICE_TENANTID_CDD6891AEDBC418EB3863B8980245F90 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_STAGING_SUBSCRIPTIONID || secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_79E96A308E454DF68368466A4CA6BD0A }}
+
+      # Option 1: Deploy to staging slot (recommended)
+      - name: Deploy to Azure Web App Staging Slot
+        id: deploy-to-staging
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'feedbackwebapp20250414225345'
+          slot-name: 'staging'  # This requires creating a staging slot in Azure
+          package: .
+
+      # Option 2: Deploy to separate staging app (uncomment and modify if using this approach)
+      # - name: Deploy to Staging Web App
+      #   id: deploy-to-staging
+      #   uses: azure/webapps-deploy@v3
+      #   with:
+      #     app-name: 'feedbackwebapp-staging'  # Separate staging app name
+      #     slot-name: 'Production'
+      #     package: .
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            // Check if we already commented
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('🚀 Staging Deployment')
+            );
+            
+            const deploymentUrl = '${{ steps.deploy-to-staging.outputs.webapp-url }}';
+            const commitSha = context.sha.substring(0, 7);
+            
+            const commentBody = `🚀 **Staging Deployment Ready!**
+            
+            Your changes from commit \`${commitSha}\` have been deployed to staging:
+            
+            **🌐 Staging URL:** ${deploymentUrl}
+            
+            You can test your changes there before merging to production.
+            
+            _This comment will be updated with each new commit to this PR._`;
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody
+              });
+            }
+
+  cleanup-on-close:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'closed'
+    permissions:
+      pull-requests: write
+    
+    steps:
+      - name: Comment on closed PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `🧹 **PR Closed**
+              
+              The staging deployment for this PR will remain available for a short time for final testing.
+              
+              _Consider adding a cleanup job to remove staging resources if needed._`
+            });
