@@ -7,7 +7,17 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'feedbackwebapp/**'
+      - 'shareddump/**'
+      - 'FeedbackFlow.ServiceDefaults/**'
+      - '.github/workflows/main_feedbackwebapp20250414225345.yml'
   workflow_dispatch:
+
+env:
+  WEB_APP_NAME: 'feedbackwebapp' # set this to the path to your web app project, defaults to the repository root
+  WEB_APP_PATH: './feedbackwebapp' # set this to the path to your web app project, defaults to the repository root
+
 
 jobs:
   build:
@@ -24,16 +34,16 @@ jobs:
           dotnet-version: '9.x'
 
       - name: Build with dotnet
-        run: dotnet build --configuration Release
+        run: dotnet build "${{env.WEB_APP_PATH}}" --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish -c Release -o "${{env.DOTNET_ROOT}}/myapp"
+        run: dotnet publish "${{env.WEB_APP_PATH}}" -c Release -o "${{env.DOTNET_ROOT}}/${{env.WEB_APP_NAME}}"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
+          path: ${{env.DOTNET_ROOT}}/${{env.WEB_APP_NAME}}
 
   deploy:
     runs-on: windows-latest
