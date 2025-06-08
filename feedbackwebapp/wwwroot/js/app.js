@@ -20,13 +20,28 @@ window.isDarkMode = isDarkMode;
 // Clipboard utility for cross-browser compatibility, especially Safari
 async function copyToClipboard(text) {
     try {
-        // First try the modern clipboard API
+        // Check if clipboard API is available and we're in a secure context
         if (navigator.clipboard && window.isSecureContext) {
+            // Safari-specific: Check clipboard permissions first
+            if (navigator.permissions) {
+                try {
+                    const permission = await navigator.permissions.query({name: 'clipboard-write'});
+                    if (permission.state === 'denied') {
+                        console.warn('Clipboard permission denied, using fallback');
+                        return copyToClipboardFallback(text);
+                    }
+                } catch (permError) {
+                    // Permission API not supported or failed, continue with clipboard attempt
+                    console.warn('Permission check failed, continuing with clipboard attempt:', permError);
+                }
+            }
+            
+            // Attempt to write to clipboard
             await navigator.clipboard.writeText(text);
             return true;
         }
         
-        // Fallback for older browsers or when clipboard API fails (e.g., Safari)
+        // Fallback for older browsers or when clipboard API not available
         return copyToClipboardFallback(text);
     } catch (error) {
         console.warn('Clipboard API failed, using fallback:', error);
@@ -44,16 +59,23 @@ function copyToClipboardFallback(text) {
         textArea.style.position = 'fixed';
         textArea.style.left = '-999999px';
         textArea.style.top = '-999999px';
+        textArea.style.opacity = '0';
+        textArea.style.pointerEvents = 'none';
         textArea.setAttribute('readonly', '');
         textArea.setAttribute('aria-hidden', 'true');
         
         document.body.appendChild(textArea);
         
-        // Select and copy the text
+        // Select and copy the text - Safari requires focus first
         textArea.focus();
         textArea.select();
-        textArea.setSelectionRange(0, text.length);
         
+        // For Safari iOS, we need to set the selection range explicitly
+        if (textArea.setSelectionRange) {
+            textArea.setSelectionRange(0, text.length);
+        }
+        
+        // Use the deprecated execCommand as last resort
         const successful = document.execCommand('copy');
         document.body.removeChild(textArea);
         
@@ -66,6 +88,21 @@ function copyToClipboardFallback(text) {
 
 // Make clipboard function available globally
 window.copyToClipboard = copyToClipboard;
+
+// Function to select all text in a textarea/input element
+function selectAllText(element) {
+    try {
+        element.focus();
+        element.select();
+        if (element.setSelectionRange) {
+            element.setSelectionRange(0, element.value.length);
+        }
+    } catch (error) {
+        console.error('Error selecting text:', error);
+    }
+}
+
+window.selectAllText = selectAllText;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Add the toast container to the DOM if it doesn't exist
