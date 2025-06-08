@@ -83,10 +83,9 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          # You'll need to create staging-specific secrets or use the same ones
-          client-id: ${{ secrets.AZUREAPPSERVICE_STAGING_CLIENTID || secrets.AZUREAPPSERVICE_CLIENTID_9AEF7D3FADCC4D44AAA741BBFA71E3BF }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_STAGING_TENANTID || secrets.AZUREAPPSERVICE_TENANTID_CDD6891AEDBC418EB3863B8980245F90 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_STAGING_SUBSCRIPTIONID || secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_79E96A308E454DF68368466A4CA6BD0A }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_STAGING_CLIENTID }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_STAGING_TENANTID }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_STAGING_SUBSCRIPTIONID }}
 
       # Option 1: Deploy to staging slot (recommended)
       - name: Deploy to Azure Web App Staging Slot
