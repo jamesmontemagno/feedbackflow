@@ -3,7 +3,7 @@
 @using FeedbackWebApp.Services.Authentication
 @using FeedbackWebApp.Components.Feedback.Forms
 @using SharedDump.Models.Reports
-@inject IReportService ReportService
+@inject IReportServiceProvider ReportServiceProvider
 @inject NavigationManager NavigationManager
 @inject AuthenticationService AuthService
 @inject IHistoryHelper HistoryHelper
@@ -181,11 +181,18 @@
     private IEnumerable<ReportModel>? reports;
     private string selectedSubSource = "";
     private HashSet<string> subSources = new();
+    private IReportService? _reportService;
 
     private IEnumerable<ReportModel> FilteredReports =>
         reports?.Where(r =>
             (string.IsNullOrEmpty(selectedSubSource) || r.SubSource == selectedSubSource)
         ) ?? Enumerable.Empty<ReportModel>();
+
+    protected override void OnInitialized()
+    {
+        _reportService = ReportServiceProvider.GetService();
+        base.OnInitialized();
+    }
 
     private async Task HandleAuthenticated(bool success)
     {
@@ -203,7 +210,7 @@
         {
             loading = true;
             errorMessage = null;
-            reports = await ReportService.ListReportsAsync();
+            reports = await _reportService!.ListReportsAsync();
             subSources = reports.Select(r => r.SubSource).ToHashSet();
         }
         catch (Exception ex)
