@@ -67,7 +67,7 @@ jobs:
     runs-on: windows-latest
     needs: build
     environment:
-      name: 'Staging'
+      name: 'staging'
       url: ${{ steps.deploy-to-staging.outputs.webapp-url }}
     permissions:
       id-token: write
