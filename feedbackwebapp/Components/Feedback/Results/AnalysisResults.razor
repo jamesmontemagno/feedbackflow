@@ -2,7 +2,9 @@
 @using System.Text.RegularExpressions
 @using SharedDump.Utils
 @using FeedbackWebApp.Components.Shared
+@using Microsoft.Extensions.Logging
 @inject IJSRuntime JSRuntime
+@inject ILogger<AnalysisResults> Logger
 @inject FeedbackWebApp.Services.UserSettingsService UserSettings
 @inject ISpeechSynthesisService SpeechSynthesisService
 @inject FeedbackWebApp.Services.Interfaces.IHistoryService HistoryService
@@ -165,6 +167,7 @@
             }
             catch (Exception ex)
             {
+                Logger.LogError(ex, "Failed to copy analysis to clipboard");
                 // Show dialog instead of error toast
                 ShowCopyFailedDialog(MarkdownResult, "Analysis");
             }
@@ -237,7 +240,7 @@
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error in speech synthesis: {ex.Message}");
+                Logger.LogError(ex, "Error in speech synthesis");
                 _isSpeaking = false;
             }
             
@@ -264,6 +267,7 @@
             }
             catch (Exception ex)
             {
+                Logger.LogError(ex, "Failed to copy share link to clipboard");
                 // Show dialog instead of error toast
                 ShowCopyFailedDialog(shareLink, "Share Link");
             }
@@ -344,6 +348,7 @@
         }
         catch (Exception ex)
         {
+            Logger.LogError(ex, "Unable to create share link");
             await ToastService.ShowErrorAsync($"Unable to create share link: {ex.Message}");
         }
         finally
