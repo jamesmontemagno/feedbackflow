@@ -3,11 +3,96 @@ using SharedDump.Models.Reports;
 
 namespace FeedbackWebApp.Services;
 
+public interface IReportServiceProvider
+{
+    IReportService GetService();
+}
+
+public class ReportServiceProvider : IReportServiceProvider
+{
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IConfiguration _configuration;
+    private readonly bool _useMockService;
+
+    public ReportServiceProvider(
+        IHttpClientFactory httpClientFactory,
+        IConfiguration configuration)
+    {
+        _httpClientFactory = httpClientFactory;
+        _configuration = configuration;
+        _useMockService = configuration.GetValue<bool>("FeedbackApi:UseMocks", false);
+    }
+
+    public IReportService GetService()
+    {
+        if (_useMockService)
+            return new MockReportService();
+
+        return new ReportService(_httpClientFactory, _configuration);
+    }
+}
+
 public interface IReportService
 {
     Task<IEnumerable<ReportModel>> ListReportsAsync();
     Task<IEnumerable<ReportModel>> ListReportsAsync(string? source = null, string? subsource = null);
     Task<ReportModel?> GetReportAsync(string id);
+}
+
+public class MockReportService : IReportService
+{
+    private readonly List<ReportModel> _mockReports = new()
+    {
+        new ReportModel
+        {
+            Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            Source = "reddit",
+            SubSource = "dotnet",
+            GeneratedAt = DateTimeOffset.UtcNow.AddDays(-1),
+            HtmlContent = "<h1>Mock Report 1</h1><p>This is a mock report for testing</p>",
+            ThreadCount = 5,
+            CommentCount = 25,
+            CutoffDate = DateTimeOffset.UtcNow.AddDays(-7)
+        },
+        new ReportModel
+        {
+            Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
+            Source = "reddit",
+            SubSource = "githubcopilot",
+            GeneratedAt = DateTimeOffset.UtcNow.AddDays(-2),
+            HtmlContent = "<h1>Mock Report 2</h1><p>Another mock report for testing</p>",
+            ThreadCount = 3,
+            CommentCount = 15,
+            CutoffDate = DateTimeOffset.UtcNow.AddDays(-7)
+        }
+    };
+
+    public Task<IEnumerable<ReportModel>> ListReportsAsync()
+    {
+        return ListReportsAsync(null, null);
+    }
+
+    public Task<IEnumerable<ReportModel>> ListReportsAsync(string? source = null, string? subsource = null)
+    {
+        var reports = _mockReports.AsEnumerable();
+        
+        if (!string.IsNullOrEmpty(source))
+            reports = reports.Where(r => r.Source == source);
+            
+        if (!string.IsNullOrEmpty(subsource))
+            reports = reports.Where(r => r.SubSource == subsource);
+
+        return Task.FromResult(reports);
+    }
+
+    public Task<ReportModel?> GetReportAsync(string id)
+    {
+        if (!Guid.TryParse(id, out var guidId))
+            return Task.FromResult<ReportModel?>(null);
+
+        var report = _mockReports.FirstOrDefault(r => r.Id == guidId);
+        return Task.FromResult(report);
+    }
 }
 
 public class ReportService : IReportService

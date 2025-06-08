@@ -22,7 +22,7 @@ builder.Services.AddRazorComponents()
         options.MaximumReceiveMessageSize = 204_800; // 200 KB or more
     });
     
-// Register ToastService
+// Register ToastService and other services
 builder.Services.AddScoped<IToastService, ToastService>();
 builder.Services.AddScoped<IHistoryHelper, HistoryHelper>();
 
@@ -32,8 +32,8 @@ builder.Services.AddScoped<FeedbackServiceProvider>();
 builder.Services.AddScoped<ContentFeedServiceProvider>();
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<UserSettingsService>();
-builder.Services.AddScoped<IReportService, ReportService>();
-builder.Services.AddMemoryCache(); // Add this line for caching support
+builder.Services.AddScoped<IReportServiceProvider, ReportServiceProvider>();
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IHistoryService, HistoryService>();
 builder.Services.AddScoped<IAnalysisSharingService, AnalysisSharingService>();
 

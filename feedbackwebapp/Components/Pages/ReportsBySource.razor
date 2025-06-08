@@ -4,7 +4,7 @@
 @using FeedbackWebApp.Components.Feedback.Forms
 @using FeedbackWebApp.Components.Shared
 @using SharedDump.Models.Reports
-@inject IReportService ReportService
+@inject IReportServiceProvider ReportServiceProvider
 @inject NavigationManager NavigationManager
 @inject AuthenticationService AuthService
 @inject IHistoryHelper HistoryHelper
@@ -206,6 +206,13 @@
     private bool isAuthenticated = false;
     private IEnumerable<ReportModel>? reports;
     private string? errorMessage;
+    private IReportService? _reportService;
+
+    protected override void OnInitialized()
+    {
+        _reportService = ReportServiceProvider.GetService();
+        base.OnInitialized();
+    }
 
     private bool IsValidSource()
     {
@@ -233,7 +240,7 @@
         {
             loading = true;
             errorMessage = null;
-            reports = await ReportService.ListReportsAsync(Source, Subsource);
+            reports = await _reportService!.ListReportsAsync(Source, Subsource);
         }
         catch (Exception ex)
         {
