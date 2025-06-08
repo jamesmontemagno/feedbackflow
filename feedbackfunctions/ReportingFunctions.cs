@@ -276,11 +276,27 @@ Keep each section very brief and focused. Total analysis should be no more than 
     /// </summary>
     /// <param name="req">HTTP request</param>
     /// <returns>HTTP response with a list of report summaries</returns>
+    /// <remarks>
+    /// Query parameters:
+    /// - source: Optional. Filter reports by source (e.g., "reddit")
+    /// - subsource: Optional. Filter reports by subsource (e.g., "dotnet")
+    /// 
+    /// If no parameters are provided, returns all reports (backward compatible).
+    /// Parameters can be used individually or in combination.
+    /// </remarks>
     [Function("ListReports")]
     public async Task<HttpResponseData> ListReports(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
-        _logger.LogInformation("Listing all Reddit reports");
+        var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
+        var sourceFilter = queryParams["source"];
+        var subsourceFilter = queryParams["subsource"];
+        
+        var filterMessage = sourceFilter == null && subsourceFilter == null 
+            ? "all reports" 
+            : $"reports (source: {sourceFilter ?? "any"}, subsource: {subsourceFilter ?? "any"})";
+            
+        _logger.LogInformation("Listing {FilterMessage}", filterMessage);
 
         try
         {
@@ -293,16 +309,25 @@ Keep each section very brief and focused. Total analysis should be no more than 
 
                 if (report != null)
                 {
-                    reports.Add(new
+                    // Apply filtering if parameters are provided
+                    var matchesSource = string.IsNullOrEmpty(sourceFilter) || 
+                                       string.Equals(report.Source, sourceFilter, StringComparison.OrdinalIgnoreCase);
+                    var matchesSubsource = string.IsNullOrEmpty(subsourceFilter) || 
+                                          string.Equals(report.SubSource, subsourceFilter, StringComparison.OrdinalIgnoreCase);
+                    
+                    if (matchesSource && matchesSubsource)
                     {
-                        id = report.Id,
-                        source = report.Source,
-                        subSource = report.SubSource,
-                        generatedAt = report.GeneratedAt,
-                        threadCount = report.ThreadCount,
-                        commentCount = report.CommentCount,
-                        cutoffDate = report.CutoffDate
-                    });
+                        reports.Add(new
+                        {
+                            id = report.Id,
+                            source = report.Source,
+                            subSource = report.SubSource,
+                            generatedAt = report.GeneratedAt,
+                            threadCount = report.ThreadCount,
+                            commentCount = report.CommentCount,
+                            cutoffDate = report.CutoffDate
+                        });
+                    }
                 }
             }
 

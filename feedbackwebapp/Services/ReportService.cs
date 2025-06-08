@@ -6,6 +6,7 @@ namespace FeedbackWebApp.Services;
 public interface IReportService
 {
     Task<IEnumerable<ReportModel>> ListReportsAsync();
+    Task<IEnumerable<ReportModel>> ListReportsAsync(string? source = null, string? subsource = null);
     Task<ReportModel?> GetReportAsync(string id);
 }
 
@@ -23,12 +24,23 @@ public class ReportService : IReportService
 
     public async Task<IEnumerable<ReportModel>> ListReportsAsync()
     {
+        return await ListReportsAsync(null, null);
+    }
+
+    public async Task<IEnumerable<ReportModel>> ListReportsAsync(string? source = null, string? subsource = null)
+    {
         var baseUrl = _configuration["FeedbackApi:BaseUrl"] 
             ?? throw new InvalidOperationException("API base URL not configured");
         var code = _configuration["FeedbackApi:ListReportsCode"]
             ?? throw new InvalidOperationException("List reports code not configured");
 
-        var url = $"{baseUrl}/api/ListReports?code={Uri.EscapeDataString(code)}";
+        var queryParams = new List<string> { $"code={Uri.EscapeDataString(code)}" };
+        if (!string.IsNullOrEmpty(source))
+            queryParams.Add($"source={Uri.EscapeDataString(source)}");
+        if (!string.IsNullOrEmpty(subsource))
+            queryParams.Add($"subsource={Uri.EscapeDataString(subsource)}");
+
+        var url = $"{baseUrl}/api/ListReports?{string.Join("&", queryParams)}";
         var response = await _httpClient.GetAsync(url);
         response.EnsureSuccessStatusCode();
 
