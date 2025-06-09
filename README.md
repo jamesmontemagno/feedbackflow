@@ -2,17 +2,81 @@
 
 ## Overview
 
-FeedbackFlow is a set of tools designed to collect and consolidate feedback from GitHub issues, discussions, and YouTube comments into a machine-readable format (JSON). With dedicated components for different platforms, FeedbackFlow simplifies the process of centralizing feedback for analysis and decision-making.
+FeedbackFlow is a comprehensive feedback collection and analysis platform that helps teams gather, consolidate, and analyze feedback from multiple sources including GitHub, YouTube, Reddit, Hacker News, and social media platforms. The platform consists of a modern Blazor web application, Azure Functions backend, and command-line tools for data collection.
 
-## Components
+## Live Application
 
-### GitHub Feedback Collector (`ghdump`)
+🌐 **Production:** [https://feedbackflow.app](https://feedbackflow.app)  
+🧪 **Staging:** [https://staging.feedbackflow.app](https://staging.feedbackflow.app)
 
-This tool retrieves data from GitHub issues and discussions, including associated comments. The collected information is saved as JSON files, enabling easy integration with other tools.
+## Architecture
 
-### YouTube Comment Collector (`ytdump`)
+FeedbackFlow follows a modern .NET architecture with the following components:
 
-This tool gathers comments from specified YouTube videos or playlists and exports them into JSON format. Input sources can be configured through a file or directly via command-line arguments.
+### 🌐 Web Application (`feedbackwebapp`)
+- **Blazor Server** application built with .NET 9
+- Modern, responsive UI with light/dark theme support
+- Real-time feedback collection and analysis
+- Interactive dashboards and reporting
+- User authentication and session management
+
+### ⚡ Azure Functions (`feedbackfunctions`)
+- Serverless backend for data processing
+- RESTful APIs for the web application
+- Background processing for large data collections
+- Integration with AI services for sentiment analysis
+- Scheduled tasks for automated data updates
+
+### 📚 Shared Library (`shareddump`)
+- Common models and utilities
+- Data transfer objects (DTOs)
+- Business logic shared between components
+- Serialization and validation helpers
+
+### 🛠️ Command-Line Tools
+Collection tools for different platforms:
+
+#### GitHub Feedback Collector (`ghdump`)
+Retrieves data from GitHub issues, discussions, and pull requests with associated comments.
+
+#### YouTube Comment Collector (`ytdump`)
+Gathers comments from YouTube videos and playlists, supporting bulk operations.
+
+#### Reddit Collector (`rddump`)
+Extracts posts and comments from Reddit discussions and threads.
+
+#### Hacker News Collector (`hndump`)
+Collects stories and comments from Hacker News discussions.
+
+### 🧪 Testing (`feedbackflow.tests`)
+Comprehensive test suite using MSTest for:
+- URL parsing and validation
+- Data transformation logic
+- Service integrations
+- Business rule validation
+
+### 🔧 Model Context Protocol Server (`feedbackmcp`)
+*Work in progress* - MCP server for AI integration and automated analysis.
+
+## Features
+
+### 📊 Multi-Platform Data Collection
+- **GitHub**: Issues, discussions, pull requests, and comments
+- **YouTube**: Video comments and playlist discussions
+- **Reddit**: Posts, comments, and thread discussions
+- **Hacker News**: Stories and comment threads
+- **Social Media**: Twitter/X and BlueSky integration
+
+### 🤖 AI-Powered Analysis
+- Sentiment analysis using Azure OpenAI
+- Automated categorization and tagging
+- Trend identification and insights
+- Content summarization
+
+### 🎨 Modern UI/UX
+- Responsive design for all devices
+- Light and dark theme support
+- Accessible interface with keyboard navigation
 
 ## Getting Started
 
@@ -28,7 +92,7 @@ To use FeedbackFlow, ensure you have the following:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/davidfowl/feedbackflow.git
+   git clone https://github.com/jamesmontemagno/feedbackflow.git
    cd feedbackflow
    ```
 
@@ -42,23 +106,129 @@ To use FeedbackFlow, ensure you have the following:
    dotnet build
    ```
 
-### Usage
+### Running the Web Application
+
+1. Navigate to the web app directory:
+   ```bash
+   cd feedbackwebapp
+   ```
+
+2. Run the application:
+   ```bash
+   dotnet run
+   ```
+
+3. Open your browser to `https://localhost:7154` (or the URL shown in the terminal)
+
+### Running with .NET Aspire (Recommended for Development)
+
+For the full development experience with orchestration:
+
+1. Navigate to the AppHost directory:
+   ```bash
+   cd FeedbackFlow.AppHost
+   ```
+
+2. Run the orchestrated application:
+   ```bash
+   dotnet run
+   ```
+
+This will start both the web application and Azure Functions locally with proper service discovery.
+
+### Command-Line Tools Usage
 
 #### GitHub Feedback Collector (`ghdump`)
 
-To collect feedback from GitHub:
-
 ```bash
-./ghdump -r <repository>
+cd ghdump
+dotnet run -- -r <owner/repository>
+```
+
+Example:
+```bash
+dotnet run -- -r microsoft/dotnet
 ```
 
 #### YouTube Comment Collector (`ytdump`)
 
-To gather comments from YouTube:
+```bash
+cd ytdump
+dotnet run -- -v <video-id> -o <output-file.json>
+```
+
+Example:
+```bash
+dotnet run -- -v dQw4w9WgXcQ -o youtube-comments.json
+```
+
+#### Reddit Collector (`rddump`)
 
 ```bash
-./ytdump -v <video-id> -o <output-file.json>
+cd rddump
+dotnet run -- -u <reddit-url>
 ```
+
+#### Hacker News Collector (`hndump`)
+
+```bash
+cd hndump
+dotnet run -- -i <story-id>
+```
+
+## Development
+
+### Project Structure
+
+```
+FeedbackFlow/
+├── feedbackwebapp/          # Blazor Server web application
+├── feedbackfunctions/       # Azure Functions backend
+├── shareddump/             # Shared library and models
+├── FeedbackFlow.AppHost/   # .NET Aspire orchestration
+├── feedbackflow.tests/     # Unit and integration tests
+├── ghdump/                 # GitHub collection tool
+├── ytdump/                 # YouTube collection tool
+├── rddump/                 # Reddit collection tool
+├── hndump/                 # Hacker News collection tool
+└── feedbackmcp/           # MCP server (WIP)
+```
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Make your changes following the coding guidelines in the instructions
+4. Write tests for new functionality
+5. Run tests: `dotnet test`
+6. Commit your changes: `git commit -m 'Add amazing feature'`
+7. Push to the branch: `git push origin feature/amazing-feature`
+8. Open a Pull Request
+
+### Coding Standards
+
+- Follow C# naming conventions (PascalCase for public, camelCase for private)
+- Use file-scoped namespaces
+- Implement proper async/await patterns
+- Add component-specific CSS in `.razor.css` files for Blazor components
+- Support both light and dark themes
+- Write meaningful commit messages
+
+## Deployment
+
+### Azure Deployment
+
+The application is configured for deployment to Azure with:
+
+- **Azure App Service** for the web application
+- **Azure Functions** for the serverless backend
+- **GitHub Actions** for CI/CD with staging and production environments
+
+### Environment Configuration
+
+Set up the following environments:
+- **Production**: `https://feedbackflow.app`
+- **Staging**: `https://staging.feedbackflow.app` (deployed on PR creation)
 
 ## Azure Functions Configuration
 

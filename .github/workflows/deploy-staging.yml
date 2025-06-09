@@ -122,7 +122,7 @@ jobs:
               comment.body.includes('🚀 Staging Deployment')
             );
             
-            const deploymentUrl = '${{ steps.deploy-to-staging.outputs.webapp-url }}';
+            const deploymentUrl = 'https://staging.feedbackflow.app';
             const commitSha = context.sha.substring(0, 7);
             
             const commentBody = `🚀 **Staging Deployment Ready!**
