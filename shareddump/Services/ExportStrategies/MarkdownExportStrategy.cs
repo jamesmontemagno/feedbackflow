@@ -54,6 +54,11 @@ public class MarkdownExportStrategy : IExportStrategy
                 {
                     await writer.WriteLineAsync("- **Shared:** No");
                 }
+
+                if (item.CommentThreads?.Any() == true)
+                {
+                    await writer.WriteLineAsync($"- **Comment Threads:** {item.CommentThreads.Count}");
+                }
                 
                 await writer.WriteLineAsync();
                 
@@ -67,6 +72,12 @@ public class MarkdownExportStrategy : IExportStrategy
                     await writer.WriteLineAsync(item.FullAnalysis);
                     await writer.WriteLineAsync();
                 }
+
+                // Add comment threads if they exist
+                if (item.CommentThreads?.Any() == true)
+                {
+                    await WriteCommentThreads(writer, item.CommentThreads);
+                }
             }
 
             await writer.FlushAsync();
@@ -78,6 +89,75 @@ public class MarkdownExportStrategy : IExportStrategy
             await writer.DisposeAsync();
             await memoryStream.DisposeAsync();
             throw;
+        }
+    }
+
+    private async Task WriteCommentThreads(StreamWriter writer, List<CommentThread> threads)
+    {
+        await writer.WriteLineAsync("### Comment Threads");
+        await writer.WriteLineAsync();
+
+        foreach (var thread in threads)
+        {
+            await writer.WriteLineAsync($"#### {thread.Title}");
+            await writer.WriteLineAsync();
+            
+            await writer.WriteLineAsync($"- **ID:** {thread.Id}");
+            await writer.WriteLineAsync($"- **Author:** {thread.Author}");
+            await writer.WriteLineAsync($"- **Created:** {thread.CreatedAt:yyyy-MM-dd HH:mm:ss}");
+            await writer.WriteLineAsync($"- **Source:** {thread.SourceType}");
+            
+            if (!string.IsNullOrEmpty(thread.Url))
+            {
+                await writer.WriteLineAsync($"- **URL:** {thread.Url}");
+            }
+
+            if (!string.IsNullOrEmpty(thread.Description))
+            {
+                await writer.WriteLineAsync();
+                await writer.WriteLineAsync("**Description:**");
+                await writer.WriteLineAsync(thread.Description);
+            }
+
+            if (thread.Comments?.Any() == true)
+            {
+                await writer.WriteLineAsync();
+                await writer.WriteLineAsync("**Comments:**");
+                await writer.WriteLineAsync();
+                await WriteCommentsRecursive(writer, thread.Comments, 0);
+            }
+
+            await writer.WriteLineAsync();
+        }
+    }
+
+    private async Task WriteCommentsRecursive(StreamWriter writer, List<CommentData> comments, int depth)
+    {
+        var indent = new string(' ', depth * 2);
+        
+        foreach (var comment in comments)
+        {
+            await writer.WriteLineAsync($"{indent}- **{comment.Author}** _{comment.CreatedAt:yyyy-MM-dd HH:mm:ss}_");
+            
+            if (comment.Score.HasValue)
+            {
+                await writer.WriteLineAsync($"{indent}  Score: {comment.Score}");
+            }
+            
+            // Split content into lines and indent each line
+            var contentLines = comment.Content.Split('\n');
+            foreach (var line in contentLines)
+            {
+                await writer.WriteLineAsync($"{indent}  {line}");
+            }
+            
+            if (comment.Replies?.Any() == true)
+            {
+                await writer.WriteLineAsync();
+                await WriteCommentsRecursive(writer, comment.Replies, depth + 1);
+            }
+            
+            await writer.WriteLineAsync();
         }
     }
 }

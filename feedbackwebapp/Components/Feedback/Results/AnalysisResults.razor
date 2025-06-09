@@ -3,6 +3,8 @@
 @using SharedDump.Utils
 @using FeedbackWebApp.Components.Shared
 @using Microsoft.Extensions.Logging
+@using SharedDump.Services
+@using FeedbackWebApp.Services.Feedback
 @inject IJSRuntime JSRuntime
 @inject ILogger<AnalysisResults> Logger
 @inject FeedbackWebApp.Services.UserSettingsService UserSettings
@@ -82,6 +84,9 @@
     
     [Parameter]
     public string? UserInput { get; set; }
+    
+    [Parameter]
+    public object? AdditionalData { get; set; }
     
     private string? _previousMarkdown;
     private bool _isSpeaking = false;
@@ -178,18 +183,36 @@
     {
         if (!string.IsNullOrEmpty(MarkdownResult))
         {
+            var commentThreads = ConvertAdditionalDataToCommentThreads();
+            
             var historyItem = new SharedDump.Models.AnalysisHistoryItem
             {
                 Summary = MarkdownResult.Length > 300 ? MarkdownResult.Substring(0, 300) + "..." : MarkdownResult,
                 FullAnalysis = MarkdownResult,
                 SourceType = SourceType,
-                UserInput = UserInput
+                UserInput = UserInput,
+                CommentThreads = commentThreads
             };
             await HistoryService.SaveToHistoryAsync(historyItem);
             _isSaved = true;
             _savedItemId = historyItem.Id;
             await ToastService.ShowSuccessAsync("Analysis saved to history", 3000);
         }
+    }
+
+    private List<SharedDump.Models.CommentThread> ConvertAdditionalDataToCommentThreads()
+    {
+        if (AdditionalData == null)
+            return new List<SharedDump.Models.CommentThread>();
+
+        // Handle HackerNews analysis separately since it's defined in the webapp
+        if (AdditionalData is List<HackerNewsAnalysis> hackerNewsAnalyses)
+        {
+            return HackerNewsCommentConverter.ConvertHackerNewsAnalysis(hackerNewsAnalyses);
+        }
+
+        // For all other types, use the shared converter
+        return CommentDataConverter.ConvertAdditionalData(AdditionalData);
     }
     
     private async Task SpeakAnalysis()
@@ -295,12 +318,15 @@
             else
             {
                 // Create and save new history item
+                var commentThreads = ConvertAdditionalDataToCommentThreads();
+                
                 historyItem = new SharedDump.Models.AnalysisHistoryItem
                 {
                     Summary = MarkdownResult.Length > 300 ? MarkdownResult.Substring(0, 300) + "..." : MarkdownResult,
                     FullAnalysis = MarkdownResult,
                     SourceType = SourceType,
-                    UserInput = UserInput
+                    UserInput = UserInput,
+                    CommentThreads = commentThreads
                 };
                 await HistoryService.SaveToHistoryAsync(historyItem);
                 _isSaved = true;

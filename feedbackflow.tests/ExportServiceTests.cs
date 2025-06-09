@@ -167,4 +167,100 @@ public class ExportServiceTests
         // Should still have headers
         Assert.IsTrue(content.Contains("Id,Date,Source Type"));
     }
+
+    [TestMethod]
+    public async Task ExportAsync_ItemsWithCommentThreads_IncludesCommentData()
+    {
+        // Arrange
+        var itemsWithComments = new List<AnalysisHistoryItem>
+        {
+            new AnalysisHistoryItem
+            {
+                Id = "test-with-comments",
+                Timestamp = new DateTime(2025, 1, 17, 9, 0, 0),
+                Summary = "Analysis with comments",
+                FullAnalysis = "This analysis includes comment threads",
+                SourceType = "Reddit",
+                UserInput = "https://reddit.com/r/test/comments/123",
+                CommentThreads = new List<CommentThread>
+                {
+                    new CommentThread
+                    {
+                        Id = "thread-1",
+                        Title = "Test Thread",
+                        Author = "thread_author",
+                        CreatedAt = new DateTime(2025, 1, 17, 8, 0, 0),
+                        Url = "https://reddit.com/r/test/comments/123",
+                        SourceType = "Reddit",
+                        Comments = new List<CommentData>
+                        {
+                            new CommentData
+                            {
+                                Id = "comment-1",
+                                Author = "user1",
+                                Content = "This is a test comment",
+                                CreatedAt = new DateTime(2025, 1, 17, 8, 30, 0),
+                                Score = 5,
+                                Replies = new List<CommentData>
+                                {
+                                    new CommentData
+                                    {
+                                        Id = "comment-2",
+                                        ParentId = "comment-1",
+                                        Author = "user2",
+                                        Content = "This is a reply",
+                                        CreatedAt = new DateTime(2025, 1, 17, 8, 45, 0),
+                                        Score = 2
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Test CSV export includes comment data
+        var csvResult = await _exportService.ExportAsync(itemsWithComments, ExportFormat.Csv);
+        csvResult.Position = 0;
+        var csvContent = await new StreamReader(csvResult).ReadToEndAsync();
+        
+        Assert.IsTrue(csvContent.Contains("Comment Threads Count"));
+        Assert.IsTrue(csvContent.Contains("1")); // Comment thread count
+        Assert.IsTrue(csvContent.Contains("Thread Id"));
+        Assert.IsTrue(csvContent.Contains("Test Thread"));
+        Assert.IsTrue(csvContent.Contains("This is a test comment"));
+        Assert.IsTrue(csvContent.Contains("This is a reply"));
+
+        // Test JSON export includes comment data
+        var jsonResult = await _exportService.ExportAsync(itemsWithComments, ExportFormat.Json);
+        jsonResult.Position = 0;
+        var jsonContent = await new StreamReader(jsonResult).ReadToEndAsync();
+        
+        var jsonDoc = JsonDocument.Parse(jsonContent);
+        var firstItem = jsonDoc.RootElement[0];
+        
+        Assert.IsTrue(firstItem.TryGetProperty("commentThreads", out var commentThreads));
+        Assert.AreEqual(1, commentThreads.GetArrayLength());
+        
+        var firstThread = commentThreads[0];
+        Assert.IsTrue(firstThread.TryGetProperty("title", out var title));
+        Assert.AreEqual("Test Thread", title.GetString());
+
+        // Test Markdown export includes comment data
+        var mdResult = await _exportService.ExportAsync(itemsWithComments, ExportFormat.Markdown);
+        mdResult.Position = 0;
+        var mdContent = await new StreamReader(mdResult).ReadToEndAsync();
+        
+        Assert.IsTrue(mdContent.Contains("### Comment Threads"));
+        Assert.IsTrue(mdContent.Contains("#### Test Thread"));
+        Assert.IsTrue(mdContent.Contains("**user1**"));
+        Assert.IsTrue(mdContent.Contains("This is a test comment"));
+        Assert.IsTrue(mdContent.Contains("user2")); // Check for reply author (without specific indentation)
+
+        // Test PDF export includes comment data
+        var pdfResult = await _exportService.ExportAsync(itemsWithComments, ExportFormat.Pdf);
+        Assert.IsNotNull(pdfResult);
+        Assert.IsTrue(pdfResult.Length > 0);
+    }
 }
