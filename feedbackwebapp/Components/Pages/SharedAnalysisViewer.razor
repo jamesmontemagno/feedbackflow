@@ -2,6 +2,7 @@
 @inject FeedbackWebApp.Services.Interfaces.IAnalysisSharingService SharingService
 @inject FeedbackWebApp.Services.Interfaces.IHistoryService HistoryService
 @inject FeedbackWebApp.Services.IToastService ToastService
+@inject SharedDump.Services.Interfaces.IExportService ExportService
 @inject IJSRuntime JSRuntime
 @inject ILogger<SharedAnalysisViewer> Logger
 @using SharedDump.Models
@@ -18,6 +19,12 @@
 <div class="container-lg py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="feedbackflow-title mb-0">Shared Analysis</h1>
+        @if (analysis != null)
+        {
+            <div class="d-flex align-items-center gap-2">
+                <ExportButton Items="@(new[] { ConvertToHistoryItem(analysis) })" />
+            </div>
+        }
     </div>
 
     @if (isLoading)
@@ -258,5 +265,23 @@
         {
             await ToastService.ShowErrorAsync($"Failed to copy to clipboard: {ex.Message}");
         }
-    }    // IsValidUrl and GetYouTubeThumbnailUrl methods have been moved to UrlParsing class
+    }
+    
+    private AnalysisHistoryItem ConvertToHistoryItem(AnalysisData analysis)
+    {
+        return new AnalysisHistoryItem
+        {
+            Id = analysis.Id,
+            Timestamp = analysis.CreatedDate,
+            Summary = analysis.Summary,
+            FullAnalysis = analysis.FullAnalysis,
+            SourceType = analysis.SourceType,
+            UserInput = analysis.UserInput,
+            IsShared = true,
+            SharedId = Id,
+            SharedDate = analysis.CreatedDate
+        };
+    }
+    
+    // IsValidUrl and GetYouTubeThumbnailUrl methods have been moved to UrlParsing class
 }

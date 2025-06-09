@@ -10,8 +10,10 @@
             id="exportDropdown" 
             data-bs-toggle="dropdown" 
             aria-expanded="false"
+            aria-haspopup="true"
             disabled="@(_isExporting || !Items.Any())"
-            title="@(_isExporting ? "Exporting..." : !Items.Any() ? "No items to export" : "Export analysis data")">
+            title="@(_isExporting ? "Exporting..." : !Items.Any() ? "No items to export" : "Export analysis data")"
+            aria-label="@(_isExporting ? "Exporting analysis data" : !Items.Any() ? "No items to export" : "Export analysis data")">
         @if (_isExporting)
         {
             <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -19,23 +21,27 @@
         }
         else
         {
-            <i class="bi bi-download me-2"></i>
+            <i class="bi bi-download me-2" aria-hidden="true"></i>
             @:Export
         }
     </button>
     <ul class="dropdown-menu" aria-labelledby="exportDropdown">
         <li><h6 class="dropdown-header">Export Format</h6></li>
-        <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Csv)" disabled="@_isExporting">
-            <i class="bi bi-file-earmark-spreadsheet me-2"></i>CSV
+        <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Csv)" disabled="@_isExporting"
+                    aria-label="Export as CSV (Comma Separated Values) format">
+            <i class="bi bi-file-earmark-spreadsheet me-2" aria-hidden="true"></i>CSV
         </button></li>
-        <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Json)" disabled="@_isExporting">
-            <i class="bi bi-file-earmark-code me-2"></i>JSON
+        <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Json)" disabled="@_isExporting"
+                    aria-label="Export as JSON (JavaScript Object Notation) format">
+            <i class="bi bi-file-earmark-code me-2" aria-hidden="true"></i>JSON
         </button></li>
-        <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Pdf)" disabled="@_isExporting">
-            <i class="bi bi-file-earmark-pdf me-2"></i>PDF
+        <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Pdf)" disabled="@_isExporting"
+                    aria-label="Export as PDF (Portable Document Format)">
+            <i class="bi bi-file-earmark-pdf me-2" aria-hidden="true"></i>PDF
         </button></li>
-        <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Markdown)" disabled="@_isExporting">
-            <i class="bi bi-file-earmark-text me-2"></i>Markdown
+        <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Markdown)" disabled="@_isExporting"
+                    aria-label="Export as Markdown text format">
+            <i class="bi bi-file-earmark-text me-2" aria-hidden="true"></i>Markdown
         </button></li>
     </ul>
 </div>
@@ -60,17 +66,22 @@
             var stream = await ExportService.ExportAsync(Items, format);
             var fileExtension = ExportService.GetFileExtension(format);
             var mimeType = ExportService.GetMimeType(format);
-            var fileName = $"analysis_export_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}{fileExtension}";
+            var itemCount = Items.Count();
+            var fileName = $"analysis_export_{itemCount}_items_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}{fileExtension}";
 
             // Convert to byte array for download
             var bytes = stream.ToArray();
+            
+            // Ensure stream is properly disposed
+            await stream.DisposeAsync();
+            
             var base64 = Convert.ToBase64String(bytes);
             var dataUrl = $"data:{mimeType};base64,{base64}";
 
             // Trigger download via JavaScript
             await JSRuntime.InvokeVoidAsync("downloadFile", dataUrl, fileName);
             
-            await ToastService.ShowSuccessAsync($"Export completed! Downloaded {fileName}", 5000);
+            await ToastService.ShowSuccessAsync($"Export completed! Downloaded {fileName} with {itemCount} items", 5000);
         }
         catch (Exception ex)
         {

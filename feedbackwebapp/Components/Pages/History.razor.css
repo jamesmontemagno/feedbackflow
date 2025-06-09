@@ -156,6 +156,39 @@
     .source-badge {
         font-size: 0.7rem;
     }
+    
+    /* Header adjustments for mobile */
+    .d-flex.justify-content-between.align-items-center {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .d-flex.align-items-center.gap-2 {
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.5rem !important;
+    }
+    
+    /* Make buttons stack nicely on small screens */
+    .d-flex.align-items-center.gap-2 > * {
+        flex: 1;
+        min-width: 100px;
+    }
+}
+
+@media (max-width: 576px) {
+    /* Stack buttons vertically on very small screens */
+    .d-flex.align-items-center.gap-2 {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .d-flex.align-items-center.gap-2 > * {
+        width: 100%;
+        flex: none;
+    }
 }
 
 /* Shared badge styling */
