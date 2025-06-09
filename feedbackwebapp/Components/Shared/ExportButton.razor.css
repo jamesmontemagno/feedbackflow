@@ -1,0 +1,67 @@
+/* ExportButton component styles */
+
+.export-btn {
+    transition: all 0.2s ease-in-out;
+    min-width: 120px;
+}
+
+.export-btn:hover:not(.disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(var(--success-color-rgb), 0.2);
+}
+
+.dropdown-menu {
+    border: 1px solid rgba(var(--border-color-rgb), 0.2);
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+}
+
+.dropdown-item {
+    transition: all 0.2s ease;
+    border-radius: calc(var(--border-radius) * 0.5);
+    margin: 2px 8px;
+}
+
+.dropdown-item:hover:not(:disabled) {
+    background: var(--primary-gradient);
+    color: white;
+    transform: translateX(4px);
+}
+
+.dropdown-item:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.dropdown-header {
+    color: var(--text-color);
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 0.5rem 1rem 0.25rem;
+}
+
+/* Icon styling */
+.dropdown-item i {
+    width: 16px;
+    display: inline-block;
+}
+
+/* Loading state */
+.spinner-border-sm {
+    width: 0.875rem;
+    height: 0.875rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .export-btn {
+        min-width: 100px;
+        font-size: 0.875rem;
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .dropdown-item {
+        font-size: 0.875rem;
+        padding: 0.5rem 1rem;
+    }
+}

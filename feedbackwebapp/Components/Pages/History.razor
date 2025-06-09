@@ -35,10 +35,14 @@
 <div class="container-lg py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="feedbackflow-title mb-0">Analysis History</h1>
-        <div class="d-flex align-items-center">
+        <div class="d-flex align-items-center gap-2">
+            @if (filteredItems is { Count: > 0 })
+            {
+                <ExportButton Items="filteredItems" />
+            }
             @if (historyItems?.Any(h => h.IsShared) == true)
             {
-                <button class="btn btn-info me-2 action-btn px-4 py-2" @onclick="ShowSharedOnly">
+                <button class="btn btn-info action-btn px-4 py-2" @onclick="ShowSharedOnly">
                     <i class="bi bi-share me-2"></i>Shared
                 </button>
             }

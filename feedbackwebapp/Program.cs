@@ -5,6 +5,8 @@ using FeedbackWebApp.Services.ContentFeed;
 using FeedbackWebApp.Services.Feedback;
 using FeedbackWebApp.Services.Interfaces;
 using Microsoft.AspNetCore.Rewrite;
+using SharedDump.Services;
+using SharedDump.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,6 +38,7 @@ builder.Services.AddScoped<IReportServiceProvider, ReportServiceProvider>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IHistoryService, HistoryService>();
 builder.Services.AddScoped<IAnalysisSharingService, AnalysisSharingService>();
+builder.Services.AddScoped<IExportService, ExportService>();
 
 var app = builder.Build();
 
