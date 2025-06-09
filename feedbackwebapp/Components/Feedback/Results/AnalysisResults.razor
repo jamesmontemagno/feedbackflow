@@ -12,6 +12,7 @@
 @inject FeedbackWebApp.Services.Interfaces.IHistoryService HistoryService
 @inject FeedbackWebApp.Services.IToastService ToastService
 @inject FeedbackWebApp.Services.Interfaces.IAnalysisSharingService SharingService
+@inject SharedDump.Services.Interfaces.IExportService ExportService
 @inject NavigationManager NavigationManager
 @implements IDisposable
 
@@ -36,7 +37,12 @@
     <div class="card mt-4 shadow-sm">
         <header class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h2 class="card-title mb-0 h5">Analysis Summary</h2>
-            <div class="d-flex">                <button class="btn btn-sm btn-outline-light me-2 action-btn" 
+            <div class="d-flex">
+                @if (!string.IsNullOrEmpty(MarkdownResult))
+                {
+                    <ExportButton Items="@(new[] { CreateHistoryItemForExport() })" />
+                }
+                <button class="btn btn-sm btn-outline-light me-2 action-btn" 
                         @onclick="SaveToHistory"
                         disabled="@_isSaved"
                         aria-label="Save to history">
@@ -400,6 +406,25 @@
         StateHasChanged();
     }
     
+    private AnalysisHistoryItem CreateHistoryItemForExport()
+    {
+        if (string.IsNullOrEmpty(MarkdownResult))
+            return new AnalysisHistoryItem();
+            
+        var commentThreads = ConvertAdditionalDataToCommentThreads();
+        
+        return new AnalysisHistoryItem
+        {
+            Id = _savedItemId ?? Guid.NewGuid().ToString(),
+            Summary = MarkdownResult.Length > 300 ? MarkdownResult.Substring(0, 300) + "..." : MarkdownResult,
+            FullAnalysis = MarkdownResult,
+            SourceType = SourceType,
+            UserInput = UserInput,
+            CommentThreads = commentThreads,
+            Timestamp = DateTime.UtcNow
+        };
+    }
+
     public void Dispose()
     {
         // Ensure speech is stopped when component is disposed
