@@ -7,35 +7,56 @@
         <div class="container">
             <div class="navbar-nav me-3 d-lg-none">
                 <div class="nav-item dropdown">
-                    <button class="nav-link dropdown-toggle btn btn-link p-0 border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-list"></i>
+                    <button class="nav-link dropdown-toggle btn btn-link p-0 border-0 modern-hamburger" 
+                            type="button" 
+                            data-bs-toggle="dropdown" 
+                            aria-expanded="false">
+                        <div class="hamburger-icon">
+                            <span class="bar bar-1"></span>
+                            <span class="bar bar-2"></span>
+                            <span class="bar bar-3"></span>
+                        </div>
                     </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item @(IsActive("/") ? "active" : "")" href="/">
-                            <i class="bi bi-chat-dots me-2"></i>
-                            Analyze
-                        </a></li>
-                        <li><a class="dropdown-item @(IsActive("/content-feeds") ? "active" : "")" href="/content-feeds">
-                            <i class="bi bi-collection me-2"></i>
-                            Feeds
-                        </a></li>
-                        <li><a class="dropdown-item @(IsActive("/reports") ? "active" : "")" href="/reports">
-                            <i class="bi bi-graph-up me-2"></i>
-                            Reports
-                        </a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item @(IsActive("/history") ? "active" : "")" href="/history">
-                            <i class="bi bi-clock-history me-2"></i>
-                            Saved
-                        </a></li>
-                        <li><a class="dropdown-item @(IsActive("/whats-new") ? "active" : "")" href="/whats-new">
-                            <i class="bi bi-stars me-2"></i>
-                            What's New
-                        </a></li>
-                        <li><a class="dropdown-item @(IsActive("/settings") ? "active" : "")" href="/settings">
-                            <i class="bi bi-gear me-2"></i>
-                            Settings
-                        </a></li>
+                    <ul class="dropdown-menu modern-dropdown">
+                        <li class="dropdown-item-wrapper" style="--delay: 0.05s">
+                            <a class="dropdown-item @(IsActive("/") ? "active" : "")" href="/">
+                                <i class="bi bi-chat-dots me-2"></i>
+                                <span>Analyze</span>
+                            </a>
+                        </li>
+                        <li class="dropdown-item-wrapper" style="--delay: 0.1s">
+                            <a class="dropdown-item @(IsActive("/content-feeds") ? "active" : "")" href="/content-feeds">
+                                <i class="bi bi-collection me-2"></i>
+                                <span>Feeds</span>
+                            </a>
+                        </li>
+                        <li class="dropdown-item-wrapper" style="--delay: 0.15s">
+                            <a class="dropdown-item @(IsActive("/reports") ? "active" : "")" href="/reports">
+                                <i class="bi bi-graph-up me-2"></i>
+                                <span>Reports</span>
+                            </a>
+                        </li>
+                        <li class="dropdown-divider-wrapper" style="--delay: 0.2s">
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li class="dropdown-item-wrapper" style="--delay: 0.25s">
+                            <a class="dropdown-item @(IsActive("/history") ? "active" : "")" href="/history">
+                                <i class="bi bi-clock-history me-2"></i>
+                                <span>Saved</span>
+                            </a>
+                        </li>
+                        <li class="dropdown-item-wrapper" style="--delay: 0.3s">
+                            <a class="dropdown-item @(IsActive("/whats-new") ? "active" : "")" href="/whats-new">
+                                <i class="bi bi-stars me-2"></i>
+                                <span>What's New</span>
+                            </a>
+                        </li>
+                        <li class="dropdown-item-wrapper" style="--delay: 0.35s">
+                            <a class="dropdown-item @(IsActive("/settings") ? "active" : "")" href="/settings">
+                                <i class="bi bi-gear me-2"></i>
+                                <span>Settings</span>
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </div>
