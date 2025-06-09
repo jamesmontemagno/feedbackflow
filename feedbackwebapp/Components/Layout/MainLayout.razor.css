@@ -7,7 +7,8 @@
     width: calc(100% - 2rem);
     border-radius: 0 0 var(--border-radius) var(--border-radius);
     position: relative;
-    overflow: hidden;
+    overflow: visible;
+    z-index: 1000;
 }
 
 .navbar::before {
@@ -281,6 +282,39 @@
     margin: 0;
     position: relative;
     overflow: hidden;
+    z-index: 10000;
+}
+
+/* Ensure the dropdown container has proper positioning */
+.navbar-nav .nav-item.dropdown {
+    position: relative;
+    z-index: 10000;
+    margin: 0 !important; /* Override app.css margin that adds unwanted spacing */
+}
+
+/* AGGRESSIVE Bootstrap dropdown overrides to eliminate gap */
+.navbar-nav .dropdown .dropdown-menu {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    transform: none !important;
+    will-change: auto !important;
+}
+
+/* Override any Bootstrap default dropdown spacing */
+.dropdown .dropdown-menu {
+    --bs-dropdown-margin-top: 0 !important;
+    --bs-dropdown-spacer: 0 !important;
+    margin: 0 !important;
+}
+
+/* Force dropdown to be exactly positioned */
+.navbar-nav .nav-item.dropdown .dropdown-menu.modern-dropdown {
+    position: absolute !important;
+    top: 52px !important; /* Match the updated position with tiny gap */
+    left: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
 }
 
 .modern-hamburger::before {
@@ -310,18 +344,20 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    width: 22px;
-    height: 16px;
+    width: 32px;
+    height: 22px;
     position: relative;
 }
 
 .bar {
-    width: 100%;
-    height: 2px;
+    width: 150%;
+    height: 3px;
     background-color: currentColor;
     border-radius: 2px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     transform-origin: center;
+    position: relative;
+    left: -25%;
 }
 
 .bar-1 {
@@ -339,7 +375,7 @@
 
 /* Hamburger Animation when dropdown is open */
 .modern-hamburger[aria-expanded="true"] .bar-1 {
-    transform: translateY(7px) rotate(45deg);
+    transform: translateY(9.5px) rotate(45deg);
 }
 
 .modern-hamburger[aria-expanded="true"] .bar-2 {
@@ -348,13 +384,11 @@
 }
 
 .modern-hamburger[aria-expanded="true"] .bar-3 {
-    transform: translateY(-7px) rotate(-45deg);
+    transform: translateY(-9.5px) rotate(-45deg);
 }
 
-/* Modern Dropdown Styling */
+/* Modern Dropdown Styling - Fresh Implementation */
 .modern-dropdown {
-    --bs-dropdown-padding-y: 1rem;
-    --bs-dropdown-padding-x: 0;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -363,11 +397,22 @@
                 0 8px 25px rgba(0, 0, 0, 0.1),
                 inset 0 1px 0 rgba(255, 255, 255, 0.3);
     min-width: 280px;
-    margin-top: 1rem;
-    padding: 0;
+    padding: 1rem 0;
     overflow: hidden;
     animation: dropdownSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
+    
+    /* Perfect positioning - just a tiny gap */
+    position: absolute !important;
+    z-index: 9999 !important;
+    top: 60px !important; /* 48px + 4px tiny gap */
+    left: 0 !important;
+    margin: 0 !important;
+    border-top: none !important;
+    
+    /* Override Bootstrap variables */
+    --bs-dropdown-padding-y: 0 !important;
+    --bs-dropdown-padding-x: 0 !important;
+    --bs-dropdown-margin-top: 0 !important;
 }
 
 .modern-dropdown::before {
@@ -614,52 +659,92 @@
     }
 }
 
-/* Responsive adjustments */
-@media (max-width: 991.98px) {
-    .navbar-nav {
-        margin-left: 0;
-        margin-top: 0;
-    }
+/* Utility Actions Section */
+.navbar-utility-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
 
-    .nav-link {
-        padding: 0.75rem 0 !important;
-    }
+.utility-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
 
-    .nav-link.active::after {
-        left: 0;
-        right: 0;
+.utility-action::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.2), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: -1;
+}
+
+.utility-action:hover {
+    color: rgba(255, 255, 255, 1);
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px) scale(1.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.utility-action:hover::before {
+    opacity: 1;
+}
+
+.utility-action i {
+    font-size: 1.1rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.utility-action:hover i {
+    transform: rotate(10deg) scale(1.1);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* Active state for utility actions */
+.utility-action.active {
+    background: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 1);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.utility-action.active::before {
+    opacity: 1;
+}
+
+.utility-action.active i {
+    transform: scale(1.05);
+    animation: activeUtilityPulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes activeUtilityPulse {
+    0% {
+        filter: drop-shadow(0 2px 4px rgba(255, 255, 255, 0.2));
     }
-    
-    /* Modern dropdown positioning */
-    .modern-dropdown {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        z-index: 1050;
-        transform-origin: top left;
-    }
-    
-    /* Add a subtle backdrop overlay */
-    .modern-dropdown.show::after {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.1);
-        z-index: -1;
-        backdrop-filter: blur(2px);
-        animation: backdropFadeIn 0.3s ease;
+    100% {
+        filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.4));
     }
 }
 
-@keyframes backdropFadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
+/* Responsive adjustments for utility actions */
+@media (max-width: 991.98px) {
+    .navbar-utility-actions {
+        display: none !important;
     }
 }
 
@@ -683,4 +768,67 @@
 
 #blazor-error-ui .dismiss:hover {
     opacity: 1;
+}
+
+/* Dropdown Backdrop for Mobile Overlay */
+.dropdown-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.1);
+    z-index: 9998;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.dropdown.show .dropdown-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Mobile-specific dropdown adjustments */
+@media (max-width: 991.98px) {
+    .modern-dropdown {
+        position: fixed !important;
+        top: 80px !important;
+        left: 1rem !important;
+        right: 1rem !important;
+        width: calc(100vw - 2rem) !important;
+        max-width: 320px !important;
+        min-width: unset !important;
+        z-index: 9999 !important;
+        transform: translateX(0) !important;
+    }
+    
+    /* Ensure navbar container doesn't interfere */
+    .navbar .container {
+        position: relative;
+        z-index: 10001;
+    }
+}
+
+/* Enhanced backdrop blur effect when dropdown is open */
+.dropdown.show ~ * {
+    filter: blur(1px);
+    transition: filter 0.3s ease;
+}
+
+.dropdown:not(.show) ~ * {
+    filter: none;
+    transition: filter 0.3s ease;
+}
+
+/* Override Bootstrap dropdown z-index for proper layering */
+.dropdown-menu.show {
+    z-index: 9999 !important;
+}
+
+/* Ensure dropdown menu is properly positioned as overlay */
+.navbar-nav .dropdown .dropdown-menu {
+    position: absolute !important;
+    transform: none !important;
+    margin-top: 0 !important;
 }

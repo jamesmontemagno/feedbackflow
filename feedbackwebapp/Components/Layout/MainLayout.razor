@@ -97,19 +97,17 @@
                             <span>Saved</span>
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link @(IsActive("/whats-new") ? "active" : "")" href="/whats-new">
-                            <i class="bi bi-stars me-1"></i>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link @(IsActive("/settings") ? "active" : "")" href="/settings">
-                            <i class="bi bi-gear me-1"></i>
-                        </a>
-                    </li>
                 </ul>
             </div>            
-            <div class="ms-auto">
+            <div class="ms-auto d-flex align-items-center">
+                <div class="navbar-utility-actions d-flex align-items-center me-3">
+                    <a class="utility-action @(IsActive("/whats-new") ? "active" : "")" href="/whats-new" title="What's New">
+                        <i class="bi bi-stars"></i>
+                    </a>
+                    <a class="utility-action @(IsActive("/settings") ? "active" : "")" href="/settings" title="Settings">
+                        <i class="bi bi-gear"></i>
+                    </a>
+                </div>
                 <ThemeToggle />
             </div>
         </div>
