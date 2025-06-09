@@ -27,29 +27,50 @@
     </button>
     <ul class="dropdown-menu" aria-labelledby="exportDropdown">
         <li><h6 class="dropdown-header">Export Format</h6></li>
-        <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Csv)" disabled="@_isExporting"
-                    aria-label="Export as CSV (Comma Separated Values) format">
-            <i class="bi bi-file-earmark-spreadsheet me-2" aria-hidden="true"></i>CSV
-        </button></li>
-        <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Json)" disabled="@_isExporting"
-                    aria-label="Export as JSON (JavaScript Object Notation) format">
-            <i class="bi bi-file-earmark-code me-2" aria-hidden="true"></i>JSON
-        </button></li>
-        <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Pdf)" disabled="@_isExporting"
-                    aria-label="Export as PDF (Portable Document Format)">
-            <i class="bi bi-file-earmark-pdf me-2" aria-hidden="true"></i>PDF
-        </button></li>
-        <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Markdown)" disabled="@_isExporting"
-                    aria-label="Export as Markdown text format">
-            <i class="bi bi-file-earmark-text me-2" aria-hidden="true"></i>Markdown
-        </button></li>
+        @foreach (var format in GetSupportedFormats())
+        {
+            @if (format == ExportFormat.Csv)
+            {
+                <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Csv)" disabled="@_isExporting"
+                            aria-label="Export as CSV (Comma Separated Values) format">
+                    <i class="bi bi-file-earmark-spreadsheet me-2" aria-hidden="true"></i>CSV
+                </button></li>
+            }
+            else if (format == ExportFormat.Json)
+            {
+                <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Json)" disabled="@_isExporting"
+                            aria-label="Export as JSON (JavaScript Object Notation) format">
+                    <i class="bi bi-file-earmark-code me-2" aria-hidden="true"></i>JSON
+                </button></li>
+            }
+            else if (format == ExportFormat.Pdf)
+            {
+                <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Pdf)" disabled="@_isExporting"
+                            aria-label="Export as PDF (Portable Document Format)">
+                    <i class="bi bi-file-earmark-pdf me-2" aria-hidden="true"></i>PDF
+                </button></li>
+            }
+            else if (format == ExportFormat.Markdown)
+            {
+                <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Markdown)" disabled="@_isExporting"
+                            aria-label="Export as Markdown text format">
+                    <i class="bi bi-file-earmark-text me-2" aria-hidden="true"></i>Markdown
+                </button></li>
+            }
+        }
     </ul>
 </div>
 
 @code {
     [Parameter] public IEnumerable<AnalysisHistoryItem> Items { get; set; } = Enumerable.Empty<AnalysisHistoryItem>();
+    [Parameter] public IEnumerable<ExportFormat>? SupportedFormats { get; set; }
     
     private bool _isExporting = false;
+    
+    private IEnumerable<ExportFormat> GetSupportedFormats()
+    {
+        return SupportedFormats ?? new[] { ExportFormat.Csv, ExportFormat.Json, ExportFormat.Pdf, ExportFormat.Markdown };
+    }
 
     private async Task ExportData(ExportFormat format)
     {
