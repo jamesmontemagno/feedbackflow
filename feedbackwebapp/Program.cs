@@ -45,7 +45,11 @@ app.MapDefaultEndpoints();
 if (!app.Environment.IsDevelopment())
 {
     
-    app.UseRewriter(new RewriteOptions().AddRedirectToWwwPermanent());
+    
+    if (!app.Environment.IsStaging())
+    {
+        app.UseRewriter(new RewriteOptions().AddRedirectToWwwPermanent());
+    }
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
