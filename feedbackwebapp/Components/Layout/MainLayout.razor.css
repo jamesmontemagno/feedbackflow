@@ -6,43 +6,183 @@
     margin: 0 1rem 1.5rem;
     width: calc(100% - 2rem);
     border-radius: 0 0 var(--border-radius) var(--border-radius);
+    position: relative;
+    overflow: hidden;
+}
+
+.navbar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 0;
+}
+
+.navbar:hover::before {
+    opacity: 1;
+}
+
+.navbar-brand {
+    position: relative;
+    z-index: 1;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .navbar-brand:hover {
     transform: scale(1.05);
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
 }
 
 .navbar-nav {
     margin-left: 1rem;
+    position: relative;
+    z-index: 1;
 }
 
+/* Modern Desktop Navigation Items */
 .nav-link {
     position: relative;
     margin: 0 0.25rem;
-}
-
-.nav-link i {
-    transition: transform 0.3s ease;
-}
-
-.nav-link:hover i {
-    transform: translateY(-2px) scale(1.1);
-}
-
-.nav-link.active {
+    padding: 0.75rem 1.25rem !important;
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     font-weight: 500;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
 }
 
-.nav-link.active::after {
+.nav-link::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: -1;
+}
+
+.nav-link::after {
     content: '';
     position: absolute;
     bottom: 0;
-    left: 1rem;
-    right: 1rem;
+    left: 50%;
+    width: 0;
     height: 3px;
-    background-color: white;
+    background: linear-gradient(90deg, #fff, rgba(255, 255, 255, 0.8));
     border-radius: 3px;
-    animation: slideIn 0.3s ease-out;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateX(-50%);
+    z-index: 1;
+}
+
+.nav-link:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15), 
+                0 4px 10px rgba(0, 0, 0, 0.1);
+    color: rgba(255, 255, 255, 1);
+}
+
+.nav-link:hover::before {
+    left: 100%;
+}
+
+.nav-link:hover::after {
+    width: 80%;
+}
+
+.nav-link i {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 1;
+}
+
+.nav-link:hover i {
+    transform: translateY(-3px) scale(1.15) rotate(5deg);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.nav-link span {
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 1;
+}
+
+.nav-link:hover span {
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Active State - Modern Enhancement */
+.nav-link.active {
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.nav-link.active::after {
+    width: 90%;
+    height: 4px;
+    background: linear-gradient(90deg, #fff, rgba(255, 255, 255, 0.9), #fff);
+    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.4);
+    animation: activeGlow 2s ease-in-out infinite alternate;
+}
+
+.nav-link.active i {
+    transform: scale(1.1);
+    filter: drop-shadow(0 2px 6px rgba(255, 255, 255, 0.3));
+}
+
+/* Floating Animation for Active Items */
+@keyframes activeGlow {
+    0% {
+        box-shadow: 0 2px 8px rgba(255, 255, 255, 0.4);
+        transform: translateX(-50%) scaleX(1);
+    }
+    100% {
+        box-shadow: 0 2px 12px rgba(255, 255, 255, 0.6);
+        transform: translateX(-50%) scaleX(1.05);
+    }
+}
+
+/* Staggered Animation for Navigation Items on Load */
+.navbar-nav .nav-item {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: navItemSlideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.navbar-nav .nav-item:nth-child(1) { animation-delay: 0.1s; }
+.navbar-nav .nav-item:nth-child(2) { animation-delay: 0.2s; }
+.navbar-nav .nav-item:nth-child(3) { animation-delay: 0.3s; }
+.navbar-nav .nav-item:nth-child(4) { animation-delay: 0.4s; }
+.navbar-nav .nav-item:nth-child(5) { animation-delay: 0.5s; }
+.navbar-nav .nav-item:nth-child(6) { animation-delay: 0.6s; }
+
+@keyframes navItemSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Enhanced Theme Toggle Container */
+.ms-auto {
+    position: relative;
+    z-index: 1;
 }
 
 /* Dropdown styling */
@@ -413,6 +553,64 @@
     to {
         transform: translateY(0);
         opacity: 1;
+    }
+}
+
+@keyframes navItemSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes activeGlow {
+    0% {
+        box-shadow: 0 2px 8px rgba(255, 255, 255, 0.4);
+        transform: translateX(-50%) scaleX(1);
+    }
+    100% {
+        box-shadow: 0 2px 12px rgba(255, 255, 255, 0.6);
+        transform: translateX(-50%) scaleX(1.05);
+    }
+}
+
+/* Navigation Hover Zone Effect */
+.navbar-nav:hover .nav-link:not(:hover) {
+    opacity: 0.7;
+    transform: scale(0.95);
+}
+
+/* Magnetic Effect for Navigation Items */
+.nav-link:hover ~ .nav-link {
+    transform: translateX(5px);
+}
+
+.nav-link:has(~ .nav-link:hover) {
+    transform: translateX(-5px);
+}
+
+/* Modern Focus States for Accessibility */
+.nav-link:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* Add subtle floating animation to the entire navbar */
+.navbar {
+    animation: navbarFloat 6s ease-in-out infinite;
+}
+
+@keyframes navbarFloat {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-2px);
     }
 }
 
