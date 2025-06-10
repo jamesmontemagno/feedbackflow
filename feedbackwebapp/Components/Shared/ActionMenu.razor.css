@@ -1,0 +1,101 @@
+/* ActionMenu component styles for responsive action buttons */
+
+.action-menu-container {
+    position: relative;
+}
+
+/* Action menu toggle button */
+.action-menu-toggle {
+    min-width: 36px !important;
+    height: 32px !important;
+    padding: 0.375rem 0.5rem !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+    transition: all 0.2s ease-in-out;
+}
+
+.action-menu-toggle:hover:not(:disabled) {
+    background-color: var(--hover-bg);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+
+.action-menu-toggle i {
+    font-size: 1rem;
+    transition: transform 0.2s ease;
+}
+
+.action-menu-toggle:hover:not(:disabled) i {
+    transform: scale(1.1);
+}
+
+/* Dropdown menu styling */
+.action-menu-dropdown {
+    min-width: 160px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background-color: var(--bg-secondary);
+    box-shadow: var(--card-shadow);
+    padding: 0.5rem 0;
+}
+
+.action-menu-dropdown .dropdown-item {
+    padding: 0.5rem 1rem;
+    color: var(--text-primary);
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    border-radius: 0;
+}
+
+.action-menu-dropdown .dropdown-item:hover:not(:disabled) {
+    background-color: var(--hover-bg);
+    color: var(--text-primary);
+    transform: translateX(4px);
+}
+
+.action-menu-dropdown .dropdown-item:active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.action-menu-dropdown .dropdown-item i {
+    font-size: 1rem;
+    width: 16px;
+    display: inline-block;
+    text-align: center;
+}
+
+.action-menu-dropdown .dropdown-divider {
+    margin: 0.5rem 0;
+    border-color: var(--border-color);
+}
+
+/* Dark theme support */
+[data-theme="dark"] .action-menu-dropdown {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .action-menu-dropdown .dropdown-item {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .action-menu-dropdown .dropdown-item:hover:not(:disabled) {
+    background-color: var(--hover-bg);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .action-menu-dropdown .dropdown-divider {
+    border-color: var(--border-color);
+}

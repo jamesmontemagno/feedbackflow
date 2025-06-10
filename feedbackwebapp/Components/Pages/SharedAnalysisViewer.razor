@@ -66,14 +66,27 @@
                             <span class="source-badge">@analysis.SourceType</span>
                         }
                         <small class="text-muted">@analysis.CreatedDate.ToLocalTime().ToString("g")</small>
-                    </div>                      <div class="d-flex align-items-center gap-2">
-                        <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="CopyToClipboard">
-                            <i class="bi bi-clipboard"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-success action-btn" title="Save to History" @onclick="SaveToHistoryAsync">
-                            <i class="bi bi-bookmark-plus"></i>
-                        </button>
-                    </div>
+                    </div>                      
+                    <ActionMenu>
+                        <PrimaryAction>
+                            <button class="btn btn-sm btn-outline-success action-btn" title="Save to History" @onclick="SaveToHistoryAsync">
+                                <i class="bi bi-bookmark-plus"></i> Save to History
+                            </button>
+                        </PrimaryAction>                        
+                        <ChildContent>
+                            <button class="btn btn-sm btn-outline-success action-btn" title="Save to History" @onclick="SaveToHistoryAsync">
+                                <i class="bi bi-bookmark-plus"></i> Save to History
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="CopyToClipboard">
+                                <i class="bi bi-clipboard"></i> Copy Analysis
+                            </button>
+                        </ChildContent>
+                        <SecondaryActions>
+                            <li><button class="dropdown-item" @onclick="CopyToClipboard">
+                                <i class="bi bi-clipboard"></i> Copy Analysis
+                            </button></li>
+                        </SecondaryActions>
+                    </ActionMenu>
                 </div>
                               
                 @if (!string.IsNullOrWhiteSpace(analysis.UserInput))

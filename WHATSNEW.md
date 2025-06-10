@@ -2,6 +2,12 @@ This page tracks the latest features and improvements added to FeedbackFlow.
 
 ## 📆 June 2025
 
+### 🗃️ Export
+
+- Now comments are saved to your history
+- Export with 1 click to json, csv, pdf, or markdown!
+- Works on analysis, full history, or a single item
+
 ### 📊 Reports
 
 We've added a new Report section to FeedbackFlow!
