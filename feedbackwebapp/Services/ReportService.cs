@@ -131,7 +131,8 @@ public class ReportService : IReportService
 
         var content = await response.Content.ReadAsStringAsync();
         var result = JsonSerializer.Deserialize<ReportsResponse>(content, _jsonOptions);
-        return result?.Reports ?? Enumerable.Empty<ReportModel>();
+        return (result?.Reports ?? Enumerable.Empty<ReportModel>())
+            .OrderByDescending(r => r.GeneratedAt);
     }
 
     public async Task<ReportModel?> GetReportAsync(string id)
