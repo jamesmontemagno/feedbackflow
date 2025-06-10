@@ -32,19 +32,21 @@
     ContentType="@failedCopyContentType"
     OnClose="@CloseCopyFailedDialog" />
 
-<div class="container-lg py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="container-lg py-4">    <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="feedbackflow-title mb-0">Analysis History</h1>
-        <div class="d-flex align-items-center">
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">            @if (filteredItems is { Count: > 0 })
+            {
+                <ExportButton Items="filteredItems" ButtonVariant="primary" Size="sm" />
+            }
             @if (historyItems?.Any(h => h.IsShared) == true)
             {
-                <button class="btn btn-info me-2 action-btn px-4 py-2" @onclick="ShowSharedOnly">
+                <button class="btn btn-info header-action-btn" @onclick="ShowSharedOnly">
                     <i class="bi bi-share me-2"></i>Shared
                 </button>
             }
             @if (historyItems is { Count: > 0 })
             {
-                <button class="btn btn-danger clear-all-btn action-btn px-4 py-2" @onclick="ClearHistory">
+                <button class="btn btn-danger clear-all-btn header-action-btn" @onclick="ClearHistory">
                     <i class="bi bi-trash me-2"></i>Clear All
                 </button>
             }
@@ -146,46 +148,69 @@
                                     Shared
                                 </span>
                             }
-                        </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="() => HistoryHelper.CopyToClipboard(item, JSRuntime, ToastService, ShowCopyFailedDialog)">
-                                <i class="bi bi-clipboard"></i>
-                            </button>
-                            @if (!item.IsShared)
-                            {                                
-                                @if (isAuthenticated)
-                                {
-                                    <button class="btn btn-sm btn-outline-info action-btn" title="Create Share Link" @onclick="() => ShareAnalysis(item)">
-                                        <i class="bi bi-share"></i>
-                                        Share
+                        </div>                        
+                        <ActionMenu>
+                            <PrimaryAction>
+                                <ExportButton Items="@(new[] { item })" ButtonVariant="primary" Mini="true" Size="sm" />
+                            </PrimaryAction>                            
+                            <ChildContent>
+                                <ExportButton Items="@(new[] { item })" ButtonVariant="primary" Mini="false" Size="sm" />
+                                <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="() => HistoryHelper.CopyToClipboard(item, JSRuntime, ToastService, ShowCopyFailedDialog)">
+                                    <i class="bi bi-clipboard"></i> Copy
+                                </button>
+                                @if (!item.IsShared)
+                                {            
+                                    <button class="btn btn-sm btn-outline-success action-btn" title="Create Share Link" @onclick="() => ShareAnalysis(item)">
+                                        <i class="bi bi-share"></i> Share
                                     </button>
                                 }
                                 else
                                 {
-                                    <button class="btn btn-sm btn-outline-primary action-btn" title="Login to Share" @onclick="NavigateToLogin">
-                                        <i class="bi bi-box-arrow-in-right"></i>
-                                        Login
+                                    <button class="btn btn-sm btn-outline-success action-btn" title="Copy Share Link" @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
+                                        <i class="bi bi-link-45deg"></i> Copy Link
                                     </button>
+                                }                            
+                                @if(item.SourceType != "Manual")
+                                {
+                                    <a class="btn btn-sm btn-outline-secondary action-btn" title="Open Link" target="_blank" rel="noopener noreferrer" href="@HistoryHelper.GetSourceUrl(item)">
+                                        <i class="bi bi-box-arrow-up-right"></i> Open Link
+                                    </a>
                                 }
-                            }
-                            else
-                            {
-                                <button class="btn btn-sm btn-outline-info action-btn" title="Copy Share Link" @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
-                                    <i class="bi bi-link-45deg"></i>
-                                    Copy Link
+                                <button class="btn btn-sm btn-outline-danger action-btn" title="Delete" @onclick="() => ConfirmDelete(item.Id)">
+                                    <i class="bi bi-trash"></i> Delete
                                 </button>
-                            }                            @if(item.SourceType != "Manual")
-                            {
-                                <a class="btn btn-sm btn-outline-primary action-btn" title="Open Source" target="_blank" rel="noopener noreferrer" href="@HistoryHelper.GetSourceUrl(item)">
-                                    <i class="bi bi-box-arrow-up-right"></i>
-                                </a>
-                            }
-                            <button class="btn btn-sm btn-outline-danger action-btn" title="Delete" @onclick="() => ConfirmDelete(item.Id)">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
+                            </ChildContent>
+                            <SecondaryActions>
+                                <li><button class="dropdown-item" @onclick="() => HistoryHelper.CopyToClipboard(item, JSRuntime, ToastService, ShowCopyFailedDialog)">
+                                    <i class="bi bi-clipboard"></i> Copy Analysis
+                                </button></li>
+                                @if (!item.IsShared)
+                                {       
+                                    <li><button class="dropdown-item" @onclick="() => ShareAnalysis(item)">
+                                        <i class="bi bi-share"></i> Share
+                                    </button></li>
+                                }
+                                else
+                                {
+                                    <li><button class="dropdown-item" @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
+                                        <i class="bi bi-link-45deg"></i> Copy Share Link
+                                    </button></li>
+                                }                            
+                                @if(item.SourceType != "Manual")
+                                {
+                                    <li><a class="dropdown-item" target="_blank" rel="noopener noreferrer" href="@HistoryHelper.GetSourceUrl(item)">
+                                        <i class="bi bi-box-arrow-up-right"></i> Open Link
+                                    </a></li>
+                                }
+                                <li><hr class="dropdown-divider"></li>
+                                <li><button class="dropdown-item text-danger" @onclick="() => ConfirmDelete(item.Id)">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button></li>
+                            </SecondaryActions>
+                        </ActionMenu>
                     </div>
-                                          @if (!string.IsNullOrWhiteSpace(item.UserInput) && item.SourceType != "Manual")
+                                          
+                    @if (!string.IsNullOrWhiteSpace(item.UserInput) && item.SourceType != "Manual")
                     {
                         <div class="user-input mb-3">
                             <strong>Input:</strong>

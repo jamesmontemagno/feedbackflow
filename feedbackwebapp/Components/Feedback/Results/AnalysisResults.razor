@@ -3,6 +3,8 @@
 @using SharedDump.Utils
 @using FeedbackWebApp.Components.Shared
 @using Microsoft.Extensions.Logging
+@using SharedDump.Services
+@using FeedbackWebApp.Services.Feedback
 @inject IJSRuntime JSRuntime
 @inject ILogger<AnalysisResults> Logger
 @inject FeedbackWebApp.Services.UserSettingsService UserSettings
@@ -10,6 +12,7 @@
 @inject FeedbackWebApp.Services.Interfaces.IHistoryService HistoryService
 @inject FeedbackWebApp.Services.IToastService ToastService
 @inject FeedbackWebApp.Services.Interfaces.IAnalysisSharingService SharingService
+@inject SharedDump.Services.Interfaces.IExportService ExportService
 @inject NavigationManager NavigationManager
 @implements IDisposable
 
@@ -31,36 +34,65 @@
 
 @if (!string.IsNullOrEmpty(MarkdownResult))
 {
-    <div class="card mt-4 shadow-sm">
+    <div class="card mt-4 shadow-sm">        
         <header class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h2 class="card-title mb-0 h5">Analysis Summary</h2>
-            <div class="d-flex">                <button class="btn btn-sm btn-outline-light me-2 action-btn" 
-                        @onclick="SaveToHistory"
-                        disabled="@_isSaved"
-                        aria-label="Save to history">
-                    <i class="bi bi-clock-history me-1" aria-hidden="true"></i>
-                    @(_isSaved ? "Saved" : "Save")
-                </button>                
-                <button class="btn btn-sm btn-outline-light me-2 action-btn" 
-                        @onclick="@(sharedId == null ? ShareAnalysis : CopyShareLink)"
-                        aria-label="@(sharedId == null ? "Share analysis" : "Copy share link")">
-                    <i class="bi @(sharedId == null ? "bi-share" : "bi-link-45deg") me-1" aria-hidden="true"></i>
-                    @(sharedId == null ? "Share" : "Copy Link")
-                </button>
-                <button class="btn btn-sm btn-outline-light me-2 action-btn @(_isSpeaking ? "btn-speak-active" : "")" 
-                        @onclick="SpeakAnalysis"
-                        aria-label="@(_isSpeaking ? "Stop speaking" : "Speak analysis")"
-                        aria-pressed="@_isSpeaking.ToString().ToLower()">
-                    <i class="bi @(_isSpeaking ? "bi-pause-fill" : "bi-volume-up-fill") me-1" aria-hidden="true"></i>
-                    @(_isSpeaking ? "Stop" : "Speak")
-                </button>
-                <button class="btn btn-sm btn-outline-light action-btn" 
-                        @onclick="CopyToClipboard"
-                        aria-label="Copy to clipboard">
-                    <i class="bi bi-clipboard me-1" aria-hidden="true"></i>
-                    Copy
-                </button>
-            </div>
+            <ActionMenu>
+                <PrimaryAction>
+                    @if (!string.IsNullOrEmpty(MarkdownResult))
+                    {
+                        <ExportButton Items="@(new[] { CreateHistoryItemForExport() })" ButtonVariant="light" Size="sm" Mini="true" />
+                    }
+                </PrimaryAction>                  
+                <ChildContent>
+                    @if (!string.IsNullOrEmpty(MarkdownResult))
+                    {
+                        <ExportButton Items="@(new[] { CreateHistoryItemForExport() })" ButtonVariant="light" Size="sm" Mini="false" />
+                    }
+                    <button class="btn btn-sm btn-outline-light me-2 action-btn" 
+                            @onclick="SaveToHistory"
+                            disabled="@_isSaved"
+                            aria-label="Save to history">
+                        <i class="bi bi-clock-history me-1" aria-hidden="false"></i>
+                        @(_isSaved ? "Saved" : "Save")
+                    </button>
+                    <button class="btn btn-sm btn-outline-light me-2 action-btn" 
+                            @onclick="@(sharedId == null ? ShareAnalysis : CopyShareLink)"
+                            aria-label="@(sharedId == null ? "Share analysis" : "Copy share link")">
+                        <i class="bi @(sharedId == null ? "bi-share" : "bi-link-45deg") me-1" aria-hidden="false"></i>
+                        @(sharedId == null ? "Share" : "Copy Link")
+                    </button>
+                    <button class="btn btn-sm btn-outline-light me-2 action-btn @(_isSpeaking ? "btn-speak-active" : "")" 
+                            @onclick="SpeakAnalysis"
+                            aria-label="@(_isSpeaking ? "Stop speaking" : "Speak analysis")"
+                            aria-pressed="@_isSpeaking.ToString().ToLower()">
+                        <i class="bi @(_isSpeaking ? "bi-pause-fill" : "bi-volume-up-fill") me-1" aria-hidden="false"></i>
+                        @(_isSpeaking ? "Stop" : "Speak")
+                    </button>
+                    <button class="btn btn-sm btn-outline-light action-btn" 
+                            @onclick="CopyToClipboard"
+                            aria-label="Copy to clipboard">
+                        <i class="bi bi-clipboard me-1" aria-hidden="false"></i>
+                        Copy
+                    </button>
+                </ChildContent>
+                <SecondaryActions>
+                    <li><button class="dropdown-item" @onclick="SaveToHistory" disabled="@_isSaved">
+                        <i class="bi bi-clock-history"></i> @(_isSaved ? "Saved" : "Save to History")
+                    </button></li>
+                    <li><button class="dropdown-item" @onclick="@(sharedId == null ? ShareAnalysis : CopyShareLink)">
+                        <i class="bi @(sharedId == null ? "bi-share" : "bi-link-45deg")"></i> 
+                        @(sharedId == null ? "Share Analysis" : "Copy Share Link")
+                    </button></li>
+                    <li><button class="dropdown-item" @onclick="SpeakAnalysis">
+                        <i class="bi @(_isSpeaking ? "bi-pause-fill" : "bi-volume-up-fill")"></i> 
+                        @(_isSpeaking ? "Stop Speaking" : "Speak Analysis")
+                    </button></li>
+                    <li><button class="dropdown-item" @onclick="CopyToClipboard">
+                        <i class="bi bi-clipboard"></i> Copy Analysis
+                    </button></li>                
+                </SecondaryActions>
+            </ActionMenu>
         </header>
         <div class="card-body">
             <div class="markdown-body" tabindex="0">
@@ -82,6 +114,9 @@
     
     [Parameter]
     public string? UserInput { get; set; }
+    
+    [Parameter]
+    public object? AdditionalData { get; set; }
     
     private string? _previousMarkdown;
     private bool _isSpeaking = false;
@@ -178,18 +213,36 @@
     {
         if (!string.IsNullOrEmpty(MarkdownResult))
         {
+            var commentThreads = ConvertAdditionalDataToCommentThreads();
+            
             var historyItem = new SharedDump.Models.AnalysisHistoryItem
             {
                 Summary = MarkdownResult.Length > 300 ? MarkdownResult.Substring(0, 300) + "..." : MarkdownResult,
                 FullAnalysis = MarkdownResult,
                 SourceType = SourceType,
-                UserInput = UserInput
+                UserInput = UserInput,
+                CommentThreads = commentThreads
             };
             await HistoryService.SaveToHistoryAsync(historyItem);
             _isSaved = true;
             _savedItemId = historyItem.Id;
             await ToastService.ShowSuccessAsync("Analysis saved to history", 3000);
         }
+    }
+
+    private List<SharedDump.Models.CommentThread> ConvertAdditionalDataToCommentThreads()
+    {
+        if (AdditionalData == null)
+            return new List<SharedDump.Models.CommentThread>();
+
+        // Handle HackerNews analysis separately since it's defined in the webapp
+        if (AdditionalData is List<HackerNewsAnalysis> hackerNewsAnalyses)
+        {
+            return HackerNewsCommentConverter.ConvertHackerNewsAnalysis(hackerNewsAnalyses);
+        }
+
+        // For all other types, use the shared converter
+        return CommentDataConverter.ConvertAdditionalData(AdditionalData);
     }
     
     private async Task SpeakAnalysis()
@@ -295,12 +348,15 @@
             else
             {
                 // Create and save new history item
+                var commentThreads = ConvertAdditionalDataToCommentThreads();
+                
                 historyItem = new SharedDump.Models.AnalysisHistoryItem
                 {
                     Summary = MarkdownResult.Length > 300 ? MarkdownResult.Substring(0, 300) + "..." : MarkdownResult,
                     FullAnalysis = MarkdownResult,
                     SourceType = SourceType,
-                    UserInput = UserInput
+                    UserInput = UserInput,
+                    CommentThreads = commentThreads
                 };
                 await HistoryService.SaveToHistoryAsync(historyItem);
                 _isSaved = true;
@@ -374,6 +430,25 @@
         StateHasChanged();
     }
     
+    private AnalysisHistoryItem CreateHistoryItemForExport()
+    {
+        if (string.IsNullOrEmpty(MarkdownResult))
+            return new AnalysisHistoryItem();
+            
+        var commentThreads = ConvertAdditionalDataToCommentThreads();
+        
+        return new AnalysisHistoryItem
+        {
+            Id = _savedItemId ?? Guid.NewGuid().ToString(),
+            Summary = MarkdownResult.Length > 300 ? MarkdownResult.Substring(0, 300) + "..." : MarkdownResult,
+            FullAnalysis = MarkdownResult,
+            SourceType = SourceType,
+            UserInput = UserInput,
+            CommentThreads = commentThreads,
+            Timestamp = DateTime.UtcNow
+        };
+    }
+
     public void Dispose()
     {
         // Ensure speech is stopped when component is disposed

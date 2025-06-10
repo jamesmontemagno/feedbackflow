@@ -11,4 +11,9 @@ public record AnalysisHistoryItem
     public bool IsShared { get; init; } = false;
     public string? SharedId { get; init; } // ID for shared analysis reference
     public DateTime? SharedDate { get; init; } // Date when the analysis was shared
+    
+    /// <summary>
+    /// Comment threads associated with this analysis (e.g., YouTube videos, Reddit threads, GitHub issues)
+    /// </summary>
+    public List<CommentThread> CommentThreads { get; init; } = new();
 }

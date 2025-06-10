@@ -74,7 +74,8 @@
                         Error="@error" 
                         MarkdownResult="@markdownResult" 
                         SourceType="@selectedSourceFinal"
-                        UserInput="@GetUserInputForSource()" /> 
+                        UserInput="@GetUserInputForSource()"
+                        AdditionalData="@GetAdditionalDataForAnalysis()" /> 
 
                     @* Display additional data from FeedbackSourceData list *@
                     @if (feedbackSources != null && feedbackSources.Any())
@@ -129,6 +130,7 @@
     private bool isLoading = false;
     private bool isAuthenticated = false;
     private List<FeedbackSourceData>? feedbackSources;
+    private object? currentAdditionalData;
     private FeedbackProcessStatus currentStatus;
     private string currentStatusMessage = "";
     private string? initialSource;
@@ -157,6 +159,34 @@
             "Auto" => autoDataSourceForm?.GetUrls() is { } urls && urls.Any() ? string.Join(", ", urls) : null,
             _ => null
         };
+    }
+
+    private object? GetAdditionalDataForAnalysis()
+    {
+        // For Auto source type, extract additional data from feedbackSources
+        if (selectedSource == "Auto" && feedbackSources != null)
+        {
+            // Combine all additional data from all sources
+            var allAdditionalData = feedbackSources
+                .Where(source => source.AdditionalData != null)
+                .Select(source => source.AdditionalData)
+                .ToList();
+
+            // If there's only one type of data, return it directly
+            if (allAdditionalData.Count == 1)
+            {
+                return allAdditionalData[0];
+            }
+            
+            // If there are multiple types, return them as a list
+            if (allAdditionalData.Count > 1)
+            {
+                return allAdditionalData;
+            }
+        }
+
+        // For other source types, return the raw additional data
+        return currentAdditionalData;
     }
 
     private string selectedSourceFinal => selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase)
@@ -204,6 +234,7 @@
             error = "";
             markdownResult = "";
             feedbackSources = null;
+            currentAdditionalData = null;
             isLoading = true;
 
             IFeedbackService service = selectedSource switch
@@ -220,6 +251,7 @@
 
             var (result, additionalData) = await service.GetFeedback();
             markdownResult = result;
+            currentAdditionalData = additionalData;
 
             // Handle feedbackSources for Auto source type
             if (selectedSource == "Auto" && additionalData is List<FeedbackSourceData> sources)

@@ -9,16 +9,20 @@
     padding: 0.5rem;
 }
 
-/* Custom button styles not in app.css */
+/* Custom button styles for card header */
 .btn-outline-light {
     color: var(--bg-secondary);
     border-color: rgba(var(--bg-secondary-rgb, 255, 255, 255), 0.5);
     position: relative;
     overflow: hidden;
+    transition: all 0.2s ease-in-out;
+    min-width: 80px;
 }
 
 .btn-outline-light:hover:not(:disabled) {
     background-color: rgba(var(--bg-secondary-rgb, 255, 255, 255), 0.15);
+    border-color: rgba(var(--bg-secondary-rgb, 255, 255, 255), 0.7);
+    transform: translateY(-1px);
 }
 
 .btn-outline-light:disabled {
@@ -28,6 +32,14 @@
 
 .btn-outline-light:focus {
     box-shadow: 0 0 0 0.25rem rgba(var(--bg-secondary-rgb, 255, 255, 255), 0.2);
+}
+
+/* Card header action button consistency */
+.card-header .action-btn {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+    min-width: 80px;
+    border-radius: var(--border-radius-sm);
 }
 
 /* Markdown specific styles */
