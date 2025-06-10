@@ -37,10 +37,9 @@
     <div class="card mt-4 shadow-sm">
         <header class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h2 class="card-title mb-0 h5">Analysis Summary</h2>
-            <div class="d-flex">
-                @if (!string.IsNullOrEmpty(MarkdownResult))
+            <div class="d-flex">                @if (!string.IsNullOrEmpty(MarkdownResult))
                 {
-                    <ExportButton Items="@(new[] { CreateHistoryItemForExport() })" />
+                    <ExportButton Items="@(new[] { CreateHistoryItemForExport() })" ButtonVariant="light" Size="sm" />
                 }
                 <button class="btn btn-sm btn-outline-light me-2 action-btn" 
                         @onclick="SaveToHistory"

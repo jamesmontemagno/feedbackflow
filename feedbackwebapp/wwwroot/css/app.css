@@ -1,10 +1,10 @@
 :root {
     /* Light theme (default) - Darker Pastel Purple Theme */
     --bg-primary: #f7f4ff;
-    --bg-secondary: #ffffff;
-    --bg-secondary-rgb: 255, 255, 255;
+    --bg-secondary: #ffffff;    --bg-secondary-rgb: 255, 255, 255;
     --text-primary: #2d2649;
     --text-secondary: #5d5777;
+    --text-secondary-rgb: 93, 87, 119;
     --border-color: #d5cbe9;
     --dark-border-color: #b3a5d4;
     --hover-bg: rgba(142, 115, 200, 0.08);
@@ -35,9 +35,9 @@
 [data-theme="dark"] {
     --bg-primary: #16121f;
     --bg-secondary: #201729;
-    --bg-secondary-rgb: 32, 23, 41;
-    --text-primary: #f5f3ff;
+    --bg-secondary-rgb: 32, 23, 41;    --text-primary: #f5f3ff;
     --text-secondary: #c8c0e7;
+    --text-secondary-rgb: 200, 192, 231;
     --border-color: #3e3363;
     --dark-border-color: #4d3f77;
     --hover-bg: rgba(167, 140, 218, 0.12);
@@ -471,6 +471,122 @@ These styles are shared across multiple components
     color: var(--bg-primary);
 }
 
+/* Focus state fixes - Remove default browser outline and provide consistent theming */
+.btn:focus,
+.btn-primary:focus,
+.btn-secondary:focus,
+.btn-success:focus,
+.btn-danger:focus,
+.btn-warning:focus,
+.btn-info:focus,
+.btn-light:focus,
+.btn-dark:focus,
+.btn-outline-primary:focus,
+.btn-outline-secondary:focus,
+.btn-outline-success:focus,
+.btn-outline-danger:focus,
+.btn-outline-warning:focus,
+.btn-outline-info:focus,
+.btn-outline-light:focus,
+.btn-outline-dark:focus {
+    outline: none !important;
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25) !important;
+}
+
+/* Specific focus states for each variant */
+.btn-outline-success:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--success-color-rgb), 0.25) !important;
+}
+
+.btn-outline-danger:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--danger-color-rgb), 0.25) !important;
+}
+
+.btn-outline-secondary:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--text-secondary-rgb, 93, 87, 119), 0.25) !important;
+}
+
+.btn-outline-light:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--bg-secondary-rgb, 255, 255, 255), 0.25) !important;
+}
+
+/* Success variant styles */
+.btn-outline-success {
+    color: var(--success-color);
+    border-color: var(--success-color);
+    background-color: transparent;
+    border-width: 2px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+}
+
+.btn-outline-success:hover {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--success-color-rgb), 0.2);
+}
+
+/* Danger variant styles */
+.btn-outline-danger {
+    color: var(--danger-color);
+    border-color: var(--danger-color);
+    background-color: transparent;
+    border-width: 2px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+}
+
+.btn-outline-danger:hover {
+    background-color: var(--danger-color);
+    border-color: var(--danger-color);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--danger-color-rgb), 0.2);
+}
+
+/* Secondary variant styles */
+.btn-outline-secondary {
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+    background-color: transparent;
+    border-width: 2px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--hover-bg);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--text-secondary-rgb, 93, 87, 119), 0.2);
+}
+
+/* Remove default blue outline on active/focus for all interactive elements */
+button:focus,
+a:focus,
+input:focus,
+select:focus,
+textarea:focus,
+.btn:active:focus,
+.btn.active:focus {
+    outline: none !important;
+}
+
 /* Shared Filter Styles */
 .filter-indicator {
     display: inline-flex;
@@ -576,20 +692,61 @@ These styles are shared across multiple components
     padding: 0.4em 0.8em;
     border-radius: var(--border-radius-pill);
     margin-left: 0.5rem; /* Add spacing after the icons */
+    white-space: nowrap;
+    flex-shrink: 0; /* Prevent badge from shrinking */
 }
 
-/* Action buttons */
+/* Action buttons - standardized sizing for consistency */
 .action-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.25rem;
     transition: all 0.2s ease-in-out;
-    min-width: 32px;
+    min-width: 36px !important;
+    height: 32px !important;
+    padding: 0.375rem 0.5rem !important;
+    font-size: 0.875rem !important;
 }
 
-.action-btn:hover {
+.action-btn:hover:not(:disabled) {
     transform: translateY(-1px);
+}
+
+.action-btn i {
+    font-size: 1rem;
+    transition: transform 0.2s ease;
+}
+
+.action-btn:hover:not(:disabled) i {
+    transform: scale(1.1);
+}
+
+/* Mobile responsive action button sizing */
+@media (max-width: 768px) {
+    .action-btn {
+        min-width: 36px !important;
+        height: 32px !important;
+        padding: 0.375rem 0.5rem !important;
+        font-size: 0.875rem !important;
+    }
+    
+    .action-btn i {
+        font-size: 1rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .action-btn {
+        min-width: 32px !important;
+        height: 28px !important;
+        padding: 0.25rem 0.375rem !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .action-btn i {
+        font-size: 0.875rem !important;
+    }
 }
 
 /* State elements */

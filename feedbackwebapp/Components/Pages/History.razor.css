@@ -166,7 +166,7 @@
     
     .d-flex.align-items-center.gap-2 {
         width: 100%;
-        justify-content: space-between;
+        justify-content: right;
         flex-wrap: wrap;
         gap: 0.5rem !important;
     }
@@ -179,14 +179,8 @@
 }
 
 @media (max-width: 576px) {
-    /* Stack buttons vertically on very small screens */
-    .d-flex.align-items-center.gap-2 {
-        flex-direction: column;
-        width: 100%;
-    }
     
     .d-flex.align-items-center.gap-2 > * {
-        width: 100%;
         flex: none;
     }
 }
@@ -302,16 +296,139 @@
     margin-left: 0.5rem;
 }
 
-/* Responsive adjustments for individual export buttons */
+/* Consistent action button styling for History page */
+.list-group-item .action-btn {
+    min-width: 36px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease-in-out;
+}
+
+.list-group-item .action-btn i {
+    font-size: 1rem;
+    transition: transform 0.2s ease;
+}
+
+.list-group-item .action-btn:hover:not(:disabled) i {
+    transform: scale(1.1);
+}
+
+/* Specific button variant styling for better visual hierarchy */
+.list-group-item .btn-outline-success {
+    border-color: var(--success-color);
+    color: var(--success-color);
+}
+
+.list-group-item .btn-outline-success:hover {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+    color: white;
+}
+
+.list-group-item .btn-outline-danger {
+    border-color: var(--danger-color);
+    color: var(--danger-color);
+}
+
+.list-group-item .btn-outline-danger:hover {
+    background-color: var(--danger-color);
+    border-color: var(--danger-color);
+    color: white;
+}
+
+.list-group-item .btn-outline-secondary {
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.list-group-item .btn-outline-secondary:hover {
+    background-color: var(--hover-bg);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+/* Mobile responsive adjustments for action buttons */
 @media (max-width: 768px) {
-    .list-group-item .export-btn {
-        min-width: 80px;
-        font-size: 0.8rem;
-        padding: 0.25rem 0.5rem;
+    .list-group-item .action-btn {
+        min-width: 36px !important;
+        width: 36px !important;
+        height: 32px !important;
+        padding: 0.375rem 0.5rem !important;
+        font-size: 0.875rem !important;
     }
     
-    .list-group-item .dropdown-item {
-        font-size: 0.8rem;
-        padding: 0.375rem 0.75rem;
+    .list-group-item .action-btn i {
+        font-size: 1rem !important;
+    }
+    
+    /* Ensure consistent button group spacing */
+    .list-group-item .d-flex.align-items-center.gap-2 {
+        gap: 0.5rem !important;
+    }
+    
+    /* Allow icon/badge groups to wrap on mobile */
+    .list-group-item .d-flex.align-items-center.gap-2:first-child {
+        flex-wrap: wrap;
+    }
+    
+    /* Keep expand/collapse button normal size on mobile */
+    .analysis-content .btn.action-btn {
+        min-width: auto !important;
+        width: auto !important;
+        height: auto !important;
+        padding: 0.375rem 0.75rem !important;
+        font-size: 0.875rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .list-group-item .action-btn {
+        min-width: 32px !important;
+        width: 32px !important;
+        height: 28px !important;
+        padding: 0.25rem 0.375rem !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .list-group-item .action-btn i {
+        font-size: 0.875rem !important;
+    }
+    
+    /* Tighter spacing for very small screens */
+    .list-group-item .d-flex.align-items-center.gap-2 {
+        gap: 0.375rem !important;
+    }
+    
+    /* Stack button groups more compactly on small screens */
+    .list-group-item .d-flex.justify-content-between.align-items-center {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .list-group-item .d-flex.align-items-center.gap-2 {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    /* Keep expand/collapse button normal size on very small screens too */
+    .analysis-content .btn.action-btn {
+        min-width: auto !important;
+        width: auto !important;
+        height: auto !important;
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.8rem !important;
+    }
+    
+    /* Ensure source badge doesn't change size */
+    .source-badge {
+        font-size: 0.75rem !important;
+        padding: 0.4em 0.8em !important;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
 }

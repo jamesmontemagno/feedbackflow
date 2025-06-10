@@ -1,13 +1,163 @@
-/* ExportButton component styles */
+/* ExportButton component styles for different contexts */
 
 .export-btn {
     transition: all 0.2s ease-in-out;
     min-width: 120px;
+    position: relative;
+    overflow: hidden;
 }
 
+/* Mini mode styling - compact icon-only button - matches action-btn sizing */
+.export-btn-mini {
+    min-width: 36px !important;
+    width: 36px !important;
+    height: 32px !important;
+    padding: 0.375rem 0.5rem !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.export-btn-mini .dropdown-toggle::after {
+    margin-left: 0 !important;
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    font-size: 0.6rem;
+}
+
+.export-btn-mini i {
+    font-size: 1rem;
+}
+
+.export-btn-mini .spinner-border-sm {
+    width: 0.75rem;
+    height: 0.75rem;
+}
+
+/* Light variant for colored backgrounds (like card headers) */
+.export-btn.btn-outline-light {
+    color: var(--bg-secondary);
+    border-color: rgba(var(--bg-secondary-rgb, 255, 255, 255), 0.5);
+}
+
+.export-btn.btn-outline-light:hover:not(.disabled) {
+    background-color: rgba(var(--bg-secondary-rgb, 255, 255, 255), 0.15);
+    border-color: rgba(var(--bg-secondary-rgb, 255, 255, 255), 0.7);
+}
+
+.export-btn.btn-outline-light:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--bg-secondary-rgb, 255, 255, 255), 0.2);
+}
+
+/* Primary variant for regular backgrounds */
+.export-btn.btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.export-btn.btn-outline-primary:hover:not(.disabled) {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.export-btn.btn-outline-primary:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+/* Success variant (legacy support) */
+.export-btn.btn-outline-success {
+    color: var(--success-color);
+    border-color: var(--success-color);
+}
+
+.export-btn.btn-outline-success:hover:not(.disabled) {
+    background-color: var(--success-color);
+    color: white;
+    border-color: var(--success-color);
+}
+
+/* Active/Show states for dropdown open */
+.export-btn.btn-outline-primary.show,
+.export-btn.btn-outline-primary:active {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+.export-btn.btn-outline-light.show,
+.export-btn.btn-outline-light:active {
+    background-color: rgba(var(--bg-secondary-rgb, 255, 255, 255), 0.25);
+    border-color: rgba(var(--bg-secondary-rgb, 255, 255, 255), 0.8);
+    color: var(--bg-secondary);
+    box-shadow: 0 0 0 0.25rem rgba(var(--bg-secondary-rgb, 255, 255, 255), 0.2);
+}
+
+.export-btn.btn-outline-success.show,
+.export-btn.btn-outline-success:active {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+    color: white;
+    box-shadow: 0 0 0 0.25rem rgba(var(--success-color-rgb), 0.25);
+}
+
+.export-btn.btn-outline-secondary.show,
+.export-btn.btn-outline-secondary:active {
+    background-color: var(--hover-bg);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    box-shadow: 0 0 0 0.25rem rgba(var(--text-secondary-rgb, 93, 87, 119), 0.25);
+}
+
+/* Mini mode active states */
+.export-btn-mini.show,
+.export-btn-mini:active {
+    transform: none; /* Prevent mini buttons from moving when active */
+}
+
+.export-btn-mini.show .dropdown-toggle::after,
+.export-btn-mini:active .dropdown-toggle::after {
+    transform: rotate(180deg); /* Rotate dropdown indicator when open */
+}
+
+.export-btn.btn-outline-secondary {
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
+.export-btn.btn-outline-secondary:hover:not(.disabled) {
+    background-color: var(--hover-bg);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+/* Common hover effect */
 .export-btn:hover:not(.disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(var(--success-color-rgb), 0.2);
+}
+
+/* Dropdown toggle enhancements */
+.export-btn .dropdown-toggle::after {
+    transition: transform 0.2s ease;
+}
+
+.export-btn.show .dropdown-toggle::after {
+    transform: rotate(180deg);
+}
+
+/* Prevent hover effects when dropdown is open */
+.export-btn.show:hover {
+    transform: none;
+}
+
+/* Disabled state */
+.export-btn:disabled,
+.export-btn.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
 }
 
 .dropdown-menu {
@@ -55,9 +205,21 @@
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .export-btn {
-        min-width: 90px;
+        min-width: 80px;
         font-size: 0.875rem;
         padding: 0.375rem 0.75rem;
+    }
+    
+    .export-btn-mini {
+        min-width: 36px !important;
+        width: 36px !important;
+        height: 32px !important;
+        padding: 0.375rem 0.5rem !important;
+        font-size: 0.875rem;
+    }
+    
+    .export-btn-mini i {
+        font-size: 1rem;
     }
     
     .dropdown-item {
@@ -68,9 +230,22 @@
 
 @media (max-width: 576px) {
     .export-btn {
-        min-width: 80px;
+        min-width: auto;
         font-size: 0.8rem;
         padding: 0.25rem 0.5rem;
+        justify-content: center;
+    }
+    
+    .export-btn-mini {
+        min-width: 32px !important;
+        width: 32px !important;
+        height: 28px !important;
+        padding: 0.25rem 0.375rem !important;
+        font-size: 0.8rem;
+    }
+    
+    .export-btn-mini i {
+        font-size: 0.875rem;
     }
     
     .dropdown-item {

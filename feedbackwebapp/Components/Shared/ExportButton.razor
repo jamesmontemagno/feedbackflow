@@ -4,25 +4,29 @@
 @using SharedDump.Models
 @using Microsoft.JSInterop
 
-<div class="dropdown">
-    <button class="btn btn-outline-success dropdown-toggle export-btn @(_isExporting ? "disabled" : "")" 
+<div class="dropdown">    <button class="@GetButtonClass()" 
             type="button" 
             id="exportDropdown" 
             data-bs-toggle="dropdown" 
             aria-expanded="false"
             aria-haspopup="true"
-            disabled="@(_isExporting || !Items.Any())"
-            title="@(_isExporting ? "Exporting..." : !Items.Any() ? "No items to export" : "Export analysis data")"
+            disabled="@(_isExporting || !Items.Any())"            title="@(_isExporting ? "Exporting..." : !Items.Any() ? "No items to export" : "Export analysis data")"
             aria-label="@(_isExporting ? "Exporting analysis data" : !Items.Any() ? "No items to export" : "Export analysis data")">
         @if (_isExporting)
         {
-            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-            @:Exporting...
+            <span class="spinner-border spinner-border-sm @(Mini ? "" : "me-2")" role="status" aria-hidden="true"></span>
+            @if (!Mini)
+            {
+                @:Exporting...
+            }
         }
         else
         {
-            <i class="bi bi-download me-2" aria-hidden="true"></i>
-            @:Export
+            <i class="bi bi-download @(Mini ? "" : "me-2")" aria-hidden="true"></i>
+            @if (!Mini)
+            {
+                @:Export
+            }
         }
     </button>
     <ul class="dropdown-menu" aria-labelledby="exportDropdown">
@@ -64,6 +68,9 @@
 @code {
     [Parameter] public IEnumerable<AnalysisHistoryItem> Items { get; set; } = Enumerable.Empty<AnalysisHistoryItem>();
     [Parameter] public IEnumerable<ExportFormat>? SupportedFormats { get; set; }
+    [Parameter] public string ButtonVariant { get; set; } = "primary"; // "primary", "light", "success", "secondary"
+    [Parameter] public string Size { get; set; } = ""; // "", "sm", "lg"
+    [Parameter] public bool Mini { get; set; } = false; // When true, shows only icon without text
     
     private bool _isExporting = false;
     
@@ -113,5 +120,26 @@
             _isExporting = false;
             StateHasChanged();
         }
+    }    private string GetButtonClass()
+    {
+        var baseClass = "btn dropdown-toggle export-btn action-btn";
+        var variantClass = ButtonVariant switch
+        {
+            "light" => "btn-outline-light",
+            "success" => "btn-outline-success", 
+            "secondary" => "btn-outline-secondary",
+            "primary" => "btn-outline-primary",
+            _ => "btn-outline-primary"
+        };
+        var sizeClass = Size switch
+        {
+            "sm" => "btn-sm",
+            "lg" => "btn-lg", 
+            _ => Mini ? "btn-sm" : "" // Auto-apply small size for mini mode
+        };
+        var miniClass = Mini ? "export-btn-mini" : "";
+        var disabledClass = _isExporting ? "disabled" : "";
+        
+        return $"{baseClass} {variantClass} {sizeClass} {miniClass} {disabledClass}".Trim();
     }
 }
