@@ -10,8 +10,8 @@ namespace FeedbackFlow.Tests;
 [TestClass]
 public class ExportServiceTests
 {
-    private IExportService _exportService;
-    private List<AnalysisHistoryItem> _testItems;
+    private IExportService _exportService = null!;
+    private List<AnalysisHistoryItem> _testItems = null!;
 
     [TestInitialize]
     public void TestInitialize()
