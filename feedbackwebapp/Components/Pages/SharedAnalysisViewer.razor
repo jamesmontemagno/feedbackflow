@@ -18,12 +18,7 @@
 
 <div class="container-lg py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="feedbackflow-title mb-0">Shared Analysis</h1>        @if (analysis != null)
-        {
-            <div class="d-flex align-items-center gap-2">
-                <ExportButton Items="@(new[] { ConvertToHistoryItem(analysis) })" ButtonVariant="primary" Size="sm" />
-            </div>
-        }
+        <h1 class="feedbackflow-title mb-0">Shared Analysis</h1>        
     </div>
 
     @if (isLoading)
@@ -206,13 +201,12 @@
             return;
         
         try
-        {
+        {            
             var historyItem = new AnalysisHistoryItem
             {
                 Id = Id,
                 UserInput = analysis.UserInput,
-                Summary = analysis.Summary,
-                FullAnalysis = analysis.FullAnalysis,
+                FullAnalysis = analysis.FullAnalysis, // Summary is now computed from FullAnalysis
                 SourceType = analysis.SourceType,
                 Timestamp = analysis.CreatedDate,
                 IsShared = true,
@@ -277,15 +271,14 @@
             await ToastService.ShowErrorAsync($"Failed to copy to clipboard: {ex.Message}");
         }
     }
-    
-    private AnalysisHistoryItem ConvertToHistoryItem(AnalysisData analysis)
+      
+      private AnalysisHistoryItem ConvertToHistoryItem(AnalysisData analysis)
     {
         return new AnalysisHistoryItem
         {
             Id = analysis.Id,
             Timestamp = analysis.CreatedDate,
-            Summary = analysis.Summary,
-            FullAnalysis = analysis.FullAnalysis,
+            FullAnalysis = analysis.FullAnalysis, // Summary is now computed from FullAnalysis
             SourceType = analysis.SourceType,
             UserInput = analysis.UserInput,
             IsShared = true,

@@ -208,20 +208,15 @@
             }
         }
     }    
-    
-    private async Task SaveToHistory()
+      private async Task SaveToHistory()
     {
         if (!string.IsNullOrEmpty(MarkdownResult))
-        {
-            var commentThreads = ConvertAdditionalDataToCommentThreads();
-            
+        {            
             var historyItem = new SharedDump.Models.AnalysisHistoryItem
             {
-                Summary = MarkdownResult.Length > 300 ? MarkdownResult.Substring(0, 300) + "..." : MarkdownResult,
                 FullAnalysis = MarkdownResult,
                 SourceType = SourceType,
-                UserInput = UserInput,
-                CommentThreads = commentThreads
+                UserInput = UserInput
             };
             await HistoryService.SaveToHistoryAsync(historyItem);
             _isSaved = true;
@@ -349,10 +344,8 @@
             {
                 // Create and save new history item
                 var commentThreads = ConvertAdditionalDataToCommentThreads();
-                
-                historyItem = new SharedDump.Models.AnalysisHistoryItem
+                  historyItem = new SharedDump.Models.AnalysisHistoryItem
                 {
-                    Summary = MarkdownResult.Length > 300 ? MarkdownResult.Substring(0, 300) + "..." : MarkdownResult,
                     FullAnalysis = MarkdownResult,
                     SourceType = SourceType,
                     UserInput = UserInput,
@@ -361,13 +354,11 @@
                 await HistoryService.SaveToHistoryAsync(historyItem);
                 _isSaved = true;
                 _savedItemId = historyItem.Id;
-            }
-
-            var analysisData = new SharedDump.Models.AnalysisData
+            }            var analysisData = new SharedDump.Models.AnalysisData
             {
                 Id = historyItem.Id,
                 Title = $"{SourceType} Analysis",
-                Summary = historyItem.Summary,
+                Summary = historyItem.Summary, // Using the computed property
                 FullAnalysis = historyItem.FullAnalysis,
                 SourceType = SourceType,
                 UserInput = UserInput,
@@ -434,18 +425,15 @@
     {
         if (string.IsNullOrEmpty(MarkdownResult))
             return new AnalysisHistoryItem();
-            
-        var commentThreads = ConvertAdditionalDataToCommentThreads();
-        
+                      
         return new AnalysisHistoryItem
         {
             Id = _savedItemId ?? Guid.NewGuid().ToString(),
-            Summary = MarkdownResult.Length > 300 ? MarkdownResult.Substring(0, 300) + "..." : MarkdownResult,
             FullAnalysis = MarkdownResult,
             SourceType = SourceType,
             UserInput = UserInput,
-            CommentThreads = commentThreads,
-            Timestamp = DateTime.UtcNow
+            Timestamp = DateTime.UtcNow,
+            CommentThreads = ConvertAdditionalDataToCommentThreads()
         };
     }
 

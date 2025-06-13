@@ -149,10 +149,23 @@ async function getHistoryItem(id) {
 }
 
 async function saveHistoryItem(item) {
+    // Create a simplified version of the item without CommentThreads and Summary
+    // to optimize storage size in IndexedDB
+    const optimizedItem = {
+        id: item.id,
+        timestamp: item.timestamp,
+        fullAnalysis: item.fullAnalysis,
+        sourceType: item.sourceType,
+        userInput: item.userInput,
+        isShared: item.isShared,
+        sharedId: item.sharedId,
+        sharedDate: item.sharedDate
+    };
+    
     return saveItem(
         HISTORY_CONFIG.dbName, 
         HISTORY_CONFIG.storeName, 
-        item
+        optimizedItem
     );
 }
 
