@@ -54,7 +54,7 @@ async function addComment(feedbackId, comment) {
         
         // Create comment record with required schema
         const commentRecord = {
-            commentId: comment.commentId || `${feedbackId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            commentId: comment.commentId || `${feedbackId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${performance.now()}`,
             feedbackId: feedbackId,
             author: comment.author || '',
             content: comment.content || '',
@@ -272,8 +272,13 @@ async function migrateCommentsFromHistory(historyItems) {
                             replies: comment.Replies || []
                         };
 
+                        // Debug log
+                        console.log(`Adding comment for feedback ${historyItem.Id}:`, commentRecord);
+                        
                         await addComment(historyItem.Id, commentRecord);
                         results.migrated++;
+                        
+                        console.log(`Successfully migrated comment ${results.migrated}`);
                     } catch (error) {
                         console.error(`Failed to migrate comment for feedback ${historyItem.Id}:`, error);
                         results.errors.push(`Comment migration failed: ${error.message}`);

@@ -1,6 +1,7 @@
 using Microsoft.JSInterop;
 using SharedDump.Models;
 using FeedbackWebApp.Services.Interfaces;
+using System.Reflection;
 
 namespace FeedbackWebApp.Services;
 
@@ -237,7 +238,7 @@ public class CommentsService : ICommentsService, IAsyncDisposable
             
             return (
                 migrated: result.migrated ?? 0,
-                errors: (result.errors as IEnumerable<object>)?.Select(e => e.ToString()).ToList() ?? new List<string>()
+                errors: (result.errors as IEnumerable<object>)?.Select(e => e?.ToString() ?? string.Empty).ToList() ?? new List<string>()
             );
         }
         catch (InvalidOperationException)
@@ -256,18 +257,138 @@ public class CommentsService : ICommentsService, IAsyncDisposable
 
         return new CommentData
         {
-            Id = jsComment.commentId?.ToString() ?? string.Empty,
-            ParentId = jsComment.parentId?.ToString(),
-            Author = jsComment.author?.ToString() ?? string.Empty,
-            Content = jsComment.content?.ToString() ?? string.Empty,
-            CreatedAt = jsComment.createdAt != null ? DateTime.Parse(jsComment.createdAt.ToString()) : DateTime.MinValue,
-            Url = jsComment.url?.ToString(),
-            Score = jsComment.score != null ? Convert.ToInt32(jsComment.score) : null,
-            Metadata = jsComment.metadata as Dictionary<string, object>,
-            Replies = jsComment.replies != null 
-                ? ((IEnumerable<dynamic>)jsComment.replies).Select(ConvertToCommentData).ToList()
-                : new List<CommentData>()
+            Id = GetSafeStringValue(jsComment, "commentId") ?? string.Empty,
+            ParentId = GetSafeStringValue(jsComment, "parentId"),
+            Author = GetSafeStringValue(jsComment, "author") ?? string.Empty,
+            Content = GetSafeStringValue(jsComment, "content") ?? string.Empty,
+            CreatedAt = GetSafeDateTimeValue(jsComment, "createdAt") ?? DateTime.MinValue,
+            Url = GetSafeStringValue(jsComment, "url"),
+            Score = GetSafeIntValue(jsComment, "score"),
+            Metadata = GetSafeMetadataValue(jsComment, "metadata"),
+            Replies = GetSafeRepliesValue(jsComment, "replies")
         };
+    }
+
+    private static string? GetSafeStringValue(dynamic obj, string propertyName)
+    {
+        try
+        {
+            var value = GetPropertyValue(obj, propertyName);
+            if (value == null) return null;
+            
+            var stringValue = value.ToString();
+            return string.IsNullOrEmpty(stringValue) ? null : stringValue;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static DateTime? GetSafeDateTimeValue(dynamic obj, string propertyName)
+    {
+        try
+        {
+            var value = GetPropertyValue(obj, propertyName);
+            if (value == null) return null;
+            
+            var stringValue = value.ToString();
+            if (string.IsNullOrEmpty(stringValue)) return null;
+            
+            return DateTime.TryParse(stringValue, out DateTime result) ? result : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static int? GetSafeIntValue(dynamic obj, string propertyName)
+    {
+        try
+        {
+            var value = GetPropertyValue(obj, propertyName);
+            if (value == null) return null;
+            
+            if (value is int intValue) return intValue;
+            if (value is long longValue) return (int)longValue;
+            
+            var stringValue = value.ToString();
+            if (string.IsNullOrEmpty(stringValue)) return null;
+            
+            return int.TryParse(stringValue, out int result) ? result : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static Dictionary<string, object>? GetSafeMetadataValue(dynamic obj, string propertyName)
+    {
+        try
+        {
+            var value = GetPropertyValue(obj, propertyName);
+            return value as Dictionary<string, object>;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static List<CommentData> GetSafeRepliesValue(dynamic obj, string propertyName)
+    {
+        try
+        {
+            var value = GetPropertyValue(obj, propertyName);
+            if (value == null) return new List<CommentData>();
+            
+            if (value is IEnumerable<dynamic> enumerable)
+            {
+                return enumerable.Select(ConvertToCommentData).ToList();
+            }
+            
+            return new List<CommentData>();
+        }
+        catch
+        {
+            return new List<CommentData>();
+        }
+    }
+
+    private static object? GetPropertyValue(dynamic obj, string propertyName)
+    {
+        try
+        {
+            // Handle JsonElement case
+            if (obj is System.Text.Json.JsonElement element)
+            {
+                if (element.TryGetProperty(propertyName, out var property))
+                {
+                    return property.ValueKind switch
+                    {
+                        System.Text.Json.JsonValueKind.String => property.GetString(),
+                        System.Text.Json.JsonValueKind.Number => property.TryGetInt32(out var intVal) ? intVal : property.GetDouble(),
+                        System.Text.Json.JsonValueKind.True => true,
+                        System.Text.Json.JsonValueKind.False => false,
+                        System.Text.Json.JsonValueKind.Null => null,
+                        System.Text.Json.JsonValueKind.Undefined => null,
+                        _ => property.GetRawText()
+                    };
+                }
+                return null;
+            }
+            
+            // Handle other dynamic types
+            var type = obj.GetType();
+            var prop = type.GetProperty(propertyName);
+            return prop?.GetValue(obj);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public async ValueTask DisposeAsync()
