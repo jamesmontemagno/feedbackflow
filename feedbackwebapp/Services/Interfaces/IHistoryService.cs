@@ -68,4 +68,20 @@ public interface IHistoryService
     /// <param name="item">The history item to update</param>
     /// <returns>A task representing the asynchronous operation</returns>
     Task UpdateHistoryItemAsync(AnalysisHistoryItem item);
+    
+    /// <summary>
+    /// Retrieves a page of history items with optional search filtering
+    /// </summary>
+    /// <param name="skip">Number of items to skip</param>
+    /// <param name="take">Number of items to take</param>
+    /// <param name="searchTerm">Optional search term to filter results</param>
+    /// <returns>A list of analysis history items for the requested page</returns>
+    Task<List<AnalysisHistoryItem>> GetHistoryPagedAsync(int skip, int take, string? searchTerm = null);
+    
+    /// <summary>
+    /// Gets the total count of history items with optional search filtering
+    /// </summary>
+    /// <param name="searchTerm">Optional search term to filter count</param>
+    /// <returns>The total number of history items</returns>
+    Task<int> GetHistoryCountAsync(string? searchTerm = null);
 }
