@@ -39,9 +39,9 @@ public class ExportService : IExportService
             throw new ArgumentException($"Unsupported export format: {format}", nameof(format));
         }
 
-        // Convert to base type for export strategies
-        var baseItems = items.Cast<AnalysisHistoryItem>();
-        return await strategy.ExportAsync(baseItems);
+        // Since AnalysisHistoryItemWithComments extends AnalysisHistoryItem, we can pass it directly
+        // The strategy will see the extended version with the proper CommentThreads
+        return await strategy.ExportAsync(items);
     }
 
     public string GetFileExtension(ExportFormat format)

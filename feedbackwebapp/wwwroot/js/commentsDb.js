@@ -272,13 +272,8 @@ async function migrateCommentsFromHistory(historyItems) {
                             replies: comment.Replies || []
                         };
 
-                        // Debug log
-                        console.log(`Adding comment for feedback ${historyItem.Id}:`, commentRecord);
-                        
                         await addComment(historyItem.Id, commentRecord);
                         results.migrated++;
-                        
-                        console.log(`Successfully migrated comment ${results.migrated}`);
                     } catch (error) {
                         console.error(`Failed to migrate comment for feedback ${historyItem.Id}:`, error);
                         results.errors.push(`Comment migration failed: ${error.message}`);

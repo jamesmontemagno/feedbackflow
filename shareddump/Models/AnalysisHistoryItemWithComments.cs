@@ -6,11 +6,6 @@ namespace SharedDump.Models;
 public record AnalysisHistoryItemWithComments : AnalysisHistoryItem
 {
     /// <summary>
-    /// Comment threads associated with this analysis (loaded separately for export)
-    /// </summary>
-    public new List<CommentThread> CommentThreads { get; init; } = new();
-
-    /// <summary>
     /// Create an extended item from a regular history item and comment data
     /// </summary>
     /// <param name="historyItem">The base history item</param>
