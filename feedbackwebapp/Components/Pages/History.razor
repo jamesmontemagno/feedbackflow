@@ -58,7 +58,7 @@
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
                         <input type="text" class="form-control" id="searchFilter" placeholder="Search through analysis content..." 
-                               @bind="searchTerm" @bind:event="oninput" @bind:after="StateHasChanged" />                        @if (!string.IsNullOrWhiteSpace(searchTerm))
+                               @bind="searchTerm" @bind:event="oninput" @bind:after="HandleSearchChangeAsync" />                        @if (!string.IsNullOrWhiteSpace(searchTerm))
                         {
                             <button class="btn btn-outline-secondary action-btn" type="button" @onclick="ClearSearch">
                                 <i class="bi bi-x-circle"></i>
@@ -124,6 +124,16 @@
     }    
     else if (filteredItems is { Count: > 0 })
     {
+        <div class="mb-3">
+            <small class="text-muted">
+                Showing @filteredItems.Count of @totalItems items
+                @if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    <span> (filtered by search)</span>
+                }
+            </small>
+        </div>
+        
         <div class="list-group" style="overflow-y: auto;">
             <Virtualize Items="filteredItems" Context="item" ItemSize="250">
                 <div class="list-group-item @(item.IsShared ? "shared-item" : "")" @key="item.Id">
@@ -264,6 +274,24 @@
                 </div>
             </Virtualize>
         </div>
+        
+        @if (hasMoreItems)
+        {
+            <div class="text-center mt-4">
+                <button class="btn btn-outline-primary" @onclick="LoadMoreItemsAsync" disabled="@isLoadingMore">
+                    @if (isLoadingMore)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span>Loading...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-arrow-down-circle me-2"></i>
+                        <span>Load More (@LoadMorePageSize more items)</span>
+                    }
+                </button>
+            </div>
+        }
     }
 </div>
 
@@ -278,6 +306,15 @@
     private string searchTerm = string.Empty;
     private bool isProcessingShare = false;
     private bool isAuthenticated = false;
+    
+    // Pagination state
+    private const int InitialPageSize = 5;
+    private const int LoadMorePageSize = 10;
+    private int currentPageSize = InitialPageSize;
+    private int totalItems = 0;
+    private bool hasMoreItems = true;
+    private bool isLoadingMore = false;
+    private string lastSearchTerm = string.Empty;
 
     // Confirmation dialog state
     private bool isConfirmationDialogVisible;
@@ -296,7 +333,19 @@
         if (firstRender)
         {
             isAuthenticated = await AuthService.IsAuthenticatedAsync();
-            historyItems = await HistoryService.GetHistoryAsync();
+            await LoadInitialHistoryAsync();
+            StateHasChanged();
+        }
+    }
+    
+    private async Task LoadInitialHistoryAsync()
+    {
+        try
+        {
+            // Load the first page of items
+            historyItems = await HistoryService.GetHistoryPagedAsync(0, currentPageSize, null);
+            totalItems = await HistoryService.GetHistoryCountAsync(null);
+            hasMoreItems = historyItems?.Count >= currentPageSize && (historyItems?.Count < totalItems);
             
             // Check for expired shared items
             if (historyItems?.Any(h => h.IsShared) == true)
@@ -317,17 +366,33 @@
                 
                 if (expiredItems.Any())
                 {
-                    historyItems = await HistoryService.GetHistoryAsync();
+                    // Reload the data if we updated any items
+                    historyItems = await HistoryService.GetHistoryPagedAsync(0, currentPageSize, null);
+                    totalItems = await HistoryService.GetHistoryCountAsync(null);
                 }
             }
-            
-            StateHasChanged();
+        }
+        catch (Exception)
+        {
+            // Fallback to empty list if something goes wrong
+            historyItems = new List<AnalysisHistoryItem>();
+            totalItems = 0;
+            hasMoreItems = false;
         }
     }    private async Task DeleteItem(string id)
     {
         await HistoryService.DeleteHistoryItemAsync(id);
-        historyItems = await HistoryService.GetHistoryAsync();
         expandedItems.Remove(id);
+        
+        // Remove item from current list and update totals
+        if (historyItems != null)
+        {
+            historyItems.RemoveAll(item => item.Id == id);
+            totalItems = Math.Max(0, totalItems - 1);
+            hasMoreItems = historyItems.Count < totalItems;
+        }
+        
+        StateHasChanged();
     }    
 
     private Task ClearHistory()
@@ -341,6 +406,8 @@
             {
                 await HistoryService.ClearHistoryAsync();
                 historyItems = new();
+                totalItems = 0;
+                hasMoreItems = false;
                 expandedItems.Clear();
             });
     }
@@ -415,10 +482,76 @@
         searchTerm = string.Empty;
     }
 
-    private void ClearSearch()
+    private async Task LoadMoreItemsAsync()
+    {
+        if (isLoadingMore || !hasMoreItems || historyItems == null)
+            return;
+
+        isLoadingMore = true;
+        StateHasChanged();
+
+        try
+        {
+            var searchTermToUse = string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm.Trim();
+            var moreItems = await HistoryService.GetHistoryPagedAsync(historyItems.Count, LoadMorePageSize, searchTermToUse);
+            
+            if (moreItems.Any())
+            {
+                historyItems.AddRange(moreItems);
+                hasMoreItems = historyItems.Count < totalItems;
+            }
+            else
+            {
+                hasMoreItems = false;
+            }
+        }
+        catch (Exception)
+        {
+            // If loading more fails, just stop trying
+            hasMoreItems = false;
+        }
+        finally
+        {
+            isLoadingMore = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleSearchChangeAsync()
+    {
+        // If search term changed, reload from beginning
+        if (lastSearchTerm != searchTerm)
+        {
+            lastSearchTerm = searchTerm;
+            await LoadNewSearchResultsAsync();
+        }
+    }
+
+    private async Task LoadNewSearchResultsAsync()
+    {
+        try
+        {
+            var searchTermToUse = string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm.Trim();
+            
+            historyItems = await HistoryService.GetHistoryPagedAsync(0, currentPageSize, searchTermToUse);
+            totalItems = await HistoryService.GetHistoryCountAsync(searchTermToUse);
+            hasMoreItems = historyItems?.Count >= currentPageSize && (historyItems?.Count < totalItems);
+            
+            StateHasChanged();
+        }
+        catch (Exception)
+        {
+            historyItems = new List<AnalysisHistoryItem>();
+            totalItems = 0;
+            hasMoreItems = false;
+        }
+    }
+
+    private async Task ClearSearch()
     {
         searchTerm = string.Empty;
-        StateHasChanged();
+        lastSearchTerm = string.Empty;
+        await LoadNewSearchResultsAsync();
     }
 
     private void ShowSharedOnly()
@@ -508,8 +641,17 @@
             }
             
             await SharingService.UpdateHistoryItemWithShareInfoAsync(item.Id, sharedId);
-              // Refresh the history list
-            historyItems = await HistoryService.GetHistoryAsync();
+              // Refresh the current item in the list
+            var itemIndex = historyItems?.FindIndex(h => h.Id == item.Id);
+            if (itemIndex >= 0 && historyItems != null)
+            {
+                var updatedHistoryItems = await HistoryService.GetHistoryPagedAsync(0, historyItems.Count, string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm.Trim());
+                var updatedItem = updatedHistoryItems.FirstOrDefault(h => h.Id == item.Id);
+                if (updatedItem != null)
+                {
+                    historyItems[itemIndex.Value] = updatedItem;
+                }
+            }
               // Trigger confetti and show success message
             var confettiOptions = new { particleCount = 100, spread = 70, origin = new { y = 0.6 } };
             await JSRuntime.InvokeVoidAsync("confetti", confettiOptions);

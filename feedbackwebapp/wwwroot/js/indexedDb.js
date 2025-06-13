@@ -12,7 +12,10 @@ export {
     saveHistoryItem,
     getAllHistoryItems,
     deleteHistoryItem,
-    clearHistory
+    clearHistory,
+    getHistoryItemsPaged,
+    getHistoryItemsCount,
+    updateHistoryItem
 };
 
 // Initialize database
@@ -189,4 +192,66 @@ async function clearHistory() {
         HISTORY_CONFIG.dbName, 
         HISTORY_CONFIG.storeName
     );
+}
+
+async function getHistoryItemsPaged(skip, take, searchTerm) {
+    const db = await initDb(HISTORY_CONFIG.dbName, HISTORY_CONFIG.storeName);
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(HISTORY_CONFIG.storeName, 'readonly');
+        const store = transaction.objectStore(HISTORY_CONFIG.storeName);
+        const request = store.getAll();
+
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+            let items = request.result || [];
+            
+            // Sort by timestamp (most recent first)
+            items.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            // Apply search filter if provided
+            if (searchTerm && searchTerm.trim()) {
+                const term = searchTerm.trim().toLowerCase();
+                items = items.filter(item => 
+                    (item.fullAnalysis && item.fullAnalysis.toLowerCase().includes(term)) ||
+                    (item.userInput && item.userInput.toLowerCase().includes(term))
+                );
+            }
+            
+            // Apply pagination
+            const pagedItems = items.slice(skip, skip + take);
+            resolve(pagedItems);
+        };
+        transaction.oncomplete = () => db.close();
+    });
+}
+
+async function getHistoryItemsCount(searchTerm) {
+    const db = await initDb(HISTORY_CONFIG.dbName, HISTORY_CONFIG.storeName);
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(HISTORY_CONFIG.storeName, 'readonly');
+        const store = transaction.objectStore(HISTORY_CONFIG.storeName);
+        const request = store.getAll();
+
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+            let items = request.result || [];
+            
+            // Apply search filter if provided
+            if (searchTerm && searchTerm.trim()) {
+                const term = searchTerm.trim().toLowerCase();
+                items = items.filter(item => 
+                    (item.fullAnalysis && item.fullAnalysis.toLowerCase().includes(term)) ||
+                    (item.userInput && item.userInput.toLowerCase().includes(term))
+                );
+            }
+            
+            resolve(items.length);
+        };
+        transaction.oncomplete = () => db.close();
+    });
+}
+
+async function updateHistoryItem(item) {
+    // For simplicity, just use saveHistoryItem since it handles both insert and update
+    return saveHistoryItem(item);
 }
