@@ -18,23 +18,19 @@ public class ExportServiceTests
     {
         _exportService = new ExportService();
         _testItems = new List<AnalysisHistoryItem>
-        {
-            new AnalysisHistoryItem
+        {            new AnalysisHistoryItem
             {
                 Id = "test-1",
                 Timestamp = new DateTime(2025, 1, 15, 10, 30, 0),
-                Summary = "Test summary 1",
-                FullAnalysis = "This is a test analysis with more details.",
+                FullAnalysis = "Test summary 1", // Set FullAnalysis to be the same as previous Summary for tests
                 SourceType = "Manual",
                 UserInput = "Test input",
                 IsShared = false
-            },
-            new AnalysisHistoryItem
+            },            new AnalysisHistoryItem
             {
                 Id = "test-2",
                 Timestamp = new DateTime(2025, 1, 16, 14, 15, 0),
-                Summary = "Test summary 2",
-                FullAnalysis = "Another test analysis",
+                FullAnalysis = "Test summary 2", // Set FullAnalysis to be the same as previous Summary for tests
                 SourceType = "GitHub",
                 UserInput = "https://github.com/test/repo",
                 IsShared = true,
@@ -173,13 +169,11 @@ public class ExportServiceTests
     {
         // Arrange
         var itemsWithComments = new List<AnalysisHistoryItem>
-        {
-            new AnalysisHistoryItem
+        {            new AnalysisHistoryItem
             {
                 Id = "test-with-comments",
                 Timestamp = new DateTime(2025, 1, 17, 9, 0, 0),
-                Summary = "Analysis with comments",
-                FullAnalysis = "This analysis includes comment threads",
+                FullAnalysis = "Analysis with comments", // Set FullAnalysis to be the same as previous Summary for tests
                 SourceType = "Reddit",
                 UserInput = "https://reddit.com/r/test/comments/123",
                 CommentThreads = new List<CommentThread>

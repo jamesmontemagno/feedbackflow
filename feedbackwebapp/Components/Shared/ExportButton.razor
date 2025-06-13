@@ -4,13 +4,15 @@
 @using SharedDump.Models
 @using Microsoft.JSInterop
 
-<div class="dropdown">    <button class="@GetButtonClass()" 
+<div class="dropdown">    
+    <button class="@GetButtonClass()" 
             type="button" 
             id="exportDropdown" 
             data-bs-toggle="dropdown" 
             aria-expanded="false"
             aria-haspopup="true"
-            disabled="@(_isExporting || !Items.Any())"            title="@(_isExporting ? "Exporting..." : !Items.Any() ? "No items to export" : "Export analysis data")"
+            disabled="@(_isExporting || !Items.Any())"            
+            title="@(_isExporting ? "Exporting..." : !Items.Any() ? "No items to export" : "Export analysis data")"
             aria-label="@(_isExporting ? "Exporting analysis data" : !Items.Any() ? "No items to export" : "Export analysis data")">
         @if (_isExporting)
         {

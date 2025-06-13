@@ -36,31 +36,57 @@ public static class CommentDataConverter
             },
             Comments = ConvertYouTubeComments(video.Comments)
         }).ToList();
-    }
-
-    private static List<CommentData> ConvertYouTubeComments(List<YouTubeOutputComment> comments)
+    }    private static List<CommentData> ConvertYouTubeComments(List<YouTubeOutputComment> comments)
     {
-        // Group comments by parent ID to build hierarchy
-        var commentDict = comments.ToDictionary(c => c.Id, c => new CommentData
+        // First pass: Create all comment objects
+        var commentDict = new Dictionary<string, CommentData>();
+        foreach (var c in comments)
         {
-            Id = c.Id,
-            ParentId = c.ParentId,
-            Author = c.Author ?? "Unknown",
-            Content = c.Text ?? string.Empty,
-            CreatedAt = c.PublishedAt
-        });
+            commentDict[c.Id] = new CommentData
+            {
+                Id = c.Id,
+                ParentId = c.ParentId,
+                Author = c.Author ?? "Unknown",
+                Content = c.Text ?? string.Empty,
+                CreatedAt = c.PublishedAt
+            };
+        }
 
-        // Build the hierarchy
+        // Second pass: Build the hierarchy
         var rootComments = new List<CommentData>();
+        var orphanedComments = new List<CommentData>();
+        
         foreach (var comment in commentDict.Values)
         {
             if (string.IsNullOrEmpty(comment.ParentId))
             {
+                // This is a root comment
                 rootComments.Add(comment);
             }
             else if (commentDict.TryGetValue(comment.ParentId, out var parent))
             {
+                // This is a reply to a comment we have
                 parent.Replies.Add(comment);
+            }
+            else
+            {
+                // This is an orphaned comment (parent not in our data)
+                // Create a new comment object with modified content to indicate it's an orphaned reply
+                var orphanedComment = new CommentData
+                {
+                    Id = comment.Id,
+                    ParentId = comment.ParentId,
+                    Author = comment.Author,
+                    Content = $"[Reply to unavailable comment] {comment.Content}",
+                    CreatedAt = comment.CreatedAt,
+                    Score = comment.Score,
+                    Url = comment.Url,
+                    Metadata = comment.Metadata,
+                    Replies = comment.Replies
+                };
+                
+                // Add directly to root comments to preserve it in the export
+                rootComments.Add(orphanedComment);
             }
         }
 
@@ -162,10 +188,10 @@ public static class CommentDataConverter
             CreatedAt = DateTime.TryParse(c.CreatedAt, out var date) ? date : DateTime.UtcNow,
             Url = c.Url,
             Metadata = CreateGitHubCommentMetadata(c)
-        });
-
-        // Build the hierarchy
+        });        // Build the hierarchy
         var rootComments = new List<CommentData>();
+        var orphanedComments = new List<CommentData>();
+        
         foreach (var comment in commentDict.Values)
         {
             if (string.IsNullOrEmpty(comment.ParentId))
@@ -176,6 +202,28 @@ public static class CommentDataConverter
             {
                 parent.Replies.Add(comment);
             }
+            else
+            {
+                // This is an orphaned comment (parent not in our data)
+                orphanedComments.Add(new CommentData
+                {
+                    Id = comment.Id,
+                    ParentId = comment.ParentId,
+                    Author = comment.Author,
+                    Content = $"[Reply to unavailable comment] {comment.Content}",
+                    CreatedAt = comment.CreatedAt,
+                    Score = comment.Score,
+                    Url = comment.Url,
+                    Metadata = comment.Metadata,
+                    Replies = comment.Replies
+                });
+            }
+        }
+        
+        // Add orphaned comments to root level
+        foreach (var orphan in orphanedComments)
+        {
+            rootComments.Add(orphan);
         }
 
         return rootComments;

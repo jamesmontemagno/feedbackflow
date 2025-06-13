@@ -485,12 +485,11 @@
         await ToastService.ShowInfoAsync("Creating share link...", 3000);
 
         try
-        {
-            var analysisData = new AnalysisData
+        {            var analysisData = new AnalysisData
             {
                 Id = item.Id,
                 Title = $"{item.SourceType} Analysis",
-                Summary = item.Summary,
+                Summary = item.Summary, // Using the computed property
                 FullAnalysis = item.FullAnalysis,
                 SourceType = item.SourceType,
                 UserInput = item.UserInput,
