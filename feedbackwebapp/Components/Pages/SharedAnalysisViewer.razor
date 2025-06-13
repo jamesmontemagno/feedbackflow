@@ -201,13 +201,12 @@
             return;
         
         try
-        {
+        {            
             var historyItem = new AnalysisHistoryItem
             {
                 Id = Id,
                 UserInput = analysis.UserInput,
-                Summary = analysis.Summary,
-                FullAnalysis = analysis.FullAnalysis,
+                FullAnalysis = analysis.FullAnalysis, // Summary is now computed from FullAnalysis
                 SourceType = analysis.SourceType,
                 Timestamp = analysis.CreatedDate,
                 IsShared = true,
@@ -272,15 +271,14 @@
             await ToastService.ShowErrorAsync($"Failed to copy to clipboard: {ex.Message}");
         }
     }
-    
-    private AnalysisHistoryItem ConvertToHistoryItem(AnalysisData analysis)
+      
+      private AnalysisHistoryItem ConvertToHistoryItem(AnalysisData analysis)
     {
         return new AnalysisHistoryItem
         {
             Id = analysis.Id,
             Timestamp = analysis.CreatedDate,
-            Summary = analysis.Summary,
-            FullAnalysis = analysis.FullAnalysis,
+            FullAnalysis = analysis.FullAnalysis, // Summary is now computed from FullAnalysis
             SourceType = analysis.SourceType,
             UserInput = analysis.UserInput,
             IsShared = true,
