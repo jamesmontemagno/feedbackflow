@@ -212,16 +212,13 @@
     private async Task SaveToHistory()
     {
         if (!string.IsNullOrEmpty(MarkdownResult))
-        {
-            var commentThreads = ConvertAdditionalDataToCommentThreads();
-            
+        {            
             var historyItem = new SharedDump.Models.AnalysisHistoryItem
             {
                 Summary = MarkdownResult.Length > 300 ? MarkdownResult.Substring(0, 300) + "..." : MarkdownResult,
                 FullAnalysis = MarkdownResult,
                 SourceType = SourceType,
-                UserInput = UserInput,
-                CommentThreads = commentThreads
+                UserInput = UserInput
             };
             await HistoryService.SaveToHistoryAsync(historyItem);
             _isSaved = true;
@@ -434,9 +431,7 @@
     {
         if (string.IsNullOrEmpty(MarkdownResult))
             return new AnalysisHistoryItem();
-            
-        var commentThreads = ConvertAdditionalDataToCommentThreads();
-        
+                    
         return new AnalysisHistoryItem
         {
             Id = _savedItemId ?? Guid.NewGuid().ToString(),
@@ -444,7 +439,6 @@
             FullAnalysis = MarkdownResult,
             SourceType = SourceType,
             UserInput = UserInput,
-            CommentThreads = commentThreads,
             Timestamp = DateTime.UtcNow
         };
     }

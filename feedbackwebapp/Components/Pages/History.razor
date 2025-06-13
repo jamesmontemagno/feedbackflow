@@ -34,10 +34,7 @@
 
 <div class="container-lg py-4">    <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="feedbackflow-title mb-0">Analysis History</h1>
-        <div class="d-flex align-items-center gap-2 flex-shrink-0">            @if (filteredItems is { Count: > 0 })
-            {
-                <ExportButton Items="filteredItems" ButtonVariant="primary" Size="sm" />
-            }
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">            
             @if (historyItems?.Any(h => h.IsShared) == true)
             {
                 <button class="btn btn-info header-action-btn" @onclick="ShowSharedOnly">
@@ -150,11 +147,7 @@
                             }
                         </div>                        
                         <ActionMenu>
-                            <PrimaryAction>
-                                <ExportButton Items="@(new[] { item })" ButtonVariant="primary" Mini="true" Size="sm" />
-                            </PrimaryAction>                            
                             <ChildContent>
-                                <ExportButton Items="@(new[] { item })" ButtonVariant="primary" Mini="false" Size="sm" />
                                 <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="() => HistoryHelper.CopyToClipboard(item, JSRuntime, ToastService, ShowCopyFailedDialog)">
                                     <i class="bi bi-clipboard"></i> Copy
                                 </button>
