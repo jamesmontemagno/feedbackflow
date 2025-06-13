@@ -29,7 +29,7 @@ namespace FeedbackFlow.Tests
                             ParentId = null,
                             Text = "Root comment",
                             Author = "User1",
-                            PublishedAt = new DateTimeOffset(2025, 6, 1, 12, 0, 0, TimeSpan.Zero)
+                            PublishedAt = new DateTime(2025, 6, 1, 12, 0, 0)
                         },
                         // Reply to root comment
                         new YouTubeOutputComment
@@ -38,7 +38,7 @@ namespace FeedbackFlow.Tests
                             ParentId = "comment1",
                             Text = "Reply to root",
                             Author = "User2",
-                            PublishedAt = new DateTimeOffset(2025, 6, 1, 12, 30, 0, TimeSpan.Zero)
+                            PublishedAt = new DateTime(2025, 6, 1, 12, 30, 0)
                         },
                         // Orphaned comment (parent doesn't exist)
                         new YouTubeOutputComment
@@ -47,7 +47,7 @@ namespace FeedbackFlow.Tests
                             ParentId = "non-existent",
                             Text = "Orphaned comment",
                             Author = "User3",
-                            PublishedAt = new DateTimeOffset(2025, 6, 1, 13, 0, 0, TimeSpan.Zero)
+                            PublishedAt = new DateTime(2025, 6, 1, 13, 0, 0)
                         }
                     }
                 }

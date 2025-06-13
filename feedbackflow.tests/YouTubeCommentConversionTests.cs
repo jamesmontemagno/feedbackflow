@@ -25,27 +25,27 @@ namespace FeedbackFlow.Tests
                     {
                         // Root comment
                         new YouTubeOutputComment
-                        {
-                            Id = "comment1", 
+                        {                            Id = "comment1", 
                             ParentId = null,
                             Text = "Root comment",
-                            Author = "User1"
+                            Author = "User1",
+                            PublishedAt = new DateTime(2025, 6, 1, 12, 0, 0)
                         },
                         // Reply to root comment
                         new YouTubeOutputComment
-                        {
-                            Id = "comment2",
+                        {                            Id = "comment2",
                             ParentId = "comment1",
                             Text = "Reply to root",
-                            Author = "User2"
+                            Author = "User2",
+                            PublishedAt = new DateTime(2025, 6, 1, 12, 30, 0)
                         },
                         // Orphaned comment (parent doesn't exist)
                         new YouTubeOutputComment
-                        {
-                            Id = "comment3",
+                        {                            Id = "comment3",
                             ParentId = "non-existent",
                             Text = "Orphaned comment",
-                            Author = "User3"
+                            Author = "User3",
+                            PublishedAt = new DateTime(2025, 6, 1, 13, 0, 0)
                         }
                     }
                 }
