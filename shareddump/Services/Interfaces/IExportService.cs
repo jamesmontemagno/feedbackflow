@@ -16,6 +16,14 @@ public interface IExportService
     Task<MemoryStream> ExportAsync(IEnumerable<AnalysisHistoryItem> items, ExportFormat format);
     
     /// <summary>
+    /// Exports a collection of analysis history items with comments to the specified format
+    /// </summary>
+    /// <param name="items">The analysis history items with comments to export</param>
+    /// <param name="format">The desired export format</param>
+    /// <returns>A memory stream containing the exported data</returns>
+    Task<MemoryStream> ExportWithCommentsAsync(IEnumerable<AnalysisHistoryItemWithComments> items, ExportFormat format);
+    
+    /// <summary>
     /// Gets the appropriate file extension for the given format
     /// </summary>
     /// <param name="format">The export format</param>

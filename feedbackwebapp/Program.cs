@@ -37,6 +37,8 @@ builder.Services.AddScoped<UserSettingsService>();
 builder.Services.AddScoped<IReportServiceProvider, ReportServiceProvider>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IHistoryService, HistoryService>();
+builder.Services.AddScoped<ICommentsService, CommentsService>();
+builder.Services.AddScoped<IExportDataService, ExportDataService>();
 builder.Services.AddScoped<IAnalysisSharingService, AnalysisSharingService>();
 builder.Services.AddScoped<IExportService, ExportService>();
 

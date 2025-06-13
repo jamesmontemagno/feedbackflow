@@ -1,5 +1,6 @@
 @page "/history"
 @inject FeedbackWebApp.Services.Interfaces.IHistoryService HistoryService
+@inject FeedbackWebApp.Services.Interfaces.ICommentsService CommentsService
 @inject FeedbackWebApp.Services.Interfaces.IAnalysisSharingService SharingService
 @inject FeedbackWebApp.Services.Authentication.AuthenticationService AuthService
 @inject IJSRuntime JSRuntime
@@ -305,6 +306,9 @@
             isAuthenticated = await AuthService.IsAuthenticatedAsync();
             historyItems = await HistoryService.GetHistoryAsync();
             
+            // Migration: Move comments from history items to comments database
+            await MigrateCommentsIfNeeded();
+            
             // Check for expired shared items
             if (historyItems?.Any(h => h.IsShared) == true)
             {
@@ -332,9 +336,61 @@
         }
     }    private async Task DeleteItem(string id)
     {
+        // Delete associated comments first to maintain data consistency
+        await CommentsService.DeleteCommentsByFeedbackIdAsync(id);
+        
+        // Then delete the history item
         await HistoryService.DeleteHistoryItemAsync(id);
         historyItems = await HistoryService.GetHistoryAsync();
         expandedItems.Remove(id);
+    }
+
+    private async Task MigrateCommentsIfNeeded()
+    {
+        try
+        {
+            if (historyItems == null || !historyItems.Any())
+                return;
+
+            // Check if any history items have comments that need migration
+            var itemsWithComments = historyItems.Where(item => 
+                item.CommentThreads != null && item.CommentThreads.Any()).ToList();
+
+            if (!itemsWithComments.Any())
+                return;
+
+            // Perform migration
+            var migrationResult = await CommentsService.MigrateCommentsFromHistoryAsync(itemsWithComments);
+            
+            if (migrationResult.migrated > 0)
+            {
+                await ToastService.ShowSuccessAsync($"Migrated {migrationResult.migrated} comments to optimized storage", 3000);
+                
+                // Update history items to remove comments (they're now in the comments database)
+                foreach (var item in itemsWithComments)
+                {
+                    var itemWithoutComments = item with { CommentThreads = new List<CommentThread>() };
+                    await HistoryService.UpdateHistoryItemAsync(itemWithoutComments);
+                }
+
+                // Refresh the history list
+                historyItems = await HistoryService.GetHistoryAsync();
+            }
+
+            if (migrationResult.errors.Any())
+            {
+                Console.WriteLine($"Migration completed with {migrationResult.errors.Count} errors");
+                foreach (var error in migrationResult.errors)
+                {
+                    Console.WriteLine($"Migration error: {error}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Comment migration failed: {ex.Message}");
+            // Don't show error to user as this is a background operation
+        }
     }    
 
     private Task ClearHistory()
@@ -346,6 +402,8 @@
             "btn-danger",
             async () =>
             {
+                // Clear both history and comments for complete cleanup
+                await CommentsService.ClearAllCommentsAsync();
                 await HistoryService.ClearHistoryAsync();
                 historyItems = new();
                 expandedItems.Clear();

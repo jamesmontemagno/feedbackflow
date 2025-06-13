@@ -10,6 +10,7 @@
 @inject FeedbackWebApp.Services.UserSettingsService UserSettings
 @inject ISpeechSynthesisService SpeechSynthesisService
 @inject FeedbackWebApp.Services.Interfaces.IHistoryService HistoryService
+@inject FeedbackWebApp.Services.Interfaces.ICommentsService CommentsService
 @inject FeedbackWebApp.Services.IToastService ToastService
 @inject FeedbackWebApp.Services.Interfaces.IAnalysisSharingService SharingService
 @inject SharedDump.Services.Interfaces.IExportService ExportService
@@ -215,18 +216,62 @@
         {
             var commentThreads = ConvertAdditionalDataToCommentThreads();
             
+            // Create history item without comments for faster loading
             var historyItem = new SharedDump.Models.AnalysisHistoryItem
             {
                 Summary = MarkdownResult.Length > 300 ? MarkdownResult.Substring(0, 300) + "..." : MarkdownResult,
                 FullAnalysis = MarkdownResult,
                 SourceType = SourceType,
                 UserInput = UserInput,
-                CommentThreads = commentThreads
+                CommentThreads = new List<SharedDump.Models.CommentThread>() // Empty - comments saved separately
             };
+
+            // Save the history item first
             await HistoryService.SaveToHistoryAsync(historyItem);
+            
+            // Now save comments separately for this feedback item
+            await SaveCommentsForHistoryItem(historyItem.Id, commentThreads);
+            
             _isSaved = true;
             _savedItemId = historyItem.Id;
             await ToastService.ShowSuccessAsync("Analysis saved to history", 3000);
+        }
+    }
+
+    private async Task SaveCommentsForHistoryItem(string feedbackId, List<SharedDump.Models.CommentThread> commentThreads)
+    {
+        try
+        {
+            // Save all comments from all threads
+            foreach (var thread in commentThreads)
+            {
+                foreach (var comment in thread.Comments)
+                {
+                    await CommentsService.AddCommentAsync(feedbackId, comment);
+                    
+                    // Also save any nested replies
+                    await SaveNestedComments(feedbackId, comment.Replies);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't fail the entire save operation
+            Logger.LogError(ex, "Failed to save comments for feedback item {FeedbackId}", feedbackId);
+        }
+    }
+
+    private async Task SaveNestedComments(string feedbackId, List<SharedDump.Models.CommentData> comments)
+    {
+        foreach (var comment in comments)
+        {
+            await CommentsService.AddCommentAsync(feedbackId, comment);
+            
+            // Recursively save any nested replies
+            if (comment.Replies.Any())
+            {
+                await SaveNestedComments(feedbackId, comment.Replies);
+            }
         }
     }
 
@@ -356,9 +401,15 @@
                     FullAnalysis = MarkdownResult,
                     SourceType = SourceType,
                     UserInput = UserInput,
-                    CommentThreads = commentThreads
+                    CommentThreads = new List<SharedDump.Models.CommentThread>() // Empty - comments saved separately
                 };
+                
+                // Save the history item first
                 await HistoryService.SaveToHistoryAsync(historyItem);
+                
+                // Now save comments separately for this feedback item
+                await SaveCommentsForHistoryItem(historyItem.Id, commentThreads);
+                
                 _isSaved = true;
                 _savedItemId = historyItem.Id;
             }

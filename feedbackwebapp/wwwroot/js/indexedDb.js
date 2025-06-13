@@ -12,7 +12,9 @@ export {
     saveHistoryItem,
     getAllHistoryItems,
     deleteHistoryItem,
-    clearHistory
+    clearHistory,
+    // Update history item without comments
+    updateHistoryItem
 };
 
 // Initialize database
@@ -175,5 +177,13 @@ async function clearHistory() {
     return clearStore(
         HISTORY_CONFIG.dbName, 
         HISTORY_CONFIG.storeName
+    );
+}
+
+async function updateHistoryItem(item) {
+    return saveItem(
+        HISTORY_CONFIG.dbName, 
+        HISTORY_CONFIG.storeName, 
+        item
     );
 }

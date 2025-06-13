@@ -32,6 +32,18 @@ public class ExportService : IExportService
         return await strategy.ExportAsync(items);
     }
 
+    public async Task<MemoryStream> ExportWithCommentsAsync(IEnumerable<AnalysisHistoryItemWithComments> items, ExportFormat format)
+    {
+        if (!_strategies.TryGetValue(format, out var strategy))
+        {
+            throw new ArgumentException($"Unsupported export format: {format}", nameof(format));
+        }
+
+        // Convert to base type for export strategies
+        var baseItems = items.Cast<AnalysisHistoryItem>();
+        return await strategy.ExportAsync(baseItems);
+    }
+
     public string GetFileExtension(ExportFormat format)
     {
         if (!_strategies.TryGetValue(format, out var strategy))

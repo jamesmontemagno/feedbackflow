@@ -1,4 +1,5 @@
 @inject SharedDump.Services.Interfaces.IExportService ExportService
+@inject FeedbackWebApp.Services.IExportDataService ExportDataService
 @inject IJSRuntime JSRuntime
 @inject FeedbackWebApp.Services.IToastService ToastService
 @using SharedDump.Models
@@ -91,7 +92,11 @@
         {
             await ToastService.ShowInfoAsync($"Preparing {format} export...", 3000);
             
-            var stream = await ExportService.ExportAsync(Items, format);
+            // Load comments for the history items during export
+            var itemsWithComments = await ExportDataService.PrepareItemsForExportAsync(Items);
+            
+            // Export with comments included
+            var stream = await ExportService.ExportWithCommentsAsync(itemsWithComments, format);
             var fileExtension = ExportService.GetFileExtension(format);
             var mimeType = ExportService.GetMimeType(format);
             var itemCount = Items.Count();
