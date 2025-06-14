@@ -9,6 +9,7 @@ on:
       - 'feedbackwebapp/**'
       - 'shareddump/**'
       - 'FeedbackFlow.ServiceDefaults/**'
+      - '.github/workflows/deploy-staging.yml'
     types: [opened, synchronize, reopened]
   workflow_dispatch:
     inputs:
