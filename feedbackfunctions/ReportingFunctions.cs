@@ -6,6 +6,7 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SharedDump.Models.Reddit;
+using SharedDump.Models.GitHub;
 using SharedDump.Models.Reports;
 using SharedDump.AI;
 using SharedDump.Utils;
@@ -25,6 +26,7 @@ public class ReportingFunctions
 {
     private readonly ILogger<ReportingFunctions> _logger;
     private readonly RedditService _redditService;
+    private readonly GitHubService _githubService;
     private readonly IFeedbackAnalyzerService _analyzerService;
     private readonly IConfiguration _configuration;
     private const string ContainerName = "reports";
@@ -57,6 +59,9 @@ public class ReportingFunctions
         var redditClientId = _configuration["Reddit:ClientId"] ?? throw new InvalidOperationException("Reddit client ID not configured");
         var redditClientSecret = _configuration["Reddit:ClientSecret"] ?? throw new InvalidOperationException("Reddit client secret not configured");
         _redditService = new RedditService(redditClientId, redditClientSecret, httpClientFactory.CreateClient("Reddit"));
+
+        var githubToken = _configuration["GitHub:AccessToken"] ?? throw new InvalidOperationException("GitHub access token not configured");
+        _githubService = new GitHubService(githubToken, httpClientFactory.CreateClient("GitHub"));
 
         var endpoint = _configuration["Azure:OpenAI:Endpoint"] ?? throw new InvalidOperationException("Azure OpenAI endpoint not configured");
         var apiKey = _configuration["Azure:OpenAI:ApiKey"] ?? throw new InvalidOperationException("Azure OpenAI API key not configured");
@@ -229,6 +234,181 @@ Keep each section very brief and focused. Total analysis should be no more than 
         {
             _logger.LogError(ex, "Error processing Reddit report for r/{Subreddit}. Processing time: {ProcessingTime:c}", 
                 subreddit, DateTime.UtcNow - startTime);
+            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await response.WriteStringAsync($"Error processing report: {ex.Message}");
+            return response;
+        }
+    }
+
+    /// <summary>
+    /// Generates a comprehensive report of GitHub repository issues
+    /// </summary>
+    /// <param name="req">HTTP request with query parameters</param>
+    /// <returns>HTTP response with a markdown-formatted report</returns>
+    /// <remarks>
+    /// Query parameters:
+    /// - repo: Required. The repository in format "owner/name" (e.g., "microsoft/vscode")
+    /// - days: Optional. Number of days of history to analyze (default: 7)
+    /// 
+    /// The function fetches GitHub issues from the last week, analyzes their content using AI,
+    /// and returns an HTML-formatted report with insights, trends, and key takeaways.
+    /// </remarks>
+    /// <example>
+    /// GET /api/GitHubIssuesReport?repo=microsoft/vscode&amp;days=7
+    /// </example>
+    [Function("GitHubIssuesReport")]
+    public async Task<HttpResponseData> GitHubIssuesReport(
+        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+    {
+        var startTime = DateTime.UtcNow;
+        _logger.LogInformation("Starting GitHub Issues Report processing for URL {RequestUrl}", req.Url);
+
+        var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
+        var repo = queryParams["repo"];
+        var daysParam = queryParams["days"];
+        var days = int.TryParse(daysParam, out var parsedDays) ? parsedDays : 7;
+
+        if (string.IsNullOrEmpty(repo))
+        {
+            _logger.LogWarning("GitHub Issues Report request rejected - missing repo parameter");
+            var missingRepoResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await missingRepoResponse.WriteStringAsync("Repository parameter is required (format: owner/name)");
+            return missingRepoResponse;
+        }
+
+        var repoParts = repo.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (repoParts.Length != 2)
+        {
+            _logger.LogWarning("GitHub Issues Report request rejected - invalid repo format: {Repo}", repo);
+            var invalidFormatResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await invalidFormatResponse.WriteStringAsync("Repository parameter must be in format 'owner/name'");
+            return invalidFormatResponse;
+        }
+
+        var repoOwner = repoParts[0];
+        var repoName = repoParts[1];
+
+        try
+        {
+            _logger.LogInformation("Fetching issues for repository {RepoOwner}/{RepoName} for last {Days} days", repoOwner, repoName, days);
+            
+            var startDate = DateTimeOffset.UtcNow.AddDays(-days);
+            var endDate = DateTimeOffset.UtcNow;
+            
+            // Check if repository is valid
+            if (!await _githubService.CheckRepositoryValid(repoOwner, repoName))
+            {
+                _logger.LogWarning("Repository {RepoOwner}/{RepoName} not found or not accessible", repoOwner, repoName);
+                var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await badRequestResponse.WriteStringAsync("Repository not found or not accessible");
+                return badRequestResponse;
+            }
+
+            var issues = await _githubService.GetRecentIssuesForReportAsync(repoOwner, repoName, days);
+            _logger.LogInformation("Retrieved {IssueCount} issues from {RepoOwner}/{RepoName}", issues.Count, repoOwner, repoName);
+
+            if (issues.Count == 0)
+            {
+                _logger.LogInformation("No issues found for {RepoOwner}/{RepoName} in the last {Days} days", repoOwner, repoName, days);
+                var noIssuesResponse = req.CreateResponse(HttpStatusCode.OK);
+                noIssuesResponse.Headers.Add("Content-Type", "text/html; charset=utf-8");
+                await noIssuesResponse.WriteStringAsync($"<html><body><h1>No Issues Found</h1><p>No issues were found for {repo} in the last {days} days.</p></body></html>");
+                return noIssuesResponse;
+            }
+
+            // Rank issues by engagement (comments + reactions)
+            var topIssues = GitHubIssuesUtils.RankIssuesByEngagement(issues, 5);
+            _logger.LogInformation("Selected top {TopIssueCount} issues for detailed analysis", topIssues.Count);
+
+            // Create tasks for parallel processing of each issue
+            var issueTasks = topIssues.Select(async (issue, index) =>
+            {
+                _logger.LogDebug("Analyzing issue {IssueId}: {IssueTitle}", issue.Id, issue.Title);
+                
+                var issueContent = $"Title: {issue.Title}\n\nState: {issue.State}\n\nComments: {issue.CommentsCount}\nReactions: {issue.ReactionsCount}\n\nLabels: {string.Join(", ", issue.Labels)}";
+
+                var customPrompt = @"Analyze this GitHub issue and provide a concise summary in 3 short sections with use of emojis throughout to add visual flair:
+
+1. Executive Summary: Brief overview of the issue and key points (1-3 sentences)
+2. Key Insights: Most important takeaways or findings about this issue (2-4 bullet points)
+3. Impact Assessment: Why this issue is significant and its overall sentiment (1-2 sentences)
+
+Keep each section very brief and focused. Total analysis should be no more than three short paragraphs. Format in markdown.";
+
+                var issueAnalysis = await _analyzerService.AnalyzeCommentsAsync("github", issueContent, customPrompt);
+                _logger.LogDebug("Completed analysis for issue {IssueId}", issue.Id);
+
+                var issueDetail = new GithubIssueDetail
+                {
+                    Summary = issue,
+                    DeepAnalysis = issueAnalysis,
+                    Body = "", // We don't have the full body in the summary
+                    Comments = Array.Empty<GithubCommentModel>() // We don't fetch full comments for the report
+                };
+
+                return new TopGitHubIssueInfo(issueDetail, index + 1, issue.CommentsCount + issue.ReactionsCount);
+            }).ToList();
+
+            // Wait for all issue processing to complete
+            var topIssueInfos = await Task.WhenAll(issueTasks);
+
+            _logger.LogInformation("Generating overall trend analysis for {RepoOwner}/{RepoName}", repoOwner, repoName);
+
+            // Generate overall analysis based on all issue titles and metadata
+            var overallAnalysis = GitHubIssuesUtils.AnalyzeTitleTrends(issues);
+            var customWeeklyPrompt = $@"Analyze these GitHub issues statistics and trends from {repo} repository. Provide a concise summary in 3 short sections with use of emojis to add visual flair throughout:
+
+1. Executive Summary: Brief overview of the main issues and trends (1-3 sentences)
+2. Key Insights or Trends: Most important takeaways from the issue patterns (2-4 bullet points)
+3. Repository Health: Overall assessment of the repository activity and community engagement (1-2 sentences)
+
+Statistics: {overallAnalysis}
+
+Keep each section very brief and focused. Total analysis should be no more than three short paragraphs. Format in markdown.";
+
+            var enhancedOverallAnalysis = await _analyzerService.AnalyzeCommentsAsync("github", overallAnalysis, customWeeklyPrompt);
+            _logger.LogDebug("Overall analysis completed");
+
+            _logger.LogInformation("Creating GitHub issues report model");
+            var report = new ReportModel
+            {
+                Source = "github",
+                SubSource = repo,
+                ThreadCount = topIssues.Count,
+                CommentCount = issues.Sum(i => i.CommentsCount),
+                CutoffDate = startDate.UtcDateTime
+            };
+
+            _logger.LogInformation("Generating HTML email report");
+            var emailHtml = GitHubIssuesUtils.GenerateGitHubIssuesReportEmail(
+                repo,
+                startDate,
+                endDate,
+                enhancedOverallAnalysis,
+                topIssueInfos.ToList(),
+                report.Id.ToString());
+
+            var processingTime = DateTime.UtcNow - startTime;
+            _logger.LogInformation("GitHub Issues Report processing completed for {RepoOwner}/{RepoName} in {ProcessingTime:c}. Analyzed {IssueCount} issues", 
+                repoOwner, repoName, processingTime, issues.Count);
+            
+            report.HtmlContent = emailHtml;
+
+            // Save to blob storage
+            var blobClient = _containerClient.GetBlobClient($"{report.Id}.json");
+            var reportJson = JsonSerializer.Serialize(report);
+            await using var ms = new MemoryStream(Encoding.UTF8.GetBytes(reportJson));
+            await blobClient.UploadAsync(ms, overwrite: true);
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            response.Headers.Add("Content-Type", "text/html; charset=utf-8");
+            await response.WriteStringAsync(emailHtml);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing GitHub Issues report for {RepoOwner}/{RepoName}. Processing time: {ProcessingTime:c}", 
+                repoOwner, repoName, DateTime.UtcNow - startTime);
             var response = req.CreateResponse(HttpStatusCode.InternalServerError);
             await response.WriteStringAsync($"Error processing report: {ex.Message}");
             return response;

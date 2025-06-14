@@ -975,6 +975,142 @@ public class GitHubService
         return commentsList;
     }
 
+    /// <summary>
+    /// Gets recent issues from the last week for GitHub issues reporting
+    /// </summary>
+    /// <param name="repoOwner">Repository owner</param>
+    /// <param name="repoName">Repository name</param>
+    /// <param name="daysBack">Number of days to look back (default: 7)</param>
+    /// <returns>List of GitHub issues from the specified time period</returns>
+    public async Task<List<GithubIssueSummary>> GetRecentIssuesForReportAsync(string repoOwner, string repoName, int daysBack = 7)
+    {
+        var issuesList = new List<GithubIssueSummary>();
+        var hasMorePages = true;
+        string? endCursor = null;
+        var retryCount = 0;
+        var cutoffDate = DateTime.UtcNow.AddDays(-daysBack).ToString("yyyy-MM-ddTHH:mm:ssZ");
+
+        while (hasMorePages)
+        {
+            var issuesQuery = @"
+            query($owner: String!, $name: String!, $after: String, $since: DateTime) {
+                repository(owner: $owner, name: $name) {
+                    issues(first: 100, after: $after, filterBy: {since: $since}, states: [OPEN, CLOSED]) {
+                        edges {
+                            node {
+                                id
+                                number
+                                author {
+                                    login
+                                }
+                                title
+                                body
+                                url
+                                createdAt
+                                state
+                                reactions {
+                                    totalCount
+                                }
+                                labels(first: 10) {
+                                    nodes {
+                                        name
+                                    }
+                                }
+                                comments {
+                                    totalCount
+                                }
+                            }
+                        }
+                        pageInfo {
+                            hasNextPage
+                            endCursor
+                        }
+                    }
+                }
+            }";
+
+            while (retryCount < _maxRetries)
+            {
+                var response = await _client.PostAsJsonAsync("https://api.github.com/graphql", new
+                {
+                    query = issuesQuery,
+                    variables = new { owner = repoOwner, name = repoName, after = endCursor, since = cutoffDate }
+                });
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    await HandleRateLimit(response);
+                    retryCount++;
+                    continue;
+                }
+
+                var result = await response.Content.ReadAsStringAsync();
+                var jsonDoc = System.Text.Json.JsonDocument.Parse(result);
+                
+                if (!jsonDoc.RootElement.TryGetProperty("data", out var dataElement) ||
+                    !dataElement.TryGetProperty("repository", out var repoElement) ||
+                    !repoElement.TryGetProperty("issues", out var issuesElement))
+                {
+                    break;
+                }
+
+                var edgesElement = issuesElement.GetProperty("edges");
+                foreach (var edge in edgesElement.EnumerateArray())
+                {
+                    var node = edge.GetProperty("node");
+                    
+                    var labels = new List<string>();
+                    if (node.TryGetProperty("labels", out var labelsElement))
+                    {
+                        var labelsNodes = labelsElement.GetProperty("nodes");
+                        foreach (var labelNode in labelsNodes.EnumerateArray())
+                        {
+                            labels.Add(labelNode.GetProperty("name").GetString() ?? "");
+                        }
+                    }
+
+                    var issueSummary = new GithubIssueSummary
+                    {
+                        Id = node.GetProperty("id").GetString() ?? "",
+                        Title = node.GetProperty("title").GetString() ?? "",
+                        CommentsCount = node.GetProperty("comments").GetProperty("totalCount").GetInt32(),
+                        ReactionsCount = node.GetProperty("reactions").GetProperty("totalCount").GetInt32(),
+                        Url = node.GetProperty("url").GetString() ?? "",
+                        CreatedAt = DateTime.Parse(node.GetProperty("createdAt").GetString() ?? DateTime.UtcNow.ToString()),
+                        State = node.GetProperty("state").GetString() ?? "",
+                        Author = node.TryGetProperty("author", out var authorElement) && authorElement.TryGetProperty("login", out var loginElement) 
+                            ? loginElement.GetString() ?? "unknown" 
+                            : "unknown",
+                        Labels = labels
+                    };
+
+                    issuesList.Add(issueSummary);
+                }
+
+                var pageInfo = issuesElement.GetProperty("pageInfo");
+                hasMorePages = pageInfo.GetProperty("hasNextPage").GetBoolean();
+                if (hasMorePages && pageInfo.TryGetProperty("endCursor", out var cursor))
+                {
+                    endCursor = cursor.GetString();
+                }
+                else
+                {
+                    hasMorePages = false;
+                }
+
+                retryCount = 0;
+                break;
+            }
+
+            if (retryCount == _maxRetries)
+            {
+                throw new Exception("Max retries exceeded");
+            }
+        }
+
+        return issuesList;
+    }
+
     private static async Task HandleRateLimit(HttpResponseMessage response)
     {
         if (response.Headers.RetryAfter is { } retryAfter)
