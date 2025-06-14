@@ -1,0 +1,167 @@
+# Deploy Azure Functions to staging environment for PR testing
+name: Deploy Functions to Staging
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'feedbackfunctions/**'
+      - 'shareddump/**'
+      - 'FeedbackFlow.ServiceDefaults/**'
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to deploy (optional)'
+        required: false
+        type: string
+
+env:
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: './feedbackfunctions'
+  DOTNET_VERSION: '9.0.x'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      pull-requests: write # Allow commenting on PRs
+
+    outputs:
+      pr-number: ${{ steps.pr-info.outputs.pr-number }}
+      
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get PR information
+        id: pr-info
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "pr-number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.pr_number }}" ]; then
+            echo "pr-number=${{ github.event.inputs.pr_number }}" >> $GITHUB_OUTPUT
+          else
+            echo "pr-number=manual" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
+      - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: 'Resolve Project Dependencies Using Dotnet'
+        shell: pwsh
+        run: |
+          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+          dotnet build --configuration Release --output ./output
+          popd
+
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v4
+        with:
+          name: azure-functions-staging
+          path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output
+
+  deploy-staging:
+    runs-on: windows-latest
+    needs: build
+    environment:
+      name: 'functions-staging'
+      url: 'https://feedbackfunctions20250414121421-staging.azurewebsites.net'
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: azure-functions-staging
+      
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_STAGING_FUNCTIONS_CLIENTID }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_STAGING_FUNCTIONS_TENANTID }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_STAGING_FUNCTIONS_SUBSCRIPTIONID }}
+
+      - name: 'Deploy Azure Functions to Staging Slot'
+        id: deploy-to-staging
+        uses: Azure/functions-action@v1
+        with:
+          app-name: 'feedbackfunctions20250414121421'
+          slot-name: 'staging'
+          package: .
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            // Check if we already commented
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('⚡ Functions Staging Deployment')
+            );
+            
+            const deploymentUrl = 'https://feedbackfunctions20250414121421-staging.azurewebsites.net';
+            const commitSha = context.sha.substring(0, 7);
+            
+            const commentBody = `⚡ **Functions Staging Deployment Ready!**
+            
+            Your Azure Functions changes from commit \`${commitSha}\` have been deployed to staging:
+            
+            **🔗 Functions Staging URL:** ${deploymentUrl}
+            
+            You can test your API endpoints and functions there before merging to production.
+            
+            _This comment will be updated with each new commit to this PR._`;
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody
+              });
+            }
+
+  cleanup-on-close:
+    runs-on: ubuntu-latest
+    if: github.event.action == 'closed'
+    permissions:
+      pull-requests: write
+    
+    steps:
+      - name: Comment on closed PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `🧹 **Functions PR Closed**
+              
+              The Azure Functions staging deployment for this PR will remain available for a short time for final testing.
+              
+              _The staging slot will be automatically cleaned up as part of the deployment lifecycle._`
+            });
