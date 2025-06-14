@@ -69,7 +69,7 @@ jobs:
     runs-on: windows-latest
     needs: build
     environment:
-      name: 'functions-staging'
+      name: 'staging'
       url: 'https://feedbackfunctions20250414121421-staging.azurewebsites.net'
     permissions:
       id-token: write
