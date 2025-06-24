@@ -1,15 +1,15 @@
-# Deploy to staging environment for PR testing
-name: Deploy to Staging
+# Deploy Azure Functions to staging environment for PR testing
+name: Deploy Functions to Staging
 
 on:
   pull_request:
     branches:
       - main
     paths:
-      - 'feedbackwebapp/**'
+      - 'feedbackfunctions/**'
       - 'shareddump/**'
       - 'FeedbackFlow.ServiceDefaults/**'
-      - '.github/workflows/deploy-staging.yml'
+      - '.github/workflows/deploy-functions-staging.yml'
     types: [opened, synchronize, reopened]
   workflow_dispatch:
     inputs:
@@ -19,8 +19,8 @@ on:
         type: string
 
 env:
-  WEB_APP_NAME: 'feedbackwebapp'
-  WEB_APP_PATH: './feedbackwebapp'
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: './feedbackfunctions'
+  DOTNET_VERSION: '9.0.x'
 
 jobs:
   build:
@@ -47,29 +47,31 @@ jobs:
           fi
         shell: bash
 
-      - name: Set up .NET Core
+      - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Build with dotnet
-        run: dotnet build "${{env.WEB_APP_PATH}}" --configuration Release
-
-      - name: dotnet publish
-        run: dotnet publish "${{env.WEB_APP_PATH}}" -c Release -o ./publish
+      - name: 'Resolve Project Dependencies Using Dotnet'
+        shell: pwsh
+        run: |
+          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+          dotnet build --configuration Release --output ./output
+          popd
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
-          name: .net-app-staging
-          path: ./publish
+          name: azure-functions-staging
+          include-hidden-files: true
+          path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output
 
   deploy-staging:
     runs-on: windows-latest
     needs: build
     environment:
       name: 'staging'
-      url: ${{ steps.deploy-to-staging.outputs.webapp-url }}
+      url: 'https://feedbackfunctions20250414121421-staging.azurewebsites.net'
     permissions:
       id-token: write
       contents: read
@@ -79,32 +81,22 @@ jobs:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: .net-app-staging
+          name: azure-functions-staging
       
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_STAGING_CLIENTID }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_STAGING_TENANTID }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_STAGING_SUBSCRIPTIONID }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_STAGING_FUNCTIONS_CLIENTID }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_STAGING_FUNCTIONS_TENANTID }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_STAGING_FUNCTIONS_SUBSCRIPTIONID }}
 
-      # Option 1: Deploy to staging slot (recommended)
-      - name: Deploy to Azure Web App Staging Slot
+      - name: 'Deploy Azure Functions to Staging Slot'
         id: deploy-to-staging
-        uses: azure/webapps-deploy@v3
+        uses: Azure/functions-action@v1
         with:
-          app-name: 'feedbackwebapp20250414225345'
-          slot-name: 'staging'  # This requires creating a staging slot in Azure
+          app-name: 'feedbackfunctions20250414121421'
+          slot-name: 'staging'
           package: .
-
-      # Option 2: Deploy to separate staging app (uncomment and modify if using this approach)
-      # - name: Deploy to Staging Web App
-      #   id: deploy-to-staging
-      #   uses: azure/webapps-deploy@v3
-      #   with:
-      #     app-name: 'feedbackwebapp-staging'  # Separate staging app name
-      #     slot-name: 'Production'
-      #     package: .
 
       - name: Comment on PR
         if: github.event_name == 'pull_request'
@@ -120,19 +112,19 @@ jobs:
             // Check if we already commented
             const botComment = comments.find(comment => 
               comment.user.type === 'Bot' && 
-              comment.body.includes('🚀 Staging Deployment')
+              comment.body.includes('⚡ Functions Staging Deployment')
             );
             
-            const deploymentUrl = 'https://staging.feedbackflow.app';
+            const deploymentUrl = 'https://feedbackfunctions20250414121421-staging.azurewebsites.net';
             const commitSha = context.sha.substring(0, 7);
             
-            const commentBody = `🚀 **Staging Deployment Ready!**
+            const commentBody = `⚡ **Functions Staging Deployment Ready!**
             
-            Your changes from commit \`${commitSha}\` have been deployed to staging:
+            Your Azure Functions changes from commit \`${commitSha}\` have been deployed to staging:
             
-            **🌐 Staging URL:** ${deploymentUrl}
+            **🔗 Functions Staging URL:** ${deploymentUrl}
             
-            You can test your changes there before merging to production.
+            You can test your API endpoints and functions there before merging to production.
             
             _This comment will be updated with each new commit to this PR._`;
             
@@ -169,9 +161,9 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `🧹 **PR Closed**
+              body: `🧹 **Functions PR Closed**
               
-              The staging deployment for this PR will remain available for a short time for final testing.
+              The Azure Functions staging deployment for this PR will remain available for a short time for final testing.
               
-              _Consider adding a cleanup job to remove staging resources if needed._`
+              _The staging slot will be automatically cleaned up as part of the deployment lifecycle._`
             });

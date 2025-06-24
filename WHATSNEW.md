@@ -2,6 +2,10 @@ This page tracks the latest features and improvements added to FeedbackFlow.
 
 ## 📆 June 2025
 
+### 🗃️ Export Analysis & Comments
+
+- Export with 1 click to json, csv, pdf, or markdown!
+
 ### 📊 Reports
 
 We've added a new Report section to FeedbackFlow!

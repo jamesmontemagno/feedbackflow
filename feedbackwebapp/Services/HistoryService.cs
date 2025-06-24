@@ -140,6 +140,37 @@ public class HistoryService : IHistoryService, IAsyncDisposable
         }
     }
 
+    public async Task<List<AnalysisHistoryItem>> GetHistoryPagedAsync(int skip, int take, string? searchTerm = null)
+    {
+        await InitializeAsync();
+        if (_module == null) return new List<AnalysisHistoryItem>();
+
+        try
+        {
+            var items = await _module.InvokeAsync<List<AnalysisHistoryItem>>("getHistoryItemsPaged", skip, take, searchTerm);
+            return items.OrderByDescending(x => x.Timestamp).ToList(); // Most recent first
+        }
+        catch (InvalidOperationException)
+        {
+            return new List<AnalysisHistoryItem>();
+        }
+    }
+
+    public async Task<int> GetHistoryCountAsync(string? searchTerm = null)
+    {
+        await InitializeAsync();
+        if (_module == null) return 0;
+
+        try
+        {
+            return await _module.InvokeAsync<int>("getHistoryItemsCount", searchTerm);
+        }
+        catch (InvalidOperationException)
+        {
+            return 0;
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_module is not null)

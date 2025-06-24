@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using FeedbackWebApp.Services.Interfaces;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.JSInterop;
 using SharedDump.Models;
 
@@ -9,29 +10,33 @@ namespace FeedbackWebApp.Services;
 public class AnalysisSharingService : IAnalysisSharingService, IDisposable
 {
     private const string StorageKey = "feedbackflow_analysis_history";
+    private const string CacheKeyPrefix = "shared_analysis_";
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(4); // Cache for 4 hours since analyses don't change
+
     private readonly HttpClient _httpClient;
     private readonly IJSRuntime _jsRuntime;
     private readonly ILogger<AnalysisSharingService> _logger;
     private readonly IHistoryService _historyService;
+    private readonly IMemoryCache _memoryCache;
     protected readonly string BaseUrl;
     protected readonly IConfiguration Configuration;
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
-    };
-
-    public AnalysisSharingService(
+    };    public AnalysisSharingService(
         IHttpClientFactory httpClientFactory, 
         IJSRuntime jsRuntime, 
         ILogger<AnalysisSharingService> logger,
         IConfiguration configuration,
-        IHistoryService historyService)
+        IHistoryService historyService,
+        IMemoryCache memoryCache)
     {
         _httpClient = httpClientFactory.CreateClient("DefaultClient");
         _jsRuntime = jsRuntime;
         _logger = logger;
         _historyService = historyService;
+        _memoryCache = memoryCache;
 
         // Get base URLs from configuration
         Configuration = configuration;
@@ -74,10 +79,16 @@ public class AnalysisSharingService : IAnalysisSharingService, IDisposable
             _logger.LogError(ex, "Error sharing analysis");
             throw;
         }
-    }
-
-    public async Task<AnalysisData?> GetSharedAnalysisAsync(string id)
+    }    public async Task<AnalysisData?> GetSharedAnalysisAsync(string id)
     {
+        // Check cache first
+        var cacheKey = $"{CacheKeyPrefix}{id}";
+        if (_memoryCache.TryGetValue(cacheKey, out AnalysisData? cachedAnalysis))
+        {
+            _logger.LogInformation($"Retrieved shared analysis {id} from cache");
+            return cachedAnalysis;
+        }
+
         const int maxRetries = 3;
         var delay = TimeSpan.FromSeconds(3);
         for (var attempt = 1; attempt <= maxRetries; attempt++)
@@ -102,6 +113,17 @@ public class AnalysisSharingService : IAnalysisSharingService, IDisposable
                 {
                     var responseContent = await response.Content.ReadAsStringAsync();
                     var analysisData = JsonSerializer.Deserialize<AnalysisData>(responseContent, _jsonOptions);
+                    
+                    // Cache the result
+                    if (analysisData != null)
+                    {
+                        var cacheOptions = new MemoryCacheEntryOptions()
+                            .SetAbsoluteExpiration(CacheDuration)
+                            .SetPriority(CacheItemPriority.Normal);
+                        _memoryCache.Set(cacheKey, analysisData, cacheOptions);
+                        _logger.LogInformation($"Cached shared analysis {id} for {CacheDuration}");
+                    }
+                    
                     return analysisData;
                 }
             }

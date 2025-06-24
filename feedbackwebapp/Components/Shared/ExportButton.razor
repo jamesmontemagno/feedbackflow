@@ -1,0 +1,147 @@
+@inject SharedDump.Services.Interfaces.IExportService ExportService
+@inject IJSRuntime JSRuntime
+@inject FeedbackWebApp.Services.IToastService ToastService
+@using SharedDump.Models
+@using Microsoft.JSInterop
+
+<div class="dropdown">    
+    <button class="@GetButtonClass()" 
+            type="button" 
+            id="exportDropdown" 
+            data-bs-toggle="dropdown" 
+            aria-expanded="false"
+            aria-haspopup="true"
+            disabled="@(_isExporting || !Items.Any())"            
+            title="@(_isExporting ? "Exporting..." : !Items.Any() ? "No items to export" : "Export analysis data")"
+            aria-label="@(_isExporting ? "Exporting analysis data" : !Items.Any() ? "No items to export" : "Export analysis data")">
+        @if (_isExporting)
+        {
+            <span class="spinner-border spinner-border-sm @(Mini ? "" : "me-2")" role="status" aria-hidden="true"></span>
+            @if (!Mini)
+            {
+                @:Exporting...
+            }
+        }
+        else
+        {
+            <i class="bi bi-download @(Mini ? "" : "me-2")" aria-hidden="true"></i>
+            @if (!Mini)
+            {
+                @:Export
+            }
+        }
+    </button>
+    <ul class="dropdown-menu" aria-labelledby="exportDropdown">
+        <li><h6 class="dropdown-header">Export Format</h6></li>
+        @foreach (var format in GetSupportedFormats())
+        {
+            @if (format == ExportFormat.Csv)
+            {
+                <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Csv)" disabled="@_isExporting"
+                            aria-label="Export as CSV (Comma Separated Values) format">
+                    <i class="bi bi-file-earmark-spreadsheet me-2" aria-hidden="true"></i>CSV
+                </button></li>
+            }
+            else if (format == ExportFormat.Json)
+            {
+                <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Json)" disabled="@_isExporting"
+                            aria-label="Export as JSON (JavaScript Object Notation) format">
+                    <i class="bi bi-file-earmark-code me-2" aria-hidden="true"></i>JSON
+                </button></li>
+            }
+            else if (format == ExportFormat.Pdf)
+            {
+                <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Pdf)" disabled="@_isExporting"
+                            aria-label="Export as PDF (Portable Document Format)">
+                    <i class="bi bi-file-earmark-pdf me-2" aria-hidden="true"></i>PDF
+                </button></li>
+            }
+            else if (format == ExportFormat.Markdown)
+            {
+                <li><button class="dropdown-item" @onclick="() => ExportData(ExportFormat.Markdown)" disabled="@_isExporting"
+                            aria-label="Export as Markdown text format">
+                    <i class="bi bi-file-earmark-text me-2" aria-hidden="true"></i>Markdown
+                </button></li>
+            }
+        }
+    </ul>
+</div>
+
+@code {
+    [Parameter] public IEnumerable<AnalysisHistoryItem> Items { get; set; } = Enumerable.Empty<AnalysisHistoryItem>();
+    [Parameter] public IEnumerable<ExportFormat>? SupportedFormats { get; set; }
+    [Parameter] public string ButtonVariant { get; set; } = "primary"; // "primary", "light", "success", "secondary"
+    [Parameter] public string Size { get; set; } = ""; // "", "sm", "lg"
+    [Parameter] public bool Mini { get; set; } = false; // When true, shows only icon without text
+    
+    private bool _isExporting = false;
+    
+    private IEnumerable<ExportFormat> GetSupportedFormats()
+    {
+        return SupportedFormats ?? new[] { ExportFormat.Csv, ExportFormat.Json, ExportFormat.Pdf, ExportFormat.Markdown };
+    }
+
+    private async Task ExportData(ExportFormat format)
+    {
+        if (_isExporting || !Items.Any())
+            return;
+
+        _isExporting = true;
+        StateHasChanged();
+
+        try
+        {
+            await ToastService.ShowInfoAsync($"Preparing {format} export...", 3000);
+            
+            var stream = await ExportService.ExportAsync(Items, format);
+            var fileExtension = ExportService.GetFileExtension(format);
+            var mimeType = ExportService.GetMimeType(format);
+            var itemCount = Items.Count();
+            var fileName = $"analysis_export_{itemCount}_items_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}{fileExtension}";
+
+            // Convert to byte array for download
+            var bytes = stream.ToArray();
+            
+            // Ensure stream is properly disposed
+            await stream.DisposeAsync();
+            
+            var base64 = Convert.ToBase64String(bytes);
+            var dataUrl = $"data:{mimeType};base64,{base64}";
+
+            // Trigger download via JavaScript
+            await JSRuntime.InvokeVoidAsync("downloadFile", dataUrl, fileName);
+            
+            await ToastService.ShowSuccessAsync($"Export completed! Downloaded {fileName} with {itemCount} items", 5000);
+        }
+        catch (Exception ex)
+        {
+            await ToastService.ShowErrorAsync($"Export failed: {ex.Message}");
+        }
+        finally
+        {
+            _isExporting = false;
+            StateHasChanged();
+        }
+    }    private string GetButtonClass()
+    {
+        var baseClass = "btn dropdown-toggle export-btn action-btn";
+        var variantClass = ButtonVariant switch
+        {
+            "light" => "btn-outline-light",
+            "success" => "btn-outline-success", 
+            "secondary" => "btn-outline-secondary",
+            "primary" => "btn-outline-primary",
+            _ => "btn-outline-primary"
+        };
+        var sizeClass = Size switch
+        {
+            "sm" => "btn-sm",
+            "lg" => "btn-lg", 
+            _ => Mini ? "btn-sm" : "" // Auto-apply small size for mini mode
+        };
+        var miniClass = Mini ? "export-btn-mini" : "";
+        var disabledClass = _isExporting ? "disabled" : "";
+        
+        return $"{baseClass} {variantClass} {sizeClass} {miniClass} {disabledClass}".Trim();
+    }
+}

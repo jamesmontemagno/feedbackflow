@@ -5,6 +5,8 @@ using FeedbackWebApp.Services.ContentFeed;
 using FeedbackWebApp.Services.Feedback;
 using FeedbackWebApp.Services.Interfaces;
 using Microsoft.AspNetCore.Rewrite;
+using SharedDump.Services;
+using SharedDump.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,7 +21,7 @@ builder.Services.AddRazorComponents()
     .AddHubOptions(options =>
     {
         options.EnableDetailedErrors = true;
-        options.MaximumReceiveMessageSize = 204_800; // 200 KB or more
+        options.MaximumReceiveMessageSize = 1_024_000; // 200 KB or more
     });
     
 // Register ToastService and other services
@@ -36,6 +38,7 @@ builder.Services.AddScoped<IReportServiceProvider, ReportServiceProvider>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IHistoryService, HistoryService>();
 builder.Services.AddScoped<IAnalysisSharingService, AnalysisSharingService>();
+builder.Services.AddScoped<IExportService, ExportService>();
 
 var app = builder.Build();
 
@@ -45,7 +48,11 @@ app.MapDefaultEndpoints();
 if (!app.Environment.IsDevelopment())
 {
     
-    app.UseRewriter(new RewriteOptions().AddRedirectToWwwPermanent());
+    
+    if (!app.Environment.IsStaging())
+    {
+        app.UseRewriter(new RewriteOptions().AddRedirectToWwwPermanent());
+    }
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();

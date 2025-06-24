@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.Caching.Memory;
 using SharedDump.Models.Reports;
 
 namespace FeedbackWebApp.Services;
@@ -12,14 +13,17 @@ public class ReportServiceProvider : IReportServiceProvider
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfiguration _configuration;
+    private readonly IMemoryCache _memoryCache;
     private readonly bool _useMockService;
 
     public ReportServiceProvider(
         IHttpClientFactory httpClientFactory,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IMemoryCache memoryCache)
     {
         _httpClientFactory = httpClientFactory;
         _configuration = configuration;
+        _memoryCache = memoryCache;
         _useMockService = configuration.GetValue<bool>("FeedbackApi:UseMocks", false);
     }
 
@@ -28,7 +32,7 @@ public class ReportServiceProvider : IReportServiceProvider
         if (_useMockService)
             return new MockReportService();
 
-        return new ReportService(_httpClientFactory, _configuration);
+        return new ReportService(_httpClientFactory, _configuration, _memoryCache);
     }
 }
 
@@ -97,23 +101,35 @@ public class MockReportService : IReportService
 
 public class ReportService : IReportService
 {
+    private const string ReportsListCacheKeyPrefix = "reports_list_";
+    private const string ReportCacheKeyPrefix = "report_";
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(4); // Cache for 4 hours since reports don't change
+
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
+    private readonly IMemoryCache _memoryCache;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-    public ReportService(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+    public ReportService(IHttpClientFactory httpClientFactory, IConfiguration configuration, IMemoryCache memoryCache)
     {
         _httpClient = httpClientFactory.CreateClient("DefaultClient");
         _configuration = configuration;
+        _memoryCache = memoryCache;
     }
 
     public async Task<IEnumerable<ReportModel>> ListReportsAsync()
     {
         return await ListReportsAsync(null, null);
-    }
-
-    public async Task<IEnumerable<ReportModel>> ListReportsAsync(string? source = null, string? subsource = null)
+    }    public async Task<IEnumerable<ReportModel>> ListReportsAsync(string? source = null, string? subsource = null)
     {
+        // Create cache key based on parameters
+        var cacheKey = $"{ReportsListCacheKeyPrefix}{source ?? "null"}_{subsource ?? "null"}";
+          // Check cache first
+        if (_memoryCache.TryGetValue(cacheKey, out IEnumerable<ReportModel>? cachedReports) && cachedReports != null)
+        {
+            return cachedReports;
+        }
+
         var baseUrl = _configuration["FeedbackApi:BaseUrl"] 
             ?? throw new InvalidOperationException("API base URL not configured");
         var code = _configuration["FeedbackApi:ListReportsCode"]
@@ -131,11 +147,27 @@ public class ReportService : IReportService
 
         var content = await response.Content.ReadAsStringAsync();
         var result = JsonSerializer.Deserialize<ReportsResponse>(content, _jsonOptions);
-        return result?.Reports ?? Enumerable.Empty<ReportModel>();
-    }
+        var reports = (result?.Reports ?? Enumerable.Empty<ReportModel>())
+            .OrderByDescending(r => r.GeneratedAt);
 
-    public async Task<ReportModel?> GetReportAsync(string id)
+        // Cache the result
+        var cacheOptions = new MemoryCacheEntryOptions()
+            .SetAbsoluteExpiration(CacheDuration)
+            .SetPriority(CacheItemPriority.Normal);
+        _memoryCache.Set(cacheKey, reports, cacheOptions);
+
+        return reports;
+    }    public async Task<ReportModel?> GetReportAsync(string id)
     {
+        // Create cache key
+        var cacheKey = $"{ReportCacheKeyPrefix}{id}";
+        
+        // Check cache first
+        if (_memoryCache.TryGetValue(cacheKey, out ReportModel? cachedReport))
+        {
+            return cachedReport;
+        }
+
         var baseUrl = _configuration["FeedbackApi:BaseUrl"] 
             ?? throw new InvalidOperationException("API base URL not configured");
         var code = _configuration["FeedbackApi:GetReportCode"]
@@ -150,7 +182,18 @@ public class ReportService : IReportService
         response.EnsureSuccessStatusCode();
         
         var content = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<ReportModel>(content, _jsonOptions);
+        var report = JsonSerializer.Deserialize<ReportModel>(content, _jsonOptions);
+
+        // Cache the result if it's not null
+        if (report != null)
+        {
+            var cacheOptions = new MemoryCacheEntryOptions()
+                .SetAbsoluteExpiration(CacheDuration)
+                .SetPriority(CacheItemPriority.Normal);
+            _memoryCache.Set(cacheKey, report, cacheOptions);
+        }
+
+        return report;
     }
 
     private class ReportsResponse

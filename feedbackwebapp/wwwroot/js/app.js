@@ -104,6 +104,27 @@ function selectAllText(element) {
 
 window.selectAllText = selectAllText;
 
+// File download utility
+function downloadFile(dataUrl, fileName) {
+    try {
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = fileName;
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        return true;
+    } catch (error) {
+        console.error('Error downloading file:', error);
+        return false;
+    }
+}
+
+window.downloadFile = downloadFile;
+
 document.addEventListener('DOMContentLoaded', () => {
     // Add the toast container to the DOM if it doesn't exist
     if (!document.getElementById('toast-container')) {

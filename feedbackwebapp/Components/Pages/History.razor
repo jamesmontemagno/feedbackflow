@@ -32,19 +32,18 @@
     ContentType="@failedCopyContentType"
     OnClose="@CloseCopyFailedDialog" />
 
-<div class="container-lg py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="container-lg py-4">    <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="feedbackflow-title mb-0">Analysis History</h1>
-        <div class="d-flex align-items-center">
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">            
             @if (historyItems?.Any(h => h.IsShared) == true)
             {
-                <button class="btn btn-info me-2 action-btn px-4 py-2" @onclick="ShowSharedOnly">
+                <button class="btn btn-info header-action-btn" @onclick="ShowSharedOnly">
                     <i class="bi bi-share me-2"></i>Shared
                 </button>
             }
             @if (historyItems is { Count: > 0 })
             {
-                <button class="btn btn-danger clear-all-btn action-btn px-4 py-2" @onclick="ClearHistory">
+                <button class="btn btn-danger clear-all-btn header-action-btn" @onclick="ClearHistory">
                     <i class="bi bi-trash me-2"></i>Clear All
                 </button>
             }
@@ -59,7 +58,7 @@
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
                         <input type="text" class="form-control" id="searchFilter" placeholder="Search through analysis content..." 
-                               @bind="searchTerm" @bind:event="oninput" @bind:after="StateHasChanged" />                        @if (!string.IsNullOrWhiteSpace(searchTerm))
+                               @bind="searchTerm" @bind:event="oninput" @bind:after="HandleSearchChangeAsync" />                        @if (!string.IsNullOrWhiteSpace(searchTerm))
                         {
                             <button class="btn btn-outline-secondary action-btn" type="button" @onclick="ClearSearch">
                                 <i class="bi bi-x-circle"></i>
@@ -125,6 +124,16 @@
     }    
     else if (filteredItems is { Count: > 0 })
     {
+        <div class="mb-3">
+            <small class="text-muted">
+                Showing @filteredItems.Count of @totalItems items
+                @if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    <span> (filtered by search)</span>
+                }
+            </small>
+        </div>
+        
         <div class="list-group" style="overflow-y: auto;">
             <Virtualize Items="filteredItems" Context="item" ItemSize="250">
                 <div class="list-group-item @(item.IsShared ? "shared-item" : "")" @key="item.Id">
@@ -146,46 +155,65 @@
                                     Shared
                                 </span>
                             }
-                        </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="() => HistoryHelper.CopyToClipboard(item, JSRuntime, ToastService, ShowCopyFailedDialog)">
-                                <i class="bi bi-clipboard"></i>
-                            </button>
-                            @if (!item.IsShared)
-                            {                                
-                                @if (isAuthenticated)
-                                {
-                                    <button class="btn btn-sm btn-outline-info action-btn" title="Create Share Link" @onclick="() => ShareAnalysis(item)">
-                                        <i class="bi bi-share"></i>
-                                        Share
+                        </div>                        
+                        <ActionMenu>
+                            <ChildContent>
+                                <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="() => HistoryHelper.CopyToClipboard(item, JSRuntime, ToastService, ShowCopyFailedDialog)">
+                                    <i class="bi bi-clipboard"></i> Copy
+                                </button>
+                                @if (!item.IsShared)
+                                {            
+                                    <button class="btn btn-sm btn-outline-success action-btn" title="Create Share Link" @onclick="() => ShareAnalysis(item)">
+                                        <i class="bi bi-share"></i> Share
                                     </button>
                                 }
                                 else
                                 {
-                                    <button class="btn btn-sm btn-outline-primary action-btn" title="Login to Share" @onclick="NavigateToLogin">
-                                        <i class="bi bi-box-arrow-in-right"></i>
-                                        Login
+                                    <button class="btn btn-sm btn-outline-success action-btn" title="Copy Share Link" @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
+                                        <i class="bi bi-link-45deg"></i> Copy Link
                                     </button>
+                                }                            
+                                @if(item.SourceType != "Manual")
+                                {
+                                    <a class="btn btn-sm btn-outline-secondary action-btn" title="Open Link" target="_blank" rel="noopener noreferrer" href="@HistoryHelper.GetSourceUrl(item)">
+                                        <i class="bi bi-box-arrow-up-right"></i> Open Link
+                                    </a>
                                 }
-                            }
-                            else
-                            {
-                                <button class="btn btn-sm btn-outline-info action-btn" title="Copy Share Link" @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
-                                    <i class="bi bi-link-45deg"></i>
-                                    Copy Link
+                                <button class="btn btn-sm btn-outline-danger action-btn" title="Delete" @onclick="() => ConfirmDelete(item.Id)">
+                                    <i class="bi bi-trash"></i> Delete
                                 </button>
-                            }                            @if(item.SourceType != "Manual")
-                            {
-                                <a class="btn btn-sm btn-outline-primary action-btn" title="Open Source" target="_blank" rel="noopener noreferrer" href="@HistoryHelper.GetSourceUrl(item)">
-                                    <i class="bi bi-box-arrow-up-right"></i>
-                                </a>
-                            }
-                            <button class="btn btn-sm btn-outline-danger action-btn" title="Delete" @onclick="() => ConfirmDelete(item.Id)">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
+                            </ChildContent>
+                            <SecondaryActions>
+                                <li><button class="dropdown-item" @onclick="() => HistoryHelper.CopyToClipboard(item, JSRuntime, ToastService, ShowCopyFailedDialog)">
+                                    <i class="bi bi-clipboard"></i> Copy Analysis
+                                </button></li>
+                                @if (!item.IsShared)
+                                {       
+                                    <li><button class="dropdown-item" @onclick="() => ShareAnalysis(item)">
+                                        <i class="bi bi-share"></i> Share
+                                    </button></li>
+                                }
+                                else
+                                {
+                                    <li><button class="dropdown-item" @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
+                                        <i class="bi bi-link-45deg"></i> Copy Share Link
+                                    </button></li>
+                                }                            
+                                @if(item.SourceType != "Manual")
+                                {
+                                    <li><a class="dropdown-item" target="_blank" rel="noopener noreferrer" href="@HistoryHelper.GetSourceUrl(item)">
+                                        <i class="bi bi-box-arrow-up-right"></i> Open Link
+                                    </a></li>
+                                }
+                                <li><hr class="dropdown-divider"></li>
+                                <li><button class="dropdown-item text-danger" @onclick="() => ConfirmDelete(item.Id)">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button></li>
+                            </SecondaryActions>
+                        </ActionMenu>
                     </div>
-                                          @if (!string.IsNullOrWhiteSpace(item.UserInput) && item.SourceType != "Manual")
+                                          
+                    @if (!string.IsNullOrWhiteSpace(item.UserInput) && item.SourceType != "Manual")
                     {
                         <div class="user-input mb-3">
                             <strong>Input:</strong>
@@ -246,6 +274,24 @@
                 </div>
             </Virtualize>
         </div>
+        
+        @if (hasMoreItems)
+        {
+            <div class="text-center mt-4">
+                <button class="btn btn-outline-primary" @onclick="LoadMoreItemsAsync" disabled="@isLoadingMore">
+                    @if (isLoadingMore)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span>Loading...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-arrow-down-circle me-2"></i>
+                        <span>Load More (@LoadMorePageSize more items)</span>
+                    }
+                </button>
+            </div>
+        }
     }
 </div>
 
@@ -260,6 +306,15 @@
     private string searchTerm = string.Empty;
     private bool isProcessingShare = false;
     private bool isAuthenticated = false;
+    
+    // Pagination state
+    private const int InitialPageSize = 5;
+    private const int LoadMorePageSize = 10;
+    private int currentPageSize = InitialPageSize;
+    private int totalItems = 0;
+    private bool hasMoreItems = true;
+    private bool isLoadingMore = false;
+    private string lastSearchTerm = string.Empty;
 
     // Confirmation dialog state
     private bool isConfirmationDialogVisible;
@@ -278,7 +333,19 @@
         if (firstRender)
         {
             isAuthenticated = await AuthService.IsAuthenticatedAsync();
-            historyItems = await HistoryService.GetHistoryAsync();
+            await LoadInitialHistoryAsync();
+            StateHasChanged();
+        }
+    }
+    
+    private async Task LoadInitialHistoryAsync()
+    {
+        try
+        {
+            // Load the first page of items
+            historyItems = await HistoryService.GetHistoryPagedAsync(0, currentPageSize, null);
+            totalItems = await HistoryService.GetHistoryCountAsync(null);
+            hasMoreItems = historyItems?.Count >= currentPageSize && (historyItems?.Count < totalItems);
             
             // Check for expired shared items
             if (historyItems?.Any(h => h.IsShared) == true)
@@ -299,17 +366,33 @@
                 
                 if (expiredItems.Any())
                 {
-                    historyItems = await HistoryService.GetHistoryAsync();
+                    // Reload the data if we updated any items
+                    historyItems = await HistoryService.GetHistoryPagedAsync(0, currentPageSize, null);
+                    totalItems = await HistoryService.GetHistoryCountAsync(null);
                 }
             }
-            
-            StateHasChanged();
+        }
+        catch (Exception)
+        {
+            // Fallback to empty list if something goes wrong
+            historyItems = new List<AnalysisHistoryItem>();
+            totalItems = 0;
+            hasMoreItems = false;
         }
     }    private async Task DeleteItem(string id)
     {
         await HistoryService.DeleteHistoryItemAsync(id);
-        historyItems = await HistoryService.GetHistoryAsync();
         expandedItems.Remove(id);
+        
+        // Remove item from current list and update totals
+        if (historyItems != null)
+        {
+            historyItems.RemoveAll(item => item.Id == id);
+            totalItems = Math.Max(0, totalItems - 1);
+            hasMoreItems = historyItems.Count < totalItems;
+        }
+        
+        StateHasChanged();
     }    
 
     private Task ClearHistory()
@@ -323,6 +406,8 @@
             {
                 await HistoryService.ClearHistoryAsync();
                 historyItems = new();
+                totalItems = 0;
+                hasMoreItems = false;
                 expandedItems.Clear();
             });
     }
@@ -397,10 +482,76 @@
         searchTerm = string.Empty;
     }
 
-    private void ClearSearch()
+    private async Task LoadMoreItemsAsync()
+    {
+        if (isLoadingMore || !hasMoreItems || historyItems == null)
+            return;
+
+        isLoadingMore = true;
+        StateHasChanged();
+
+        try
+        {
+            var searchTermToUse = string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm.Trim();
+            var moreItems = await HistoryService.GetHistoryPagedAsync(historyItems.Count, LoadMorePageSize, searchTermToUse);
+            
+            if (moreItems.Any())
+            {
+                historyItems.AddRange(moreItems);
+                hasMoreItems = historyItems.Count < totalItems;
+            }
+            else
+            {
+                hasMoreItems = false;
+            }
+        }
+        catch (Exception)
+        {
+            // If loading more fails, just stop trying
+            hasMoreItems = false;
+        }
+        finally
+        {
+            isLoadingMore = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleSearchChangeAsync()
+    {
+        // If search term changed, reload from beginning
+        if (lastSearchTerm != searchTerm)
+        {
+            lastSearchTerm = searchTerm;
+            await LoadNewSearchResultsAsync();
+        }
+    }
+
+    private async Task LoadNewSearchResultsAsync()
+    {
+        try
+        {
+            var searchTermToUse = string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm.Trim();
+            
+            historyItems = await HistoryService.GetHistoryPagedAsync(0, currentPageSize, searchTermToUse);
+            totalItems = await HistoryService.GetHistoryCountAsync(searchTermToUse);
+            hasMoreItems = historyItems?.Count >= currentPageSize && (historyItems?.Count < totalItems);
+            
+            StateHasChanged();
+        }
+        catch (Exception)
+        {
+            historyItems = new List<AnalysisHistoryItem>();
+            totalItems = 0;
+            hasMoreItems = false;
+        }
+    }
+
+    private async Task ClearSearch()
     {
         searchTerm = string.Empty;
-        StateHasChanged();
+        lastSearchTerm = string.Empty;
+        await LoadNewSearchResultsAsync();
     }
 
     private void ShowSharedOnly()
@@ -467,12 +618,11 @@
         await ToastService.ShowInfoAsync("Creating share link...", 3000);
 
         try
-        {
-            var analysisData = new AnalysisData
+        {            var analysisData = new AnalysisData
             {
                 Id = item.Id,
                 Title = $"{item.SourceType} Analysis",
-                Summary = item.Summary,
+                Summary = item.Summary, // Using the computed property
                 FullAnalysis = item.FullAnalysis,
                 SourceType = item.SourceType,
                 UserInput = item.UserInput,
@@ -491,8 +641,17 @@
             }
             
             await SharingService.UpdateHistoryItemWithShareInfoAsync(item.Id, sharedId);
-              // Refresh the history list
-            historyItems = await HistoryService.GetHistoryAsync();
+              // Refresh the current item in the list
+            var itemIndex = historyItems?.FindIndex(h => h.Id == item.Id);
+            if (itemIndex >= 0 && historyItems != null)
+            {
+                var updatedHistoryItems = await HistoryService.GetHistoryPagedAsync(0, historyItems.Count, string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm.Trim());
+                var updatedItem = updatedHistoryItems.FirstOrDefault(h => h.Id == item.Id);
+                if (updatedItem != null)
+                {
+                    historyItems[itemIndex.Value] = updatedItem;
+                }
+            }
               // Trigger confetti and show success message
             var confettiOptions = new { particleCount = 100, spread = 70, origin = new { y = 0.6 } };
             await JSRuntime.InvokeVoidAsync("confetti", confettiOptions);
