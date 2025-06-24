@@ -72,7 +72,9 @@ public class FeedbackAnalyzerService : IFeedbackAnalyzerService
         {
             yield return update.ToString();
         }
-    }    public static string GetServiceSpecificPrompt(string serviceType) =>
+    }    
+    
+    public static string GetServiceSpecificPrompt(string serviceType) =>
         serviceType.ToLowerInvariant() switch
         {
             "youtube" => @"# 🎬 YouTube Comments Analysis Expert
