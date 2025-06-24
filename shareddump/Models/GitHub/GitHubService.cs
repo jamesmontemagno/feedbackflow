@@ -1073,8 +1073,12 @@ public class GitHubService
                     {
                         Id = node.GetProperty("id").GetString() ?? "",
                         Title = node.GetProperty("title").GetString() ?? "",
-                        CommentsCount = node.GetProperty("comments").GetProperty("totalCount").GetInt32(),
-                        ReactionsCount = node.GetProperty("reactions").GetProperty("totalCount").GetInt32(),
+                        CommentsCount = node.TryGetProperty("comments", out var commentsElement) && commentsElement.TryGetProperty("totalCount", out var commentsCountElement)
+                            ? commentsCountElement.GetInt32()
+                            : 0,
+                        ReactionsCount = node.TryGetProperty("reactions", out var reactionsElement) && reactionsElement.TryGetProperty("totalCount", out var reactionsCountElement)
+                            ? reactionsCountElement.GetInt32()
+                            : 0,
                         Url = node.GetProperty("url").GetString() ?? "",
                         CreatedAt = DateTime.Parse(node.GetProperty("createdAt").GetString() ?? DateTime.UtcNow.ToString()),
                         State = node.GetProperty("state").GetString() ?? "",
