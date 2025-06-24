@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using SharedDump.Json;
 
 namespace SharedDump.Models.GitHub;
@@ -1057,38 +1058,46 @@ public class GitHubService
                 var edgesElement = issuesElement.GetProperty("edges");
                 foreach (var edge in edgesElement.EnumerateArray())
                 {
-                    var node = edge.GetProperty("node");
-                    
-                    var labels = new List<string>();
-                    if (node.TryGetProperty("labels", out var labelsElement))
+                    try
                     {
-                        var labelsNodes = labelsElement.GetProperty("nodes");
-                        foreach (var labelNode in labelsNodes.EnumerateArray())
+                        var node = edge.GetProperty("node");
+                        
+                        var labels = new List<string>();
+                        if (node.TryGetProperty("labels", out var labelsElement))
                         {
-                            labels.Add(labelNode.GetProperty("name").GetString() ?? "");
+                            var labelsNodes = labelsElement.GetProperty("nodes");
+                            foreach (var labelNode in labelsNodes.EnumerateArray())
+                            {
+                                labels.Add(labelNode.GetProperty("name").GetString() ?? "");
+                            }
                         }
+
+                        var issueSummary = new GithubIssueSummary
+                        {
+                            Id = node.GetProperty("id").GetString() ?? "",
+                            Title = node.GetProperty("title").GetString() ?? "",
+                            CommentsCount = node.TryGetProperty("comments", out var commentsElement) && commentsElement.TryGetProperty("totalCount", out var commentsCountElement)
+                                ? commentsCountElement.GetInt32()
+                                : 0,
+                            ReactionsCount = node.TryGetProperty("reactions", out var reactionsElement) && reactionsElement.TryGetProperty("totalCount", out var reactionsCountElement)
+                                ? reactionsCountElement.GetInt32()
+                                : 0,
+                            Url = node.GetProperty("url").GetString() ?? "",
+                            CreatedAt = DateTime.Parse(node.GetProperty("createdAt").GetString() ?? DateTime.UtcNow.ToString()),
+                            State = node.GetProperty("state").GetString() ?? "",
+                            Author = node.TryGetProperty("author", out var authorElement) && authorElement.ValueKind != JsonValueKind.Null && authorElement.TryGetProperty("login", out var loginElement) 
+                                ? loginElement.GetString() ?? "unknown" 
+                                : "unknown",
+                            Labels = labels
+                        };
+
+                        issuesList.Add(issueSummary);
                     }
-
-                    var issueSummary = new GithubIssueSummary
+                    catch (Exception)
                     {
-                        Id = node.GetProperty("id").GetString() ?? "",
-                        Title = node.GetProperty("title").GetString() ?? "",
-                        CommentsCount = node.TryGetProperty("comments", out var commentsElement) && commentsElement.TryGetProperty("totalCount", out var commentsCountElement)
-                            ? commentsCountElement.GetInt32()
-                            : 0,
-                        ReactionsCount = node.TryGetProperty("reactions", out var reactionsElement) && reactionsElement.TryGetProperty("totalCount", out var reactionsCountElement)
-                            ? reactionsCountElement.GetInt32()
-                            : 0,
-                        Url = node.GetProperty("url").GetString() ?? "",
-                        CreatedAt = DateTime.Parse(node.GetProperty("createdAt").GetString() ?? DateTime.UtcNow.ToString()),
-                        State = node.GetProperty("state").GetString() ?? "",
-                        Author = node.TryGetProperty("author", out var authorElement) && authorElement.TryGetProperty("login", out var loginElement) 
-                            ? loginElement.GetString() ?? "unknown" 
-                            : "unknown",
-                        Labels = labels
-                    };
-
-                    issuesList.Add(issueSummary);
+                        // Skip problematic issues and continue processing
+                        continue;
+                    }
                 }
 
                 var pageInfo = issuesElement.GetProperty("pageInfo");

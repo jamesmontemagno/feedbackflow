@@ -317,7 +317,7 @@ Keep each section very brief and focused. Total analysis should be no more than 
             }
 
             // Rank issues by engagement (comments + reactions)
-            var topIssues = GitHubIssuesUtils.RankIssuesByEngagement(issues, 5);
+            var topIssues = GitHubIssuesUtils.RankIssuesByEngagement(issues, 8);
             _logger.LogInformation("Selected top {TopIssueCount} issues for detailed analysis", topIssues.Count);
 
             // Create tasks for parallel processing of each issue
@@ -369,6 +369,10 @@ Keep each section very brief and focused. Total analysis should be no more than 
             var enhancedOverallAnalysis = await _analyzerService.AnalyzeCommentsAsync("github", overallAnalysis, customWeeklyPrompt);
             _logger.LogDebug("Overall analysis completed");
 
+            // Get oldest important issues that are still being discussed
+            var oldestImportantIssues = GitHubIssuesUtils.GetOldestImportantIssues(issues, 3);
+            _logger.LogInformation("Found {OldestIssueCount} oldest important issues", oldestImportantIssues.Count);
+
             _logger.LogInformation("Creating GitHub issues report model");
             var report = new ReportModel
             {
@@ -386,6 +390,7 @@ Keep each section very brief and focused. Total analysis should be no more than 
                 endDate,
                 enhancedOverallAnalysis,
                 topIssueInfos.ToList(),
+                oldestImportantIssues,
                 report.Id.ToString());
 
             var processingTime = DateTime.UtcNow - startTime;
