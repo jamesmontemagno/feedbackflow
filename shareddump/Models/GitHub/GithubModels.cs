@@ -22,6 +22,37 @@ public class GithubIssueModel
     public required GithubCommentModel[] Comments { get; set; }
 }
 
+public class GithubIssueSummary
+{
+    public required string Id { get; set; }
+    public required string Title { get; set; }
+    public required int CommentsCount { get; set; }
+    public required int ReactionsCount { get; set; }
+    public required string Url { get; set; }
+    public required DateTime CreatedAt { get; set; }
+    public required string State { get; set; }
+    public required string Author { get; set; }
+    public required IEnumerable<string> Labels { get; set; }
+}
+
+public class GithubIssueDetail
+{
+    public required GithubIssueSummary Summary { get; set; }
+    public required string DeepAnalysis { get; set; }
+    public required string Body { get; set; }
+    public required GithubCommentModel[] Comments { get; set; }
+}
+
+public class GithubIssuesReport
+{
+    public required string RepoName { get; set; }
+    public required string DateRange { get; set; }
+    public required string OverallAnalysis { get; set; }
+    public required List<GithubIssueDetail> TopIssues { get; set; }
+    public required int TotalIssuesCount { get; set; }
+    public required DateTime GeneratedAt { get; set; }
+}
+
 public class GithubCommentModel
 {
     public required string Id { get; set; }
