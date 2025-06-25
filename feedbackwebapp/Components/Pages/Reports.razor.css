@@ -5,6 +5,45 @@
     gap: 1.5rem;
 }
 
+/* Source filter toggle styling */
+.source-toggle-container {
+    margin-bottom: 0.5rem;
+}
+
+.source-toggle-container .btn-group {
+    border-radius: var(--border-radius);
+    display: flex;
+}
+
+.source-toggle-container .btn-outline-primary {
+    flex: 1;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+/* Source badge styling */
+.source-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    display: inline-flex;
+    align-items: center;
+    text-transform: capitalize;
+    font-weight: 500;
+}
+
+.source-badge.reddit {
+    background-color: rgba(255, 69, 0, 0.1);
+    color: #ff4500;
+}
+
+.source-badge.github {
+    background-color: rgba(36, 41, 46, 0.1);
+    color: var(--github-color);
+}
+
 /* Report item cards */
 .report-item {
     background-color: var(--bg-secondary);
@@ -38,17 +77,6 @@
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
-}
-
-.source-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.35rem 0.75rem;
-    border-radius: var(--border-radius-pill);
-    font-size: 0.875rem;
-    font-weight: 600;
-    background: var(--primary-gradient);
-    color: white;
 }
 
 .report-sub-source {
@@ -338,6 +366,50 @@
     margin-left: auto;
     background: var(--primary-color);
     opacity: 0.2;
+}
+
+/* Active filters indicator */
+.active-filters {
+    margin-top: -0.5rem;
+}
+
+.filter-indicator {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.filter-label {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-right: 0.5rem;
+}
+
+.filter-badge {
+    display: inline-flex;
+    align-items: center;
+    background: var(--primary-gradient);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 2rem;
+    font-weight: 500;
+}
+
+.filter-badge .btn-close {
+    width: 0.7em;
+    height: 0.7em;
+    margin-left: 0.5rem;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.filter-badge .btn-close:hover {
+    opacity: 1;
 }
 
 /* Responsive adjustments */

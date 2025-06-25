@@ -26,23 +26,75 @@
                 <div class="row g-3">
                     <div class="col-12 col-md-4">
                         <div class="filter-group">
-                            <label class="form-label">SubSource</label>
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="bi bi-filter"></i>
-                                </span>
-                                <select class="form-select" @bind="selectedSubSource">
-                                    <option value="">All SubSources</option>
-                                    @foreach (var subSource in subSources)
-                                    {
-                                        <option value="@subSource">@subSource</option>
-                                    }
-                                </select>
+                            <label class="form-label">Source</label>
+                            <div class="source-toggle-container">
+                                <div class="btn-group w-100" role="group" aria-label="Source filter">
+                                    <input type="radio" class="btn-check" name="source-filter" id="source-all" autocomplete="off" 
+                                           checked="@(selectedSource == "")" @onclick="@(() => SelectSource(""))">
+                                    <label class="btn btn-outline-primary" for="source-all">All</label>
+
+                                    <input type="radio" class="btn-check" name="source-filter" id="source-github" autocomplete="off" 
+                                           checked="@(selectedSource == "github")" @onclick="@(() => SelectSource("github"))">
+                                    <label class="btn btn-outline-primary" for="source-github">
+                                        <i class="bi bi-github me-1"></i> GitHub
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="source-filter" id="source-reddit" autocomplete="off" 
+                                           checked="@(selectedSource == "reddit")" @onclick="@(() => SelectSource("reddit"))">
+                                    <label class="btn btn-outline-primary" for="source-reddit">
+                                        <i class="bi bi-reddit me-1"></i> Reddit
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    @if (!string.IsNullOrEmpty(selectedSource) && FilteredSubSources.Any())
+                    {
+                        <div class="col-12 col-md-4">
+                            <div class="filter-group">
+                                <label class="form-label">SubSource</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-filter"></i>
+                                    </span>
+                                    <select class="form-select" @bind="selectedSubSource">
+                                        <option value="">All @(selectedSource) SubSources</option>
+                                        @foreach (var subSource in FilteredSubSources)
+                                        {
+                                            <option value="@subSource">@subSource</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    }
                 </div>
             </div>
+            
+            @if (!string.IsNullOrEmpty(selectedSource) || !string.IsNullOrEmpty(selectedSubSource))
+            {
+                <div class="active-filters mb-3">
+                    <div class="filter-indicator">
+                        <span class="filter-label">Active filters:</span>
+                        @if (!string.IsNullOrEmpty(selectedSource))
+                        {
+                            <span class="badge filter-badge">
+                                <i class="bi @(selectedSource == "github" ? "bi-github" : "bi-reddit") me-1"></i>
+                                @selectedSource
+                                <button type="button" class="btn-close btn-close-white" aria-label="Clear source filter" @onclick="@(() => SelectSource(""))"></button>
+                            </span>
+                        }
+                        @if (!string.IsNullOrEmpty(selectedSubSource))
+                        {
+                            <span class="badge filter-badge">
+                                <i class="bi bi-tag me-1"></i>
+                                @selectedSubSource
+                                <button type="button" class="btn-close btn-close-white" aria-label="Clear subsource filter" @onclick="@(() => selectedSubSource = "")"></button>
+                            </span>
+                        }
+                    </div>
+                </div>
+            }
         }
         <div class="card mb-4">
             <div class="card-header">
@@ -133,7 +185,7 @@
                                     <tr>
                                         <td>
                                             <a href="/reports/@Uri.EscapeDataString(report.Source)" class="source-link text-decoration-none">
-                                                <span class="source-badge">
+                                                <span class="source-badge @report.Source.ToLowerInvariant()">
                                                     <i class="bi @HistoryHelper.GetServiceIcon(report.Source) me-1"></i>
                                                     @report.Source
                                                 </span>
@@ -179,14 +231,32 @@
     private bool loading = true;
     private bool isAuthenticated = false;
     private IEnumerable<ReportModel>? reports;
+    private string selectedSource = "";
     private string selectedSubSource = "";
     private HashSet<string> subSources = new();
     private IReportService? _reportService;
+    
+    private IEnumerable<string> FilteredSubSources => 
+        reports?
+            .Where(r => string.IsNullOrEmpty(selectedSource) || 
+                       r.Source.Equals(selectedSource, StringComparison.OrdinalIgnoreCase))
+            .Select(r => r.SubSource)
+            .Distinct()
+            .OrderBy(s => s) ?? 
+        Enumerable.Empty<string>();
 
     private IEnumerable<ReportModel> FilteredReports =>
         reports?.Where(r =>
+            (string.IsNullOrEmpty(selectedSource) || r.Source.Equals(selectedSource, StringComparison.OrdinalIgnoreCase)) &&
             (string.IsNullOrEmpty(selectedSubSource) || r.SubSource == selectedSubSource)
         ) ?? Enumerable.Empty<ReportModel>();
+        
+    private void SelectSource(string source)
+    {
+        selectedSource = source;
+        selectedSubSource = ""; // Reset the subsource filter when source changes
+        StateHasChanged(); // Ensure UI updates
+    }
 
     protected override void OnInitialized()
     {
@@ -211,6 +281,7 @@
             loading = true;
             errorMessage = null;
             reports = await _reportService!.ListReportsAsync();
+            // We'll keep this for backwards compatibility
             subSources = reports.Select(r => r.SubSource).ToHashSet();
         }
         catch (Exception ex)

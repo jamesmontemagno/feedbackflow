@@ -18,6 +18,7 @@
     --danger-color: #f3a5b1;
     --danger-color-rgb: 243, 165, 177;
     --warning-color: #f8d3a5;
+    --github-color: #24292e;
     --warning-color-rgb: 248, 211, 165;
     --info-color: #a2c1f3;
     --info-color-rgb: 162, 193, 243;
@@ -52,6 +53,7 @@
     --danger-color-rgb: 231, 135, 149;
     --warning-color: #e7bf85;
     --warning-color-rgb: 231, 191, 133;
+    --github-color: #c9d1d9;
     --info-color: #85a5e7;
     --info-color-rgb: 133, 165, 231;
     --code-bg: rgba(165, 139, 216, 0.15);
