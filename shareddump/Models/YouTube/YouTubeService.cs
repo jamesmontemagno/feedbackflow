@@ -1,10 +1,11 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using SharedDump.Json;
+using SharedDump.Services.Interfaces;
 
 namespace SharedDump.Models.YouTube;
 
-public class YouTubeService
+public class YouTubeService : IYouTubeService
 {
     private readonly HttpClient _client;
     private readonly string _apiKey;

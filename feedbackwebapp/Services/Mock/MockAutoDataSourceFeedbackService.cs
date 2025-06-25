@@ -1,5 +1,6 @@
 using FeedbackWebApp.Services.Feedback;
 using FeedbackWebApp.Services.Interfaces;
+using SharedDump.Services.Mock;
 
 namespace FeedbackWebApp.Services.Mock;
 
@@ -58,43 +59,8 @@ Comments:
         // Use provided comment count or calculate
         int totalComments = commentCount ?? comments.Split('\n').Count(line => line.Trim().StartsWith('-'));
 
-        var mockAnalysis = @$"# Multi-Source Feedback Analysis 📊
-
-## Overview
-Analysis of {totalComments} feedback items aggregated from multiple sources including YouTube, GitHub, and Dev.to.
-
-## Key Themes 🎯
-
-### Feature Requests
-1. **Platform Integrations**
-   - Slack integration highly requested
-   - Microsoft Teams integration suggested
-   - Custom data source support inquired
-
-### User Experience
-- Tutorial content well-received
-- Clear examples appreciated
-- Setup process deemed straightforward
-
-### Technical Concerns
-- Questions about scalability
-- Interest in custom integration options
-
-## Engagement Statistics 📈
-- Total sources analyzed: 3
-- Total comments processed: {totalComments}
-- Average sentiment: Positive
-
-## Recommendations 💡
-1. Consider prioritizing Slack integration
-2. Address scalability questions in documentation
-3. Highlight custom integration capabilities
-4. Plan follow-up content on advanced features
-
-## Source Breakdown
-- YouTube: Tutorial engagement positive
-- GitHub: Integration requests dominant
-- Dev.to: Technical queries prevalent";
+        // Use shared mock analysis provider - using default for multi-source
+        var mockAnalysis = MockAnalysisProvider.GetMockAnalysis("default", totalComments, "# Multi-Source Feedback Analysis 📊");
 
         return (mockAnalysis, additionalData);
     }

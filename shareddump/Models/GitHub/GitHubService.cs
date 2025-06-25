@@ -2,10 +2,11 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using SharedDump.Json;
+using SharedDump.Services.Interfaces;
 
 namespace SharedDump.Models.GitHub;
 
-public class GitHubService
+public class GitHubService : IGitHubService
 {
     private readonly HttpClient _client;
     private readonly string _accessToken;

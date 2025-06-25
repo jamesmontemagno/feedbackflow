@@ -1,6 +1,7 @@
 using FeedbackWebApp.Services.Feedback;
 using FeedbackWebApp.Services.Interfaces;
 using SharedDump.Models.TwitterFeedback;
+using SharedDump.Services.Mock;
 
 namespace FeedbackWebApp.Services.Mock;
 
@@ -99,58 +100,8 @@ public class MockTwitterFeedbackService : FeedbackService, ITwitterFeedbackServi
         var feedback = additionalData as TwitterFeedbackResponse;
         var totalComments = commentCount ?? feedback?.Items.Sum(i => 1 + (i.Replies?.Count ?? 0)) ?? 0;
 
-        var mockAnalysis = @$"# Twitter/X Feedback Analysis 🐦
-
-## Overview
-Total Engagements: {totalComments} tweets and replies
-Platform: Twitter/X
-Time Range: Last 4 hours
-
-## Key Themes 🎯
-
-### Performance & Features
-- Positive response to performance improvements
-- Interest in handling large datasets
-- New features well-received
-
-### User Adoption
-- Product teams implementing for feedback analysis
-- Active engagement from developers
-- Strong cross-role interest (developers, product managers)
-
-## User Categories 👥
-1. Developers
-   - Focus on performance metrics
-   - Technical implementation questions
-2. Product Teams
-   - Using for regular feedback review
-   - Feature prioritization use case
-3. Early Adopters
-   - Strong enthusiasm
-   - Sharing success stories
-
-## Engagement Metrics 📊
-- Direct feedback: {feedback?.Items.Count ?? 0} tweets
-- Community discussion: {feedback?.Items.Sum(i => i.Replies?.Count ?? 0) ?? 0} replies
-- Strong positive sentiment
-
-## Key Insights 💡
-- Performance improvements resonating with users
-- Product teams finding value
-- Developers interested in technical details
-- Positive feedback on performance improvements
-
-## Recommendations 📋
-1. Share more performance metrics
-2. Highlight use cases in documentation
-3. Consider creating case studies
-4. Continue engaging with technical queries
-
-### Future Engagement
-- Monitor for feature requests
-- Track performance feedback
-- Share success stories
-- Engage with product teams";
+        // Use shared mock analysis provider
+        var mockAnalysis = MockAnalysisProvider.GetMockAnalysis("twitter", totalComments);
 
         return (mockAnalysis, feedback);
     }

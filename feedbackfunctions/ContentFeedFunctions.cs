@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using SharedDump.Models.HackerNews;
 using SharedDump.Models.YouTube;
 using SharedDump.Models.Reddit;
+using SharedDump.Services.Interfaces;
 
 namespace FeedbackFunctions;
 
@@ -21,45 +22,28 @@ namespace FeedbackFunctions;
 public class ContentFeedFunctions
 {
     private readonly ILogger<ContentFeedFunctions> _logger;
-    private readonly IConfiguration _configuration;
-    private readonly HackerNewsService _hnService;
-    private readonly YouTubeService _ytService;
-    private readonly RedditService _redditService;
+    private readonly IHackerNewsService _hnService;
+    private readonly IYouTubeService _ytService;
+    private readonly IRedditService _redditService;
     private static readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(10);
 
     /// <summary>
     /// Initializes a new instance of the ContentFeedFunctions class
     /// </summary>
     /// <param name="logger">Logger for diagnostic information</param>
-    /// <param name="configuration">Application configuration</param>
-    /// <param name="httpClientFactory">HTTP client factory for creating named clients</param>
+    /// <param name="hackerNewsService">HackerNews service for story operations</param>
+    /// <param name="youtubeService">YouTube service for video operations</param>
+    /// <param name="redditService">Reddit service for thread operations</param>
     public ContentFeedFunctions(
         ILogger<ContentFeedFunctions> logger,
-        IConfiguration configuration,
-        IHttpClientFactory httpClientFactory)
+        IHackerNewsService hackerNewsService,
+        IYouTubeService youtubeService,
+        IRedditService redditService)
     {
-#if DEBUG
-
-        _configuration = new ConfigurationBuilder()
-                    .AddJsonFile("local.settings.json")
-                    .AddUserSecrets<Program>()
-                    .Build();
-#else
-
-        _configuration = configuration;
-#endif
         _logger = logger;
-        
-        _hnService = new HackerNewsService(httpClientFactory.CreateClient("HackerNews"));
-        
-        var ytApiKey = _configuration["YouTube:ApiKey"];
-        _ytService = new YouTubeService(ytApiKey ?? throw new InvalidOperationException("YouTube API key not configured"), httpClientFactory.CreateClient("YouTube"));
-
-        var redditClientId = _configuration["Reddit:ClientId"];
-        var redditClientSecret = _configuration["Reddit:ClientSecret"];
-        _redditService = new RedditService(
-            redditClientId ?? throw new InvalidOperationException("Reddit client ID not configured"),
-            redditClientSecret ?? throw new InvalidOperationException("Reddit client secret not configured"), httpClientFactory.CreateClient("Reddit"));
+        _hnService = hackerNewsService;
+        _ytService = youtubeService;
+        _redditService = redditService;
     }
 
     /// <summary>

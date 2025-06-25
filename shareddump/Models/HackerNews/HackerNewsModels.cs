@@ -30,3 +30,27 @@ public class HackerNewsItemBasicInfo
     public int Score { get; set; }
     public int Descendants { get; set; }
 }
+
+public class HackerNewsStory
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Url { get; set; }
+    public int Score { get; set; }
+    public string By { get; set; } = string.Empty;
+    public long Time { get; set; }
+    public int Descendants { get; set; }
+    public string Type { get; set; } = "story";
+    public int[]? Kids { get; set; }
+}
+
+public class HackerNewsComment
+{
+    public int Id { get; set; }
+    public string By { get; set; } = string.Empty;
+    public int Parent { get; set; }
+    public string Text { get; set; } = string.Empty;
+    public long Time { get; set; }
+    public string Type { get; set; } = "comment";
+    public int[]? Kids { get; set; }
+}
