@@ -21,7 +21,7 @@
         <div class="reports-header">
             <div class="reports-header-title">
                 <h1 class="feedbackflow-title mb-2">Unsupported Source</h1>
-                <p class="text-muted mb-0">Only Reddit reports are currently supported</p>
+                <p class="text-muted mb-0">Only Reddit and GitHub reports are currently supported</p>
             </div>
             <a href="/reports" class="btn btn-outline-primary">
                 <i class="bi bi-arrow-left me-2"></i>
@@ -37,18 +37,23 @@
                 </div>
             </div>
             <div class="card-body text-center py-5">
-                <div class="mb-4">
+                <div class="mb-4 d-flex justify-content-center gap-4">
                     <i class="bi bi-reddit text-danger" style="font-size: 4rem;"></i>
+                    <i class="bi bi-github text-dark" style="font-size: 4rem;"></i>
                 </div>
-                <h3 class="mb-3">Reddit Reports Only</h3>
+                <h3 class="mb-3">Reddit and GitHub Reports Only</h3>
                 <p class="text-muted mb-4">
-                    The filtered reports feature is currently limited to Reddit content only. 
+                    The filtered reports feature is currently limited to Reddit and GitHub content only. 
                     We're working on expanding support for other platforms.
                 </p>
                 <div class="d-flex justify-content-center gap-3 flex-wrap">
                     <a href="/reports/reddit" class="btn btn-primary">
                         <i class="bi bi-reddit me-2"></i>
                         View Reddit Reports
+                    </a>
+                    <a href="/reports/github" class="btn btn-primary">
+                        <i class="bi bi-github me-2"></i>
+                        View GitHub Reports
                     </a>
                     <a href="/reports" class="btn btn-outline-secondary">
                         <i class="bi bi-list me-2"></i>
@@ -159,7 +164,7 @@
                                 {
                                     <tr>
                                         <td>
-                                            <span class="source-badge">
+                                            <span class="source-badge @report.Source.ToLowerInvariant()">
                                                 <i class="bi @HistoryHelper.GetServiceIcon(report.Source) me-1"></i>
                                                 @report.Source
                                             </span>
@@ -217,7 +222,8 @@
     private bool IsValidSource()
     {
         return !string.IsNullOrEmpty(Source) && 
-               Source.Equals("reddit", StringComparison.OrdinalIgnoreCase);
+              (Source.Equals("reddit", StringComparison.OrdinalIgnoreCase) || 
+               Source.Equals("github", StringComparison.OrdinalIgnoreCase));
     }
 
     private async Task HandleAuthenticated(bool success)

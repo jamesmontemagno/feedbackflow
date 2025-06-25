@@ -6,6 +6,26 @@
     margin-bottom: 0;
 }
 
+/* Source badge styling */
+.source-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    display: inline-flex;
+    align-items: center;
+    text-transform: capitalize;
+    font-weight: 500;
+}
+
+.source-badge.reddit {
+    background-color: rgba(255, 69, 0, 0.1);
+    color: #ff4500;
+}
+
+.source-badge.github {
+    background-color: rgba(36, 41, 46, 0.1);
+    color: var(--github-color);
+}
+
 /* Card header customization for filtered view */
 .card-header {
     background: var(--primary-gradient);
