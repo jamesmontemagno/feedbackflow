@@ -1,6 +1,7 @@
 using FeedbackWebApp.Services.Feedback;
 using FeedbackWebApp.Services.Interfaces;
 using SharedDump.Models.Reddit;
+using SharedDump.Services.Mock;
 
 namespace FeedbackWebApp.Services.Mock;
 
@@ -128,33 +129,8 @@ public class MockRedditFeedbackService : FeedbackService, IRedditFeedbackService
         // Use provided comment count or calculate from threads if available
         int totalComments = commentCount ?? (additionalData as List<RedditThreadModel>)?.Sum(t => t.NumComments) ?? 3;
 
-        var mockAnalysis = @$"# Reddit Discussion Analysis 👽
-
-## Overall Sentiment & Engagement
-🎯 Active technical discussion with high-quality responses ({totalComments} total comments)
-📊 Main post has moderate engagement (67% upvote ratio)
-💬 Key responses highly upvoted (98 and 32 points)
-
-## Key Technical Points
-1. Performance issues between ASP.NET and .NET Core applications
-2. Importance of proper profiling and analysis
-3. Discussion of thread pool management in ASP.NET Core
-
-## Recommendations
-1. Use profiling tools to identify bottlenecks
-2. Check for blocking I/O operations
-3. Review thread pool configuration
-4. Consider async/await implementation
-
-## Community Interaction
-- High engagement from {totalComments} developers
-- Constructive discussion format
-- Good follow-up questions from OP
-
-## Action Items
-1. Implement profiling
-2. Review async operations
-3. Analyze thread pool usage";
+        // Use shared mock analysis provider
+        var mockAnalysis = MockAnalysisProvider.GetMockAnalysis("reddit", totalComments);
 
         return (mockAnalysis, additionalData);
     }

@@ -103,3 +103,57 @@ public class RedditCommentModel
     public DateTimeOffset CreatedUtc { get; set; }
     public List<RedditCommentModel>? Replies { get; set; } = [];
 }
+
+// Generic Reddit API models for unified interface
+public class RedditListing<T>
+{
+    public RedditListingData<T> Data { get; set; } = new();
+}
+
+public class RedditListingData<T>
+{
+    public List<RedditThing<T>> Children { get; set; } = new();
+    public string? After { get; set; }
+    public string? Before { get; set; }
+}
+
+public class RedditThing<T>
+{
+    public string Kind { get; set; } = "";
+    public T Data { get; set; } = default!;
+}
+
+public class RedditSubmission
+{
+    public string Id { get; set; } = "";
+    public string Title { get; set; } = "";
+    public string SelfText { get; set; } = "";
+    public string Author { get; set; } = "";
+    public string Subreddit { get; set; } = "";
+    public string SubredditNamePrefixed { get; set; } = "";
+    public long Created { get; set; }
+    public long CreatedUtc { get; set; }
+    public int Score { get; set; }
+    public float UpvoteRatio { get; set; }
+    public int NumComments { get; set; }
+    public string Url { get; set; } = "";
+    public string Permalink { get; set; } = "";
+    public bool IsSelf { get; set; }
+    public bool Over18 { get; set; }
+    public string PostHint { get; set; } = "";
+}
+
+public class RedditComment
+{
+    public string Id { get; set; } = "";
+    public string Author { get; set; } = "";
+    public string Body { get; set; } = "";
+    public long Created { get; set; }
+    public long CreatedUtc { get; set; }
+    public int Score { get; set; }
+    public string ParentId { get; set; } = "";
+    public string LinkId { get; set; } = "";
+    public string Subreddit { get; set; } = "";
+    public string SubredditNamePrefixed { get; set; } = "";
+    public string Permalink { get; set; } = "";
+}

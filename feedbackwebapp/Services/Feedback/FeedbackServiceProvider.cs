@@ -76,11 +76,29 @@ public class FeedbackServiceProvider
             : new ManualFeedbackService(_http, _configuration, _userSettings, content, customPrompt, onStatusUpdate);
     }
 
-    public IAutoDataSourceFeedbackService CreateAutoDataSourceService(string[] urls, FeedbackStatusUpdate? onStatusUpdate = null)
+    public IFeedbackService CreateAutoDataSourceService(string[] urls, FeedbackStatusUpdate? onStatusUpdate = null)
     {
-        return _useMocks
-            ? new MockAutoDataSourceFeedbackService(_http, _configuration, _userSettings, onStatusUpdate)
-            : new AutoDataSourceFeedbackService(_http, _configuration, _userSettings, this, urls, onStatusUpdate);
+        if (_useMocks)
+        {
+            // If using mocks and only one URL is provided, return the specific mock service for that platform
+            if (urls.Length == 1)
+            {
+                var singleUrl = urls[0];
+                var specificService = GetService(singleUrl);
+                
+                // If we can identify a specific service type, return it cast as IAutoDataSourceFeedbackService
+                // This provides more realistic mock behavior for single-platform scenarios
+                if (specificService is IFeedbackService feedbackService)
+                {
+                    return feedbackService;
+                }
+            }
+            
+            // For multiple URLs or unrecognized single URLs, use the general auto data source mock
+            return new MockAutoDataSourceFeedbackService(_http, _configuration, _userSettings, onStatusUpdate);
+        }
+        
+        return new AutoDataSourceFeedbackService(_http, _configuration, _userSettings, this, urls, onStatusUpdate);
     }
     public IFeedbackService? GetService(string url)
     {

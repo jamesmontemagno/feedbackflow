@@ -15,6 +15,7 @@ using SharedDump.AI;
 using SharedDump.Models.TwitterFeedback;
 using SharedDump.Models.BlueSkyFeedback;
 using SharedDump.Json;
+using SharedDump.Services.Interfaces;
 
 namespace FeedbackFunctions;
 
@@ -28,70 +29,47 @@ namespace FeedbackFunctions;
 public class FeedbackFunctions
 {
     private readonly ILogger<FeedbackFunctions> _logger;
-    private readonly IConfiguration _configuration;
-    private readonly GitHubService _githubService;
-    private readonly HackerNewsService _hnService;
-    private readonly YouTubeService _ytService;
-    private readonly RedditService _redditService;
-    private readonly DevBlogsService _devBlogsService = new();
+    private readonly IGitHubService _githubService;
+    private readonly IHackerNewsService _hnService;
+    private readonly IYouTubeService _ytService;
+    private readonly IRedditService _redditService;
+    private readonly IDevBlogsService _devBlogsService;
     private readonly IFeedbackAnalyzerService _analyzerService;
-    private readonly TwitterFeedbackFetcher _twitterService;
-    private readonly BlueSkyFeedbackFetcher _blueSkyService;
+    private readonly ITwitterService _twitterService;
+    private readonly IBlueSkyService _blueSkyService;
 
     /// <summary>
     /// Initializes a new instance of the FeedbackFunctions class
     /// </summary>
     /// <param name="logger">Logger for diagnostic information</param>
-    /// <param name="configuration">Application configuration</param>
-    /// <param name="httpClientFactory">HTTP client factory for creating named clients</param>
-    public FeedbackFunctions(ILogger<FeedbackFunctions> logger, IConfiguration configuration, IHttpClientFactory httpClientFactory)
+    /// <param name="githubService">GitHub service for repository operations</param>
+    /// <param name="youtubeService">YouTube service for video operations</param>
+    /// <param name="hackerNewsService">HackerNews service for story operations</param>
+    /// <param name="redditService">Reddit service for thread operations</param>
+    /// <param name="devBlogsService">DevBlogs service for article operations</param>
+    /// <param name="analyzerService">Feedback analyzer service for AI-powered analysis</param>
+    /// <param name="twitterService">Twitter service for tweet operations</param>
+    /// <param name="blueSkyService">BlueSky service for post operations</param>
+    public FeedbackFunctions(
+        ILogger<FeedbackFunctions> logger, 
+        IGitHubService githubService, 
+        IYouTubeService youtubeService, 
+        IHackerNewsService hackerNewsService, 
+        IRedditService redditService, 
+        IDevBlogsService devBlogsService, 
+        IFeedbackAnalyzerService analyzerService,
+        ITwitterService twitterService,
+        IBlueSkyService blueSkyService)
     {
-#if DEBUG
-
-        _configuration = new ConfigurationBuilder()
-                    .AddJsonFile("local.settings.json")
-                    .AddUserSecrets<Program>()
-                    .Build();
-#else
-
-        _configuration = configuration;
-#endif
         _logger = logger;
-
-        
-        var githubToken = _configuration["GitHub:AccessToken"];
-        _githubService = new GitHubService(githubToken ?? throw new InvalidOperationException("GitHub access token not configured"), httpClientFactory.CreateClient("GitHub"));
-        
-        _hnService = new HackerNewsService(httpClientFactory.CreateClient("HackerNews"));
-        
-        var ytApiKey = _configuration["YouTube:ApiKey"];
-        _ytService = new YouTubeService(ytApiKey ?? throw new InvalidOperationException("YouTube API key not configured"), httpClientFactory.CreateClient("YouTube"));
-
-        var redditClientId = _configuration["Reddit:ClientId"];
-        var redditClientSecret = _configuration["Reddit:ClientSecret"];
-        _redditService = new RedditService(
-            redditClientId ?? throw new InvalidOperationException("Reddit client ID not configured"),
-            redditClientSecret ?? throw new InvalidOperationException("Reddit client secret not configured"),
-            httpClientFactory.CreateClient("Reddit"));
-
-        _devBlogsService = new DevBlogsService(httpClientFactory.CreateClient("DevBlogs"), _logger);
-
-        var endpoint = _configuration["Azure:OpenAI:Endpoint"] ?? throw new InvalidOperationException("Azure OpenAI endpoint not configured");
-        var apiKey = _configuration["Azure:OpenAI:ApiKey"] ?? throw new InvalidOperationException("Azure OpenAI API key not configured");
-        var deployment = _configuration["Azure:OpenAI:Deployment"] ?? throw new InvalidOperationException("Azure OpenAI deployment name not configured");
-
-        _analyzerService = new FeedbackAnalyzerService(endpoint, apiKey, deployment);
-
-        var twitterBearerToken = _configuration["Twitter:BearerToken"] ?? throw new InvalidOperationException("Twitter Bearer token not configured");
-        var twitterHttpClient = httpClientFactory.CreateClient("Twitter");
-        twitterHttpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", twitterBearerToken);
-        _twitterService = new TwitterFeedbackFetcher(twitterHttpClient, Microsoft.Extensions.Logging.Abstractions.NullLogger<TwitterFeedbackFetcher>.Instance);
-        
-        // Initialize BlueSky service with authentication
-        var blueSkyUsername = _configuration["BlueSky:Username"] ?? throw new InvalidOperationException("BlueSky username not configured");
-        var blueSkyAppPassword = _configuration["BlueSky:AppPassword"] ?? throw new InvalidOperationException("BlueSky app password not configured");
-        _blueSkyService = new BlueSkyFeedbackFetcher(httpClientFactory.CreateClient("BlueSky"), Microsoft.Extensions.Logging.Abstractions.NullLogger<BlueSkyFeedbackFetcher>.Instance);
-        _blueSkyService.SetCredentials(blueSkyUsername, blueSkyAppPassword);
+        _githubService = githubService;
+        _ytService = youtubeService;
+        _hnService = hackerNewsService;
+        _redditService = redditService;
+        _devBlogsService = devBlogsService;
+        _analyzerService = analyzerService;
+        _twitterService = twitterService;
+        _blueSkyService = blueSkyService;
     }
 
     /// <summary>
@@ -565,7 +543,7 @@ public class FeedbackFunctions
         }
         try
         {
-            var result = await _twitterService.FetchFeedbackAsync(tweetUrlOrId);
+            var result = await _twitterService.GetTwitterThreadAsync(tweetUrlOrId);
             if (result == null)
             {
                 var notFound = req.CreateResponse(HttpStatusCode.NotFound);
@@ -603,7 +581,7 @@ public class FeedbackFunctions
         
         try
         {
-            var result = await _blueSkyService.FetchFeedbackAsync(postUrlOrId);
+            var result = await _blueSkyService.GetBlueSkyPostAsync(postUrlOrId);
             if (result == null)
             {
                 var notFound = req.CreateResponse(HttpStatusCode.NotFound);

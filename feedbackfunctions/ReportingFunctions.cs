@@ -9,6 +9,7 @@ using SharedDump.Models.Reddit;
 using SharedDump.Models.GitHub;
 using SharedDump.Models.Reports;
 using SharedDump.AI;
+using SharedDump.Services.Interfaces;
 using SharedDump.Utils;
 using Azure.Storage.Blobs;
 
@@ -25,8 +26,8 @@ namespace FeedbackFunctions;
 public class ReportingFunctions
 {
     private readonly ILogger<ReportingFunctions> _logger;
-    private readonly RedditService _redditService;
-    private readonly GitHubService _githubService;
+    private readonly IRedditService _redditService;
+    private readonly IGitHubService _githubService;
     private readonly IFeedbackAnalyzerService _analyzerService;
     private readonly IConfiguration _configuration;
     private const string ContainerName = "reports";
@@ -37,11 +38,15 @@ public class ReportingFunctions
     /// </summary>
     /// <param name="logger">Logger for diagnostic information</param>
     /// <param name="configuration">Application configuration</param>
-    /// <param name="httpClientFactory">HTTP client factory for creating named clients</param>
+    /// <param name="redditService">Reddit service for subreddit operations</param>
+    /// <param name="githubService">GitHub service for repository operations</param>
+    /// <param name="analyzerService">Feedback analyzer service for AI-powered analysis</param>
     public ReportingFunctions(
         ILogger<ReportingFunctions> logger,
         IConfiguration configuration,
-        IHttpClientFactory httpClientFactory)
+        IRedditService redditService,
+        IGitHubService githubService,
+        IFeedbackAnalyzerService analyzerService)
     {
 
 #if DEBUG
@@ -55,18 +60,9 @@ public class ReportingFunctions
         _configuration = configuration;
 #endif
         _logger = logger;
-
-        var redditClientId = _configuration["Reddit:ClientId"] ?? throw new InvalidOperationException("Reddit client ID not configured");
-        var redditClientSecret = _configuration["Reddit:ClientSecret"] ?? throw new InvalidOperationException("Reddit client secret not configured");
-        _redditService = new RedditService(redditClientId, redditClientSecret, httpClientFactory.CreateClient("Reddit"));
-
-        var githubToken = _configuration["GitHub:AccessToken"] ?? throw new InvalidOperationException("GitHub access token not configured");
-        _githubService = new GitHubService(githubToken, httpClientFactory.CreateClient("GitHub"));
-
-        var endpoint = _configuration["Azure:OpenAI:Endpoint"] ?? throw new InvalidOperationException("Azure OpenAI endpoint not configured");
-        var apiKey = _configuration["Azure:OpenAI:ApiKey"] ?? throw new InvalidOperationException("Azure OpenAI API key not configured");
-        var deployment = _configuration["Azure:OpenAI:Deployment"] ?? throw new InvalidOperationException("Azure OpenAI deployment name not configured");
-        _analyzerService = new FeedbackAnalyzerService(endpoint, apiKey, deployment);
+        _redditService = redditService;
+        _githubService = githubService;
+        _analyzerService = analyzerService;
         
         // Initialize blob container
         var storageConnection = _configuration["AzureWebJobsStorage"] ?? throw new InvalidOperationException("Storage connection string not configured");

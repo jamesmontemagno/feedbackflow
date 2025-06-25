@@ -1,5 +1,6 @@
 using FeedbackWebApp.Services.Feedback;
 using SharedDump.Models.BlueSkyFeedback;
+using SharedDump.Services.Mock;
 using FeedbackWebApp.Services.Interfaces;
 
 namespace FeedbackWebApp.Services.Mock;
@@ -109,44 +110,8 @@ public class MockBlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackServi
         var totalComments = commentCount ?? feedback?.Items.Sum(item => 
             1 + (item.Replies?.Sum(r => 1 + (r.Replies?.Count ?? 0)) ?? 0)) ?? 0;
 
-        var mockAnalysis = @$"# BlueSky Feedback Analysis 🦋
-
-## Overview
-Total Interactions: {totalComments} posts and replies
-Engagement Level: High
-Overall Sentiment: Very Positive
-
-## Key Themes 🎯
-
-### Feature Interest
-- BlueSky integration well-received
-- Interest in customization options
-- Quick response to feature inquiries
-
-### User Engagement 👥
-- Early adopters showing enthusiasm
-- Developer community engagement
-- Positive response to feature explanations
-
-### Discussion Metrics 📊
-- Active conversation threads
-- Good response time to questions
-- Multiple nested discussions
-
-## Action Items 📋
-1. Follow up on customization interest
-2. Consider highlighting custom prompt features
-3. Maintain active engagement with developer questions
-
-## Recommendations 💡
-- Share more examples of custom analysis prompts
-- Create tutorial content for BlueSky-specific features
-- Highlight successful use cases
-
-### Future Considerations
-- Monitor for additional feature requests
-- Track engagement patterns
-- Plan regular feature updates based on feedback";
+        // Use shared mock analysis provider
+        var mockAnalysis = MockAnalysisProvider.GetMockAnalysis("bluesky", totalComments);
 
         return (mockAnalysis, feedback);
     }

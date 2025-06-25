@@ -497,3 +497,5 @@ __blobstorage__/*
 __azurite_db_table__.json
 .gitignore
 AzuriteConfig
+__azurite_db_queue_extent__.json
+__azurite_db_queue__.json

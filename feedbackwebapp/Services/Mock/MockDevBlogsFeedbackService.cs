@@ -1,6 +1,7 @@
 using FeedbackWebApp.Services.Feedback;
 using FeedbackWebApp.Services.Interfaces;
 using SharedDump.Models.DevBlogs;
+using SharedDump.Services.Mock;
 
 namespace FeedbackWebApp.Services.Mock;
 
@@ -140,57 +141,8 @@ public class MockDevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackSer
         var article = additionalData as DevBlogsArticleModel;
         var totalComments = commentCount ?? (article?.Comments != null ? CountComments(article.Comments) : 0);
 
-        var mockAnalysis = @$"# DevBlogs Article Feedback Analysis 📚
-
-## Overview
-Article: {article?.Title ?? "Unknown Article"}
-Total Comments: {totalComments}
-Engagement Level: High
-Overall Sentiment: Very Positive
-
-## Key Themes 🎯
-
-### Integration Features
-- Multi-platform support well-received
-- Strong interest in cloud integrations
-- Azure integration highlighted as valuable
-
-### Technical Interest
-- Performance considerations discussed
-- Scalability questions raised
-- Implementation details requested
-
-### Documentation & Support
-- Clear documentation appreciated
-- Good response time to questions
-- Detailed explanations provided
-
-## User Categories 👥
-1. Platform Developers ({totalComments} total engagements)
-   - Interested in integration capabilities
-   - Focus on technical implementation
-2. Blazor Developers
-   - Looking for specific Blazor use-cases
-   - Positive about implementation clarity
-3. Performance-Focused Users
-   - Inquiring about scalability
-   - Interested in benchmarks
-
-## Action Items 📋
-1. Share performance benchmarks
-2. Consider documenting cloud platform expansion plans
-3. Create Blazor-specific integration guides
-
-## Recommendations 💡
-- Publish follow-up content on performance metrics
-- Highlight Blazor integration scenarios
-- Document scaling strategies
-- Consider cloud platform roadmap communication
-
-### Future Engagement
-- Monitor for additional platform requests
-- Track performance-related questions
-- Plan regular documentation updates";
+        // Use shared mock analysis provider
+        var mockAnalysis = MockAnalysisProvider.GetMockAnalysis("devblogs", totalComments);
 
         return (mockAnalysis, article);
     }
