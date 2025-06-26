@@ -8,7 +8,7 @@
 
 <PageTitle>Create Report - FeedbackFlow</PageTitle>
 
-<div class="container px-4">
+<div class="container-lg px-4">
     @if (!isAuthenticated)
     {
         <div class="row justify-content-center">
@@ -25,9 +25,14 @@
         <div class="row justify-content-center">
             <div class="col-12 col-md-8 col-lg-6">
                 <div class="create-report-header mb-4">
-                    <h1 class="feedbackflow-title">
-                        <i class="bi bi-plus-circle me-2"></i>Create Report
-                    </h1>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h1 class="feedbackflow-title mb-0">
+                            <i class="bi bi-plus-circle me-2"></i>Create Report
+                        </h1>
+                        <a href="/reports/manage" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-gear me-1"></i>Manage Requests
+                        </a>
+                    </div>
                     <p class="text-muted">Request a new report for Reddit or GitHub</p>
                 </div>
 
