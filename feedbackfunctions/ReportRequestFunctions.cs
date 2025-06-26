@@ -129,37 +129,29 @@ public class ReportRequestFunctions
                         request.Id, request.Type, 
                         request.Type == "reddit" ? request.Subreddit : $"{request.Owner}/{request.Repo}");
 
-                    // Generate report immediately for new requests
-                    try
+                    // Start report generation in the background without waiting for it
+                    _ = Task.Run(async () =>
                     {
-                        _logger.LogInformation("Generating initial report for new request {RequestId}", request.Id);
-                        var generatedReport = await _reportGenerator.ProcessReportRequestAsync(request);
-                        
-                        if (generatedReport != null)
+                        try
                         {
-                            _logger.LogInformation("Successfully generated initial report {ReportId} for new request {RequestId}", 
-                                generatedReport.Id, request.Id);
+                            _logger.LogInformation("Starting background report generation for new request {RequestId}", request.Id);
+                            var generatedReport = await _reportGenerator.ProcessReportRequestAsync(request);
                             
-                            var successResponse = req.CreateResponse(HttpStatusCode.OK);
-                            successResponse.Headers.Add("Content-Type", "application/json");
-                            await successResponse.WriteStringAsync(JsonSerializer.Serialize(new { 
-                                id = request.Id, 
-                                message = "Request added successfully and initial report generated",
-                                reportId = generatedReport.Id,
-                                reportGenerated = true
-                            }));
-                            return successResponse;
+                            if (generatedReport != null)
+                            {
+                                _logger.LogInformation("Successfully generated background report {ReportId} for request {RequestId}", 
+                                    generatedReport.Id, request.Id);
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Failed to generate background report for request {RequestId}", request.Id);
+                            }
                         }
-                        else
+                        catch (Exception reportEx)
                         {
-                            _logger.LogWarning("Failed to generate initial report for new request {RequestId}", request.Id);
+                            _logger.LogError(reportEx, "Error generating background report for request {RequestId}", request.Id);
                         }
-                    }
-                    catch (Exception reportEx)
-                    {
-                        _logger.LogError(reportEx, "Error generating initial report for new request {RequestId}", request.Id);
-                        // Don't fail the entire request if report generation fails
-                    }
+                    });
                 }
             }
             catch (Exception ex)
@@ -174,8 +166,7 @@ public class ReportRequestFunctions
             response.Headers.Add("Content-Type", "application/json");
             await response.WriteStringAsync(JsonSerializer.Serialize(new { 
                 id = request.Id, 
-                message = "Request added successfully",
-                reportGenerated = false
+                message = "Request added successfully"
             }));
             return response;
         }
