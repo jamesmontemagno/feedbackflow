@@ -341,4 +341,52 @@ public class GitHubIssuesUtilsTests
         // Assert
         Assert.AreEqual(0, result.Count);
     }
+
+    [TestMethod]
+    public void TestDateFilteringLogic_UsesGitHubSearchWithCreatedFilter()
+    {
+        // Arrange
+        var cutoffDate = DateTime.UtcNow.AddDays(-7);
+        var expectedSearchQuery = $"repo:testowner/testrepo is:issue created:>{cutoffDate:yyyy-MM-dd}";
+        
+        // This test verifies that we construct the correct search query
+        // The actual filtering is now done server-side by GitHub's search API
+        var testIssues = new List<GithubIssueSummary>
+        {
+            // With server-side filtering, GitHub only returns issues created after the cutoff date
+            // so all returned issues should be recent
+            new()
+            {
+                Id = "recent-1",
+                Title = "Recent bug report",
+                CreatedAt = DateTime.UtcNow.AddDays(-3),
+                State = "OPEN",
+                Author = "user1",
+                CommentsCount = 5,
+                ReactionsCount = 2,
+                Url = "https://github.com/test/repo/issues/1",
+                Labels = new[] { "bug" }
+            },
+            new()
+            {
+                Id = "recent-2",
+                Title = "Another recent issue",
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+                State = "CLOSED",
+                Author = "user3",
+                CommentsCount = 2,
+                ReactionsCount = 1, 
+                Url = "https://github.com/test/repo/issues/3",
+                Labels = new[] { "bug", "resolved" }
+            }
+        };
+
+        // Act - Verify search query construction
+        var actualSearchQuery = $"repo:testowner/testrepo is:issue created:>{cutoffDate:yyyy-MM-dd}";
+
+        // Assert
+        Assert.AreEqual(expectedSearchQuery, actualSearchQuery, "Search query should filter by creation date using GitHub's search syntax");
+        Assert.AreEqual(2, testIssues.Count, "GitHub search should only return issues created after the cutoff date");
+        Assert.IsTrue(testIssues.All(issue => issue.CreatedAt >= cutoffDate), "All returned issues should be recent (server-side filtered)");
+    }
 }

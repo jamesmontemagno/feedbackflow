@@ -310,7 +310,13 @@ public class MockGitHubService : IGitHubService
         // Simulate network delay
         await Task.Delay(400);
 
-        return new List<GithubIssueSummary>
+        // Simulate GitHub's search API behavior with created:> filter
+        // Only return issues that would match the server-side filter
+        var cutoffDate = DateTime.UtcNow.AddDays(-daysBack);
+        
+        // These issues simulate what GitHub's search API would return
+        // when using "repo:owner/repo is:issue created:>YYYY-MM-DD"
+        var recentIssues = new List<GithubIssueSummary>
         {
             new()
             {
@@ -349,5 +355,9 @@ public class MockGitHubService : IGitHubService
                 Url = $"https://github.com/{repoOwner}/{repoName}/issues/63"
             }
         };
+
+        // Filter to only include issues that would match GitHub's search criteria
+        // GitHub's "created:>YYYY-MM-DD" filter would exclude older issues server-side
+        return recentIssues.Where(issue => issue.CreatedAt >= cutoffDate).ToList();
     }
 }

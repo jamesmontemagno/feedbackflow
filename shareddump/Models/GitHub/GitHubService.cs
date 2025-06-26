@@ -990,16 +990,17 @@ public class GitHubService : IGitHubService
         var hasMorePages = true;
         string? endCursor = null;
         var retryCount = 0;
-        var cutoffDate = DateTime.UtcNow.AddDays(-daysBack).ToString("yyyy-MM-ddTHH:mm:ssZ");
+        var cutoffDate = DateTime.UtcNow.AddDays(-daysBack).ToString("yyyy-MM-dd");
+        var searchQuery = $"repo:{repoOwner}/{repoName} is:issue created:>{cutoffDate}";
 
         while (hasMorePages)
         {
             var issuesQuery = @"
-            query($owner: String!, $name: String!, $after: String, $since: DateTime) {
-                repository(owner: $owner, name: $name) {
-                    issues(first: 100, after: $after, filterBy: {since: $since}, states: [OPEN, CLOSED]) {
-                        edges {
-                            node {
+            query($query: String!, $first: Int!, $after: String) {
+                search(query: $query, type: ISSUE, first: $first, after: $after) {
+                    edges {
+                        node {
+                            ... on Issue {
                                 id
                                 number
                                 author {
@@ -1023,10 +1024,10 @@ public class GitHubService : IGitHubService
                                 }
                             }
                         }
-                        pageInfo {
-                            hasNextPage
-                            endCursor
-                        }
+                    }
+                    pageInfo {
+                        hasNextPage
+                        endCursor
                     }
                 }
             }";
@@ -1036,7 +1037,7 @@ public class GitHubService : IGitHubService
                 var response = await _client.PostAsJsonAsync("https://api.github.com/graphql", new
                 {
                     query = issuesQuery,
-                    variables = new { owner = repoOwner, name = repoName, after = endCursor, since = cutoffDate }
+                    variables = new { query = searchQuery, first = 100, after = endCursor }
                 });
 
                 if (!response.IsSuccessStatusCode)
@@ -1050,13 +1051,12 @@ public class GitHubService : IGitHubService
                 var jsonDoc = System.Text.Json.JsonDocument.Parse(result);
                 
                 if (!jsonDoc.RootElement.TryGetProperty("data", out var dataElement) ||
-                    !dataElement.TryGetProperty("repository", out var repoElement) ||
-                    !repoElement.TryGetProperty("issues", out var issuesElement))
+                    !dataElement.TryGetProperty("search", out var searchElement))
                 {
                     break;
                 }
 
-                var edgesElement = issuesElement.GetProperty("edges");
+                var edgesElement = searchElement.GetProperty("edges");
                 foreach (var edge in edgesElement.EnumerateArray())
                 {
                     try
@@ -1101,7 +1101,7 @@ public class GitHubService : IGitHubService
                     }
                 }
 
-                var pageInfo = issuesElement.GetProperty("pageInfo");
+                var pageInfo = searchElement.GetProperty("pageInfo");
                 hasMorePages = pageInfo.GetProperty("hasNextPage").GetBoolean();
                 if (hasMorePages && pageInfo.TryGetProperty("endCursor", out var cursor))
                 {
