@@ -120,17 +120,19 @@ public class ReportService : IReportService
     public async Task<IEnumerable<ReportModel>> ListReportsAsync()
     {
         return await ListReportsAsync(null, null);
-    }    public async Task<IEnumerable<ReportModel>> ListReportsAsync(string? source = null, string? subsource = null)
+    }
+
+    public async Task<IEnumerable<ReportModel>> ListReportsAsync(string? source = null, string? subsource = null)
     {
         // Create cache key based on parameters
         var cacheKey = $"{ReportsListCacheKeyPrefix}{source ?? "null"}_{subsource ?? "null"}";
-          // Check cache first
+        // Check cache first
         if (_memoryCache.TryGetValue(cacheKey, out IEnumerable<ReportModel>? cachedReports) && cachedReports != null)
         {
             return cachedReports;
         }
 
-        var baseUrl = _configuration["FeedbackApi:BaseUrl"] 
+        var baseUrl = _configuration["FeedbackApi:BaseUrl"]
             ?? throw new InvalidOperationException("API base URL not configured");
         var code = _configuration["FeedbackApi:ListReportsCode"]
             ?? throw new InvalidOperationException("List reports code not configured");
@@ -157,30 +159,32 @@ public class ReportService : IReportService
         _memoryCache.Set(cacheKey, reports, cacheOptions);
 
         return reports;
-    }    public async Task<ReportModel?> GetReportAsync(string id)
+    }
+
+    public async Task<ReportModel?> GetReportAsync(string id)
     {
         // Create cache key
         var cacheKey = $"{ReportCacheKeyPrefix}{id}";
-        
+
         // Check cache first
         if (_memoryCache.TryGetValue(cacheKey, out ReportModel? cachedReport))
         {
             return cachedReport;
         }
 
-        var baseUrl = _configuration["FeedbackApi:BaseUrl"] 
+        var baseUrl = _configuration["FeedbackApi:BaseUrl"]
             ?? throw new InvalidOperationException("API base URL not configured");
         var code = _configuration["FeedbackApi:GetReportCode"]
             ?? throw new InvalidOperationException("Get report code not configured");
 
         var url = $"{baseUrl}/api/Report/{id}?code={Uri.EscapeDataString(code)}";
         var response = await _httpClient.GetAsync(url);
-        
+
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             return null;
-            
+
         response.EnsureSuccessStatusCode();
-        
+
         var content = await response.Content.ReadAsStringAsync();
         var report = JsonSerializer.Deserialize<ReportModel>(content, _jsonOptions);
 

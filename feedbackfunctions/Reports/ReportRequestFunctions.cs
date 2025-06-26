@@ -180,76 +180,6 @@ public class ReportRequestFunctions
     }
 
     /// <summary>
-    /// Filter reports based on user's requests
-    /// </summary>
-    [Function("FilterReports")]
-    public async Task<HttpResponseData> FilterReports(
-        [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
-    {
-        _logger.LogInformation("Filtering reports based on user requests");
-
-        try
-        {
-            var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            var userRequests = JsonSerializer.Deserialize<List<ReportRequestModel>>(requestBody, _jsonOptions);
-
-            if (userRequests == null || !userRequests.Any())
-            {
-                var emptyResponse = req.CreateResponse(HttpStatusCode.OK);
-                emptyResponse.Headers.Add("Content-Type", "application/json");
-                await emptyResponse.WriteStringAsync(JsonSerializer.Serialize(new { reports = Array.Empty<object>() }));
-                return emptyResponse;
-            }
-
-            // Get all reports from the reports container
-            var reportsContainerClient = _serviceClient.GetBlobContainerClient("reports");
-            var matchingReports = new List<object>();
-
-            await foreach (var blob in reportsContainerClient.GetBlobsAsync())
-            {
-                var blobClient = reportsContainerClient.GetBlobClient(blob.Name);
-                var content = await blobClient.DownloadContentAsync();
-                var report = JsonSerializer.Deserialize<ReportModel>(content.Value.Content, _jsonOptions);
-
-                if (report != null)
-                {
-                    // Check if this report matches any of the user's requests
-                    var matchesRequest = userRequests.Any(userReq =>
-                        userReq.Type == report.Source &&
-                        ((userReq.Type == "reddit" && userReq.Subreddit == report.SubSource) ||
-                         (userReq.Type == "github" && $"{userReq.Owner}/{userReq.Repo}" == report.SubSource)));
-
-                    if (matchesRequest)
-                    {
-                        matchingReports.Add(new
-                        {
-                            id = report.Id,
-                            source = report.Source,
-                            subSource = report.SubSource,
-                            generatedAt = report.GeneratedAt,
-                            threadCount = report.ThreadCount,
-                            commentCount = report.CommentCount,
-                            cutoffDate = report.CutoffDate
-                        });
-                    }
-                }
-            }
-
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            response.Headers.Add("Content-Type", "application/json");
-            await response.WriteStringAsync(JsonSerializer.Serialize(new { reports = matchingReports }));
-            return response;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error filtering reports");
-            var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await errorResponse.WriteStringAsync($"Error filtering reports: {ex.Message}");
-            return errorResponse;
-        }
-    }
-
-    /// <summary>
     /// Remove a report request by ID
     /// </summary>
     [Function("RemoveReportRequest")]
@@ -353,16 +283,13 @@ public class ReportRequestFunctions
             return errorResponse;
         }
     }
-
-
-
     private static string GenerateRequestId(ReportRequestModel request)
     {
         var source = request.Type.ToLowerInvariant();
-        var identifier = request.Type == "reddit" 
-            ? request.Subreddit?.ToLowerInvariant() 
+        var identifier = request.Type == "reddit"
+            ? request.Subreddit?.ToLowerInvariant()
             : $"{request.Owner?.ToLowerInvariant()}/{request.Repo?.ToLowerInvariant()}";
-        
+
         return $"{source}_{identifier}".Replace("/", "_");
     }
 

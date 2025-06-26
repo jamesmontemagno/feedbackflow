@@ -34,6 +34,7 @@ public class ReportingFunctions
     private const string ContainerName = "reports";
     private readonly BlobContainerClient _containerClient;
     private readonly ReportGenerator _reportGenerator;
+    private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     /// <summary>
     /// Initializes a new instance of the ReportingFunctions class
@@ -76,143 +77,7 @@ public class ReportingFunctions
         _reportGenerator = new ReportGenerator(_logger, _redditService, _githubService, _analyzerService, _containerClient);
     }
 
-    /// <summary>
-    /// Generates a comprehensive report of a subreddit's threads and comments
-    /// </summary>
-    /// <param name="req">HTTP request with query parameters</param>
-    /// <returns>HTTP response with a markdown-formatted report</returns>
-    /// <remarks>
-    /// Query parameters:
-    /// - subreddit: Required. The name of the subreddit to analyze
-    /// - days: Optional. Number of days of history to analyze (default: 7)
-    /// - limit: Optional. Maximum number of threads to analyze (default: 25)
-    /// - sort: Optional. Sort method for threads ("hot", "new", "top", etc.)
-    /// 
-    /// The function fetches Reddit threads, analyzes their content using AI,
-    /// and returns a markdown-formatted report with insights, trends, and key takeaways.
-    /// </remarks>
-    /// <example>
-    /// GET /api/RedditReport?subreddit=dotnet&amp;days=30&amp;limit=50&amp;sort=top
-    /// </example>
-    [Function("RedditReport")]
-    public async Task<HttpResponseData> RedditReport(
-        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
-    {
-        var startTime = DateTime.UtcNow;
-        _logger.LogInformation("Starting Reddit Report processing for URL {RequestUrl}", req.Url);
-
-        var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
-        var subreddit = queryParams["subreddit"];
-
-        if (string.IsNullOrEmpty(subreddit))
-        {
-            _logger.LogWarning("Reddit Report request rejected - missing subreddit parameter");
-            var response = req.CreateResponse(HttpStatusCode.BadRequest);
-            await response.WriteStringAsync("Subreddit parameter is required");
-            return response;
-        }
-
-        try
-        {
-            var cutoffDate = DateTimeOffset.UtcNow.AddDays(-7);
-            var report = await _reportGenerator.GenerateRedditReportAsync(subreddit, cutoffDate);
-
-            var processingTime = DateTime.UtcNow - startTime;
-            _logger.LogInformation("Reddit Report processing completed for r/{Subreddit} in {ProcessingTime:c}", 
-                subreddit, processingTime);
-
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            response.Headers.Add("Content-Type", "text/html; charset=utf-8");
-            await response.WriteStringAsync(report.HtmlContent ?? string.Empty);
-            return response;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error processing Reddit report for r/{Subreddit}. Processing time: {ProcessingTime:c}", 
-                subreddit, DateTime.UtcNow - startTime);
-            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await response.WriteStringAsync($"Error processing report: {ex.Message}");
-            return response;
-        }
-    }
-
-    /// <summary>
-    /// Generates a comprehensive report of GitHub repository issues
-    /// </summary>
-    /// <param name="req">HTTP request with query parameters</param>
-    /// <returns>HTTP response with a markdown-formatted report</returns>
-    /// <remarks>
-    /// Query parameters:
-    /// - repo: Required. The repository in format "owner/name" (e.g., "microsoft/vscode")
-    /// - days: Optional. Number of days of history to analyze (default: 7)
-    /// 
-    /// The function fetches GitHub issues from the last week, analyzes their content using AI,
-    /// and returns an HTML-formatted report with insights, trends, and key takeaways.
-    /// </remarks>
-    /// <example>
-    /// GET /api/GitHubIssuesReport?repo=microsoft/vscode&amp;days=7
-    /// </example>
-    [Function("GitHubIssuesReport")]
-    public async Task<HttpResponseData> GitHubIssuesReport(
-        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
-    {
-        var startTime = DateTime.UtcNow;
-        _logger.LogInformation("Starting GitHub Issues Report processing for URL {RequestUrl}", req.Url);
-
-        var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
-        var repo = queryParams["repo"];
-        var daysParam = queryParams["days"];
-        var days = int.TryParse(daysParam, out var parsedDays) ? parsedDays : 7;
-
-        if (string.IsNullOrEmpty(repo))
-        {
-            _logger.LogWarning("GitHub Issues Report request rejected - missing repo parameter");
-            var missingRepoResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-            await missingRepoResponse.WriteStringAsync("Repository parameter is required (format: owner/name)");
-            return missingRepoResponse;
-        }
-
-        var repoParts = repo.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        if (repoParts.Length != 2)
-        {
-            _logger.LogWarning("GitHub Issues Report request rejected - invalid repo format: {Repo}", repo);
-            var invalidFormatResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-            await invalidFormatResponse.WriteStringAsync("Repository parameter must be in format 'owner/name'");
-            return invalidFormatResponse;
-        }
-
-        var repoOwner = repoParts[0];
-        var repoName = repoParts[1];
-
-        try
-        {
-            var report = await _reportGenerator.GenerateGitHubReportAsync(repoOwner, repoName, days);
-
-            var processingTime = DateTime.UtcNow - startTime;
-            _logger.LogInformation("GitHub Issues Report processing completed for {RepoOwner}/{RepoName} in {ProcessingTime:c}", 
-                repoOwner, repoName, processingTime);
-
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            response.Headers.Add("Content-Type", "text/html; charset=utf-8");
-            await response.WriteStringAsync(report.HtmlContent ?? string.Empty);
-            return response;
-        }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("not found or not accessible"))
-        {
-            _logger.LogWarning("Repository {RepoOwner}/{RepoName} not found or not accessible", repoOwner, repoName);
-            var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-            await badRequestResponse.WriteStringAsync("Repository not found or not accessible");
-            return badRequestResponse;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error processing GitHub Issues report for {RepoOwner}/{RepoName}. Processing time: {ProcessingTime:c}", 
-                repoOwner, repoName, DateTime.UtcNow - startTime);
-            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await response.WriteStringAsync($"Error processing report: {ex.Message}");
-            return response;
-        }
-    }
+  
 
     /// <summary>
     /// Gets a report by its ID
@@ -252,7 +117,78 @@ public class ReportingFunctions
             await errorResponse.WriteStringAsync($"Error retrieving report: {ex.Message}");
             return errorResponse;
         }
-    }    /// <summary>
+    }
+
+     /// <summary>
+    /// Filter reports based on user's requests
+    /// </summary>
+    [Function("FilterReports")]
+    public async Task<HttpResponseData> FilterReports(
+        [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
+    {
+        _logger.LogInformation("Filtering reports based on user requests");
+
+        try
+        {
+            var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            var userRequests = JsonSerializer.Deserialize<List<ReportRequestModel>>(requestBody, _jsonOptions);
+
+            if (userRequests == null || !userRequests.Any())
+            {
+                var emptyResponse = req.CreateResponse(HttpStatusCode.OK);
+                emptyResponse.Headers.Add("Content-Type", "application/json");
+                await emptyResponse.WriteStringAsync(JsonSerializer.Serialize(new { reports = Array.Empty<object>() }));
+                return emptyResponse;
+            }
+
+            // Get all reports from the reports container
+            var matchingReports = new List<object>();
+
+            await foreach (var blob in _containerClient.GetBlobsAsync())
+            {
+                var blobClient = _containerClient.GetBlobClient(blob.Name);
+                var content = await blobClient.DownloadContentAsync();
+                var report = JsonSerializer.Deserialize<ReportModel>(content.Value.Content, _jsonOptions);
+
+                if (report != null)
+                {
+                    // Check if this report matches any of the user's requests
+                    var matchesRequest = userRequests.Any(userReq =>
+                        userReq.Type == report.Source &&
+                        ((userReq.Type == "reddit" && userReq.Subreddit == report.SubSource) ||
+                         (userReq.Type == "github" && $"{userReq.Owner}/{userReq.Repo}" == report.SubSource)));
+
+                    if (matchesRequest)
+                    {
+                        matchingReports.Add(new
+                        {
+                            id = report.Id,
+                            source = report.Source,
+                            subSource = report.SubSource,
+                            generatedAt = report.GeneratedAt,
+                            threadCount = report.ThreadCount,
+                            commentCount = report.CommentCount,
+                            cutoffDate = report.CutoffDate
+                        });
+                    }
+                }
+            }
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            response.Headers.Add("Content-Type", "application/json");
+            await response.WriteStringAsync(JsonSerializer.Serialize(new { reports = matchingReports }));
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error filtering reports");
+            var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await errorResponse.WriteStringAsync($"Error filtering reports: {ex.Message}");
+            return errorResponse;
+        }
+    }
+
+    /// <summary>
     /// Lists all reports with basic metadata
     /// </summary>
     /// <param name="req">HTTP request</param>
