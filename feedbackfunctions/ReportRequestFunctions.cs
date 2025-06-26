@@ -7,6 +7,9 @@ using SharedDump.Models.Reports;
 using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
+using SharedDump.Services.Interfaces;
+using SharedDump.AI;
+using FeedbackFunctions.Utils;
 
 namespace FeedbackFunctions;
 
@@ -21,10 +24,14 @@ public class ReportRequestFunctions
     private readonly TableClient _tableClient;
     private readonly BlobServiceClient _serviceClient; // Still needed for reports filtering
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
+    private readonly ReportGenerator _reportGenerator;
 
     public ReportRequestFunctions(
         ILogger<ReportRequestFunctions> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IRedditService redditService,
+        IGitHubService githubService,
+        IFeedbackAnalyzerService analyzerService)
     {
 #if DEBUG
         _configuration = new ConfigurationBuilder()
@@ -44,6 +51,11 @@ public class ReportRequestFunctions
 
         // Initialize blob service client for reports filtering
         _serviceClient = new BlobServiceClient(storageConnection);
+
+        // Initialize report generator
+        var reportsContainerClient = _serviceClient.GetBlobContainerClient("reports");
+        reportsContainerClient.CreateIfNotExists();
+        _reportGenerator = new ReportGenerator(_logger, redditService, githubService, analyzerService, reportsContainerClient);
     }
 
     /// <summary>
@@ -307,14 +319,16 @@ public class ReportRequestFunctions
                     if (request.Type == "reddit" && !string.IsNullOrEmpty(request.Subreddit))
                     {
                         _logger.LogInformation("Processing Reddit report for r/{Subreddit}", request.Subreddit);
-                        // Here you would call the RedditReport function
-                        // For now, just log the intent
+                        var report = await _reportGenerator.GenerateRedditReportAsync(request.Subreddit);
+                        _logger.LogInformation("Successfully generated Reddit report for r/{Subreddit} with ID {ReportId}", 
+                            request.Subreddit, report.Id);
                     }
                     else if (request.Type == "github" && !string.IsNullOrEmpty(request.Owner) && !string.IsNullOrEmpty(request.Repo))
                     {
                         _logger.LogInformation("Processing GitHub report for {Owner}/{Repo}", request.Owner, request.Repo);
-                        // Here you would call the GitHubIssuesReport function
-                        // For now, just log the intent
+                        var report = await _reportGenerator.GenerateGitHubReportAsync(request.Owner, request.Repo);
+                        _logger.LogInformation("Successfully generated GitHub report for {Owner}/{Repo} with ID {ReportId}", 
+                            request.Owner, request.Repo, report.Id);
                     }
                 }
                 catch (Exception ex)
