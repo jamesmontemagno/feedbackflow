@@ -310,7 +310,8 @@ public class MockGitHubService : IGitHubService
         // Simulate network delay
         await Task.Delay(400);
 
-        return new List<GithubIssueSummary>
+        // Create a mix of recent and old issues to demonstrate filtering
+        var allIssues = new List<GithubIssueSummary>
         {
             new()
             {
@@ -347,7 +348,24 @@ public class MockGitHubService : IGitHubService
                 CommentsCount = 7,
                 ReactionsCount = 32,
                 Url = $"https://github.com/{repoOwner}/{repoName}/issues/63"
+            },
+            // Old issue that should be filtered out
+            new()
+            {
+                Id = "mock-issue-old",
+                Title = "Old issue from last month",
+                State = "open",
+                CreatedAt = DateTime.UtcNow.AddDays(-30),
+                Author = "oldUser",
+                Labels = new[] { "old", "legacy" },
+                CommentsCount = 1,
+                ReactionsCount = 2,
+                Url = $"https://github.com/{repoOwner}/{repoName}/issues/old"
             }
         };
+
+        // Apply the same filtering logic as the real service
+        var cutoffDate = DateTime.UtcNow.AddDays(-daysBack);
+        return allIssues.Where(issue => issue.CreatedAt >= cutoffDate).ToList();
     }
 }

@@ -341,4 +341,76 @@ public class GitHubIssuesUtilsTests
         // Assert
         Assert.AreEqual(0, result.Count);
     }
+
+    [TestMethod]
+    public void TestDateFilteringLogic_FiltersCorrectlyByCreationDate()
+    {
+        // Arrange
+        var cutoffDate = DateTime.UtcNow.AddDays(-7);
+        var testIssues = new List<GithubIssueSummary>
+        {
+            // Recent issue (within 7 days) - should be included
+            new()
+            {
+                Id = "recent-1",
+                Title = "Recent bug report",
+                CreatedAt = DateTime.UtcNow.AddDays(-3),
+                State = "OPEN",
+                Author = "user1",
+                CommentsCount = 5,
+                ReactionsCount = 2,
+                Url = "https://github.com/test/repo/issues/1",
+                Labels = new[] { "bug" }
+            },
+            // Old issue (outside 7 days) - should be excluded
+            new()
+            {
+                Id = "old-1", 
+                Title = "Old feature request",
+                CreatedAt = DateTime.UtcNow.AddDays(-15),
+                State = "OPEN",
+                Author = "user2", 
+                CommentsCount = 10,
+                ReactionsCount = 5,
+                Url = "https://github.com/test/repo/issues/2",
+                Labels = new[] { "enhancement" }
+            },
+            // Another recent issue (within 7 days) - should be included
+            new()
+            {
+                Id = "recent-2",
+                Title = "Another recent issue",
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+                State = "CLOSED",
+                Author = "user3",
+                CommentsCount = 2,
+                ReactionsCount = 1, 
+                Url = "https://github.com/test/repo/issues/3",
+                Labels = new[] { "bug", "resolved" }
+            },
+            // Edge case: issue created exactly at cutoff date - should be included
+            new()
+            {
+                Id = "edge-case",
+                Title = "Edge case issue",
+                CreatedAt = cutoffDate,
+                State = "OPEN",
+                Author = "user4",
+                CommentsCount = 1,
+                ReactionsCount = 0,
+                Url = "https://github.com/test/repo/issues/4",
+                Labels = new[] { "question" }
+            }
+        };
+
+        // Act - Apply the same filtering logic used in GetRecentIssuesForReportAsync
+        var filteredIssues = testIssues.Where(issue => issue.CreatedAt >= cutoffDate).ToList();
+
+        // Assert
+        Assert.AreEqual(3, filteredIssues.Count, "Should include 3 issues created within or at the cutoff date");
+        Assert.IsTrue(filteredIssues.Any(i => i.Id == "recent-1"), "Should include recent-1");
+        Assert.IsTrue(filteredIssues.Any(i => i.Id == "recent-2"), "Should include recent-2");
+        Assert.IsTrue(filteredIssues.Any(i => i.Id == "edge-case"), "Should include edge-case (exactly at cutoff)");
+        Assert.IsFalse(filteredIssues.Any(i => i.Id == "old-1"), "Should exclude old-1 (too old)");
+    }
 }

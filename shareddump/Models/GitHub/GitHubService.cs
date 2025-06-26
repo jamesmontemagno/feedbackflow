@@ -990,14 +990,14 @@ public class GitHubService : IGitHubService
         var hasMorePages = true;
         string? endCursor = null;
         var retryCount = 0;
-        var cutoffDate = DateTime.UtcNow.AddDays(-daysBack).ToString("yyyy-MM-ddTHH:mm:ssZ");
+        var cutoffDate = DateTime.UtcNow.AddDays(-daysBack);
 
         while (hasMorePages)
         {
             var issuesQuery = @"
-            query($owner: String!, $name: String!, $after: String, $since: DateTime) {
+            query($owner: String!, $name: String!, $after: String) {
                 repository(owner: $owner, name: $name) {
-                    issues(first: 100, after: $after, filterBy: {since: $since}, states: [OPEN, CLOSED]) {
+                    issues(first: 100, after: $after, states: [OPEN, CLOSED]) {
                         edges {
                             node {
                                 id
@@ -1036,7 +1036,7 @@ public class GitHubService : IGitHubService
                 var response = await _client.PostAsJsonAsync("https://api.github.com/graphql", new
                 {
                     query = issuesQuery,
-                    variables = new { owner = repoOwner, name = repoName, after = endCursor, since = cutoffDate }
+                    variables = new { owner = repoOwner, name = repoName, after = endCursor }
                 });
 
                 if (!response.IsSuccessStatusCode)
@@ -1092,7 +1092,11 @@ public class GitHubService : IGitHubService
                             Labels = labels
                         };
 
-                        issuesList.Add(issueSummary);
+                        // Only include issues created within the specified time period
+                        if (issueSummary.CreatedAt >= cutoffDate)
+                        {
+                            issuesList.Add(issueSummary);
+                        }
                     }
                     catch (Exception)
                     {
