@@ -1,17 +1,4 @@
-.manage-reports-header {
-    text-align: center;
-    margin-bottom: 2rem;
-}
-
-.manage-reports-header .feedbackflow-title {
-    background: var(--primary-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    color: transparent;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-}
+/* Remove the manage-reports-header styles since we're using standard layout */
 
 .list-group-item {
     border-left: none;
@@ -96,10 +83,6 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    .manage-reports-header {
-        text-align: left;
-    }
-    
     .list-group-item {
         padding: 0.75rem;
     }

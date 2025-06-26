@@ -37,26 +37,34 @@
         @if (reports != null && reports.Any() && HasMultipleSources)
         {
             <div class="filter-controls mb-4">
-                <div class="row g-3">
+                <div class="row g-3 align-items-end">
                     <div class="col-12 col-md-4">
                         <div class="filter-group">
-                            <label class="form-label">Source</label>
+                            <label class="form-label">
+                                <i class="bi bi-funnel me-1"></i>
+                                Source
+                            </label>
                             <div class="source-toggle-container">
                                 <div class="btn-group w-100" role="group" aria-label="Source filter">
                                     <input type="radio" class="btn-check" name="source-filter" id="source-all" autocomplete="off" 
                                            checked="@(selectedSource == "")" @onclick="@(() => SelectSource(""))">
-                                    <label class="btn btn-outline-primary" for="source-all">All</label>
+                                    <label class="btn btn-outline-primary" for="source-all">
+                                        <i class="bi bi-collection me-1"></i>
+                                        All
+                                    </label>
 
                                     <input type="radio" class="btn-check" name="source-filter" id="source-github" autocomplete="off" 
                                            checked="@(selectedSource == "github")" @onclick="@(() => SelectSource("github"))">
                                     <label class="btn btn-outline-primary" for="source-github">
-                                        <i class="bi bi-github me-1"></i> GitHub
+                                        <i class="bi bi-github me-1"></i> 
+                                        GitHub
                                     </label>
 
                                     <input type="radio" class="btn-check" name="source-filter" id="source-reddit" autocomplete="off" 
                                            checked="@(selectedSource == "reddit")" @onclick="@(() => SelectSource("reddit"))">
                                     <label class="btn btn-outline-primary" for="source-reddit">
-                                        <i class="bi bi-reddit me-1"></i> Reddit
+                                        <i class="bi bi-reddit me-1"></i> 
+                                        Reddit
                                     </label>
                                 </div>
                             </div>
@@ -66,7 +74,10 @@
                     {
                         <div class="col-12 col-md-4">
                             <div class="filter-group">
-                                <label class="form-label">SubSource</label>
+                                <label class="form-label">
+                                    <i class="bi bi-tags me-1"></i>
+                                    SubSource
+                                </label>
                                 <div class="input-group">
                                     <span class="input-group-text">
                                         <i class="bi bi-filter"></i>
@@ -95,7 +106,9 @@
                             <span class="badge filter-badge">
                                 <i class="bi @(selectedSource == "github" ? "bi-github" : "bi-reddit") me-1"></i>
                                 @selectedSource
-                                <button type="button" class="btn-close btn-close-white" aria-label="Clear source filter" @onclick="@(() => SelectSource(""))"></button>
+                                <button type="button" class="filter-badge-close" aria-label="Clear source filter" @onclick="@(() => SelectSource(""))">
+                                    <i class="bi bi-x"></i>
+                                </button>
                             </span>
                         }
                         @if (!string.IsNullOrEmpty(selectedSubSource))
@@ -103,7 +116,9 @@
                             <span class="badge filter-badge">
                                 <i class="bi bi-tag me-1"></i>
                                 @selectedSubSource
-                                <button type="button" class="btn-close btn-close-white" aria-label="Clear subsource filter" @onclick="@(() => selectedSubSource = "")"></button>
+                                <button type="button" class="filter-badge-close" aria-label="Clear subsource filter" @onclick="@(() => selectedSubSource = "")">
+                                    <i class="bi bi-x"></i>
+                                </button>
                             </span>
                         }
                     </div>
@@ -117,9 +132,6 @@
                         <i class="bi bi-file-earmark-text me-1"></i>
                         My Reports
                     </div>
-                    <small class="text-muted">
-                        Showing reports for your requests
-                    </small>
                 </div>
             </div>
             <div class="card-body">
@@ -135,7 +147,6 @@
                                     <th scope="col" class="text-center">Threads</th>
                                     <th scope="col" class="d-none d-sm-table-cell text-center">Comments</th>
                                     <th scope="col" class="d-none d-lg-table-cell text-center">Period</th>
-                                    <th scope="col" class="text-end">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -159,9 +170,6 @@
                                         </td>
                                         <td class="d-none d-lg-table-cell text-center">
                                             <div class="loading-placeholder stat-placeholder"></div>
-                                        </td>
-                                        <td class="text-end">
-                                            <div class="loading-placeholder button-placeholder"></div>
                                         </td>
                                     </tr>
                                 }
@@ -195,25 +203,22 @@
                                     <th scope="col" class="text-center">Threads</th>
                                     <th scope="col" class="d-none d-md-table-cell text-center">Comments</th>
                                     <th scope="col" class="d-none d-lg-table-cell text-center">Period</th>
-                                    <th scope="col" class="text-end">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach (var report in FilteredReports)
                                 {
-                                    <tr>
+                                    <tr class="clickable-row" @onclick="() => ViewReport(report.Id)" role="button" tabindex="0" 
+                                        @onkeydown="@(async (e) => { if (e.Key == "Enter" || e.Key == " ") await Task.Run(() => ViewReport(report.Id)); })"
+                                        aria-label="View report for @report.Source - @report.SubSource">
                                         <td>
-                                            <a href="/reports/@Uri.EscapeDataString(report.Source)" class="source-link text-decoration-none">
-                                                <span class="source-badge @report.Source.ToLowerInvariant()">
-                                                    <i class="bi @HistoryHelper.GetServiceIcon(report.Source) me-1"></i>
-                                                    @report.Source
-                                                </span>
-                                            </a>
+                                            <span class="source-badge @report.Source.ToLowerInvariant()">
+                                                <i class="bi @HistoryHelper.GetServiceIcon(report.Source) me-1"></i>
+                                                @report.Source
+                                            </span>
                                         </td>
                                         <td>
-                                            <a href="/reports/@Uri.EscapeDataString(report.Source)/@Uri.EscapeDataString(report.SubSource)" class="subsource-link text-decoration-none">
-                                                <span class="report-sub-source">@report.SubSource</span>
-                                            </a>
+                                            <span class="report-sub-source">@report.SubSource</span>
                                         </td>
                                         <td>
                                             <span class="report-date">
@@ -229,11 +234,6 @@
                                         </td>
                                         <td class="d-none d-lg-table-cell text-center">
                                             <span class="stat-value">@((report.GeneratedAt - report.CutoffDate).Days) days</span>
-                                        </td>
-                                        <td class="text-end">
-                                            <button class="btn btn-action" @onclick="() => ViewReport(report.Id)" aria-label="View Report">
-                                                <i class="bi bi-box-arrow-up-right"></i>
-                                            </button>
                                         </td>
                                     </tr>
                                 }
