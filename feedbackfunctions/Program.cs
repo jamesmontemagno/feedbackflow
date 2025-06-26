@@ -15,6 +15,8 @@ using SharedDump.Services;
 using SharedDump.Services.Interfaces;
 using SharedDump.Services.Mock;
 using System.Configuration;
+using Azure.Storage.Blobs;
+using FeedbackFunctions.Services;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
@@ -36,6 +38,18 @@ var useMocks = false; // In production, we don't use mocks
 
 // Register HTTP client factory
 builder.Services.AddHttpClient();
+
+// Register blob storage and cache services
+builder.Services.AddSingleton<IReportCacheService>(serviceProvider =>
+{
+    var configuration = GetConfig(serviceProvider);
+    var logger = serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ReportCacheService>>();
+    var storageConnection = configuration["AzureWebJobsStorage"] ?? throw new InvalidOperationException("Storage connection string not configured");
+    var serviceClient = new BlobServiceClient(storageConnection);
+    var containerClient = serviceClient.GetBlobContainerClient("reports");
+    containerClient.CreateIfNotExists();
+    return new ReportCacheService(logger, containerClient);
+});
 
 // Register services based on UseMocks setting
 if (useMocks)

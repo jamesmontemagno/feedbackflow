@@ -13,6 +13,7 @@ using SharedDump.Services.Interfaces;
 using SharedDump.Utils;
 using Azure.Storage.Blobs;
 using FeedbackFunctions.Utils;
+using FeedbackFunctions.Services;
 
 namespace FeedbackFunctions;
 
@@ -31,6 +32,7 @@ public class ReportingFunctions
     private readonly IGitHubService _githubService;
     private readonly IFeedbackAnalyzerService _analyzerService;
     private readonly IConfiguration _configuration;
+    private readonly IReportCacheService _cacheService;
     private const string ContainerName = "reports";
     private readonly BlobContainerClient _containerClient;
     private readonly ReportGenerator _reportGenerator;
@@ -44,12 +46,14 @@ public class ReportingFunctions
     /// <param name="redditService">Reddit service for subreddit operations</param>
     /// <param name="githubService">GitHub service for repository operations</param>
     /// <param name="analyzerService">Feedback analyzer service for AI-powered analysis</param>
+    /// <param name="cacheService">Report cache service for in-memory caching</param>
     public ReportingFunctions(
         ILogger<ReportingFunctions> logger,
         IConfiguration configuration,
         IRedditService redditService,
         IGitHubService githubService,
-        IFeedbackAnalyzerService analyzerService)
+        IFeedbackAnalyzerService analyzerService,
+        IReportCacheService cacheService)
     {
 
 #if DEBUG
@@ -66,6 +70,7 @@ public class ReportingFunctions
         _redditService = redditService;
         _githubService = githubService;
         _analyzerService = analyzerService;
+        _cacheService = cacheService;
         
         // Initialize blob container
         var storageConnection = _configuration["AzureWebJobsStorage"] ?? throw new InvalidOperationException("Storage connection string not configured");
@@ -74,7 +79,7 @@ public class ReportingFunctions
         _containerClient.CreateIfNotExists();
 
         // Initialize report generator
-        _reportGenerator = new ReportGenerator(_logger, _redditService, _githubService, _analyzerService, _containerClient);
+        _reportGenerator = new ReportGenerator(_logger, _redditService, _githubService, _analyzerService, _containerClient, _cacheService);
     }
 
   
@@ -89,21 +94,20 @@ public class ReportingFunctions
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "Report/{id}")] HttpRequestData req,
         string id)
     {
-        _logger.LogInformation("Getting Reddit report with ID: {Id}", id);
+        _logger.LogInformation("Getting report with ID: {Id}", id);
 
         try
         {
-            var blobClient = _containerClient.GetBlobClient($"{id}.json");
-            if (!await blobClient.ExistsAsync())
+            // Try to get from cache first
+            var report = await _cacheService.GetReportAsync(id);
+            
+            if (report == null)
             {
                 _logger.LogWarning("Report with ID {Id} not found", id);
                 var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
                 await notFoundResponse.WriteStringAsync($"Report with ID {id} not found");
                 return notFoundResponse;
             }
-
-            var blobContent = await blobClient.DownloadContentAsync();
-            var report = JsonSerializer.Deserialize<ReportModel>(blobContent.Value.Content);
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "application/json");
@@ -141,36 +145,30 @@ public class ReportingFunctions
                 return emptyResponse;
             }
 
-            // Get all reports from the reports container
+            // Get all reports from cache
+            var allReports = await _cacheService.GetReportsAsync();
             var matchingReports = new List<object>();
 
-            await foreach (var blob in _containerClient.GetBlobsAsync())
+            foreach (var report in allReports)
             {
-                var blobClient = _containerClient.GetBlobClient(blob.Name);
-                var content = await blobClient.DownloadContentAsync();
-                var report = JsonSerializer.Deserialize<ReportModel>(content.Value.Content, _jsonOptions);
+                // Check if this report matches any of the user's requests
+                var matchesRequest = userRequests.Any(userReq =>
+                    userReq.Type == report.Source &&
+                    ((userReq.Type == "reddit" && userReq.Subreddit == report.SubSource) ||
+                     (userReq.Type == "github" && $"{userReq.Owner}/{userReq.Repo}" == report.SubSource)));
 
-                if (report != null)
+                if (matchesRequest)
                 {
-                    // Check if this report matches any of the user's requests
-                    var matchesRequest = userRequests.Any(userReq =>
-                        userReq.Type == report.Source &&
-                        ((userReq.Type == "reddit" && userReq.Subreddit == report.SubSource) ||
-                         (userReq.Type == "github" && $"{userReq.Owner}/{userReq.Repo}" == report.SubSource)));
-
-                    if (matchesRequest)
+                    matchingReports.Add(new
                     {
-                        matchingReports.Add(new
-                        {
-                            id = report.Id,
-                            source = report.Source,
-                            subSource = report.SubSource,
-                            generatedAt = report.GeneratedAt,
-                            threadCount = report.ThreadCount,
-                            commentCount = report.CommentCount,
-                            cutoffDate = report.CutoffDate
-                        });
-                    }
+                        id = report.Id,
+                        source = report.Source,
+                        subSource = report.SubSource,
+                        generatedAt = report.GeneratedAt,
+                        threadCount = report.ThreadCount,
+                        commentCount = report.CommentCount,
+                        cutoffDate = report.CutoffDate
+                    });
                 }
             }
 
@@ -217,36 +215,19 @@ public class ReportingFunctions
 
         try
         {
-            var reports = new List<object>();
-            await foreach (var blob in _containerClient.GetBlobsAsync())
+            // Get reports from cache with optional filtering
+            var cachedReports = await _cacheService.GetReportsAsync(sourceFilter, subsourceFilter);
+            
+            var reports = cachedReports.Select(report => new
             {
-                var blobClient = _containerClient.GetBlobClient(blob.Name);
-                var content = await blobClient.DownloadContentAsync();
-                var report = JsonSerializer.Deserialize<ReportModel>(content.Value.Content);
-
-                if (report != null)
-                {
-                    // Apply filtering if parameters are provided
-                    var matchesSource = string.IsNullOrEmpty(sourceFilter) || 
-                                       string.Equals(report.Source, sourceFilter, StringComparison.OrdinalIgnoreCase);
-                    var matchesSubsource = string.IsNullOrEmpty(subsourceFilter) || 
-                                          string.Equals(report.SubSource, subsourceFilter, StringComparison.OrdinalIgnoreCase);
-                    
-                    if (matchesSource && matchesSubsource)
-                    {
-                        reports.Add(new
-                        {
-                            id = report.Id,
-                            source = report.Source,
-                            subSource = report.SubSource,
-                            generatedAt = report.GeneratedAt,
-                            threadCount = report.ThreadCount,
-                            commentCount = report.CommentCount,
-                            cutoffDate = report.CutoffDate
-                        });
-                    }
-                }
-            }
+                id = report.Id,
+                source = report.Source,
+                subSource = report.SubSource,
+                generatedAt = report.GeneratedAt,
+                threadCount = report.ThreadCount,
+                commentCount = report.CommentCount,
+                cutoffDate = report.CutoffDate
+            }).ToList();
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "application/json");

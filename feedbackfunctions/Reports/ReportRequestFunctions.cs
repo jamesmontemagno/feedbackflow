@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using SharedDump.Services.Interfaces;
 using SharedDump.AI;
 using FeedbackFunctions.Utils;
+using FeedbackFunctions.Services;
 
 namespace FeedbackFunctions;
 
@@ -25,13 +26,15 @@ public class ReportRequestFunctions
     private readonly BlobServiceClient _serviceClient; // Still needed for reports filtering
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
     private readonly ReportGenerator _reportGenerator;
+    private readonly IReportCacheService _cacheService;
 
     public ReportRequestFunctions(
         ILogger<ReportRequestFunctions> logger,
         IConfiguration configuration,
         IRedditService redditService,
         IGitHubService githubService,
-        IFeedbackAnalyzerService analyzerService)
+        IFeedbackAnalyzerService analyzerService,
+        IReportCacheService cacheService)
     {
 #if DEBUG
         _configuration = new ConfigurationBuilder()
@@ -42,6 +45,7 @@ public class ReportRequestFunctions
         _configuration = configuration;
 #endif
         _logger = logger;
+        _cacheService = cacheService;
         
         // Initialize table client
         var storageConnection = _configuration["AzureWebJobsStorage"] ?? throw new InvalidOperationException("Storage connection string not configured");
@@ -55,7 +59,7 @@ public class ReportRequestFunctions
         // Initialize report generator
         var reportsContainerClient = _serviceClient.GetBlobContainerClient("reports");
         reportsContainerClient.CreateIfNotExists();
-        _reportGenerator = new ReportGenerator(_logger, redditService, githubService, analyzerService, reportsContainerClient);
+        _reportGenerator = new ReportGenerator(_logger, redditService, githubService, analyzerService, reportsContainerClient, _cacheService);
     }
 
     /// <summary>

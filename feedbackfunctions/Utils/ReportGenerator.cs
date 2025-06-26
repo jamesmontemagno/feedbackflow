@@ -8,6 +8,7 @@ using SharedDump.Models.GitHub;
 using SharedDump.Models.Reports;
 using SharedDump.Services.Interfaces;
 using SharedDump.Utils;
+using FeedbackFunctions.Services;
 
 namespace FeedbackFunctions.Utils;
 
@@ -21,19 +22,22 @@ public class ReportGenerator
     private readonly IGitHubService _githubService;
     private readonly IFeedbackAnalyzerService _analyzerService;
     private readonly BlobContainerClient _containerClient;
+    private readonly IReportCacheService? _cacheService;
 
     public ReportGenerator(
         ILogger logger,
         IRedditService redditService,
         IGitHubService githubService,
         IFeedbackAnalyzerService analyzerService,
-        BlobContainerClient containerClient)
+        BlobContainerClient containerClient,
+        IReportCacheService? cacheService = null)
     {
         _logger = logger;
         _redditService = redditService;
         _githubService = githubService;
         _analyzerService = analyzerService;
         _containerClient = containerClient;
+        _cacheService = cacheService;
     }
 
     /// <summary>
@@ -332,7 +336,7 @@ Keep each section very brief and focused. Total analysis should be no more than 
     }
 
     /// <summary>
-    /// Stores a report in blob storage
+    /// Stores a report in blob storage and cache
     /// </summary>
     /// <param name="report">The report to store</param>
     /// <returns>The blob name where the report was stored</returns>
@@ -348,6 +352,13 @@ Keep each section very brief and focused. Total analysis should be no more than 
             var reportJson = JsonSerializer.Serialize(report);
             await using var ms = new MemoryStream(Encoding.UTF8.GetBytes(reportJson));
             await blobClient.UploadAsync(ms, overwrite: true);
+
+            // Also cache the report if cache service is available
+            if (_cacheService != null)
+            {
+                await _cacheService.SetReportAsync(report);
+                _logger.LogDebug("Cached report {ReportId} after storing to blob", report.Id);
+            }
 
             _logger.LogInformation("Successfully stored report {ReportId} as blob {BlobName}", report.Id, blobName);
             return blobName;
