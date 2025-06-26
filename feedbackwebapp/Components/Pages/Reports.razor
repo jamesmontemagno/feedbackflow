@@ -4,9 +4,11 @@
 @using FeedbackWebApp.Components.Feedback.Forms
 @using SharedDump.Models.Reports
 @inject IReportServiceProvider ReportServiceProvider
+@inject IReportRequestService ReportRequestService
 @inject NavigationManager NavigationManager
 @inject AuthenticationService AuthService
 @inject IHistoryHelper HistoryHelper
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Reports - FeedbackFlow</PageTitle>
 
@@ -17,8 +19,17 @@
     }
     else
     {
-        <h1 class="mt-4 feedbackflow-title">Reports</h1>
-        <p class="text-muted mb-4">Reports are generated Monday morning for select communities</p>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="mt-4 feedbackflow-title mb-2">Reports</h1>
+                <p class="text-muted mb-0">Reports are generated Monday morning for select communities</p>
+            </div>
+            <div>
+                <a href="/reports/create" class="btn btn-primary">
+                    <i class="bi bi-plus-lg me-2"></i>Create Report
+                </a>
+            </div>
+        </div>
         
         @if (reports != null && reports.Any())
         {
@@ -98,9 +109,14 @@
         }
         <div class="card mb-4">
             <div class="card-header">
-                <div>
-                    <i class="bi bi-file-earmark-text me-1"></i>
-                    Available Reports
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-file-earmark-text me-1"></i>
+                        My Reports
+                    </div>
+                    <small class="text-muted">
+                        Showing reports for your requests
+                    </small>
                 </div>
             </div>
             <div class="card-body">
@@ -161,7 +177,7 @@
                 {
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle me-2"></i>
-                        No reports found.
+                        No reports found for your requests. <a href="/reports/create" class="alert-link">Create a report request</a> to see reports here.
                     </div>
                 }
                 else
@@ -280,8 +296,21 @@
         {
             loading = true;
             errorMessage = null;
-            reports = await _reportService!.ListReportsAsync();
-            // We'll keep this for backwards compatibility
+            
+            // Get user's report requests from IndexedDB
+            var userRequests = await JSRuntime.InvokeAsync<object[]>("window.indexedDbModule.getAllReportRequests") ?? Array.Empty<object>();
+            
+            if (userRequests.Any())
+            {
+                // Filter reports based on user requests
+                reports = await ReportRequestService.FilterReportsAsync(userRequests);
+            }
+            else
+            {
+                // No user requests, show empty list to encourage creating requests
+                reports = Enumerable.Empty<ReportModel>();
+            }
+            
             subSources = reports.Select(r => r.SubSource).ToHashSet();
         }
         catch (Exception ex)

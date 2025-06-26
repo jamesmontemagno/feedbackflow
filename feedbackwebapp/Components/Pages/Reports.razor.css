@@ -498,3 +498,26 @@
     background: var(--primary-gradient);
     color: var(--bg-secondary);
 }
+
+/* ========== Header Layout ========== */
+.d-flex.justify-content-between.align-items-center {
+    gap: 1rem;
+}
+
+/* ========== Responsive Design ========== */
+@media (max-width: 768px) {
+    .d-flex.justify-content-between.align-items-center {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .d-flex.justify-content-between.align-items-center > div:last-child {
+        align-self: stretch;
+    }
+    
+    .d-flex.justify-content-between.align-items-center .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
