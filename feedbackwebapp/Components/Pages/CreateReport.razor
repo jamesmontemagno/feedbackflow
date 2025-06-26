@@ -244,8 +244,8 @@
             var id = GenerateRequestId(reportRequest);
             
             // Check if request already exists locally
-            var existingRequest = await JSRuntime.InvokeAsync<string?>("window.indexedDbModule.getReportRequest", id);
-            if (!string.IsNullOrEmpty(existingRequest))
+            var existingRequest = await JSRuntime.InvokeAsync<object?>("window.indexedDbModule.getReportRequest", id);
+            if (existingRequest != null)
             {
                 errorMessage = "You've already requested this report.";
                 return;
@@ -262,20 +262,20 @@
                 createdAt = DateTimeOffset.UtcNow
             };
 
-            // Save to IndexedDB
-            await JSRuntime.InvokeVoidAsync("window.indexedDbModule.saveReportRequest", requestData);
-
-            // Send to backend
+            // Send to backend first
             var success = await ReportRequestService.AddReportRequestAsync(requestData);
             
             if (success)
             {
+                // Only save to IndexedDB if backend request was successful
+                await JSRuntime.InvokeVoidAsync("window.indexedDbModule.saveReportRequest", requestData);
+                
                 successMessage = $"Report request created successfully! Reports are generated every Monday morning.";
                 reportRequest = new ReportRequestModel(); // Reset form
             }
             else
             {
-                errorMessage = "Failed to submit request to the server. Your request is saved locally and will be submitted when you reload the Reports page.";
+                errorMessage = "Failed to submit request to the server. Please try again later.";
             }
         }
         catch (Exception ex)

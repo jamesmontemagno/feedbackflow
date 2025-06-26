@@ -65,8 +65,9 @@ public class ReportRequestService : IReportRequestService
             var response = await _httpClient.PostAsync($"{baseUrl}/api/AddReportRequest?code={Uri.EscapeDataString(code)}", content);
             return response.IsSuccessStatusCode;
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"Error adding report request: {ex.Message}");
             return false;
         }
     }
@@ -83,8 +84,9 @@ public class ReportRequestService : IReportRequestService
             var response = await _httpClient.DeleteAsync($"{baseUrl}/api/reportrequest/{Uri.EscapeDataString(id)}?code={Uri.EscapeDataString(code)}");
             return response.IsSuccessStatusCode;
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"Error removing report request {id}: {ex.Message}");
             return false;
         }
     }

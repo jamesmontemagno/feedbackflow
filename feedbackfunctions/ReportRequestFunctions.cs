@@ -99,56 +99,75 @@ public class ReportRequestFunctions
 
             try
             {
-                // Try to get existing entity
-                var existingEntity = await _tableClient.GetEntityAsync<ReportRequestModel>(request.PartitionKey, request.RowKey);
-                
-                // Entity exists, increment subscriber count
-                existingEntity.Value.SubscriberCount++;
-                await _tableClient.UpdateEntityAsync(existingEntity.Value, existingEntity.Value.ETag);
-                
-                _logger.LogInformation("Incremented subscriber count for existing request {RequestId} to {Count}", 
-                    request.Id, existingEntity.Value.SubscriberCount);
-            }
-            catch (Azure.RequestFailedException ex) when (ex.Status == 404)
-            {
-                // Entity doesn't exist, create new one
-                await _tableClient.AddEntityAsync(request);
-                
-                _logger.LogInformation("Created new report request {RequestId} for {Type}: {Details}", 
-                    request.Id, request.Type, 
-                    request.Type == "reddit" ? request.Subreddit : $"{request.Owner}/{request.Repo}");
+                // Check if entity exists using query instead of exception handling
+                var existingEntities = _tableClient.QueryAsync<ReportRequestModel>(
+                    filter: $"PartitionKey eq '{request.PartitionKey}' and RowKey eq '{request.RowKey}'",
+                    maxPerPage: 1);
 
-                // Generate report immediately for new requests
-                try
+                ReportRequestModel? existingEntity = null;
+                await foreach (var entity in existingEntities)
                 {
-                    _logger.LogInformation("Generating initial report for new request {RequestId}", request.Id);
-                    var generatedReport = await _reportGenerator.ProcessReportRequestAsync(request);
+                    existingEntity = entity;
+                    break; // We only expect one result
+                }
+                
+                if (existingEntity != null)
+                {
+                    // Entity exists, increment subscriber count
+                    existingEntity.SubscriberCount++;
+                    await _tableClient.UpdateEntityAsync(existingEntity, existingEntity.ETag);
                     
-                    if (generatedReport != null)
-                    {
-                        _logger.LogInformation("Successfully generated initial report {ReportId} for new request {RequestId}", 
-                            generatedReport.Id, request.Id);
-                        
-                        var successResponse = req.CreateResponse(HttpStatusCode.OK);
-                        successResponse.Headers.Add("Content-Type", "application/json");
-                        await successResponse.WriteStringAsync(JsonSerializer.Serialize(new { 
-                            id = request.Id, 
-                            message = "Request added successfully and initial report generated",
-                            reportId = generatedReport.Id,
-                            reportGenerated = true
-                        }));
-                        return successResponse;
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Failed to generate initial report for new request {RequestId}", request.Id);
-                    }
+                    _logger.LogInformation("Incremented subscriber count for existing request {RequestId} to {Count}", 
+                        request.Id, existingEntity.SubscriberCount);
                 }
-                catch (Exception reportEx)
+                else
                 {
-                    _logger.LogError(reportEx, "Error generating initial report for new request {RequestId}", request.Id);
-                    // Don't fail the entire request if report generation fails
+                    // Entity doesn't exist, create new one
+                    await _tableClient.AddEntityAsync(request);
+                    
+                    _logger.LogInformation("Created new report request {RequestId} for {Type}: {Details}", 
+                        request.Id, request.Type, 
+                        request.Type == "reddit" ? request.Subreddit : $"{request.Owner}/{request.Repo}");
+
+                    // Generate report immediately for new requests
+                    try
+                    {
+                        _logger.LogInformation("Generating initial report for new request {RequestId}", request.Id);
+                        var generatedReport = await _reportGenerator.ProcessReportRequestAsync(request);
+                        
+                        if (generatedReport != null)
+                        {
+                            _logger.LogInformation("Successfully generated initial report {ReportId} for new request {RequestId}", 
+                                generatedReport.Id, request.Id);
+                            
+                            var successResponse = req.CreateResponse(HttpStatusCode.OK);
+                            successResponse.Headers.Add("Content-Type", "application/json");
+                            await successResponse.WriteStringAsync(JsonSerializer.Serialize(new { 
+                                id = request.Id, 
+                                message = "Request added successfully and initial report generated",
+                                reportId = generatedReport.Id,
+                                reportGenerated = true
+                            }));
+                            return successResponse;
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Failed to generate initial report for new request {RequestId}", request.Id);
+                        }
+                    }
+                    catch (Exception reportEx)
+                    {
+                        _logger.LogError(reportEx, "Error generating initial report for new request {RequestId}", request.Id);
+                        // Don't fail the entire request if report generation fails
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking/creating report request {RequestId}", request.Id);
+                var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+                await errorResponse.WriteStringAsync($"Error processing request: {ex.Message}");
+                return errorResponse;
             }
 
             var response = req.CreateResponse(HttpStatusCode.OK);
@@ -257,17 +276,33 @@ public class ReportRequestFunctions
 
             try
             {
-                // Get existing entity
-                var existingEntity = await _tableClient.GetEntityAsync<ReportRequestModel>(partitionKey, rowKey);
+                // Check if entity exists using query instead of exception handling
+                var existingEntities = _tableClient.QueryAsync<ReportRequestModel>(
+                    filter: $"PartitionKey eq '{partitionKey}' and RowKey eq '{rowKey}'",
+                    maxPerPage: 1);
+
+                ReportRequestModel? existingEntity = null;
+                await foreach (var entity in existingEntities)
+                {
+                    existingEntity = entity;
+                    break; // We only expect one result
+                }
                 
-                if (existingEntity.Value.SubscriberCount > 1)
+                if (existingEntity == null)
+                {
+                    var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+                    await notFoundResponse.WriteStringAsync($"Request with ID {id} not found");
+                    return notFoundResponse;
+                }
+                
+                if (existingEntity.SubscriberCount > 1)
                 {
                     // Decrement subscriber count instead of deleting
-                    existingEntity.Value.SubscriberCount--;
-                    await _tableClient.UpdateEntityAsync(existingEntity.Value, existingEntity.Value.ETag);
+                    existingEntity.SubscriberCount--;
+                    await _tableClient.UpdateEntityAsync(existingEntity, existingEntity.ETag);
                     
                     _logger.LogInformation("Decremented subscriber count for request {RequestId} to {Count}", 
-                        id, existingEntity.Value.SubscriberCount);
+                        id, existingEntity.SubscriberCount);
                 }
                 else
                 {
