@@ -1,10 +1,10 @@
 using System.Net;
-using System.Text;
 using System.Text.Json;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using SharedDump.Models.Reports;
+using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
 
@@ -17,9 +17,9 @@ public class ReportRequestFunctions
 {
     private readonly ILogger<ReportRequestFunctions> _logger;
     private readonly IConfiguration _configuration;
-    private const string ContainerName = "reportrequests";
-    private readonly BlobContainerClient _containerClient;
-    private readonly BlobServiceClient _serviceClient;
+    private const string TableName = "reportrequests";
+    private readonly TableClient _tableClient;
+    private readonly BlobServiceClient _serviceClient; // Still needed for reports filtering
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public ReportRequestFunctions(
@@ -36,11 +36,14 @@ public class ReportRequestFunctions
 #endif
         _logger = logger;
         
-        // Initialize blob container
+        // Initialize table client
         var storageConnection = _configuration["AzureWebJobsStorage"] ?? throw new InvalidOperationException("Storage connection string not configured");
+        var tableServiceClient = new TableServiceClient(storageConnection);
+        _tableClient = tableServiceClient.GetTableClient(TableName);
+        _tableClient.CreateIfNotExists();
+
+        // Initialize blob service client for reports filtering
         _serviceClient = new BlobServiceClient(storageConnection);
-        _containerClient = _serviceClient.GetBlobContainerClient(ContainerName);
-        _containerClient.CreateIfNotExists();
     }
 
     /// <summary>
@@ -75,33 +78,29 @@ public class ReportRequestFunctions
             }
 
             // Generate deterministic ID based on type and parameters
-            request.Id = GenerateRequestId(request);
+            var requestId = GenerateRequestId(request);
+            request.Id = requestId;
+            
+            // Set table entity properties
+            request.PartitionKey = request.Type.ToLowerInvariant();
+            request.RowKey = requestId;
 
-            // Check if request already exists
-            var blobClient = _containerClient.GetBlobClient($"{request.Id}.json");
-            if (await blobClient.ExistsAsync())
+            try
             {
-                // Request exists, increment subscriber count
-                var existingContent = await blobClient.DownloadContentAsync();
-                var existingRequest = JsonSerializer.Deserialize<ReportRequestModel>(existingContent.Value.Content, _jsonOptions);
+                // Try to get existing entity
+                var existingEntity = await _tableClient.GetEntityAsync<ReportRequestModel>(request.PartitionKey, request.RowKey);
                 
-                if (existingRequest != null)
-                {
-                    existingRequest.SubscriberCount++;
-                    var updatedJson = JsonSerializer.Serialize(existingRequest, _jsonOptions);
-                    await using var updateMs = new MemoryStream(Encoding.UTF8.GetBytes(updatedJson));
-                    await blobClient.UploadAsync(updateMs, overwrite: true);
-                    
-                    _logger.LogInformation("Incremented subscriber count for existing request {RequestId} to {Count}", 
-                        request.Id, existingRequest.SubscriberCount);
-                }
+                // Entity exists, increment subscriber count
+                existingEntity.Value.SubscriberCount++;
+                await _tableClient.UpdateEntityAsync(existingEntity.Value, existingEntity.Value.ETag);
+                
+                _logger.LogInformation("Incremented subscriber count for existing request {RequestId} to {Count}", 
+                    request.Id, existingEntity.Value.SubscriberCount);
             }
-            else
+            catch (Azure.RequestFailedException ex) when (ex.Status == 404)
             {
-                // New request, save it
-                var requestJson = JsonSerializer.Serialize(request, _jsonOptions);
-                await using var ms = new MemoryStream(Encoding.UTF8.GetBytes(requestJson));
-                await blobClient.UploadAsync(ms, overwrite: true);
+                // Entity doesn't exist, create new one
+                await _tableClient.AddEntityAsync(request);
                 
                 _logger.LogInformation("Created new report request {RequestId} for {Type}: {Details}", 
                     request.Id, request.Type, 
@@ -204,38 +203,36 @@ public class ReportRequestFunctions
 
         try
         {
-            var blobClient = _containerClient.GetBlobClient($"{id}.json");
-            
-            if (!await blobClient.ExistsAsync())
-            {
-                var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
-                await notFoundResponse.WriteStringAsync($"Request with ID {id} not found");
-                return notFoundResponse;
-            }
+            // Parse the ID to get partition key and row key
+            var partitionKey = GetPartitionKeyFromId(id);
+            var rowKey = id;
 
-            // Get existing request to check subscriber count
-            var existingContent = await blobClient.DownloadContentAsync();
-            var existingRequest = JsonSerializer.Deserialize<ReportRequestModel>(existingContent.Value.Content, _jsonOptions);
-            
-            if (existingRequest != null)
+            try
             {
-                if (existingRequest.SubscriberCount > 1)
+                // Get existing entity
+                var existingEntity = await _tableClient.GetEntityAsync<ReportRequestModel>(partitionKey, rowKey);
+                
+                if (existingEntity.Value.SubscriberCount > 1)
                 {
                     // Decrement subscriber count instead of deleting
-                    existingRequest.SubscriberCount--;
-                    var updatedJson = JsonSerializer.Serialize(existingRequest, _jsonOptions);
-                    await using var ms = new MemoryStream(Encoding.UTF8.GetBytes(updatedJson));
-                    await blobClient.UploadAsync(ms, overwrite: true);
+                    existingEntity.Value.SubscriberCount--;
+                    await _tableClient.UpdateEntityAsync(existingEntity.Value, existingEntity.Value.ETag);
                     
                     _logger.LogInformation("Decremented subscriber count for request {RequestId} to {Count}", 
-                        id, existingRequest.SubscriberCount);
+                        id, existingEntity.Value.SubscriberCount);
                 }
                 else
                 {
                     // Last subscriber, delete the request
-                    await blobClient.DeleteAsync();
+                    await _tableClient.DeleteEntityAsync(partitionKey, rowKey);
                     _logger.LogInformation("Deleted report request {RequestId}", id);
                 }
+            }
+            catch (Azure.RequestFailedException ex) when (ex.Status == 404)
+            {
+                var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+                await notFoundResponse.WriteStringAsync($"Request with ID {id} not found");
+                return notFoundResponse;
             }
 
             var response = req.CreateResponse(HttpStatusCode.OK);
@@ -264,16 +261,9 @@ public class ReportRequestFunctions
         {
             var requests = new List<ReportRequestModel>();
             
-            await foreach (var blob in _containerClient.GetBlobsAsync())
+            await foreach (var entity in _tableClient.QueryAsync<ReportRequestModel>())
             {
-                var blobClient = _containerClient.GetBlobClient(blob.Name);
-                var content = await blobClient.DownloadContentAsync();
-                var request = JsonSerializer.Deserialize<ReportRequestModel>(content.Value.Content, _jsonOptions);
-                
-                if (request != null)
-                {
-                    requests.Add(request);
-                }
+                requests.Add(entity);
             }
 
             var response = req.CreateResponse(HttpStatusCode.OK);
@@ -303,16 +293,9 @@ public class ReportRequestFunctions
         {
             var requests = new List<ReportRequestModel>();
             
-            await foreach (var blob in _containerClient.GetBlobsAsync())
+            await foreach (var entity in _tableClient.QueryAsync<ReportRequestModel>())
             {
-                var blobClient = _containerClient.GetBlobClient(blob.Name);
-                var content = await blobClient.DownloadContentAsync();
-                var request = JsonSerializer.Deserialize<ReportRequestModel>(content.Value.Content, _jsonOptions);
-                
-                if (request != null)
-                {
-                    requests.Add(request);
-                }
+                requests.Add(entity);
             }
 
             _logger.LogInformation("Found {RequestCount} report requests to process", requests.Count);
@@ -356,5 +339,12 @@ public class ReportRequestFunctions
             : $"{request.Owner?.ToLowerInvariant()}/{request.Repo?.ToLowerInvariant()}";
         
         return $"{source}_{identifier}".Replace("/", "_");
+    }
+
+    private static string GetPartitionKeyFromId(string id)
+    {
+        // ID format is "{type}_{identifier}", so we extract the type part
+        var parts = id.Split('_', 2);
+        return parts.Length > 0 ? parts[0] : "unknown";
     }
 }
