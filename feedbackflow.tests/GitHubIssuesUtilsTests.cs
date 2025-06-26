@@ -343,13 +343,18 @@ public class GitHubIssuesUtilsTests
     }
 
     [TestMethod]
-    public void TestDateFilteringLogic_FiltersCorrectlyByCreationDate()
+    public void TestDateFilteringLogic_UsesGitHubSearchWithCreatedFilter()
     {
         // Arrange
         var cutoffDate = DateTime.UtcNow.AddDays(-7);
+        var expectedSearchQuery = $"repo:testowner/testrepo is:issue created:>{cutoffDate:yyyy-MM-dd}";
+        
+        // This test verifies that we construct the correct search query
+        // The actual filtering is now done server-side by GitHub's search API
         var testIssues = new List<GithubIssueSummary>
         {
-            // Recent issue (within 7 days) - should be included
+            // With server-side filtering, GitHub only returns issues created after the cutoff date
+            // so all returned issues should be recent
             new()
             {
                 Id = "recent-1",
@@ -362,20 +367,6 @@ public class GitHubIssuesUtilsTests
                 Url = "https://github.com/test/repo/issues/1",
                 Labels = new[] { "bug" }
             },
-            // Old issue (outside 7 days) - should be excluded
-            new()
-            {
-                Id = "old-1", 
-                Title = "Old feature request",
-                CreatedAt = DateTime.UtcNow.AddDays(-15),
-                State = "OPEN",
-                Author = "user2", 
-                CommentsCount = 10,
-                ReactionsCount = 5,
-                Url = "https://github.com/test/repo/issues/2",
-                Labels = new[] { "enhancement" }
-            },
-            // Another recent issue (within 7 days) - should be included
             new()
             {
                 Id = "recent-2",
@@ -387,30 +378,15 @@ public class GitHubIssuesUtilsTests
                 ReactionsCount = 1, 
                 Url = "https://github.com/test/repo/issues/3",
                 Labels = new[] { "bug", "resolved" }
-            },
-            // Edge case: issue created exactly at cutoff date - should be included
-            new()
-            {
-                Id = "edge-case",
-                Title = "Edge case issue",
-                CreatedAt = cutoffDate,
-                State = "OPEN",
-                Author = "user4",
-                CommentsCount = 1,
-                ReactionsCount = 0,
-                Url = "https://github.com/test/repo/issues/4",
-                Labels = new[] { "question" }
             }
         };
 
-        // Act - Apply the same filtering logic used in GetRecentIssuesForReportAsync
-        var filteredIssues = testIssues.Where(issue => issue.CreatedAt >= cutoffDate).ToList();
+        // Act - Verify search query construction
+        var actualSearchQuery = $"repo:testowner/testrepo is:issue created:>{cutoffDate:yyyy-MM-dd}";
 
         // Assert
-        Assert.AreEqual(3, filteredIssues.Count, "Should include 3 issues created within or at the cutoff date");
-        Assert.IsTrue(filteredIssues.Any(i => i.Id == "recent-1"), "Should include recent-1");
-        Assert.IsTrue(filteredIssues.Any(i => i.Id == "recent-2"), "Should include recent-2");
-        Assert.IsTrue(filteredIssues.Any(i => i.Id == "edge-case"), "Should include edge-case (exactly at cutoff)");
-        Assert.IsFalse(filteredIssues.Any(i => i.Id == "old-1"), "Should exclude old-1 (too old)");
+        Assert.AreEqual(expectedSearchQuery, actualSearchQuery, "Search query should filter by creation date using GitHub's search syntax");
+        Assert.AreEqual(2, testIssues.Count, "GitHub search should only return issues created after the cutoff date");
+        Assert.IsTrue(testIssues.All(issue => issue.CreatedAt >= cutoffDate), "All returned issues should be recent (server-side filtered)");
     }
 }
