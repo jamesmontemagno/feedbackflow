@@ -292,47 +292,7 @@ public class ReportRequestFunctions
         }
     }
 
-    /// <summary>
-    /// Timer trigger for weekly report processing
-    /// </summary>
-    [Function("WeeklyReportProcessor")]
-    public async Task WeeklyReportProcessor(
-        [TimerTrigger("0 0 11 * * 1")] TimerInfo timer) // Runs Monday at 11:00 AM UTC (4:00 AM Pacific)
-    {
-        _logger.LogInformation("Starting weekly report processing at {Time}", DateTime.UtcNow);
 
-        try
-        {
-            var requests = new List<ReportRequestModel>();
-            
-            await foreach (var entity in _tableClient.QueryAsync<ReportRequestModel>())
-            {
-                requests.Add(entity);
-            }
-
-            _logger.LogInformation("Found {RequestCount} report requests to process", requests.Count);
-
-            foreach (var request in requests)
-            {
-                var report = await _reportGenerator.ProcessReportRequestAsync(request);
-                if (report != null)
-                {
-                    _logger.LogInformation("Successfully processed request {RequestId} and generated report {ReportId}", 
-                        request.Id, report.Id);
-                }
-                else
-                {
-                    _logger.LogWarning("Failed to process request {RequestId}", request.Id);
-                }
-            }
-
-            _logger.LogInformation("Completed weekly report processing");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error in weekly report processing");
-        }
-    }
 
     private static string GenerateRequestId(ReportRequestModel request)
     {
