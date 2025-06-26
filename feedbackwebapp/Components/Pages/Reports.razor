@@ -34,7 +34,7 @@
             </div>
         </div>
         
-        @if (reports != null && reports.Any())
+        @if (reports != null && reports.Any() && HasMultipleSources)
         {
             <div class="filter-controls mb-4">
                 <div class="row g-3">
@@ -269,6 +269,12 @@
             (string.IsNullOrEmpty(selectedSource) || r.Source.Equals(selectedSource, StringComparison.OrdinalIgnoreCase)) &&
             (string.IsNullOrEmpty(selectedSubSource) || r.SubSource == selectedSubSource)
         ) ?? Enumerable.Empty<ReportModel>();
+
+    private bool HasMultipleSources =>
+        reports != null && 
+        reports.Select(r => r.Source.ToLowerInvariant()).Distinct().Count() > 1 &&
+        reports.Any(r => r.Source.Equals("github", StringComparison.OrdinalIgnoreCase)) &&
+        reports.Any(r => r.Source.Equals("reddit", StringComparison.OrdinalIgnoreCase));
         
     private void SelectSource(string source)
     {
