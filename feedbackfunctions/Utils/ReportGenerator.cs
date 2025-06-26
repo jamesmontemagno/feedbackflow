@@ -155,11 +155,8 @@ Keep each section very brief and focused. Total analysis should be no more than 
             
             report.HtmlContent = emailHtml;
 
-            // Save to blob storage
-            var blobClient = _containerClient.GetBlobClient($"{report.Id}.json");
-            var reportJson = JsonSerializer.Serialize(report);
-            await using var ms = new MemoryStream(Encoding.UTF8.GetBytes(reportJson));
-            await blobClient.UploadAsync(ms, overwrite: true);
+            // Save to blob storage using the helper method
+            await StoreReportAsync(report);
 
             return report;
         }
@@ -213,11 +210,8 @@ Keep each section very brief and focused. Total analysis should be no more than 
                     HtmlContent = $"<html><body><h1>No Issues Found</h1><p>No issues were found for {owner}/{repo} in the last {days} days.</p></body></html>"
                 };
 
-                // Save to blob storage
-                var emptyBlobClient = _containerClient.GetBlobClient($"{emptyReport.Id}.json");
-                var emptyReportJson = JsonSerializer.Serialize(emptyReport);
-                await using var emptyMs = new MemoryStream(Encoding.UTF8.GetBytes(emptyReportJson));
-                await emptyBlobClient.UploadAsync(emptyMs, overwrite: true);
+                // Save to blob storage using the helper method
+                await StoreReportAsync(emptyReport);
 
                 return emptyReport;
             }
@@ -305,11 +299,8 @@ Keep each section very brief and focused. Total analysis should be no more than 
             
             report.HtmlContent = emailHtml;
 
-            // Save to blob storage
-            var blobClient = _containerClient.GetBlobClient($"{report.Id}.json");
-            var reportJson = JsonSerializer.Serialize(report);
-            await using var ms = new MemoryStream(Encoding.UTF8.GetBytes(reportJson));
-            await blobClient.UploadAsync(ms, overwrite: true);
+            // Save to blob storage using the helper method
+            await StoreReportAsync(report);
 
             return report;
         }
@@ -338,5 +329,72 @@ Keep each section very brief and focused. Total analysis should be no more than 
             }
         }
         return flattened;
+    }
+
+    /// <summary>
+    /// Stores a report in blob storage
+    /// </summary>
+    /// <param name="report">The report to store</param>
+    /// <returns>The blob name where the report was stored</returns>
+    public async Task<string> StoreReportAsync(ReportModel report)
+    {
+        _logger.LogInformation("Storing report {ReportId} to blob storage", report.Id);
+
+        try
+        {
+            var blobName = $"{report.Id}.json";
+            var blobClient = _containerClient.GetBlobClient(blobName);
+            
+            var reportJson = JsonSerializer.Serialize(report);
+            await using var ms = new MemoryStream(Encoding.UTF8.GetBytes(reportJson));
+            await blobClient.UploadAsync(ms, overwrite: true);
+
+            _logger.LogInformation("Successfully stored report {ReportId} as blob {BlobName}", report.Id, blobName);
+            return blobName;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error storing report {ReportId} to blob storage", report.Id);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Processes a report request and stores the generated report
+    /// </summary>
+    /// <param name="request">The report request to process</param>
+    /// <returns>The generated report, or null if processing failed</returns>
+    public async Task<ReportModel?> ProcessReportRequestAsync(ReportRequestModel request)
+    {
+        try
+        {
+            if (request.Type == "reddit" && !string.IsNullOrEmpty(request.Subreddit))
+            {
+                _logger.LogInformation("Processing Reddit report for r/{Subreddit}", request.Subreddit);
+                var report = await GenerateRedditReportAsync(request.Subreddit);
+                _logger.LogInformation("Successfully generated and stored Reddit report for r/{Subreddit} with ID {ReportId}", 
+                    request.Subreddit, report.Id);
+                return report;
+            }
+            else if (request.Type == "github" && !string.IsNullOrEmpty(request.Owner) && !string.IsNullOrEmpty(request.Repo))
+            {
+                _logger.LogInformation("Processing GitHub report for {Owner}/{Repo}", request.Owner, request.Repo);
+                var report = await GenerateGitHubReportAsync(request.Owner, request.Repo);
+                _logger.LogInformation("Successfully generated and stored GitHub report for {Owner}/{Repo} with ID {ReportId}", 
+                    request.Owner, request.Repo, report.Id);
+                return report;
+            }
+            else
+            {
+                _logger.LogWarning("Invalid or incomplete report request: Type={Type}, Subreddit={Subreddit}, Owner={Owner}, Repo={Repo}", 
+                    request.Type, request.Subreddit, request.Owner, request.Repo);
+                return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing report request {RequestId}", request.Id);
+            return null;
+        }
     }
 }

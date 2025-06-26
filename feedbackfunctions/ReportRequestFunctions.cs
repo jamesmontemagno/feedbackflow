@@ -314,26 +314,15 @@ public class ReportRequestFunctions
 
             foreach (var request in requests)
             {
-                try
+                var report = await _reportGenerator.ProcessReportRequestAsync(request);
+                if (report != null)
                 {
-                    if (request.Type == "reddit" && !string.IsNullOrEmpty(request.Subreddit))
-                    {
-                        _logger.LogInformation("Processing Reddit report for r/{Subreddit}", request.Subreddit);
-                        var report = await _reportGenerator.GenerateRedditReportAsync(request.Subreddit);
-                        _logger.LogInformation("Successfully generated Reddit report for r/{Subreddit} with ID {ReportId}", 
-                            request.Subreddit, report.Id);
-                    }
-                    else if (request.Type == "github" && !string.IsNullOrEmpty(request.Owner) && !string.IsNullOrEmpty(request.Repo))
-                    {
-                        _logger.LogInformation("Processing GitHub report for {Owner}/{Repo}", request.Owner, request.Repo);
-                        var report = await _reportGenerator.GenerateGitHubReportAsync(request.Owner, request.Repo);
-                        _logger.LogInformation("Successfully generated GitHub report for {Owner}/{Repo} with ID {ReportId}", 
-                            request.Owner, request.Repo, report.Id);
-                    }
+                    _logger.LogInformation("Successfully processed request {RequestId} and generated report {ReportId}", 
+                        request.Id, report.Id);
                 }
-                catch (Exception ex)
+                else
                 {
-                    _logger.LogError(ex, "Error processing request {RequestId}", request.Id);
+                    _logger.LogWarning("Failed to process request {RequestId}", request.Id);
                 }
             }
 
