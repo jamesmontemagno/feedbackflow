@@ -117,11 +117,47 @@ public class ReportRequestFunctions
                 _logger.LogInformation("Created new report request {RequestId} for {Type}: {Details}", 
                     request.Id, request.Type, 
                     request.Type == "reddit" ? request.Subreddit : $"{request.Owner}/{request.Repo}");
+
+                // Generate report immediately for new requests
+                try
+                {
+                    _logger.LogInformation("Generating initial report for new request {RequestId}", request.Id);
+                    var generatedReport = await _reportGenerator.ProcessReportRequestAsync(request);
+                    
+                    if (generatedReport != null)
+                    {
+                        _logger.LogInformation("Successfully generated initial report {ReportId} for new request {RequestId}", 
+                            generatedReport.Id, request.Id);
+                        
+                        var successResponse = req.CreateResponse(HttpStatusCode.OK);
+                        successResponse.Headers.Add("Content-Type", "application/json");
+                        await successResponse.WriteStringAsync(JsonSerializer.Serialize(new { 
+                            id = request.Id, 
+                            message = "Request added successfully and initial report generated",
+                            reportId = generatedReport.Id,
+                            reportGenerated = true
+                        }));
+                        return successResponse;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Failed to generate initial report for new request {RequestId}", request.Id);
+                    }
+                }
+                catch (Exception reportEx)
+                {
+                    _logger.LogError(reportEx, "Error generating initial report for new request {RequestId}", request.Id);
+                    // Don't fail the entire request if report generation fails
+                }
             }
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "application/json");
-            await response.WriteStringAsync(JsonSerializer.Serialize(new { id = request.Id, message = "Request added successfully" }));
+            await response.WriteStringAsync(JsonSerializer.Serialize(new { 
+                id = request.Id, 
+                message = "Request added successfully",
+                reportGenerated = false
+            }));
             return response;
         }
         catch (Exception ex)
