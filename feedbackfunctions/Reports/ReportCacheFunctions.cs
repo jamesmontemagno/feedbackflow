@@ -74,7 +74,7 @@ public class ReportCacheFunctions
     /// <returns>HTTP response with refresh status</returns>
     [Function("RefreshCache")]
     public async Task<HttpResponseData> RefreshCache(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "cache/refresh")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Function, "get,post", Route = "cache/refresh")] HttpRequestData req)
     {
         _logger.LogInformation("Manual cache refresh requested");
 
@@ -109,7 +109,7 @@ public class ReportCacheFunctions
     /// <returns>HTTP response with clear status</returns>
     [Function("ClearCache")]
     public async Task<HttpResponseData> ClearCache(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "cache/clear")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Function, "get,post", Route = "cache/clear")] HttpRequestData req)
     {
         _logger.LogInformation("Manual cache clear requested");
 

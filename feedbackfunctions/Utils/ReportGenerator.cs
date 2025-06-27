@@ -273,9 +273,10 @@ Keep each section very brief and focused. Total analysis should be no more than 
             var enhancedOverallAnalysis = await _analyzerService.AnalyzeCommentsAsync("github", overallAnalysis, customWeeklyPrompt);
             _logger.LogDebug("Overall analysis completed");
 
-            // Get oldest important issues that are still being discussed
-            var oldestImportantIssues = GitHubIssuesUtils.GetOldestImportantIssues(issues, 3);
-            _logger.LogInformation("Found {OldestIssueCount} oldest important issues", oldestImportantIssues.Count);
+            // Get oldest important issues that have recent comment activity
+            _logger.LogInformation("Fetching oldest important issues with recent activity for {Owner}/{Repo}", owner, repo);
+            var oldestImportantIssues = await _githubService.GetOldestImportantIssuesWithRecentActivityAsync(owner, repo, 7, 3);
+            _logger.LogInformation("Found {OldestIssueCount} oldest important issues with recent activity", oldestImportantIssues.Count);
 
             _logger.LogInformation("Creating GitHub issues report model");
             var report = new ReportModel

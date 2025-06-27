@@ -1125,6 +1125,167 @@ public class GitHubService : IGitHubService
         return issuesList;
     }
 
+    /// <summary>
+    /// Gets the oldest important issues (open, high engagement) that have recent comment activity
+    /// </summary>
+    /// <param name="repoOwner">Repository owner</param>
+    /// <param name="repoName">Repository name</param>
+    /// <param name="recentDays">Number of days to consider "recent" for comment activity (default: 7)</param>
+    /// <param name="topCount">Number of oldest issues to return (default: 3)</param>
+    /// <returns>List of oldest important issues with recent comment activity</returns>
+    public async Task<List<GithubIssueSummary>> GetOldestImportantIssuesWithRecentActivityAsync(string repoOwner, string repoName, int recentDays = 7, int topCount = 3)
+    {
+        var issuesList = new List<GithubIssueSummary>();
+        var hasMorePages = true;
+        string? endCursor = null;
+        var retryCount = 0;
+        var recentDate = DateTime.UtcNow.AddDays(-recentDays).ToString("yyyy-MM-dd");
+        
+        // Search for open issues that have been commented on recently, but are older than 30 days
+        // This gives us old issues that are still getting attention
+        var oldDate = DateTime.UtcNow.AddDays(-365).ToString("yyyy-MM-dd"); // Look back up to 1 year
+        var searchQuery = $"repo:{repoOwner}/{repoName} is:issue is:open created:<{DateTime.UtcNow.AddDays(-30):yyyy-MM-dd} comments:>=2 updated:>{recentDate}";
+
+        while (hasMorePages && issuesList.Count < topCount * 2) // Get extra issues to filter properly
+        {
+            var issuesQuery = @"
+            query($query: String!, $first: Int!, $after: String) {
+                search(query: $query, type: ISSUE, first: $first, after: $after) {
+                    edges {
+                        node {
+                            ... on Issue {
+                                id
+                                number
+                                author {
+                                    login
+                                }
+                                title
+                                body
+                                url
+                                createdAt
+                                updatedAt
+                                state
+                                reactions {
+                                    totalCount
+                                }
+                                labels(first: 10) {
+                                    nodes {
+                                        name
+                                    }
+                                }
+                                comments {
+                                    totalCount
+                                }
+                            }
+                        }
+                    }
+                    pageInfo {
+                        hasNextPage
+                        endCursor
+                    }
+                }
+            }";
+
+            while (retryCount < _maxRetries)
+            {
+                var response = await _client.PostAsJsonAsync("https://api.github.com/graphql", new
+                {
+                    query = issuesQuery,
+                    variables = new { query = searchQuery, first = 50, after = endCursor }
+                });
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    await HandleRateLimit(response);
+                    retryCount++;
+                    continue;
+                }
+
+                var result = await response.Content.ReadAsStringAsync();
+                var jsonDoc = System.Text.Json.JsonDocument.Parse(result);
+                
+                if (!jsonDoc.RootElement.TryGetProperty("data", out var dataElement) ||
+                    !dataElement.TryGetProperty("search", out var searchElement))
+                {
+                    break;
+                }
+
+                var edgesElement = searchElement.GetProperty("edges");
+                foreach (var edge in edgesElement.EnumerateArray())
+                {
+                    try
+                    {
+                        var node = edge.GetProperty("node");
+                        
+                        var labels = new List<string>();
+                        if (node.TryGetProperty("labels", out var labelsElement))
+                        {
+                            var labelsNodes = labelsElement.GetProperty("nodes");
+                            foreach (var labelNode in labelsNodes.EnumerateArray())
+                            {
+                                labels.Add(labelNode.GetProperty("name").GetString() ?? "");
+                            }
+                        }
+
+                        var issueSummary = new GithubIssueSummary
+                        {
+                            Id = node.GetProperty("id").GetString() ?? "",
+                            Title = node.GetProperty("title").GetString() ?? "",
+                            CommentsCount = node.TryGetProperty("comments", out var commentsElement) && commentsElement.TryGetProperty("totalCount", out var commentsCountElement)
+                                ? commentsCountElement.GetInt32()
+                                : 0,
+                            ReactionsCount = node.TryGetProperty("reactions", out var reactionsElement) && reactionsElement.TryGetProperty("totalCount", out var reactionsCountElement)
+                                ? reactionsCountElement.GetInt32()
+                                : 0,
+                            Url = node.GetProperty("url").GetString() ?? "",
+                            CreatedAt = DateTime.Parse(node.GetProperty("createdAt").GetString() ?? DateTime.UtcNow.ToString()),
+                            State = node.GetProperty("state").GetString() ?? "",
+                            Author = node.TryGetProperty("author", out var authorElement) && authorElement.ValueKind != JsonValueKind.Null && authorElement.TryGetProperty("login", out var loginElement) 
+                                ? loginElement.GetString() ?? "unknown" 
+                                : "unknown",
+                            Labels = labels
+                        };
+
+                        issuesList.Add(issueSummary);
+                    }
+                    catch (Exception)
+                    {
+                        // Skip problematic issues and continue processing
+                        continue;
+                    }
+                }
+
+                var pageInfo = searchElement.GetProperty("pageInfo");
+                hasMorePages = pageInfo.GetProperty("hasNextPage").GetBoolean();
+                if (hasMorePages && pageInfo.TryGetProperty("endCursor", out var cursor))
+                {
+                    endCursor = cursor.GetString();
+                }
+                else
+                {
+                    hasMorePages = false;
+                }
+
+                retryCount = 0;
+                break;
+            }
+
+            if (retryCount == _maxRetries)
+            {
+                throw new Exception("Max retries exceeded");
+            }
+        }
+
+        // Filter and sort by oldest first, with minimum engagement threshold
+        var minEngagement = 3; // Higher threshold since these are specifically important issues
+        return issuesList
+            .Where(i => i.State.Equals("OPEN", StringComparison.OrdinalIgnoreCase))
+            .Where(i => (i.CommentsCount + i.ReactionsCount) >= minEngagement)
+            .OrderBy(i => i.CreatedAt) // Oldest first
+            .Take(topCount)
+            .ToList();
+    }
+
     private static async Task HandleRateLimit(HttpResponseMessage response)
     {
         if (response.Headers.RetryAfter is { } retryAfter)

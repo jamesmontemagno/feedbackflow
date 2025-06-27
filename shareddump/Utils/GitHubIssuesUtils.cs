@@ -33,10 +33,13 @@ public static class GitHubIssuesUtils
 
     /// <summary>
     /// Gets the oldest issues that are still being actively discussed (high engagement)
+    /// Note: This method is deprecated in favor of IGitHubService.GetOldestImportantIssuesWithRecentActivityAsync
+    /// which provides better filtering by actual recent comment activity rather than just overall engagement.
     /// </summary>
     /// <param name="issues">List of GitHub issue summaries</param>
     /// <param name="topCount">Number of oldest important issues to return</param>
     /// <returns>Oldest issues with high engagement</returns>
+    [Obsolete("Use IGitHubService.GetOldestImportantIssuesWithRecentActivityAsync for better filtering by recent activity")]
     public static List<GithubIssueSummary> GetOldestImportantIssues(List<GithubIssueSummary> issues, int topCount = 3)
     {
         // Only consider open issues that have decent engagement (at least 2 comments or 1 reaction)
@@ -242,13 +245,13 @@ public static class GitHubIssuesUtils
         emailBuilder.AppendLine(@"
     </div>");
 
-        // Oldest Important Issues Section
+        // Oldest Important Issues with Recent Activity Section
         if (oldestImportantIssues.Any())
         {
             emailBuilder.AppendLine(@"
     <div class='section'>
-        <h2>⏰ Oldest Important Issues Still Being Discussed</h2>
-        <p style='color: #7c7c7c; margin-bottom: 15px;'>These are the oldest open issues that are still receiving attention from the community:</p>");
+        <h2>⏰ Oldest Important Issues with Recent Activity</h2>
+        <p style='color: #7c7c7c; margin-bottom: 15px;'>These are older open issues that are still receiving recent attention from the community:</p>");
 
             foreach (var issue in oldestImportantIssues)
             {

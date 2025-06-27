@@ -247,7 +247,7 @@
 </div>
 
 @code {
-    private bool loading = true;
+    private bool loading = false;
     private bool isAuthenticated = false;
     private IEnumerable<ReportModel>? reports;
     private string selectedSource = "";
@@ -301,8 +301,12 @@
     private string? errorMessage;
     private async Task LoadReports()
     {
+        if(loading)
+            return;
+            
         try
         {
+
             loading = true;
             errorMessage = null;
             
