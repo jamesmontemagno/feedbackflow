@@ -37,7 +37,7 @@ public class HackerNewsContentFeedService : ContentFeedService, IHackerNewsConte
                 : cachedArticles;
         }
 
-        var hackerNewsCode = Configuration["FeedbackApi:GetHackerNewsContentFeedCode"] 
+        var hackerNewsCode = Configuration["FeedbackApi:FunctionsKey"] 
             ?? throw new InvalidOperationException("HackerNews API code not configured");
 
         var articles = await Http.GetFromJsonAsync<List<HackerNewsItem>>(

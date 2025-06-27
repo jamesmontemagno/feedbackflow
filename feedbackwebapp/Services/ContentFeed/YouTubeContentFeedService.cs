@@ -29,7 +29,7 @@ public class YouTubeContentFeedService : ContentFeedService, IYouTubeContentFeed
 
     async Task<List<YouTubeOutputVideo>> IYouTubeContentFeedService.FetchContent()
     {
-        var youtubeCode = Configuration["FeedbackApi:GetYouTubeContentFeedCode"] 
+        var youtubeCode = Configuration["FeedbackApi:FunctionsKey"] 
             ?? throw new InvalidOperationException("YouTube API code not configured");
 
         var query = $"{BaseUrl}/api/GetRecentYouTubeVideos?code={Uri.EscapeDataString(youtubeCode)}&topic={Uri.EscapeDataString(_topic)}&days={_days}";

@@ -86,7 +86,7 @@ public abstract class FeedbackService : IFeedbackService
             );
         }
 
-        var analyzeCode = Configuration["FeedbackApi:AnalyzeCommentsCode"]
+        var analyzeCode = Configuration["FeedbackApi:FunctionsKey"]
             ?? throw new InvalidOperationException("Analyze API code not configured");
 
         var settings = await _userSettings.GetSettingsAsync();

@@ -29,7 +29,7 @@ public class RedditContentFeedService : ContentFeedService, IRedditContentFeedSe
 
     async Task<List<RedditThreadModel>> IRedditContentFeedService.FetchContent()
     {
-        var redditCode = Configuration["FeedbackApi:GetRedditContentFeedCode"] 
+        var redditCode = Configuration["FeedbackApi:FunctionsKey"] 
             ?? throw new InvalidOperationException("Reddit API code not configured");
 
         return await Http.GetFromJsonAsync<List<RedditThreadModel>>(

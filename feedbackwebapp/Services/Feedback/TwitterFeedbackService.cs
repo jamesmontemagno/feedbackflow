@@ -26,7 +26,7 @@ public class TwitterFeedbackService : FeedbackService, ITwitterFeedbackService
 
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching Twitter/X feedback...");
 
-        var twitterCode = Configuration["FeedbackApi:GetTwitterFeedbackCode"]
+        var twitterCode = Configuration["FeedbackApi:FunctionsKey"]
             ?? throw new InvalidOperationException("Twitter API code not configured");
 
         var maxComments = await GetMaxCommentsToAnalyze();
