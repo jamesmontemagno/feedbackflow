@@ -315,8 +315,9 @@
             
             if (userRequests.Any())
             {
-                // Filter reports based on user requests
-                reports = await ReportRequestService.FilterReportsAsync(userRequests);
+                // Filter reports based on user requests and sort by latest first
+                var filteredReports = await ReportRequestService.FilterReportsAsync(userRequests);
+                reports = filteredReports.OrderByDescending(r => r.GeneratedAt);
             }
             else
             {
