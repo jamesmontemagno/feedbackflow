@@ -18,6 +18,15 @@ public class GitHubIssueCommentsTests
                 ""data"": {
                     ""repository"": {
                         ""issue"": {
+                            ""id"": ""issue_123"",
+                            ""author"": { ""login"": ""issueauthor"" },
+                            ""title"": ""Test Issue"",
+                            ""body"": ""Test issue body."",
+                            ""url"": ""https://github.com/owner/repo/issues/123"",
+                            ""createdAt"": ""2023-01-01T10:00:00Z"",
+                            ""updatedAt"": ""2023-01-01T11:00:00Z"",
+                            ""reactions"": { ""totalCount"": 0 },
+                            ""labels"": { ""nodes"": [] },
                             ""comments"": {
                                 ""edges"": [
                                     {
@@ -89,6 +98,15 @@ public class GitHubIssueCommentsTests
                 ""data"": {
                     ""repository"": {
                         ""issue"": {
+                            ""id"": ""issue_456"",
+                            ""author"": { ""login"": ""issueauthor"" },
+                            ""title"": ""Test Issue"",
+                            ""body"": ""Test issue body."",
+                            ""url"": ""https://github.com/owner/repo/issues/456"",
+                            ""createdAt"": ""2023-01-01T10:00:00Z"",
+                            ""updatedAt"": ""2023-01-01T11:00:00Z"",
+                            ""reactions"": { ""totalCount"": 0 },
+                            ""labels"": { ""nodes"": [] },
                             ""comments"": {
                                 ""edges"": [],
                                 ""pageInfo"": {
