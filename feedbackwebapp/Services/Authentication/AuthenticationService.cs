@@ -1,7 +1,7 @@
 using Microsoft.JSInterop;
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.DataProtection;
 using System.Security.Cryptography;
-using System.Text;
 
 namespace FeedbackWebApp.Services.Authentication;
 
@@ -9,13 +9,15 @@ public class AuthenticationService
 {
     private readonly IJSRuntime _jsRuntime;
     private readonly IConfiguration _configuration;
+    private readonly IDataProtector _dataProtector;
     private const string AUTH_KEY = "feedbackflow_auth";
     private bool? _isAuthenticated;
 
-    public AuthenticationService(IJSRuntime jsRuntime, IConfiguration configuration)
+    public AuthenticationService(IJSRuntime jsRuntime, IConfiguration configuration, IDataProtectionProvider dataProtectionProvider)
     {
         _jsRuntime = jsRuntime;
         _configuration = configuration;
+        _dataProtector = dataProtectionProvider.CreateProtector("FeedbackFlow.Authentication.v1");
     }
 
     public async Task<bool> IsAuthenticatedAsync()
@@ -23,25 +25,29 @@ public class AuthenticationService
         if (_isAuthenticated.HasValue)
             return _isAuthenticated.Value;
 
-        var storedHash = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", AUTH_KEY);
-        if (string.IsNullOrEmpty(storedHash))
+        var protectedToken = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", AUTH_KEY);
+        if (string.IsNullOrEmpty(protectedToken))
         {
             _isAuthenticated = false;
             return false;
         }
 
-        // Get the configured password
-        var configuredPassword = _configuration["FeedbackApp:AccessPassword"];
-        if (string.IsNullOrEmpty(configuredPassword))
+        try
         {
+            // Try to unprotect the token - if successful, user is authenticated
+            var unprotectedData = _dataProtector.Unprotect(protectedToken);
+            
+            // Verify the unprotected data contains valid authentication marker
+            _isAuthenticated = unprotectedData == "FeedbackFlow_Authenticated";
+            return _isAuthenticated.Value;
+        }
+        catch (CryptographicException)
+        {
+            // Token is invalid or tampered with
             _isAuthenticated = false;
+            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_KEY);
             return false;
         }
-
-        // Verify the stored hash matches the configured password hash
-        var expectedHash = ComputePasswordHash(configuredPassword);
-        _isAuthenticated = storedHash == expectedHash;
-        return _isAuthenticated.Value;
     }
 
     public async Task<bool> AuthenticateAsync(string password)
@@ -63,8 +69,9 @@ public class AuthenticationService
         var isValid = password == configuredPassword;
         if (isValid)
         {
-            var passwordHash = ComputePasswordHash(password);
-            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", AUTH_KEY, passwordHash);
+            // Create a protected token that proves authentication
+            var protectedToken = _dataProtector.Protect("FeedbackFlow_Authenticated");
+            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", AUTH_KEY, protectedToken);
             _isAuthenticated = true;
         }
         else
@@ -87,13 +94,5 @@ public class AuthenticationService
     public async Task LogoutAsync()
     {
         await SetAuthenticatedAsync(false);
-    }
-
-    private static string ComputePasswordHash(string password)
-    {
-        using var sha256 = SHA256.Create();
-        var saltedPassword = $"FeedbackFlow_{password}_Salt2025";
-        var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(saltedPassword));
-        return Convert.ToBase64String(hash);
     }
 }
