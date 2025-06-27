@@ -29,7 +29,7 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
 
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching GitHub feedback...");
 
-        var githubCode = Configuration["FeedbackApi:GetGitHubFeedbackCode"]
+        var githubCode = Configuration["FeedbackApi:FunctionsKey"]
             ?? throw new InvalidOperationException("GitHub API code not configured");
 
         var maxComments = await GetMaxCommentsToAnalyze();

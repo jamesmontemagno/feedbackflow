@@ -35,7 +35,7 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
 
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching YouTube comments...");
 
-        var youTubeCode = Configuration["FeedbackApi:GetYouTubeFeedbackCode"]
+        var youTubeCode = Configuration["FeedbackApi:FunctionsKey"]
             ?? throw new InvalidOperationException("YouTube API code not configured");
 
         var maxComments = await GetMaxCommentsToAnalyze();

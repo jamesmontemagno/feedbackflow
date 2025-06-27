@@ -56,7 +56,7 @@ public class AnalysisSharingService : IAnalysisSharingService, IDisposable
                 "application/json");
 
             
-            var saveSharedAnalysisCode = Configuration["FeedbackApi:SaveSharedAnalysisCode"]
+            var saveSharedAnalysisCode = Configuration["FeedbackApi:FunctionsKey"]
                 ?? throw new InvalidOperationException("SaveSharedAnalysisCode API code not configured");
 
             var saveSharedAnalysisUrl = $"{BaseUrl}/api/SaveSharedAnalysis?code={Uri.EscapeDataString(saveSharedAnalysisCode)}";
@@ -97,7 +97,7 @@ public class AnalysisSharingService : IAnalysisSharingService, IDisposable
             {
                 _logger.LogInformation($"Getting shared analysis with ID: {id}, attempt {attempt}");
 
-                var getSharedAnalysisCode = Configuration["FeedbackApi:GetSharedAnalysisCode"]
+                var getSharedAnalysisCode = Configuration["FeedbackApi:FunctionsKey"]
                     ?? throw new InvalidOperationException("GetSharedAnalysisCode API code not configured");
 
                 var getSharedPath = $"{BaseUrl}/api/GetSharedAnalysis/{id}?code={Uri.EscapeDataString(getSharedAnalysisCode)}";

@@ -134,7 +134,7 @@ public class ReportService : IReportService
 
         var baseUrl = _configuration["FeedbackApi:BaseUrl"]
             ?? throw new InvalidOperationException("API base URL not configured");
-        var code = _configuration["FeedbackApi:ListReportsCode"]
+        var code = _configuration["FeedbackApi:FunctionsKey"]
             ?? throw new InvalidOperationException("List reports code not configured");
 
         var queryParams = new List<string> { $"code={Uri.EscapeDataString(code)}" };
@@ -174,7 +174,7 @@ public class ReportService : IReportService
 
         var baseUrl = _configuration["FeedbackApi:BaseUrl"]
             ?? throw new InvalidOperationException("API base URL not configured");
-        var code = _configuration["FeedbackApi:GetReportCode"]
+        var code = _configuration["FeedbackApi:FunctionsKey"]
             ?? throw new InvalidOperationException("Get report code not configured");
 
         var url = $"{baseUrl}/api/Report/{id}?code={Uri.EscapeDataString(code)}";

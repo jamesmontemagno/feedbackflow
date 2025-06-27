@@ -28,7 +28,7 @@ public class ReportRequestService : IReportRequestService
         {
             var baseUrl = _configuration["FeedbackApi:BaseUrl"] 
                 ?? throw new InvalidOperationException("API base URL not configured");
-            var code = _configuration["FeedbackApi:FilterReportsCode"]
+            var code = _configuration["FeedbackApi:FunctionsKey"]
                 ?? throw new InvalidOperationException("Filter reports code not configured");
 
             var json = JsonSerializer.Serialize(userRequests, _jsonOptions);
@@ -56,7 +56,7 @@ public class ReportRequestService : IReportRequestService
         {
             var baseUrl = _configuration["FeedbackApi:BaseUrl"] 
                 ?? throw new InvalidOperationException("API base URL not configured");
-            var code = _configuration["FeedbackApi:AddReportRequestCode"]
+            var code = _configuration["FeedbackApi:FunctionsKey"]
                 ?? throw new InvalidOperationException("Add report request code not configured");
 
             var json = JsonSerializer.Serialize(request, _jsonOptions);
@@ -78,7 +78,7 @@ public class ReportRequestService : IReportRequestService
         {
             var baseUrl = _configuration["FeedbackApi:BaseUrl"] 
                 ?? throw new InvalidOperationException("API base URL not configured");
-            var code = _configuration["FeedbackApi:RemoveReportRequestCode"]
+            var code = _configuration["FeedbackApi:FunctionsKey"]
                 ?? throw new InvalidOperationException("Remove report request code not configured");
 
             var response = await _httpClient.DeleteAsync($"{baseUrl}/api/reportrequest/{Uri.EscapeDataString(id)}?code={Uri.EscapeDataString(code)}");
