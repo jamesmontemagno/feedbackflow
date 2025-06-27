@@ -125,12 +125,21 @@ function downloadFile(dataUrl, fileName) {
 
 window.downloadFile = downloadFile;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Add the toast container to the DOM if it doesn't exist
     if (!document.getElementById('toast-container')) {
         const toastContainer = document.createElement('div');
         toastContainer.id = 'toast-container';
         toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
         document.body.appendChild(toastContainer);
+    }
+
+    // Load and expose IndexedDB module
+    try {
+        const indexedDbModule = await import('./indexedDb.js');
+        window.indexedDbModule = indexedDbModule;
+        console.log('IndexedDB module loaded successfully');
+    } catch (error) {
+        console.error('Failed to load IndexedDB module:', error);
     }
 });

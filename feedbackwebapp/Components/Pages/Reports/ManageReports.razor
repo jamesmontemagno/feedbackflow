@@ -1,0 +1,281 @@
+@page "/reports/manage"
+@using FeedbackWebApp.Services
+@using FeedbackWebApp.Services.Authentication
+@inject NavigationManager NavigationManager
+@inject AuthenticationService AuthService
+@inject IJSRuntime JSRuntime
+@inject IReportRequestService ReportRequestService
+
+<PageTitle>Manage Report Requests - FeedbackFlow</PageTitle>
+
+<div class="container px-4">
+    @if (!isAuthenticated)
+    {
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-6">
+                <div class="alert alert-info text-center">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Authentication required to manage report requests.
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-10">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h1 class="feedbackflow-title mb-2">Manage Report Requests</h1>
+                        <p class="text-muted mb-0">View and manage your report requests</p>
+                    </div>
+                    <a href="/reports/create" class="btn btn-primary">
+                        <i class="bi bi-plus-lg me-2"></i>Create Report
+                    </a>
+                </div>
+
+                @if (isLoading)
+                {
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Loading your report requests...</p>
+                    </div>
+                }
+                else if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        @errorMessage
+                    </div>
+                }
+                else if (reportRequests == null || !reportRequests.Any())
+                {
+                    <div class="card text-center">
+                        <div class="card-body py-5">
+                            <i class="bi bi-inbox display-4 text-muted mb-3"></i>
+                            <h5 class="card-title">No Report Requests</h5>
+                            <p class="card-text text-muted">You haven't created any report requests yet.</p>
+                            <a href="/reports/create" class="btn btn-primary">
+                                <i class="bi bi-plus-lg me-2"></i>Create Your First Request
+                            </a>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-list-ul me-2"></i>
+                                Your Report Requests (@reportRequests.Count())
+                            </div>
+                            <a href="/reports/create" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-plus-lg me-1"></i>Add New
+                            </a>
+                        </div>
+                        <div class="card-body p-0">
+                            @if (!string.IsNullOrEmpty(successMessage))
+                            {
+                                <div class="alert alert-success m-3 mb-0">
+                                    <i class="bi bi-check-circle me-2"></i>
+                                    @successMessage
+                                </div>
+                            }
+                            
+                            <div class="list-group list-group-flush">
+                                @foreach (var request in reportRequests)
+                                {
+                                    <div class="list-group-item">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="flex-grow-1">
+                                                <div class="d-flex align-items-center gap-2 mb-2">
+                                                    @if (request.Type == "reddit")
+                                                    {
+                                                        <span class="badge bg-primary">
+                                                            <i class="bi bi-reddit me-1"></i>Reddit
+                                                        </span>
+                                                        <span class="fw-semibold">r/@request.Subreddit</span>
+                                                    }
+                                                    else if (request.Type == "github")
+                                                    {
+                                                        <span class="badge bg-dark">
+                                                            <i class="bi bi-github me-1"></i>GitHub
+                                                        </span>
+                                                        <span class="fw-semibold">@request.Owner/@request.Repo</span>
+                                                    }
+                                                </div>
+                                                <div class="text-muted small">
+                                                    <i class="bi bi-calendar me-1"></i>
+                                                    Created @GetFormattedDate(request.CreatedAt)
+                                                </div>
+                                            </div>
+                                            <button type="button" 
+                                                    class="btn btn-outline-danger btn-sm" 
+                                                    @onclick="() => DeleteReportRequest(request.Id)"
+                                                    disabled="@(deletingRequests.Contains(request.Id))">
+                                                @if (deletingRequests.Contains(request.Id))
+                                                {
+                                                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                                    <span>Deleting...</span>
+                                                }
+                                                else
+                                                {
+                                                    <i class="bi bi-trash me-1"></i>
+                                                    <span>Delete</span>
+                                                }
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="help-section mt-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="bi bi-info-circle me-2"></i>
+                                About Report Requests
+                            </div>
+                            <div class="card-body">
+                                <ul class="mb-0">
+                                    <li>Report requests are stored locally in your browser and synchronized with our backend</li>
+                                    <li>Reports are generated automatically every Monday morning at 4 AM Pacific</li>
+                                    <li>Deleting a request will remove it from both your local storage and our backend</li>
+                                    <li>You can view generated reports on the <a href="/reports">Reports page</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isAuthenticated = false;
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+    private IEnumerable<ReportRequestModel>? reportRequests;
+    private readonly HashSet<string> deletingRequests = new();
+
+    public class ReportRequestModel
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public string? Subreddit { get; set; }
+        public string? Owner { get; set; }
+        public string? Repo { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (isAuthenticated)
+            {
+                await LoadReportRequests();
+            }
+            else
+            {
+                isLoading = false;
+            }
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadReportRequests()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+
+            var requests = await JSRuntime.InvokeAsync<ReportRequestModel[]>("window.indexedDbModule.getAllReportRequests");
+            reportRequests = requests?.OrderByDescending(r => r.CreatedAt) ?? Enumerable.Empty<ReportRequestModel>();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load report requests: {ex.Message}";
+            reportRequests = Enumerable.Empty<ReportRequestModel>();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task DeleteReportRequest(string id)
+    {
+        if (deletingRequests.Contains(id))
+            return;
+
+        try
+        {
+            deletingRequests.Add(id);
+            errorMessage = string.Empty;
+            successMessage = string.Empty;
+
+            // First, try to remove from backend
+            var backendSuccess = await ReportRequestService.RemoveReportRequestAsync(id);
+            
+            if (backendSuccess)
+            {
+                // If backend removal was successful, remove from local storage
+                await JSRuntime.InvokeVoidAsync("window.indexedDbModule.deleteReportRequest", id);
+                
+                // Reload the list
+                await LoadReportRequests();
+                
+                successMessage = "Report request deleted successfully.";
+            }
+            else
+            {
+                // If backend fails, still allow local deletion but warn user
+                await JSRuntime.InvokeVoidAsync("window.indexedDbModule.deleteReportRequest", id);
+                await LoadReportRequests();
+                
+                successMessage = "Report request removed locally. Backend removal may have failed - the request might still be processed.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to delete report request: {ex.Message}";
+        }
+        finally
+        {
+            deletingRequests.Remove(id);
+        }
+    }
+
+    private static string GetFormattedDate(DateTimeOffset date)
+    {
+        var now = DateTimeOffset.Now;
+        var diff = now - date;
+
+        if (diff.TotalDays < 1)
+        {
+            if (diff.TotalHours < 1)
+            {
+                var minutes = (int)diff.TotalMinutes;
+                return minutes <= 1 ? "just now" : $"{minutes} minutes ago";
+            }
+            var hours = (int)diff.TotalHours;
+            return hours == 1 ? "1 hour ago" : $"{hours} hours ago";
+        }
+        
+        if (diff.TotalDays < 7)
+        {
+            var days = (int)diff.TotalDays;
+            return days == 1 ? "1 day ago" : $"{days} days ago";
+        }
+
+        return date.ToString("MMM d, yyyy");
+    }
+}

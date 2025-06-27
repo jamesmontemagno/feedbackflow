@@ -19,6 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\shareddump\shareddump.csproj" />
     <ProjectReference Include="..\feedbackwebapp\feedbackwebapp.csproj" />
+    <ProjectReference Include="..\feedbackfunctions\feedbackfunctions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

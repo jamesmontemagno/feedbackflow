@@ -35,6 +35,7 @@ builder.Services.AddScoped<ContentFeedServiceProvider>();
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<UserSettingsService>();
 builder.Services.AddScoped<IReportServiceProvider, ReportServiceProvider>();
+builder.Services.AddScoped<IReportRequestService, ReportRequestService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IHistoryService, HistoryService>();
 builder.Services.AddScoped<IAnalysisSharingService, AnalysisSharingService>();

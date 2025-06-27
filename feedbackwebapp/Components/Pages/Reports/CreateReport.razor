@@ -1,0 +1,308 @@
+@page "/reports/create"
+@using FeedbackWebApp.Services.Authentication
+@using System.ComponentModel.DataAnnotations
+@inject NavigationManager NavigationManager
+@inject AuthenticationService AuthService
+@inject IJSRuntime JSRuntime
+@inject IReportRequestService ReportRequestService
+
+<PageTitle>Create Report - FeedbackFlow</PageTitle>
+
+<div class="container-lg px-4">
+    @if (!isAuthenticated)
+    {
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-6">
+                <div class="alert alert-info text-center">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Authentication required to create reports.
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-6">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h1 class="feedbackflow-title mb-2">Create Report</h1>
+                        <p class="text-muted mb-0">Request a new report for Reddit or GitHub</p>
+                    </div>
+                    <a href="/reports/manage" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-gear me-1"></i>Manage Requests
+                    </a>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-file-earmark-plus me-2"></i>
+                        New Report Request
+                    </div>
+                    <div class="card-body">
+                        <EditForm Model="@reportRequest" OnValidSubmit="@HandleSubmit">
+                            <DataAnnotationsValidator />
+                            
+                            <div class="mb-3">
+                                <label class="form-label" for="source-type">Source Type</label>
+                                <select id="source-type" class="form-select" @bind="reportRequest.Type" disabled="@isSubmitting">
+                                    <option value="">Select source type</option>
+                                    <option value="reddit">Reddit</option>
+                                    <option value="github">GitHub</option>
+                                </select>
+                                <ValidationMessage For="@(() => reportRequest.Type)" />
+                            </div>
+
+                            @if (reportRequest.Type == "reddit")
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label" for="subreddit">Subreddit</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">r/</span>
+                                        <input type="text" 
+                                               id="subreddit"
+                                               class="form-control" 
+                                               @bind="reportRequest.Subreddit" 
+                                               placeholder="dotnet"
+                                               disabled="@isSubmitting" />
+                                    </div>
+                                    <div class="form-text">Enter the subreddit name without the "r/" prefix</div>
+                                    <ValidationMessage For="@(() => reportRequest.Subreddit)" />
+                                </div>
+                            }
+                            else if (reportRequest.Type == "github")
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label" for="owner">Repository Owner</label>
+                                    <input type="text" 
+                                           id="owner"
+                                           class="form-control" 
+                                           @bind="reportRequest.Owner" 
+                                           placeholder="microsoft"
+                                           disabled="@isSubmitting" />
+                                    <ValidationMessage For="@(() => reportRequest.Owner)" />
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label" for="repo">Repository Name</label>
+                                    <input type="text" 
+                                           id="repo"
+                                           class="form-control" 
+                                           @bind="reportRequest.Repo" 
+                                           placeholder="vscode"
+                                           disabled="@isSubmitting" />
+                                    <ValidationMessage For="@(() => reportRequest.Repo)" />
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrEmpty(errorMessage))
+                            {
+                                <div class="alert alert-danger">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                    @errorMessage
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrEmpty(successMessage))
+                            {
+                                <div class="alert alert-success">
+                                    <i class="bi bi-check-circle me-2"></i>
+                                    @successMessage
+                                </div>
+                            }
+
+                            <div class="d-flex gap-2 justify-content-end">
+                                <button type="button" 
+                                        class="btn btn-outline-secondary" 
+                                        @onclick="HandleCancel"
+                                        disabled="@isSubmitting">
+                                    Cancel
+                                </button>
+                                <button type="submit" 
+                                        class="btn btn-primary" 
+                                        disabled="@(isSubmitting || !IsFormValid())">
+                                    @if (isSubmitting)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                        <span>Creating...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-plus-lg me-2"></i>
+                                        <span>Create Report Request</span>
+                                    }
+                                </button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+
+                <div class="help-section mt-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-info-circle me-2"></i>
+                            How it works
+                        </div>
+                        <div class="card-body">
+                            <ol class="mb-0">
+                                <li>Submit your report request for a Reddit subreddit or GitHub repository</li>
+                                <li>Your request is saved locally and sent to our backend</li>
+                                <li>Reports are generated every Monday morning at 4 AM Pacific</li>
+                                <li>You'll see matching reports on your Reports page when available</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isAuthenticated = false;
+    private bool isSubmitting = false;
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+    private ReportRequestModel reportRequest = new();
+
+    public class ReportRequestModel
+    {
+        [Required(ErrorMessage = "Source type is required")]
+        public string Type { get; set; } = string.Empty;
+
+        [RequiredIf(nameof(Type), "reddit", ErrorMessage = "Subreddit is required for Reddit reports")]
+        public string? Subreddit { get; set; }
+
+        [RequiredIf(nameof(Type), "github", ErrorMessage = "Owner is required for GitHub reports")]
+        public string? Owner { get; set; }
+
+        [RequiredIf(nameof(Type), "github", ErrorMessage = "Repository name is required for GitHub reports")]
+        public string? Repo { get; set; }
+    }
+
+    public class RequiredIfAttribute : ValidationAttribute
+    {
+        private readonly string _propertyName;
+        private readonly string _value;
+
+        public RequiredIfAttribute(string propertyName, string value)
+        {
+            _propertyName = propertyName;
+            _value = value;
+        }
+
+        protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
+        {
+            var property = validationContext.ObjectType.GetProperty(_propertyName);
+            if (property == null)
+                return new ValidationResult($"Property {_propertyName} not found");
+
+            var propertyValue = property.GetValue(validationContext.ObjectInstance)?.ToString();
+            
+            if (propertyValue == _value && string.IsNullOrWhiteSpace(value?.ToString()))
+            {
+                return new ValidationResult(ErrorMessage);
+            }
+
+            return ValidationResult.Success;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            StateHasChanged();
+        }
+    }
+
+    private bool IsFormValid()
+    {
+        if (string.IsNullOrWhiteSpace(reportRequest.Type))
+            return false;
+
+        if (reportRequest.Type == "reddit" && string.IsNullOrWhiteSpace(reportRequest.Subreddit))
+            return false;
+
+        if (reportRequest.Type == "github" && 
+            (string.IsNullOrWhiteSpace(reportRequest.Owner) || string.IsNullOrWhiteSpace(reportRequest.Repo)))
+            return false;
+
+        return true;
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (!IsFormValid())
+            return;
+
+        try
+        {
+            isSubmitting = true;
+            errorMessage = string.Empty;
+            successMessage = string.Empty;
+
+            // Generate deterministic ID
+            var id = GenerateRequestId(reportRequest);
+            
+            // Check if request already exists locally
+            var existingRequest = await JSRuntime.InvokeAsync<object?>("window.indexedDbModule.getReportRequest", id);
+            if (existingRequest != null)
+            {
+                errorMessage = "You've already requested this report.";
+                return;
+            }
+
+            // Create request object for storage
+            var requestData = new
+            {
+                id = id,
+                type = reportRequest.Type,
+                subreddit = reportRequest.Type == "reddit" ? reportRequest.Subreddit : null,
+                owner = reportRequest.Type == "github" ? reportRequest.Owner : null,
+                repo = reportRequest.Type == "github" ? reportRequest.Repo : null,
+                createdAt = DateTimeOffset.UtcNow
+            };
+
+            // Send to backend first
+            var success = await ReportRequestService.AddReportRequestAsync(requestData);
+            
+            if (success)
+            {
+                // Only save to IndexedDB if backend request was successful
+                await JSRuntime.InvokeVoidAsync("window.indexedDbModule.saveReportRequest", requestData);
+                
+                successMessage = $"Report request created successfully! Reports are generated every Monday morning.";
+                reportRequest = new ReportRequestModel(); // Reset form
+            }
+            else
+            {
+                errorMessage = "Failed to submit request to the server. Please try again later.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error creating report request: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void HandleCancel()
+    {
+        NavigationManager.NavigateTo("/reports");
+    }
+
+    private static string GenerateRequestId(ReportRequestModel request)
+    {
+        var source = request.Type.ToLowerInvariant();
+        var identifier = request.Type == "reddit" 
+            ? request.Subreddit?.ToLowerInvariant() 
+            : $"{request.Owner?.ToLowerInvariant()}/{request.Repo?.ToLowerInvariant()}";
+        
+        return $"{source}_{identifier}".Replace("/", "_");
+    }
+}
