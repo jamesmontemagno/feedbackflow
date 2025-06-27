@@ -527,23 +527,6 @@ public class GitHubService : IGitHubService
             query($owner: String!, $name: String!, $after: String, $issueNumber: Int!) {
                 repository(owner: $owner, name: $name) {
                     issue(number: $issueNumber) {
-                        id
-                        author {
-                            login
-                        }
-                        title
-                        body
-                        url
-                        createdAt
-                        updatedAt
-                        reactions(content: THUMBS_UP) {
-                            totalCount
-                        }
-                        labels(first: 100) {
-                            nodes {
-                                name
-                            }
-                        }
                         comments(first: 100, after: $after) {
                             edges {
                                 node {
@@ -567,11 +550,12 @@ public class GitHubService : IGitHubService
 
             while (retryCount < _maxRetries)
             {
-                var response = await _client.PostAsJsonAsync("https://api.github.com/graphql", new
+                var response = await _client.PostAsJsonAsync("https://api.github.com/graphql", new GithubSingleIssueQuery
                 {
                     Query = issueQuery,
-                    Variables = new { owner = repoOwner, name = repoName, after = endCursor, issueNumber }
-                });
+                    Variables = new() { Owner = repoOwner, Name = repoName, After = endCursor, IssueNumber = issueNumber }
+                },
+                GithubApiJsonContext.Default.GithubSingleIssueQuery);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -580,7 +564,7 @@ public class GitHubService : IGitHubService
                     continue;
                 }
 
-                var result = await response.Content.ReadFromJsonAsync<GraphqlResponse>();
+                var result = await response.Content.ReadFromJsonAsync(GithubApiJsonContext.Default.GraphqlResponse);
 
                 var issue = result?.Data.Repository?.Issue;
 
@@ -726,11 +710,12 @@ public class GitHubService : IGitHubService
 
             while (retryCount < _maxRetries)
             {
-                var response = await _client.PostAsJsonAsync("https://api.github.com/graphql", new
+                var response = await _client.PostAsJsonAsync("https://api.github.com/graphql", new GithubSinglePullRequestQuery
                 {
                     Query = pullQuery,
-                    Variables = new { owner = repoOwner, name = repoName, after = endCursor, pullNumber }
-                });
+                    Variables = new() { Owner = repoOwner, Name = repoName, After = endCursor, PullNumber = pullNumber }
+                },
+                GithubApiJsonContext.Default.GithubSinglePullRequestQuery);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -739,7 +724,7 @@ public class GitHubService : IGitHubService
                     continue;
                 }
 
-                var result = await response.Content.ReadFromJsonAsync<GraphqlResponse>();
+                var result = await response.Content.ReadFromJsonAsync(GithubApiJsonContext.Default.GraphqlResponse);
 
                 var pullRequest = result?.Data.Repository?.PullRequest;
 
@@ -900,11 +885,12 @@ public class GitHubService : IGitHubService
 
             while (retryCount < _maxRetries)
             {
-                var response = await _client.PostAsJsonAsync("https://api.github.com/graphql", new
+                var response = await _client.PostAsJsonAsync("https://api.github.com/graphql", new GithubSingleDiscussionQuery
                 {
                     Query = discussionQuery,
-                    Variables = new { owner = repoOwner, name = repoName, after = endCursor, discussionNumber }
-                });
+                    Variables = new() { Owner = repoOwner, Name = repoName, After = endCursor, DiscussionNumber = discussionNumber }
+                },
+                GithubApiJsonContext.Default.GithubSingleDiscussionQuery);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -913,7 +899,7 @@ public class GitHubService : IGitHubService
                     continue;
                 }
 
-                var result = await response.Content.ReadFromJsonAsync<GraphqlResponse>();
+                var result = await response.Content.ReadFromJsonAsync(GithubApiJsonContext.Default.GraphqlResponse);
 
                 var discussion = result?.Data.Repository?.Discussion;
 
