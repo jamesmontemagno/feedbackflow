@@ -46,7 +46,7 @@ public class ReportGenerator
     /// <param name="subreddit">The subreddit name to analyze</param>
     /// <param name="cutoffDate">The cutoff date for threads (default: 7 days ago)</param>
     /// <returns>The generated report model with HTML content</returns>
-    public async Task<ReportModel> GenerateRedditReportAsync(string subreddit, DateTimeOffset? cutoffDate = null)
+    public async Task<ReportModel> GenerateRedditReportAsync(string subreddit, DateTimeOffset? cutoffDate = null, bool? storeToBlob = false)
     {
         var startTime = DateTime.UtcNow;
         var actualCutoffDate = cutoffDate ?? DateTimeOffset.UtcNow.AddDays(-7);
@@ -160,7 +160,10 @@ Keep each section very brief and focused. Total analysis should be no more than 
             report.HtmlContent = emailHtml;
 
             // Save to blob storage using the helper method
-            await StoreReportAsync(report);
+            if (storeToBlob.HasValue && storeToBlob.Value)
+            {
+                await StoreReportAsync(report);
+            }
 
             return report;
         }
@@ -179,7 +182,7 @@ Keep each section very brief and focused. Total analysis should be no more than 
     /// <param name="repo">The repository name</param>
     /// <param name="days">Number of days to look back (default: 7)</param>
     /// <returns>The generated report model with HTML content</returns>
-    public async Task<ReportModel> GenerateGitHubReportAsync(string owner, string repo, int days = 7)
+    public async Task<ReportModel> GenerateGitHubReportAsync(string owner, string repo, int days = 7, bool? storeToBlob = false)
     {
         var startTime = DateTime.UtcNow;
         var startDate = DateTimeOffset.UtcNow.AddDays(-days);
@@ -215,7 +218,10 @@ Keep each section very brief and focused. Total analysis should be no more than 
                 };
 
                 // Save to blob storage using the helper method
-                await StoreReportAsync(emptyReport);
+                if (storeToBlob.HasValue && storeToBlob.Value)
+                {
+                    await StoreReportAsync(emptyReport);
+                }
 
                 return emptyReport;
             }
@@ -305,7 +311,10 @@ Keep each section very brief and focused. Total analysis should be no more than 
             report.HtmlContent = emailHtml;
 
             // Save to blob storage using the helper method
-            await StoreReportAsync(report);
+            if (storeToBlob.HasValue && storeToBlob.Value)
+            {
+                await StoreReportAsync(report);
+            }
 
             return report;
         }
@@ -383,7 +392,7 @@ Keep each section very brief and focused. Total analysis should be no more than 
             if (request.Type == "reddit" && !string.IsNullOrEmpty(request.Subreddit))
             {
                 _logger.LogInformation("Processing Reddit report for r/{Subreddit}", request.Subreddit);
-                var report = await GenerateRedditReportAsync(request.Subreddit);
+                var report = await GenerateRedditReportAsync(request.Subreddit, storeToBlob: true);
                 _logger.LogInformation("Successfully generated and stored Reddit report for r/{Subreddit} with ID {ReportId}", 
                     request.Subreddit, report.Id);
                 return report;
@@ -391,7 +400,7 @@ Keep each section very brief and focused. Total analysis should be no more than 
             else if (request.Type == "github" && !string.IsNullOrEmpty(request.Owner) && !string.IsNullOrEmpty(request.Repo))
             {
                 _logger.LogInformation("Processing GitHub report for {Owner}/{Repo}", request.Owner, request.Repo);
-                var report = await GenerateGitHubReportAsync(request.Owner, request.Repo);
+                var report = await GenerateGitHubReportAsync(request.Owner, request.Repo, storeToBlob: true);
                 _logger.LogInformation("Successfully generated and stored GitHub report for {Owner}/{Repo} with ID {ReportId}", 
                     request.Owner, request.Repo, report.Id);
                 return report;
