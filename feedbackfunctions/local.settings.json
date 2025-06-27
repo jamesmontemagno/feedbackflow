@@ -15,5 +15,5 @@
   "Twitter:BearerToken": "YOUR_TWITTER_BEARER_TOKEN",
   "BlueSky:Username": "YOUR_BLUESKY_USERNAME",
   "BlueSky:AppPassword": "YOUR_BLUESKY_APP_PASSWORD",
-  "UseMocks": "false"
+  "UseMocks": true
 }

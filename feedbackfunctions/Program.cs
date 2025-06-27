@@ -40,6 +40,7 @@ builder.Services.AddHttpClient();
 // Register services based on UseMocks setting
 if (useMocks)
 {
+    Console.WriteLine("Using mock data 🍕🍕🍕");
     builder.Services.AddScoped<IGitHubService, MockGitHubService>();
     builder.Services.AddScoped<IYouTubeService, MockYouTubeService>();
     builder.Services.AddScoped<IHackerNewsService, MockHackerNewsService>();
@@ -55,7 +56,9 @@ else
     {
         var configuration = GetConfig(serviceProvider);
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-        var githubToken = configuration["GitHub:AccessToken"] ?? throw new InvalidOperationException("GitHub access token not configured");
+        var githubToken = configuration["GitHub:AccessToken"];
+        if(githubToken is null)
+            return new MockGitHubService();
         return new GitHubService(githubToken, httpClientFactory.CreateClient("GitHub"));
     });
     
@@ -63,7 +66,9 @@ else
     {
         var configuration = GetConfig(serviceProvider);
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-        var ytApiKey = configuration["YouTube:ApiKey"] ?? throw new InvalidOperationException("YouTube API key not configured");
+        var ytApiKey = configuration["YouTube:ApiKey"];
+        if(ytApiKey is null)
+            return new MockYouTubeService();
         return new YouTubeService(ytApiKey, httpClientFactory.CreateClient("YouTube"));
     });
     
@@ -78,8 +83,10 @@ else
     {
         var configuration = GetConfig(serviceProvider);
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-        var clientId = configuration["Reddit:ClientId"] ?? throw new InvalidOperationException("Reddit client ID not configured");
-        var clientSecret = configuration["Reddit:ClientSecret"] ?? throw new InvalidOperationException("Reddit client secret not configured");
+        var clientId = configuration["Reddit:ClientId"];
+        var clientSecret = configuration["Reddit:ClientSecret"];
+        if(clientId is null || clientSecret is null)
+            return new MockRedditService();
         var redditService = new RedditService(clientId, clientSecret, httpClientFactory.CreateClient("Reddit"));
         return new RedditServiceAdapter(redditService);
     });
@@ -105,7 +112,9 @@ else
     {
         var configuration = GetConfig(serviceProvider);
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-        var twitterBearerToken = configuration["Twitter:BearerToken"] ?? throw new InvalidOperationException("Twitter Bearer token not configured");
+        var twitterBearerToken = configuration["Twitter:BearerToken"];
+        if(twitterBearerToken is null)
+            return new MockTwitterService();
         var twitterHttpClient = httpClientFactory.CreateClient("Twitter");
         twitterHttpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", twitterBearerToken);
         var twitterFetcher = new TwitterFeedbackFetcher(twitterHttpClient, Microsoft.Extensions.Logging.Abstractions.NullLogger<TwitterFeedbackFetcher>.Instance);
@@ -116,8 +125,10 @@ else
     {
         var configuration = GetConfig(serviceProvider);
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-        var blueSkyUsername = configuration["BlueSky:Username"] ?? throw new InvalidOperationException("BlueSky username not configured");
-        var blueSkyAppPassword = configuration["BlueSky:AppPassword"] ?? throw new InvalidOperationException("BlueSky app password not configured");
+        var blueSkyUsername = configuration["BlueSky:Username"];
+        var blueSkyAppPassword = configuration["BlueSky:AppPassword"];
+        if(blueSkyUsername is null || blueSkyAppPassword is null)
+            return new MockBlueSkyService();
         var blueSkyFetcher = new BlueSkyFeedbackFetcher(httpClientFactory.CreateClient("BlueSky"), Microsoft.Extensions.Logging.Abstractions.NullLogger<BlueSkyFeedbackFetcher>.Instance);
         blueSkyFetcher.SetCredentials(blueSkyUsername, blueSkyAppPassword);
         return new BlueSkyServiceAdapter(blueSkyFetcher);
@@ -126,14 +137,15 @@ else
 
 IConfiguration GetConfig(IServiceProvider? serviceProvider = null)
 {
-#if DEBUG
-    return new ConfigurationBuilder()
-                    .AddJsonFile("local.settings.json")
-                    .AddUserSecrets<Program>()
-                    .Build();
-#else
-    return serviceProvider?.GetRequiredService<IConfiguration>() ?? throw new InvalidOperationException("Configuration service not available.");
-#endif
+    return builder.Configuration;
+// #if DEBUG
+//     return new ConfigurationBuilder()
+//                     .AddJsonFile("local.settings.json")
+//                     .AddUserSecrets<Program>()
+//                     .Build();
+// #else
+//     return serviceProvider?.GetRequiredService<IConfiguration>() ?? throw new InvalidOperationException("Configuration service not available.");
+// #endif
 }
 
 // Application Insights isn't enabled by default. See https://aka.ms/AAt8mw4.
