@@ -262,9 +262,6 @@ public class GitHubIssuesUtilsTests
         Assert.IsTrue(result.Contains("state-closed"));
     }
 
-    [TestMethod]
-        Assert.AreEqual(0, result.Count);
-    }
 
     [TestMethod]
     public void TestDateFilteringLogic_UsesGitHubSearchWithCreatedFilter()
