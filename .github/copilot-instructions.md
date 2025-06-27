@@ -2,12 +2,54 @@
 
 The github repo is jamesmontemagno/feedbackflow and the primary branch that I work off of is main
 
+## Core Commands
+
+### Build & Test
+- **Build solution**: `dotnet build FeedbackFlow.slnx --configuration Release`
+- **Restore packages**: `dotnet restore FeedbackFlow.slnx`
+- **Run tests**: `dotnet test FeedbackFlow.slnx --configuration Release`
+- **Single test file**: `dotnet test feedbackflow.tests/[TestFileName].cs`
+
+### Development
+- **Run web app**: `cd feedbackwebapp && dotnet run`
+- **Run with Aspire**: `cd FeedbackFlow.AppHost && dotnet run`
+- **Run Azure Functions**: `cd feedbackfunctions && func start` (requires Azure Functions Core Tools)
+- **CLI tools**: `cd [ghdump|ytdump|rddump|hndump] && dotnet run -- [args]`
+
+### Available VS Code Tasks
+- `clean (functions)`, `build (functions)`, `publish (functions)` - Azure Functions build pipeline
+- `func: 4` - Background task to start Azure Functions with auto-rebuild
+
+## Architecture
+
+### High-Level Components
+- **feedbackwebapp** - Blazor Server app (.NET 9) with real-time UI, authentication, theming
+- **feedbackfunctions** - Azure Functions (.NET 9) providing serverless backend APIs
+- **shareddump** - Shared library with models, services, and business logic
+- **CLI tools** - Data collection utilities for GitHub, YouTube, Reddit, Hacker News
+- **FeedbackFlow.AppHost** - .NET Aspire orchestration for local development
+
+### Major External Dependencies
+- **Azure Services**: Blob Storage, Tables, OpenAI, Functions, App Service
+- **APIs**: GitHub (repos, issues, PRs), YouTube Data API v3, Reddit API
+- **AI**: Azure OpenAI for sentiment analysis and content processing
+- **UI**: Bootstrap 5, Bootstrap Icons, custom CSS variables for theming
+- **Data**: JSON serialization, CSV export, PDF reports (QuestPDF), Markdown processing
+
+### Data Flow
+1. CLI tools collect data from external APIs → JSON files
+2. Web app uploads data → Azure Functions process and analyze
+3. Functions use Azure OpenAI for sentiment analysis → store in Blob/Tables
+4. Web app displays results with caching and sharing capabilities
+
 ## Project Structure
-- feedbackflow.tests is the main testing project using MSTests primarily for testing reusable logic from shareddump
-- feedbackfunctions are AzureFunctions written in C# that are backend for the webapp
-- feedbackmcp is a C# MCP server for the functions, but is a work in progress and no work is happenign right now.
-- feedbackwebapp is a Blazor Server app written in C# and .NET 9 and is the main app we work on
-- shareddump is a shared library that contains reusable logic and models used across the webapp and functions
+- **feedbackflow.tests** - MSTest unit tests for shared logic and service integrations
+- **feedbackfunctions** - Azure Functions backend with HTTP triggers, timers, blob bindings
+- **feedbackmcp** - C# MCP server (work in progress, inactive)
+- **feedbackwebapp** - Blazor Server app with components, services, and responsive UI
+- **shareddump** - Shared library containing reusable logic and models
+- **ghdump/ytdump/rddump/hndump** - CLI tools for platform-specific data collection
+- **FeedbackFlow.ServiceDefaults** - Aspire service defaults and telemetry
 
 ## Blazor
 - Always add component-specific CSS in a corresponding .razor.css file
@@ -126,3 +168,15 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 - Use meaningful file names
 - Follow consistent folder structure
 - Group components by feature when possible
+
+### Azure Functions Development
+- **Local settings**: Create `feedbackfunctions/local.settings.json` with required API keys
+- **Storage emulator**: Uses `AzureWebJobsStorage: "UseDevelopmentStorage=true"` for local development  
+- **Required API keys**: GitHub PAT, YouTube API key, Azure OpenAI endpoint/key, Reddit credentials
+- **Functions runtime**: `dotnet-isolated` (.NET 9)
+- **Key endpoints**: SaveSharedAnalysis, GetSharedAnalysis, GitHubIssuesReport, WeeklyReportProcessor
+
+### Package Management
+- Uses **Central Package Management** via `Directory.Packages.props`
+- Key packages: Azure.AI.OpenAI, Azure.Data.Tables, Microsoft.Azure.Functions.Worker, Blazor.SpeechSynthesis
+- All projects target **.NET 9** with nullable reference types enabled
