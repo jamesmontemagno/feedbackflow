@@ -1,57 +1,54 @@
 @inject NavigationManager NavigationManager
 
 <div class="reddit-results">
-    <div class="controls mb-3">
-        <div class="row g-2">
-            <div class="col-md-6">
+        <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
+            <div class="search-container flex-grow-1">
                 <div class="input-group">
                     <span class="input-group-text">
                         <i class="bi bi-search"></i>
                     </span>
-                    <input type="text" class="form-control" placeholder="Search threads..."
-                           @bind="SearchText" @bind:event="oninput" @onkeyup="HandleSearch" />
+                    <input 
+                        type="text" 
+                        class="form-control" 
+                        placeholder="Search in titles and content..." 
+                        @bind="SearchText" 
+                        @bind:event="oninput"
+                        @onkeyup="HandleSearch" />
                     @if (!string.IsNullOrWhiteSpace(SearchText))
                     {
                         <button class="btn btn-outline-secondary" @onclick="ClearSearch">
-                            <i class="bi bi-x"></i>
+                            <i class="bi bi-x-lg"></i>
                         </button>
                     }
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="btn-group w-100">
-                    <button class="btn @(CurrentSort == SortOption.Default ? "btn-primary" : "btn-outline-primary")"
-                            @onclick="() => Sort(SortOption.Default)">
-                        Relevance
-                    </button>
-                    <button class="btn @(CurrentSort == SortOption.Score ? "btn-primary" : "btn-outline-primary")"
-                            @onclick="() => Sort(SortOption.Score)">
-                        Score @(CurrentSort == SortOption.Score ? (IsAscending ? "↑" : "↓") : "")
-                    </button>
-                    <button class="btn @(CurrentSort == SortOption.Comments ? "btn-primary" : "btn-outline-primary")"
-                            @onclick="() => Sort(SortOption.Comments)">
-                        Comments @(CurrentSort == SortOption.Comments ? (IsAscending ? "↑" : "↓") : "")
-                    </button>
-                    <button class="btn @(CurrentSort == SortOption.Date ? "btn-primary" : "btn-outline-primary")"
-                            @onclick="() => Sort(SortOption.Date)">
-                        Date @(CurrentSort == SortOption.Date ? (IsAscending ? "↑" : "↓") : "")
-                    </button>
-                </div>
+            <div class="btn-group">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Sort by: @GetSortDisplayName() @(IsAscending && CurrentSort != SortOption.Default ? "↑" : "↓")
+                </button>
+                <ul class="dropdown-menu">
+                    <li><button class="dropdown-item" @onclick="() => Sort(SortOption.Default)">Relevance</button></li>
+                    <li><button class="dropdown-item" @onclick="() => Sort(SortOption.Score)">Score</button></li>
+                    <li><button class="dropdown-item" @onclick="() => Sort(SortOption.Comments)">Comments</button></li>
+                    <li><button class="dropdown-item" @onclick="() => Sort(SortOption.Date)">Date</button></li>
+                </ul>
             </div>
         </div>
-    </div>
 
     @if (FilteredAndSortedThreads?.Any() == true)
     {
-        <div style="overflow-y: auto;">
-            <Virtualize Items="FilteredAndSortedThreads.ToList()" Context="thread" ItemSize="200">
-                <div class="card mb-3" @key="thread.Id">
+        @if (FilteredAndSortedThreads.Any())
+        {
+            @foreach (var thread in FilteredAndSortedThreads)
+            {
+                <div class="card mb-3">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <h5 class="card-title mb-1">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title mb-0">
                                 <i class="bi bi-reddit text-danger me-2"></i>
                                 @thread.Title
                             </h5>
+                            
                             <div class="btn-group">
                                 <a href="@thread.Url" target="_blank" class="btn btn-sm btn-outline-secondary" title="Open thread">
                                     <i class="bi bi-box-arrow-up-right"></i>
@@ -61,44 +58,40 @@
                                 </a>
                             </div>
                         </div>
+
+                        <div class="text-muted mb-2">
+                            <i class="bi bi-person-circle me-1"></i> u/@thread.Author
+                        </div>
                         
                         @if (!string.IsNullOrWhiteSpace(thread.SelfText))
                         {
-                            <div class="thread-content mt-3">
-                                @((thread.SelfText.Length > 300) ? $"{thread.SelfText[..300]}..." : thread.SelfText)
-                                @if (thread.SelfText.Length > 300)
-                                {
-                                    <button class="btn btn-link p-0" @onclick="() => ToggleFullText(thread)">
-                                        Read more
-                                    </button>
-                                }
-                            </div>
+                            <p class="card-text">@(thread.SelfText.Length > 200 ? $"{thread.SelfText[..200]}..." : thread.SelfText)</p>
                         }
 
-                        <div class="thread-meta mt-3">
-                            <div class="d-flex gap-3 text-muted small">
-                                <span>
-                                    <i class="bi bi-person me-1"></i>
-                                    u/@thread.Author
-                                </span>
-                                <span>
-                                    <i class="bi bi-arrow-up-circle me-1"></i>
-                                    @thread.Score
-                                </span>
-                                <span>
-                                    <i class="bi bi-chat-left-text me-1"></i>
-                                    @thread.NumComments comments
-                                </span>
-                                <span>
-                                    <i class="bi bi-clock me-1"></i>
-                                    @thread.CreatedUtc.LocalDateTime.ToString("MMM dd, yyyy HH:mm")
-                                </span>
+                        <div class="d-flex gap-3 text-muted mt-3">
+                            <div title="Created Date">
+                                <i class="bi bi-calendar me-1"></i>
+                                @thread.CreatedUtc.LocalDateTime.ToString("MMM dd, yyyy")
+                            </div>
+                            <div title="Score">
+                                <i class="bi bi-arrow-up-circle me-1"></i>
+                                @FormatNumber(thread.Score)
+                            </div>
+                            <div title="Comments">
+                                <i class="bi bi-chat-text me-1"></i>
+                                @FormatNumber(thread.NumComments)
                             </div>
                         </div>
                     </div>
                 </div>
-            </Virtualize>
-        </div>
+            }
+        }
+        else
+        {
+            <div class="text-center text-muted">
+                <p>No threads match your search criteria.</p>
+            </div>
+        }
     }
     else
     {
@@ -118,9 +111,8 @@
     private string SearchText { get; set; } = string.Empty;
     private System.Timers.Timer? _debounceTimer;
     private SortOption CurrentSort { get; set; } = SortOption.Default;
-    private bool IsAscending { get; set; }
+    private bool IsAscending { get; set; } = true;
     private List<RedditThreadModel>? _originalThreads;
-    private HashSet<string> _expandedThreadIds = new();
 
     private enum SortOption
     {
@@ -203,28 +195,50 @@
         else
         {
             CurrentSort = option;
-            IsAscending = false;
+            if (option == SortOption.Default)
+            {
+                // Restore original order
+                if (_originalThreads != null)
+                {
+                    Threads = _originalThreads.ToList();
+                }
+            }
+            else
+            {
+                // Set initial sort direction based on the type of data
+                IsAscending = option switch
+                {
+                    SortOption.Score or SortOption.Comments => false,
+                    _ => true
+                };
+            }
         }
-        StateHasChanged();
+    }
+
+    private string GetSortDisplayName() => CurrentSort switch
+    {
+        SortOption.Default => "Relevance",
+        SortOption.Score => "Score",
+        SortOption.Comments => "Comments",
+        SortOption.Date => "Date",
+        _ => "Relevance"
+    };
+
+    private string FormatNumber(long number)
+    {
+        if (number >= 1_000_000_000)
+            return $"{number / 1_000_000_000:N1}B";
+        if (number >= 1_000_000)
+            return $"{number / 1_000_000:N1}M";
+        if (number >= 1_000)
+            return $"{number / 1_000:N1}K";
+        return number.ToString("N0");
     }
 
     private void OnAnalyzeClick(RedditThreadModel thread)
     {
         var url = $"https://www.reddit.com{thread.Permalink}";
         NavigationManager.NavigateTo($"/?source=auto&url={Uri.EscapeDataString(url)}");
-    }
-
-    private void ToggleFullText(RedditThreadModel thread)
-    {
-        if (_expandedThreadIds.Contains(thread.Id))
-        {
-            _expandedThreadIds.Remove(thread.Id);
-        }
-        else
-        {
-            _expandedThreadIds.Add(thread.Id);
-        }
-        StateHasChanged();
     }
 
     public void Dispose()
