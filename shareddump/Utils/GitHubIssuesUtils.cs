@@ -31,27 +31,6 @@ public static class GitHubIssuesUtils
             .ToList();
     }
 
-    /// <summary>
-    /// Gets the oldest issues that are still being actively discussed (high engagement)
-    /// Note: This method is deprecated in favor of IGitHubService.GetOldestImportantIssuesWithRecentActivityAsync
-    /// which provides better filtering by actual recent comment activity rather than just overall engagement.
-    /// </summary>
-    /// <param name="issues">List of GitHub issue summaries</param>
-    /// <param name="topCount">Number of oldest important issues to return</param>
-    /// <returns>Oldest issues with high engagement</returns>
-    [Obsolete("Use IGitHubService.GetOldestImportantIssuesWithRecentActivityAsync for better filtering by recent activity")]
-    public static List<GithubIssueSummary> GetOldestImportantIssues(List<GithubIssueSummary> issues, int topCount = 3)
-    {
-        // Only consider open issues that have decent engagement (at least 2 comments or 1 reaction)
-        var minEngagement = 2;
-        
-        return issues
-            .Where(i => i.State.Equals("OPEN", StringComparison.OrdinalIgnoreCase))
-            .Where(i => (i.CommentsCount + i.ReactionsCount) >= minEngagement)
-            .OrderBy(i => i.CreatedAt) // Oldest first
-            .Take(topCount)
-            .ToList();
-    }
 
     /// <summary>
     /// Analyzes issue titles to identify common keywords and trends
