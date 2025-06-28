@@ -170,6 +170,57 @@
     display: block;
 }
 
+/* ========== Enhanced Validation Styling ========== */
+::deep .input-group .input-group-text {
+    transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+}
+
+::deep .input-group .input-group-text.text-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+    border-color: var(--bs-danger);
+    color: var(--bs-danger);
+}
+
+::deep .input-group .input-group-text.text-success {
+    background-color: rgba(25, 135, 84, 0.1);
+    border-color: var(--bs-success);
+    color: var(--bs-success);
+}
+
+::deep .form-control.is-valid {
+    border-color: var(--bs-success);
+}
+
+::deep .form-control.is-valid:focus {
+    border-color: var(--bs-success);
+    box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
+}
+
+::deep .form-control.is-invalid {
+    border-color: var(--bs-danger);
+}
+
+::deep .form-control.is-invalid:focus {
+    border-color: var(--bs-danger);
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+::deep .invalid-feedback.d-block {
+    display: block !important;
+    margin-top: 0.25rem;
+    font-size: 0.875em;
+    color: var(--bs-danger);
+}
+
+::deep .validation-indicator {
+    cursor: help;
+    transition: opacity 0.3s ease;
+}
+
+::deep .validation-indicator:hover {
+    opacity: 0.8;
+}
+
 /* ========== Loading Spinner ========== */
 .spinner-border-sm {
     width: 1rem;

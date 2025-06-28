@@ -1,0 +1,37 @@
+::deep .modal {
+    --bs-modal-fade-transform: translateY(-50px);
+}
+
+::deep .modal.show {
+    animation: slideInDown 0.3s ease-out;
+}
+
+::deep .modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translate3d(0, -50px, 0);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+::deep .modal-content {
+    border: none;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+}
+
+::deep .modal-header.bg-danger {
+    border-top-left-radius: var(--border-radius);
+    border-top-right-radius: var(--border-radius);
+}
+
+::deep .btn-close-white {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}

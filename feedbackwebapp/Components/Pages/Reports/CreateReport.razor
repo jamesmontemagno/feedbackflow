@@ -1,11 +1,13 @@
 @page "/reports/create"
 @using FeedbackWebApp.Services.Authentication
+@using FeedbackWebApp.Services
 @using System.ComponentModel.DataAnnotations
 @using SharedDump.Services
 @inject NavigationManager NavigationManager
 @inject AuthenticationService AuthService
 @inject IJSRuntime JSRuntime
 @inject IReportRequestService ReportRequestService
+@inject IUrlValidationHttpService UrlValidationService
 
 <PageTitle>Create Report - FeedbackFlow</PageTitle>
 
@@ -62,16 +64,29 @@
                                         <span class="input-group-text">r/</span>
                                         <input type="text" 
                                                id="subreddit"
-                                               class="form-control @(validationErrors.ContainsKey("Subreddit") ? "is-invalid" : "")" 
+                                               class="form-control @GetValidationClass("Subreddit")" 
                                                @bind="reportRequest.Subreddit" 
+                                               @oninput="@(async (e) => await OnSubredditInput(e.Value?.ToString()))"
                                                placeholder="dotnet"
                                                disabled="@isSubmitting" />
+                                        @if (fieldValidationStates.ContainsKey("Subreddit") && !fieldValidationStates["Subreddit"].IsValid)
+                                        {
+                                            <span class="input-group-text text-danger" title="@fieldValidationStates["Subreddit"].ErrorMessage">
+                                                <i class="bi bi-exclamation-triangle"></i>
+                                            </span>
+                                        }
+                                        else if (fieldValidationStates.ContainsKey("Subreddit") && fieldValidationStates["Subreddit"].IsValid)
+                                        {
+                                            <span class="input-group-text text-success" title="Valid subreddit">
+                                                <i class="bi bi-check-circle"></i>
+                                            </span>
+                                        }
                                     </div>
                                     <div class="form-text">Enter the subreddit name without the "r/" prefix</div>
-                                    @if (validationErrors.ContainsKey("Subreddit"))
+                                    @if (fieldValidationStates.ContainsKey("Subreddit") && !fieldValidationStates["Subreddit"].IsValid)
                                     {
-                                        <div class="invalid-feedback">
-                                            @validationErrors["Subreddit"]
+                                        <div class="invalid-feedback d-block">
+                                            @fieldValidationStates["Subreddit"].ErrorMessage
                                         </div>
                                     }
                                     <ValidationMessage For="@(() => reportRequest.Subreddit)" />
@@ -81,16 +96,31 @@
                             {
                                 <div class="mb-3">
                                     <label class="form-label" for="owner">Repository Owner</label>
-                                    <input type="text" 
-                                           id="owner"
-                                           class="form-control @(validationErrors.ContainsKey("Owner") ? "is-invalid" : "")" 
-                                           @bind="reportRequest.Owner" 
-                                           placeholder="microsoft"
-                                           disabled="@isSubmitting" />
-                                    @if (validationErrors.ContainsKey("Owner"))
+                                    <div class="input-group">
+                                        <input type="text" 
+                                               id="owner"
+                                               class="form-control @GetValidationClass("Owner")" 
+                                               @bind="reportRequest.Owner" 
+                                               @oninput="@(async (e) => await OnOwnerInput(e.Value?.ToString()))"
+                                               placeholder="microsoft"
+                                               disabled="@isSubmitting" />
+                                        @if (fieldValidationStates.ContainsKey("Owner") && !fieldValidationStates["Owner"].IsValid)
+                                        {
+                                            <span class="input-group-text text-danger" title="@fieldValidationStates["Owner"].ErrorMessage">
+                                                <i class="bi bi-exclamation-triangle"></i>
+                                            </span>
+                                        }
+                                        else if (fieldValidationStates.ContainsKey("Owner") && fieldValidationStates["Owner"].IsValid)
+                                        {
+                                            <span class="input-group-text text-success" title="Valid owner name">
+                                                <i class="bi bi-check-circle"></i>
+                                            </span>
+                                        }
+                                    </div>
+                                    @if (fieldValidationStates.ContainsKey("Owner") && !fieldValidationStates["Owner"].IsValid)
                                     {
-                                        <div class="invalid-feedback">
-                                            @validationErrors["Owner"]
+                                        <div class="invalid-feedback d-block">
+                                            @fieldValidationStates["Owner"].ErrorMessage
                                         </div>
                                     }
                                     <ValidationMessage For="@(() => reportRequest.Owner)" />
@@ -98,16 +128,31 @@
                                 
                                 <div class="mb-3">
                                     <label class="form-label" for="repo">Repository Name</label>
-                                    <input type="text" 
-                                           id="repo"
-                                           class="form-control @(validationErrors.ContainsKey("Repo") ? "is-invalid" : "")" 
-                                           @bind="reportRequest.Repo" 
-                                           placeholder="vscode"
-                                           disabled="@isSubmitting" />
-                                    @if (validationErrors.ContainsKey("Repo"))
+                                    <div class="input-group">
+                                        <input type="text" 
+                                               id="repo"
+                                               class="form-control @GetValidationClass("Repo")" 
+                                               @bind="reportRequest.Repo" 
+                                               @oninput="@(async (e) => await OnRepoInput(e.Value?.ToString()))"
+                                               placeholder="vscode"
+                                               disabled="@isSubmitting" />
+                                        @if (fieldValidationStates.ContainsKey("Repo") && !fieldValidationStates["Repo"].IsValid)
+                                        {
+                                            <span class="input-group-text text-danger" title="@fieldValidationStates["Repo"].ErrorMessage">
+                                                <i class="bi bi-exclamation-triangle"></i>
+                                            </span>
+                                        }
+                                        else if (fieldValidationStates.ContainsKey("Repo") && fieldValidationStates["Repo"].IsValid)
+                                        {
+                                            <span class="input-group-text text-success" title="Valid repository name">
+                                                <i class="bi bi-check-circle"></i>
+                                            </span>
+                                        }
+                                    </div>
+                                    @if (fieldValidationStates.ContainsKey("Repo") && !fieldValidationStates["Repo"].IsValid)
                                     {
-                                        <div class="invalid-feedback">
-                                            @validationErrors["Repo"]
+                                        <div class="invalid-feedback d-block">
+                                            @fieldValidationStates["Repo"].ErrorMessage
                                         </div>
                                     }
                                     <ValidationMessage For="@(() => reportRequest.Repo)" />
@@ -177,6 +222,8 @@
     }
 </div>
 
+<ValidationErrorModal @ref="validationModal" @bind-IsVisible="showValidationModal" />
+
 @code {
     private bool isAuthenticated = false;
     private bool isSubmitting = false;
@@ -184,6 +231,19 @@
     private string successMessage = string.Empty;
     private ReportRequestModel reportRequest = new();
     private Dictionary<string, string> validationErrors = new();
+    private Dictionary<string, FieldValidationState> fieldValidationStates = new();
+    private ValidationErrorModal validationModal = null!;
+    private bool showValidationModal = false;
+    
+    // Debouncing for real-time validation
+    private readonly Dictionary<string, CancellationTokenSource> _validationCancellationTokens = new();
+
+    public class FieldValidationState
+    {
+        public bool IsValid { get; set; }
+        public string? ErrorMessage { get; set; }
+        public bool IsValidating { get; set; }
+    }
 
     public class ReportRequestModel
     {
@@ -237,6 +297,155 @@
         }
     }
 
+    private string GetValidationClass(string fieldName)
+    {
+        if (fieldValidationStates.ContainsKey(fieldName))
+        {
+            var state = fieldValidationStates[fieldName];
+            if (state.IsValidating)
+                return "";
+            return state.IsValid ? "is-valid" : "is-invalid";
+        }
+        return "";
+    }
+
+    private async Task OnSubredditInput(string? value)
+    {
+        await ValidateFieldWithDebounce("Subreddit", value, async (val) =>
+        {
+            if (string.IsNullOrWhiteSpace(val))
+                return (false, "Subreddit name is required");
+
+            var result = SharedDump.Services.UrlValidationService.ValidateSubredditName(val);
+            if (!result.IsValid)
+                return (false, result.ErrorMessage);
+
+            // Check URL existence
+            var validation = await UrlValidationService.ValidateRedditSubredditAsync(val);
+            return validation;
+        });
+    }
+
+    private async Task OnOwnerInput(string? value)
+    {
+        await ValidateFieldWithDebounce("Owner", value, async (val) =>
+        {
+            if (string.IsNullOrWhiteSpace(val))
+                return (false, "Owner name is required");
+
+            var result = SharedDump.Services.UrlValidationService.ValidateGitHubOwnerName(val);
+            return await Task.FromResult((result.IsValid, result.ErrorMessage));
+        });
+
+        // Validate full repository if both fields are filled
+        if (!string.IsNullOrWhiteSpace(reportRequest.Owner) && !string.IsNullOrWhiteSpace(reportRequest.Repo))
+        {
+            await ValidateGitHubRepository();
+        }
+    }
+
+    private async Task OnRepoInput(string? value)
+    {
+        await ValidateFieldWithDebounce("Repo", value, async (val) =>
+        {
+            if (string.IsNullOrWhiteSpace(val))
+                return (false, "Repository name is required");
+
+            var result = SharedDump.Services.UrlValidationService.ValidateGitHubRepoName(val);
+            return await Task.FromResult((result.IsValid, result.ErrorMessage));
+        });
+
+        // Validate full repository if both fields are filled
+        if (!string.IsNullOrWhiteSpace(reportRequest.Owner) && !string.IsNullOrWhiteSpace(reportRequest.Repo))
+        {
+            await ValidateGitHubRepository();
+        }
+    }
+
+    private async Task ValidateGitHubRepository()
+    {
+        if (string.IsNullOrWhiteSpace(reportRequest.Owner) || string.IsNullOrWhiteSpace(reportRequest.Repo))
+            return;
+
+        await ValidateFieldWithDebounce("GitHubRepo", $"{reportRequest.Owner}/{reportRequest.Repo}", async (val) =>
+        {
+            var validation = await UrlValidationService.ValidateGitHubRepositoryAsync(reportRequest.Owner!, reportRequest.Repo!);
+            return validation;
+        });
+    }
+
+    private async Task ValidateFieldWithDebounce(string fieldName, string? value, Func<string, Task<(bool IsValid, string? ErrorMessage)>> validator)
+    {
+        // Cancel any existing validation for this field
+        if (_validationCancellationTokens.ContainsKey(fieldName))
+        {
+            _validationCancellationTokens[fieldName].Cancel();
+        }
+
+        var cts = new CancellationTokenSource();
+        _validationCancellationTokens[fieldName] = cts;
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            fieldValidationStates[fieldName] = new FieldValidationState 
+            { 
+                IsValid = false, 
+                ErrorMessage = $"{fieldName} is required",
+                IsValidating = false
+            };
+            StateHasChanged();
+            return;
+        }
+
+        // Set validating state
+        fieldValidationStates[fieldName] = new FieldValidationState 
+        { 
+            IsValid = false, 
+            ErrorMessage = null,
+            IsValidating = true
+        };
+        StateHasChanged();
+
+        try
+        {
+            // Debounce delay
+            await Task.Delay(500, cts.Token);
+
+            if (cts.Token.IsCancellationRequested)
+                return;
+
+            var (isValid, errorMessage) = await validator(value);
+            
+            if (!cts.Token.IsCancellationRequested)
+            {
+                fieldValidationStates[fieldName] = new FieldValidationState
+                {
+                    IsValid = isValid,
+                    ErrorMessage = errorMessage,
+                    IsValidating = false
+                };
+                StateHasChanged();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Validation was cancelled, ignore
+        }
+        catch (Exception)
+        {
+            if (!cts.Token.IsCancellationRequested)
+            {
+                fieldValidationStates[fieldName] = new FieldValidationState
+                {
+                    IsValid = true, // Assume valid if we can't validate
+                    ErrorMessage = null,
+                    IsValidating = false
+                };
+                StateHasChanged();
+            }
+        }
+    }
+
     private bool IsFormValid()
     {
         validationErrors.Clear();
@@ -249,7 +458,7 @@
             if (string.IsNullOrWhiteSpace(reportRequest.Subreddit))
                 return false;
                 
-            var result = UrlValidationService.ValidateSubredditName(reportRequest.Subreddit);
+            var result = SharedDump.Services.UrlValidationService.ValidateSubredditName(reportRequest.Subreddit);
             if (!result.IsValid)
             {
                 validationErrors["Subreddit"] = result.ErrorMessage ?? "Invalid subreddit name";
@@ -262,14 +471,14 @@
             if (string.IsNullOrWhiteSpace(reportRequest.Owner) || string.IsNullOrWhiteSpace(reportRequest.Repo))
                 return false;
                 
-            var ownerResult = UrlValidationService.ValidateGitHubOwnerName(reportRequest.Owner);
+            var ownerResult = SharedDump.Services.UrlValidationService.ValidateGitHubOwnerName(reportRequest.Owner);
             if (!ownerResult.IsValid)
             {
                 validationErrors["Owner"] = ownerResult.ErrorMessage ?? "Invalid owner name";
                 return false;
             }
             
-            var repoResult = UrlValidationService.ValidateGitHubRepoName(reportRequest.Repo);
+            var repoResult = SharedDump.Services.UrlValidationService.ValidateGitHubRepoName(reportRequest.Repo);
             if (!repoResult.IsValid)
             {
                 validationErrors["Repo"] = repoResult.ErrorMessage ?? "Invalid repository name";
@@ -295,6 +504,36 @@
             successMessage = string.Empty;
             validationErrors.Clear();
 
+            // Perform comprehensive validation including URL reachability
+            var submitValidationErrors = new List<string>();
+
+            if (reportRequest.Type == "reddit" && !string.IsNullOrWhiteSpace(reportRequest.Subreddit))
+            {
+                var (isValid, errorMessage) = await UrlValidationService.ValidateRedditSubredditAsync(reportRequest.Subreddit);
+                if (!isValid)
+                {
+                    submitValidationErrors.Add($"Reddit: {errorMessage}");
+                }
+            }
+            else if (reportRequest.Type == "github" && !string.IsNullOrWhiteSpace(reportRequest.Owner) && !string.IsNullOrWhiteSpace(reportRequest.Repo))
+            {
+                var (isValid, errorMessage) = await UrlValidationService.ValidateGitHubRepositoryAsync(reportRequest.Owner, reportRequest.Repo);
+                if (!isValid)
+                {
+                    submitValidationErrors.Add($"GitHub: {errorMessage}");
+                }
+            }
+
+            if (submitValidationErrors.Any())
+            {
+                await validationModal.Show(
+                    "Validation Failed", 
+                    "The URLs you provided could not be validated or are not accessible:",
+                    submitValidationErrors
+                );
+                return;
+            }
+
             // Generate deterministic ID
             var id = GenerateRequestId(reportRequest);
             
@@ -302,7 +541,11 @@
             var existingRequest = await JSRuntime.InvokeAsync<object?>("window.indexedDbModule.getReportRequest", id);
             if (existingRequest != null)
             {
-                errorMessage = "You've already requested this report.";
+                await validationModal.Show(
+                    "Duplicate Request", 
+                    "You've already requested this report.",
+                    new List<string>()
+                );
                 return;
             }
 
@@ -327,16 +570,24 @@
                 
                 successMessage = $"Report request created successfully! Reports are generated every Monday morning.";
                 reportRequest = new ReportRequestModel(); // Reset form
-                validationErrors.Clear();
+                fieldValidationStates.Clear(); // Reset validation states
             }
             else
             {
-                errorMessage = "Failed to submit request to the server. Please try again later.";
+                await validationModal.Show(
+                    "Server Error", 
+                    "Failed to submit request to the server. Please try again later.",
+                    new List<string>()
+                );
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error creating report request: {ex.Message}";
+            await validationModal.Show(
+                "Error", 
+                $"Error creating report request: {ex.Message}",
+                new List<string>()
+            );
         }
         finally
         {

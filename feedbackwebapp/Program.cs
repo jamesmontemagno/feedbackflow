@@ -33,6 +33,8 @@ builder.Services.AddScoped<IHistoryHelper, HistoryHelper>();
 
 builder.Services.AddHttpClient("DefaultClient")
     .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(3));
+builder.Services.AddHttpClient<IUrlValidationHttpService, UrlValidationHttpService>()
+    .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddScoped<FeedbackServiceProvider>();
 builder.Services.AddScoped<ContentFeedServiceProvider>();
 builder.Services.AddScoped<AuthenticationService>();
