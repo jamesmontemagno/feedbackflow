@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace FeedbackWebApp.Components.Feedback;
+namespace SharedDump.Utils;
 
 public static class GitHubUrlParser
 {

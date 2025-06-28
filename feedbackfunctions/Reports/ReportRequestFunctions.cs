@@ -11,6 +11,7 @@ using SharedDump.Services.Interfaces;
 using SharedDump.AI;
 using FeedbackFunctions.Utils;
 using FeedbackFunctions.Services;
+using SharedDump.Services;
 
 namespace FeedbackFunctions;
 
@@ -83,13 +84,70 @@ public class ReportRequestFunctions
                 return badRequestResponse;
             }
 
-            // Validate required fields
-            if (string.IsNullOrEmpty(request.Type) || 
-                (request.Type == "reddit" && string.IsNullOrEmpty(request.Subreddit)) ||
-                (request.Type == "github" && (string.IsNullOrEmpty(request.Owner) || string.IsNullOrEmpty(request.Repo))))
+            // Validate required fields and URLs
+            if (string.IsNullOrEmpty(request.Type))
             {
                 var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await validationResponse.WriteStringAsync("Missing required fields");
+                await validationResponse.WriteStringAsync("Source type is required");
+                return validationResponse;
+            }
+
+            // Validate URLs if provided, otherwise fall back to legacy field validation
+            if (request.Type == "reddit")
+            {
+                if (!string.IsNullOrEmpty(request.RedditUrl))
+                {
+                    var urlValidation = UrlValidationService.ValidateRedditUrl(request.RedditUrl);
+                    if (!urlValidation.IsValid)
+                    {
+                        var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                        await validationResponse.WriteStringAsync($"Invalid Reddit URL: {urlValidation.ErrorMessage}");
+                        return validationResponse;
+                    }
+                    
+                    // Extract subreddit from validated URL for backward compatibility
+                    if (urlValidation.ParsedData is RedditUrlData redditData)
+                    {
+                        request.Subreddit = redditData.Subreddit;
+                    }
+                }
+                else if (string.IsNullOrEmpty(request.Subreddit))
+                {
+                    var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await validationResponse.WriteStringAsync("Reddit URL or subreddit is required for Reddit reports");
+                    return validationResponse;
+                }
+            }
+            else if (request.Type == "github")
+            {
+                if (!string.IsNullOrEmpty(request.GitHubUrl))
+                {
+                    var urlValidation = UrlValidationService.ValidateGitHubUrl(request.GitHubUrl);
+                    if (!urlValidation.IsValid)
+                    {
+                        var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                        await validationResponse.WriteStringAsync($"Invalid GitHub URL: {urlValidation.ErrorMessage}");
+                        return validationResponse;
+                    }
+                    
+                    // Extract owner and repo from validated URL for backward compatibility
+                    if (urlValidation.ParsedData is GitHubUrlData githubData)
+                    {
+                        request.Owner = githubData.Owner;
+                        request.Repo = githubData.Repository;
+                    }
+                }
+                else if (string.IsNullOrEmpty(request.Owner) || string.IsNullOrEmpty(request.Repo))
+                {
+                    var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await validationResponse.WriteStringAsync("GitHub URL or owner/repository is required for GitHub reports");
+                    return validationResponse;
+                }
+            }
+            else
+            {
+                var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await validationResponse.WriteStringAsync("Invalid source type. Must be 'reddit' or 'github'");
                 return validationResponse;
             }
 
