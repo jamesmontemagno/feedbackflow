@@ -6,228 +6,307 @@ namespace FeedbackFlow.Tests;
 public class UrlValidationServiceTests
 {
     [TestClass]
-    public class GitHubUrlValidationTests
+    public class GitHubOwnerNameValidationTests
     {
         [TestMethod]
-        public void ValidateGitHubUrl_ValidIssueUrl_ReturnsValid()
+        public void ValidateGitHubOwnerName_ValidOwnerName_ReturnsValid()
         {
-            var url = "https://github.com/microsoft/vscode/issues/123";
-            var result = UrlValidationService.ValidateGitHubUrl(url);
+            var result = UrlValidationService.ValidateGitHubOwnerName("microsoft");
             
             Assert.IsTrue(result.IsValid);
             Assert.IsNull(result.ErrorMessage);
-            Assert.IsNotNull(result.ParsedData);
-            
-            var data = (GitHubUrlData)result.ParsedData;
-            Assert.AreEqual("microsoft", data.Owner);
-            Assert.AreEqual("vscode", data.Repository);
-            Assert.AreEqual("issue", data.Type);
-            Assert.AreEqual(123, data.Number);
         }
 
         [TestMethod]
-        public void ValidateGitHubUrl_ValidPullRequestUrl_ReturnsValid()
+        public void ValidateGitHubOwnerName_ValidOwnerNameWithHyphens_ReturnsValid()
         {
-            var url = "https://github.com/dotnet/aspnetcore/pull/456";
-            var result = UrlValidationService.ValidateGitHubUrl(url);
+            var result = UrlValidationService.ValidateGitHubOwnerName("test-user");
             
             Assert.IsTrue(result.IsValid);
             Assert.IsNull(result.ErrorMessage);
-            Assert.IsNotNull(result.ParsedData);
-            
-            var data = (GitHubUrlData)result.ParsedData;
-            Assert.AreEqual("dotnet", data.Owner);
-            Assert.AreEqual("aspnetcore", data.Repository);
-            Assert.AreEqual("pull", data.Type);
-            Assert.AreEqual(456, data.Number);
         }
 
         [TestMethod]
-        public void ValidateGitHubUrl_ValidDiscussionUrl_ReturnsValid()
+        public void ValidateGitHubOwnerName_ValidOwnerNameWithNumbers_ReturnsValid()
         {
-            var url = "https://github.com/github/docs/discussions/789";
-            var result = UrlValidationService.ValidateGitHubUrl(url);
+            var result = UrlValidationService.ValidateGitHubOwnerName("user123");
             
             Assert.IsTrue(result.IsValid);
             Assert.IsNull(result.ErrorMessage);
-            Assert.IsNotNull(result.ParsedData);
-            
-            var data = (GitHubUrlData)result.ParsedData;
-            Assert.AreEqual("github", data.Owner);
-            Assert.AreEqual("docs", data.Repository);
-            Assert.AreEqual("discussion", data.Type);
-            Assert.AreEqual(789, data.Number);
         }
 
         [TestMethod]
-        public void ValidateGitHubUrl_EmptyUrl_ReturnsError()
+        public void ValidateGitHubOwnerName_SingleCharacter_ReturnsValid()
         {
-            var result = UrlValidationService.ValidateGitHubUrl("");
+            var result = UrlValidationService.ValidateGitHubOwnerName("a");
             
-            Assert.IsFalse(result.IsValid);
-            Assert.AreEqual("GitHub URL is required.", result.ErrorMessage);
-            Assert.IsNull(result.ParsedData);
+            Assert.IsTrue(result.IsValid);
+            Assert.IsNull(result.ErrorMessage);
         }
 
         [TestMethod]
-        public void ValidateGitHubUrl_NullUrl_ReturnsError()
+        public void ValidateGitHubOwnerName_EmptyName_ReturnsError()
         {
-            var result = UrlValidationService.ValidateGitHubUrl(null);
+            var result = UrlValidationService.ValidateGitHubOwnerName("");
             
             Assert.IsFalse(result.IsValid);
-            Assert.AreEqual("GitHub URL is required.", result.ErrorMessage);
-            Assert.IsNull(result.ParsedData);
+            Assert.AreEqual("GitHub owner name is required.", result.ErrorMessage);
         }
 
         [TestMethod]
-        public void ValidateGitHubUrl_InvalidUrl_ReturnsError()
+        public void ValidateGitHubOwnerName_NullName_ReturnsError()
         {
-            var result = UrlValidationService.ValidateGitHubUrl("not-a-url");
+            var result = UrlValidationService.ValidateGitHubOwnerName(null);
             
             Assert.IsFalse(result.IsValid);
-            Assert.AreEqual("Please enter a valid GitHub URL.", result.ErrorMessage);
-            Assert.IsNull(result.ParsedData);
+            Assert.AreEqual("GitHub owner name is required.", result.ErrorMessage);
         }
 
         [TestMethod]
-        public void ValidateGitHubUrl_NonGitHubUrl_ReturnsError()
+        public void ValidateGitHubOwnerName_TooLong_ReturnsError()
         {
-            var url = "https://www.google.com";
-            var result = UrlValidationService.ValidateGitHubUrl(url);
+            var longName = new string('a', 40); // 40 characters, exceeds GitHub's 39 limit
+            var result = UrlValidationService.ValidateGitHubOwnerName(longName);
             
             Assert.IsFalse(result.IsValid);
-            Assert.AreEqual("Please enter a valid GitHub URL.", result.ErrorMessage);
-            Assert.IsNull(result.ParsedData);
+            Assert.AreEqual("GitHub owner name cannot be longer than 39 characters.", result.ErrorMessage);
         }
 
         [TestMethod]
-        public void ValidateGitHubUrl_UnsupportedGitHubUrl_ReturnsError()
+        public void ValidateGitHubOwnerName_StartsWithHyphen_ReturnsError()
         {
-            var url = "https://github.com/microsoft/vscode/releases";
-            var result = UrlValidationService.ValidateGitHubUrl(url);
+            var result = UrlValidationService.ValidateGitHubOwnerName("-invalid");
             
             Assert.IsFalse(result.IsValid);
-            Assert.AreEqual("GitHub URL must be a repository, issue, pull request, or discussion URL (e.g., https://github.com/owner/repo/issues/123).", result.ErrorMessage);
-            Assert.IsNull(result.ParsedData);
+            Assert.AreEqual("GitHub owner name can only contain alphanumeric characters and hyphens, and cannot start or end with a hyphen.", result.ErrorMessage);
         }
 
         [TestMethod]
-        public void ValidateGitHubUrl_RepoRootUrl_ReturnsError()
+        public void ValidateGitHubOwnerName_EndsWithHyphen_ReturnsError()
         {
-            var url = "https://github.com/microsoft/vscode";
-            var result = UrlValidationService.ValidateGitHubUrl(url);
+            var result = UrlValidationService.ValidateGitHubOwnerName("invalid-");
             
             Assert.IsFalse(result.IsValid);
-            Assert.AreEqual("GitHub URL must be a repository, issue, pull request, or discussion URL (e.g., https://github.com/owner/repo/issues/123).", result.ErrorMessage);
-            Assert.IsNull(result.ParsedData);
+            Assert.AreEqual("GitHub owner name can only contain alphanumeric characters and hyphens, and cannot start or end with a hyphen.", result.ErrorMessage);
+        }
+
+        [TestMethod]
+        public void ValidateGitHubOwnerName_ConsecutiveHyphens_ReturnsError()
+        {
+            var result = UrlValidationService.ValidateGitHubOwnerName("test--user");
+            
+            Assert.IsFalse(result.IsValid);
+            Assert.AreEqual("GitHub owner name cannot contain consecutive hyphens.", result.ErrorMessage);
+        }
+
+        [TestMethod]
+        public void ValidateGitHubOwnerName_InvalidCharacters_ReturnsError()
+        {
+            var result = UrlValidationService.ValidateGitHubOwnerName("user@domain");
+            
+            Assert.IsFalse(result.IsValid);
+            Assert.AreEqual("GitHub owner name can only contain alphanumeric characters and hyphens, and cannot start or end with a hyphen.", result.ErrorMessage);
         }
     }
 
     [TestClass]
-    public class RedditUrlValidationTests
+    public class GitHubRepoNameValidationTests
     {
         [TestMethod]
-        public void ValidateRedditUrl_ValidPostUrl_ReturnsValid()
+        public void ValidateGitHubRepoName_ValidRepoName_ReturnsValid()
         {
-            var url = "https://www.reddit.com/r/dotnet/comments/abc123/some-title/";
-            var result = UrlValidationService.ValidateRedditUrl(url);
+            var result = UrlValidationService.ValidateGitHubRepoName("vscode");
             
             Assert.IsTrue(result.IsValid);
             Assert.IsNull(result.ErrorMessage);
-            Assert.IsNotNull(result.ParsedData);
-            
-            var data = (RedditUrlData)result.ParsedData;
-            Assert.AreEqual("dotnet", data.Subreddit);
-            Assert.AreEqual("abc123", data.ThreadId);
         }
 
         [TestMethod]
-        public void ValidateRedditUrl_ValidPostUrlWithoutTrailingSlash_ReturnsValid()
+        public void ValidateGitHubRepoName_ValidRepoNameWithHyphens_ReturnsValid()
         {
-            var url = "https://www.reddit.com/r/programming/comments/xyz789/another-title";
-            var result = UrlValidationService.ValidateRedditUrl(url);
+            var result = UrlValidationService.ValidateGitHubRepoName("my-repo");
             
             Assert.IsTrue(result.IsValid);
             Assert.IsNull(result.ErrorMessage);
-            Assert.IsNotNull(result.ParsedData);
-            
-            var data = (RedditUrlData)result.ParsedData;
-            Assert.AreEqual("programming", data.Subreddit);
-            Assert.AreEqual("xyz789", data.ThreadId);
         }
 
         [TestMethod]
-        public void ValidateRedditUrl_EmptyUrl_ReturnsError()
+        public void ValidateGitHubRepoName_ValidRepoNameWithUnderscores_ReturnsValid()
         {
-            var result = UrlValidationService.ValidateRedditUrl("");
+            var result = UrlValidationService.ValidateGitHubRepoName("my_repo");
             
-            Assert.IsFalse(result.IsValid);
-            Assert.AreEqual("Reddit URL is required.", result.ErrorMessage);
-            Assert.IsNull(result.ParsedData);
+            Assert.IsTrue(result.IsValid);
+            Assert.IsNull(result.ErrorMessage);
         }
 
         [TestMethod]
-        public void ValidateRedditUrl_NullUrl_ReturnsError()
+        public void ValidateGitHubRepoName_ValidRepoNameWithDots_ReturnsValid()
         {
-            var result = UrlValidationService.ValidateRedditUrl(null);
+            var result = UrlValidationService.ValidateGitHubRepoName("my.repo");
             
-            Assert.IsFalse(result.IsValid);
-            Assert.AreEqual("Reddit URL is required.", result.ErrorMessage);
-            Assert.IsNull(result.ParsedData);
+            Assert.IsTrue(result.IsValid);
+            Assert.IsNull(result.ErrorMessage);
         }
 
         [TestMethod]
-        public void ValidateRedditUrl_InvalidUrl_ReturnsError()
+        public void ValidateGitHubRepoName_EmptyName_ReturnsError()
         {
-            var result = UrlValidationService.ValidateRedditUrl("not-a-url");
+            var result = UrlValidationService.ValidateGitHubRepoName("");
             
             Assert.IsFalse(result.IsValid);
-            Assert.AreEqual("Please enter a valid Reddit URL.", result.ErrorMessage);
-            Assert.IsNull(result.ParsedData);
+            Assert.AreEqual("GitHub repository name is required.", result.ErrorMessage);
         }
 
         [TestMethod]
-        public void ValidateRedditUrl_NonRedditUrl_ReturnsError()
+        public void ValidateGitHubRepoName_NullName_ReturnsError()
         {
-            var url = "https://www.google.com";
-            var result = UrlValidationService.ValidateRedditUrl(url);
+            var result = UrlValidationService.ValidateGitHubRepoName(null);
             
             Assert.IsFalse(result.IsValid);
-            Assert.AreEqual("Please enter a valid Reddit URL.", result.ErrorMessage);
-            Assert.IsNull(result.ParsedData);
+            Assert.AreEqual("GitHub repository name is required.", result.ErrorMessage);
         }
 
         [TestMethod]
-        public void ValidateRedditUrl_UnsupportedRedditUrl_ReturnsError()
+        public void ValidateGitHubRepoName_TooLong_ReturnsError()
         {
-            var url = "https://www.reddit.com/r/dotnet/hot/";
-            var result = UrlValidationService.ValidateRedditUrl(url);
+            var longName = new string('a', 101); // 101 characters, exceeds GitHub's 100 limit
+            var result = UrlValidationService.ValidateGitHubRepoName(longName);
             
             Assert.IsFalse(result.IsValid);
-            Assert.AreEqual("Reddit URL must be a valid post or comment URL (e.g., https://www.reddit.com/r/subreddit/comments/abc123/title/).", result.ErrorMessage);
-            Assert.IsNull(result.ParsedData);
+            Assert.AreEqual("GitHub repository name cannot be longer than 100 characters.", result.ErrorMessage);
         }
 
         [TestMethod]
-        public void ValidateRedditUrl_SubredditRootUrl_ReturnsError()
+        public void ValidateGitHubRepoName_StartsWithDot_ReturnsError()
         {
-            var url = "https://www.reddit.com/r/dotnet/";
-            var result = UrlValidationService.ValidateRedditUrl(url);
+            var result = UrlValidationService.ValidateGitHubRepoName(".invalid");
             
             Assert.IsFalse(result.IsValid);
-            Assert.AreEqual("Reddit URL must be a valid post or comment URL (e.g., https://www.reddit.com/r/subreddit/comments/abc123/title/).", result.ErrorMessage);
-            Assert.IsNull(result.ParsedData);
+            Assert.AreEqual("GitHub repository name cannot start with a period.", result.ErrorMessage);
         }
 
         [TestMethod]
-        public void ValidateRedditUrl_RedditUrlWithoutSubreddit_ReturnsError()
+        public void ValidateGitHubRepoName_InvalidCharacters_ReturnsError()
         {
-            var url = "https://www.reddit.com/comments/abc123/";
-            var result = UrlValidationService.ValidateRedditUrl(url);
+            var result = UrlValidationService.ValidateGitHubRepoName("repo@name");
             
             Assert.IsFalse(result.IsValid);
-            Assert.AreEqual("Reddit URL must be a valid post or comment URL (e.g., https://www.reddit.com/r/subreddit/comments/abc123/title/).", result.ErrorMessage);
-            Assert.IsNull(result.ParsedData);
+            Assert.AreEqual("GitHub repository name can only contain letters, numbers, hyphens, underscores, and periods.", result.ErrorMessage);
+        }
+    }
+
+    [TestClass]
+    public class SubredditNameValidationTests
+    {
+        [TestMethod]
+        public void ValidateSubredditName_ValidSubredditName_ReturnsValid()
+        {
+            var result = UrlValidationService.ValidateSubredditName("dotnet");
+            
+            Assert.IsTrue(result.IsValid);
+            Assert.IsNull(result.ErrorMessage);
+        }
+
+        [TestMethod]
+        public void ValidateSubredditName_ValidSubredditNameWithNumbers_ReturnsValid()
+        {
+            var result = UrlValidationService.ValidateSubredditName("test123");
+            
+            Assert.IsTrue(result.IsValid);
+            Assert.IsNull(result.ErrorMessage);
+        }
+
+        [TestMethod]
+        public void ValidateSubredditName_ValidSubredditNameWithUnderscores_ReturnsValid()
+        {
+            var result = UrlValidationService.ValidateSubredditName("test_subreddit");
+            
+            Assert.IsTrue(result.IsValid);
+            Assert.IsNull(result.ErrorMessage);
+        }
+
+        [TestMethod]
+        public void ValidateSubredditName_ValidSubredditNameWithRPrefix_ReturnsValid()
+        {
+            var result = UrlValidationService.ValidateSubredditName("r/dotnet");
+            
+            Assert.IsTrue(result.IsValid);
+            Assert.IsNull(result.ErrorMessage);
+        }
+
+        [TestMethod]
+        public void ValidateSubredditName_EmptyName_ReturnsError()
+        {
+            var result = UrlValidationService.ValidateSubredditName("");
+            
+            Assert.IsFalse(result.IsValid);
+            Assert.AreEqual("Subreddit name is required.", result.ErrorMessage);
+        }
+
+        [TestMethod]
+        public void ValidateSubredditName_NullName_ReturnsError()
+        {
+            var result = UrlValidationService.ValidateSubredditName(null);
+            
+            Assert.IsFalse(result.IsValid);
+            Assert.AreEqual("Subreddit name is required.", result.ErrorMessage);
+        }
+
+        [TestMethod]
+        public void ValidateSubredditName_TooShort_ReturnsError()
+        {
+            var result = UrlValidationService.ValidateSubredditName("ab");
+            
+            Assert.IsFalse(result.IsValid);
+            Assert.AreEqual("Subreddit name must be 3-21 characters and contain only letters, numbers, and underscores.", result.ErrorMessage);
+        }
+
+        [TestMethod]
+        public void ValidateSubredditName_TooLong_ReturnsError()
+        {
+            var longName = new string('a', 22); // 22 characters, exceeds Reddit's 21 limit
+            var result = UrlValidationService.ValidateSubredditName(longName);
+            
+            Assert.IsFalse(result.IsValid);
+            Assert.AreEqual("Subreddit name must be 3-21 characters and contain only letters, numbers, and underscores.", result.ErrorMessage);
+        }
+
+        [TestMethod]
+        public void ValidateSubredditName_InvalidCharacters_ReturnsError()
+        {
+            var result = UrlValidationService.ValidateSubredditName("test-subreddit");
+            
+            Assert.IsFalse(result.IsValid);
+            Assert.AreEqual("Subreddit name must be 3-21 characters and contain only letters, numbers, and underscores.", result.ErrorMessage);
+        }
+
+        [TestMethod]
+        public void ValidateSubredditName_ReservedName_ReturnsError()
+        {
+            var result = UrlValidationService.ValidateSubredditName("admin");
+            
+            Assert.IsFalse(result.IsValid);
+            Assert.AreEqual("This subreddit name is reserved and not allowed.", result.ErrorMessage);
+        }
+    }
+
+    [TestClass]
+    public class UrlConstructionTests
+    {
+        [TestMethod]
+        public void ConstructGitHubUrl_ValidInputs_ReturnsCorrectUrl()
+        {
+            var url = UrlValidationService.ConstructGitHubUrl("microsoft", "vscode");
+            
+            Assert.AreEqual("https://github.com/microsoft/vscode", url);
+        }
+
+        [TestMethod]
+        public void ConstructRedditUrl_ValidInput_ReturnsCorrectUrl()
+        {
+            var url = UrlValidationService.ConstructRedditUrl("dotnet");
+            
+            Assert.AreEqual("https://www.reddit.com/r/dotnet/", url);
         }
     }
 }

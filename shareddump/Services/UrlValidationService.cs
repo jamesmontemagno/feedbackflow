@@ -1,95 +1,96 @@
-using SharedDump.Utils;
+using System.Text.RegularExpressions;
 
 namespace SharedDump.Services;
 
 public class UrlValidationService
 {
-    public static UrlValidationResult ValidateGitHubUrl(string? url)
+    // GitHub username/organization name validation
+    private static readonly Regex GitHubNameRegex = new(@"^[a-zA-Z0-9]([a-zA-Z0-9\-])*[a-zA-Z0-9]$|^[a-zA-Z0-9]$", RegexOptions.Compiled);
+    // Subreddit name validation (letters, numbers, underscores, 3-21 characters)
+    private static readonly Regex SubredditNameRegex = new(@"^[a-zA-Z0-9_]{3,21}$", RegexOptions.Compiled);
+
+    public static UrlValidationResult ValidateGitHubOwnerName(string? ownerName)
     {
-        if (string.IsNullOrWhiteSpace(url))
-            return new UrlValidationResult { IsValid = false, ErrorMessage = "GitHub URL is required." };
+        if (string.IsNullOrWhiteSpace(ownerName))
+            return new UrlValidationResult { IsValid = false, ErrorMessage = "GitHub owner name is required." };
 
-        // First check if it's a valid URL format
-        if (!UrlParsing.IsValidUrl(url) || !UrlParsing.IsGitHubUrl(url))
-            return new UrlValidationResult { IsValid = false, ErrorMessage = "Please enter a valid GitHub URL." };
+        // Check length constraints (GitHub usernames are 1-39 characters)
+        if (ownerName.Length > 39)
+            return new UrlValidationResult { IsValid = false, ErrorMessage = "GitHub owner name cannot be longer than 39 characters." };
 
-        // Try to parse the URL to ensure it's a supported GitHub URL type
-        var parsedUrl = GitHubUrlParser.ParseUrl(url);
-        if (parsedUrl == null)
-        {
+        // Check for valid GitHub username format
+        if (!GitHubNameRegex.IsMatch(ownerName))
             return new UrlValidationResult 
             { 
                 IsValid = false, 
-                ErrorMessage = "GitHub URL must be a repository, issue, pull request, or discussion URL (e.g., https://github.com/owner/repo/issues/123)." 
+                ErrorMessage = "GitHub owner name can only contain alphanumeric characters and hyphens, and cannot start or end with a hyphen." 
             };
-        }
 
-        var (owner, repo, type, number) = parsedUrl.Value;
-        
-        // Validate owner and repo names
-        if (string.IsNullOrWhiteSpace(owner) || string.IsNullOrWhiteSpace(repo))
-            return new UrlValidationResult { IsValid = false, ErrorMessage = "GitHub URL must contain valid owner and repository names." };
+        // Check for consecutive hyphens (not allowed in GitHub usernames)
+        if (ownerName.Contains("--"))
+            return new UrlValidationResult { IsValid = false, ErrorMessage = "GitHub owner name cannot contain consecutive hyphens." };
 
-        return new UrlValidationResult 
-        { 
-            IsValid = true, 
-            ParsedData = new GitHubUrlData { Owner = owner, Repository = repo, Type = type, Number = number }
-        };
+        return new UrlValidationResult { IsValid = true };
     }
 
-    public static UrlValidationResult ValidateRedditUrl(string? url)
+    public static UrlValidationResult ValidateGitHubRepoName(string? repoName)
     {
-        if (string.IsNullOrWhiteSpace(url))
-            return new UrlValidationResult { IsValid = false, ErrorMessage = "Reddit URL is required." };
+        if (string.IsNullOrWhiteSpace(repoName))
+            return new UrlValidationResult { IsValid = false, ErrorMessage = "GitHub repository name is required." };
 
-        // First check if it's a valid URL format
-        if (!UrlParsing.IsValidUrl(url) || !UrlParsing.IsRedditUrl(url))
-            return new UrlValidationResult { IsValid = false, ErrorMessage = "Please enter a valid Reddit URL." };
+        // Check length constraints (GitHub repo names are 1-100 characters)
+        if (repoName.Length > 100)
+            return new UrlValidationResult { IsValid = false, ErrorMessage = "GitHub repository name cannot be longer than 100 characters." };
 
-        // Try to parse the Reddit URL
-        var threadId = RedditUrlParser.ParseUrl(url);
-        if (string.IsNullOrWhiteSpace(threadId))
-        {
+        // Repository names are more flexible than usernames
+        // They can contain letters, numbers, hyphens, underscores, and periods
+        if (!Regex.IsMatch(repoName, @"^[a-zA-Z0-9._-]+$"))
             return new UrlValidationResult 
             { 
                 IsValid = false, 
-                ErrorMessage = "Reddit URL must be a valid post or comment URL (e.g., https://www.reddit.com/r/subreddit/comments/abc123/title/)." 
+                ErrorMessage = "GitHub repository name can only contain letters, numbers, hyphens, underscores, and periods." 
             };
-        }
 
-        // Extract subreddit from URL
-        var subreddit = ExtractSubredditFromUrl(url);
-        if (string.IsNullOrWhiteSpace(subreddit))
-            return new UrlValidationResult { IsValid = false, ErrorMessage = "Unable to extract subreddit from Reddit URL." };
+        // Cannot start with a period
+        if (repoName.StartsWith('.'))
+            return new UrlValidationResult { IsValid = false, ErrorMessage = "GitHub repository name cannot start with a period." };
 
-        return new UrlValidationResult 
-        { 
-            IsValid = true, 
-            ParsedData = new RedditUrlData { Subreddit = subreddit, ThreadId = threadId }
-        };
+        return new UrlValidationResult { IsValid = true };
     }
 
-    private static string? ExtractSubredditFromUrl(string url)
+    public static UrlValidationResult ValidateSubredditName(string? subredditName)
     {
-        try
-        {
-            var uri = new Uri(url);
-            var segments = uri.Segments;
-            
-            // Look for /r/subreddit pattern
-            for (int i = 0; i < segments.Length - 1; i++)
-            {
-                if (segments[i].Equals("r/", StringComparison.OrdinalIgnoreCase))
-                {
-                    return segments[i + 1].TrimEnd('/');
-                }
-            }
-        }
-        catch
-        {
-            // Ignore parsing errors
-        }
-        return null;
+        if (string.IsNullOrWhiteSpace(subredditName))
+            return new UrlValidationResult { IsValid = false, ErrorMessage = "Subreddit name is required." };
+
+        // Remove r/ prefix if present
+        var cleanName = subredditName.TrimStart('r', '/');
+
+        // Check basic format (3-21 characters, letters, numbers, underscores only)
+        if (!SubredditNameRegex.IsMatch(cleanName))
+            return new UrlValidationResult 
+            { 
+                IsValid = false, 
+                ErrorMessage = "Subreddit name must be 3-21 characters and contain only letters, numbers, and underscores." 
+            };
+
+        // Check for common reserved names
+        var reservedNames = new[] { "www", "mail", "admin", "api", "blog", "about", "help", "reddit" };
+        if (reservedNames.Contains(cleanName.ToLowerInvariant()))
+            return new UrlValidationResult { IsValid = false, ErrorMessage = "This subreddit name is reserved and not allowed." };
+
+        return new UrlValidationResult { IsValid = true };
+    }
+
+    // Helper methods to construct URLs from validated components
+    public static string ConstructGitHubUrl(string owner, string repo)
+    {
+        return $"https://github.com/{owner}/{repo}";
+    }
+
+    public static string ConstructRedditUrl(string subreddit)
+    {
+        return $"https://www.reddit.com/r/{subreddit}/";
     }
 }
 
@@ -97,19 +98,4 @@ public class UrlValidationResult
 {
     public bool IsValid { get; set; }
     public string? ErrorMessage { get; set; }
-    public object? ParsedData { get; set; }
-}
-
-public class GitHubUrlData
-{
-    public required string Owner { get; set; }
-    public required string Repository { get; set; }
-    public required string Type { get; set; }
-    public required int Number { get; set; }
-}
-
-public class RedditUrlData
-{
-    public required string Subreddit { get; set; }
-    public required string ThreadId { get; set; }
 }

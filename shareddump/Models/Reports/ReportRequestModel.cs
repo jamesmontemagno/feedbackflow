@@ -11,8 +11,6 @@ public class ReportRequestModel : ITableEntity
     public string? Subreddit { get; set; } // if type === "reddit"
     public string? Owner { get; set; } // if type === "github"
     public string? Repo { get; set; } // if type === "github"
-    public string? RedditUrl { get; set; } // Full Reddit URL for validation
-    public string? GitHubUrl { get; set; } // Full GitHub URL for validation
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public int SubscriberCount { get; set; } = 1; // Track how many users want this report
 

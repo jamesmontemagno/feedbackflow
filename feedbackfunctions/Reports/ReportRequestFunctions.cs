@@ -28,6 +28,7 @@ public class ReportRequestFunctions
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
     private readonly ReportGenerator _reportGenerator;
     private readonly IReportCacheService _cacheService;
+    private readonly HttpClient _httpClient;
 
     public ReportRequestFunctions(
         ILogger<ReportRequestFunctions> logger,
@@ -47,6 +48,10 @@ public class ReportRequestFunctions
 #endif
         _logger = logger;
         _cacheService = cacheService;
+        
+        // Initialize HTTP client for URL checking
+        _httpClient = new HttpClient();
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", "FeedbackFlow-Validator/1.0");
         
         // Initialize table client
         var storageConnection = _configuration["AzureWebJobsStorage"] ?? throw new InvalidOperationException("Storage connection string not configured");
@@ -92,56 +97,74 @@ public class ReportRequestFunctions
                 return validationResponse;
             }
 
-            // Validate URLs if provided, otherwise fall back to legacy field validation
+            // Validate required fields
+            if (string.IsNullOrEmpty(request.Type))
+            {
+                var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await validationResponse.WriteStringAsync("Source type is required");
+                return validationResponse;
+            }
+
+            // Validate fields based on type
             if (request.Type == "reddit")
             {
-                if (!string.IsNullOrEmpty(request.RedditUrl))
-                {
-                    var urlValidation = UrlValidationService.ValidateRedditUrl(request.RedditUrl);
-                    if (!urlValidation.IsValid)
-                    {
-                        var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                        await validationResponse.WriteStringAsync($"Invalid Reddit URL: {urlValidation.ErrorMessage}");
-                        return validationResponse;
-                    }
-                    
-                    // Extract subreddit from validated URL for backward compatibility
-                    if (urlValidation.ParsedData is RedditUrlData redditData)
-                    {
-                        request.Subreddit = redditData.Subreddit;
-                    }
-                }
-                else if (string.IsNullOrEmpty(request.Subreddit))
+                if (string.IsNullOrEmpty(request.Subreddit))
                 {
                     var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                    await validationResponse.WriteStringAsync("Reddit URL or subreddit is required for Reddit reports");
+                    await validationResponse.WriteStringAsync("Subreddit is required for Reddit reports");
                     return validationResponse;
+                }
+                
+                // Validate subreddit name
+                var subredditValidation = UrlValidationService.ValidateSubredditName(request.Subreddit);
+                if (!subredditValidation.IsValid)
+                {
+                    var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await validationResponse.WriteStringAsync($"Invalid subreddit name: {subredditValidation.ErrorMessage}");
+                    return validationResponse;
+                }
+
+                // Check if subreddit URL exists
+                var subredditUrl = UrlValidationService.ConstructRedditUrl(request.Subreddit);
+                var urlExists = await CheckUrlExistsAsync(subredditUrl);
+                if (!urlExists)
+                {
+                    _logger.LogWarning("Subreddit URL does not exist: {Url}. Request will be processed but report generation may fail.", subredditUrl);
                 }
             }
             else if (request.Type == "github")
             {
-                if (!string.IsNullOrEmpty(request.GitHubUrl))
-                {
-                    var urlValidation = UrlValidationService.ValidateGitHubUrl(request.GitHubUrl);
-                    if (!urlValidation.IsValid)
-                    {
-                        var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                        await validationResponse.WriteStringAsync($"Invalid GitHub URL: {urlValidation.ErrorMessage}");
-                        return validationResponse;
-                    }
-                    
-                    // Extract owner and repo from validated URL for backward compatibility
-                    if (urlValidation.ParsedData is GitHubUrlData githubData)
-                    {
-                        request.Owner = githubData.Owner;
-                        request.Repo = githubData.Repository;
-                    }
-                }
-                else if (string.IsNullOrEmpty(request.Owner) || string.IsNullOrEmpty(request.Repo))
+                if (string.IsNullOrEmpty(request.Owner) || string.IsNullOrEmpty(request.Repo))
                 {
                     var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                    await validationResponse.WriteStringAsync("GitHub URL or owner/repository is required for GitHub reports");
+                    await validationResponse.WriteStringAsync("Owner and repository are required for GitHub reports");
                     return validationResponse;
+                }
+                
+                // Validate owner name
+                var ownerValidation = UrlValidationService.ValidateGitHubOwnerName(request.Owner);
+                if (!ownerValidation.IsValid)
+                {
+                    var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await validationResponse.WriteStringAsync($"Invalid GitHub owner name: {ownerValidation.ErrorMessage}");
+                    return validationResponse;
+                }
+                
+                // Validate repository name
+                var repoValidation = UrlValidationService.ValidateGitHubRepoName(request.Repo);
+                if (!repoValidation.IsValid)
+                {
+                    var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await validationResponse.WriteStringAsync($"Invalid GitHub repository name: {repoValidation.ErrorMessage}");
+                    return validationResponse;
+                }
+
+                // Check if GitHub repository URL exists
+                var githubUrl = UrlValidationService.ConstructGitHubUrl(request.Owner, request.Repo);
+                var urlExists = await CheckUrlExistsAsync(githubUrl);
+                if (!urlExists)
+                {
+                    _logger.LogWarning("GitHub repository URL does not exist: {Url}. Request will be processed but report generation may fail.", githubUrl);
                 }
             }
             else
@@ -360,5 +383,31 @@ public class ReportRequestFunctions
         // ID format is "{type}_{identifier}", so we extract the type part
         var parts = id.Split('_', 2);
         return parts.Length > 0 ? parts[0] : "unknown";
+    }
+
+    /// <summary>
+    /// Check if a URL exists by making a HEAD request
+    /// </summary>
+    private async Task<bool> CheckUrlExistsAsync(string url)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Head, url);
+            using var response = await _httpClient.SendAsync(request);
+            
+            // Consider 2xx and 3xx status codes as "exists"
+            // GitHub might return 429 for rate limiting, treat that as exists too
+            return response.IsSuccessStatusCode || 
+                   response.StatusCode == HttpStatusCode.Redirect ||
+                   response.StatusCode == HttpStatusCode.MovedPermanently ||
+                   response.StatusCode == HttpStatusCode.Found ||
+                   response.StatusCode == HttpStatusCode.TooManyRequests;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error checking URL existence: {Url}", url);
+            // If we can't check, assume it exists to avoid false negatives
+            return true;
+        }
     }
 }

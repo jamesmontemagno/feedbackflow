@@ -57,41 +57,60 @@
                             @if (reportRequest.Type == "reddit")
                             {
                                 <div class="mb-3">
-                                    <label class="form-label" for="reddit-url">Reddit URL</label>
-                                    <input type="url" 
-                                           id="reddit-url"
-                                           class="form-control @(validationErrors.ContainsKey("RedditUrl") ? "is-invalid" : "")" 
-                                           @bind="reportRequest.RedditUrl" 
-                                           placeholder="https://www.reddit.com/r/dotnet/comments/..."
-                                           disabled="@isSubmitting" />
-                                    <div class="form-text">Enter a Reddit post or comment URL</div>
-                                    @if (validationErrors.ContainsKey("RedditUrl"))
+                                    <label class="form-label" for="subreddit">Subreddit</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">r/</span>
+                                        <input type="text" 
+                                               id="subreddit"
+                                               class="form-control @(validationErrors.ContainsKey("Subreddit") ? "is-invalid" : "")" 
+                                               @bind="reportRequest.Subreddit" 
+                                               placeholder="dotnet"
+                                               disabled="@isSubmitting" />
+                                    </div>
+                                    <div class="form-text">Enter the subreddit name without the "r/" prefix</div>
+                                    @if (validationErrors.ContainsKey("Subreddit"))
                                     {
                                         <div class="invalid-feedback">
-                                            @validationErrors["RedditUrl"]
+                                            @validationErrors["Subreddit"]
                                         </div>
                                     }
-                                    <ValidationMessage For="@(() => reportRequest.RedditUrl)" />
+                                    <ValidationMessage For="@(() => reportRequest.Subreddit)" />
                                 </div>
                             }
                             else if (reportRequest.Type == "github")
                             {
                                 <div class="mb-3">
-                                    <label class="form-label" for="github-url">GitHub URL</label>
-                                    <input type="url" 
-                                           id="github-url"
-                                           class="form-control @(validationErrors.ContainsKey("GitHubUrl") ? "is-invalid" : "")" 
-                                           @bind="reportRequest.GitHubUrl" 
-                                           placeholder="https://github.com/microsoft/vscode/issues/..."
+                                    <label class="form-label" for="owner">Repository Owner</label>
+                                    <input type="text" 
+                                           id="owner"
+                                           class="form-control @(validationErrors.ContainsKey("Owner") ? "is-invalid" : "")" 
+                                           @bind="reportRequest.Owner" 
+                                           placeholder="microsoft"
                                            disabled="@isSubmitting" />
-                                    <div class="form-text">Enter a GitHub repository, issue, pull request, or discussion URL</div>
-                                    @if (validationErrors.ContainsKey("GitHubUrl"))
+                                    @if (validationErrors.ContainsKey("Owner"))
                                     {
                                         <div class="invalid-feedback">
-                                            @validationErrors["GitHubUrl"]
+                                            @validationErrors["Owner"]
                                         </div>
                                     }
-                                    <ValidationMessage For="@(() => reportRequest.GitHubUrl)" />
+                                    <ValidationMessage For="@(() => reportRequest.Owner)" />
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label" for="repo">Repository Name</label>
+                                    <input type="text" 
+                                           id="repo"
+                                           class="form-control @(validationErrors.ContainsKey("Repo") ? "is-invalid" : "")" 
+                                           @bind="reportRequest.Repo" 
+                                           placeholder="vscode"
+                                           disabled="@isSubmitting" />
+                                    @if (validationErrors.ContainsKey("Repo"))
+                                    {
+                                        <div class="invalid-feedback">
+                                            @validationErrors["Repo"]
+                                        </div>
+                                    }
+                                    <ValidationMessage For="@(() => reportRequest.Repo)" />
                                 </div>
                             }
 
@@ -171,15 +190,13 @@
         [Required(ErrorMessage = "Source type is required")]
         public string Type { get; set; } = string.Empty;
 
-        [RequiredIf(nameof(Type), "reddit", ErrorMessage = "Reddit URL is required for Reddit reports")]
-        public string? RedditUrl { get; set; }
-
-        [RequiredIf(nameof(Type), "github", ErrorMessage = "GitHub URL is required for GitHub reports")]
-        public string? GitHubUrl { get; set; }
-
-        // Internal properties for backward compatibility
+        [RequiredIf(nameof(Type), "reddit", ErrorMessage = "Subreddit is required for Reddit reports")]
         public string? Subreddit { get; set; }
+
+        [RequiredIf(nameof(Type), "github", ErrorMessage = "Owner is required for GitHub reports")]
         public string? Owner { get; set; }
+
+        [RequiredIf(nameof(Type), "github", ErrorMessage = "Repository name is required for GitHub reports")]
         public string? Repo { get; set; }
     }
 
@@ -229,26 +246,33 @@
 
         if (reportRequest.Type == "reddit")
         {
-            if (string.IsNullOrWhiteSpace(reportRequest.RedditUrl))
+            if (string.IsNullOrWhiteSpace(reportRequest.Subreddit))
                 return false;
                 
-            var result = UrlValidationService.ValidateRedditUrl(reportRequest.RedditUrl);
+            var result = UrlValidationService.ValidateSubredditName(reportRequest.Subreddit);
             if (!result.IsValid)
             {
-                validationErrors["RedditUrl"] = result.ErrorMessage ?? "Invalid Reddit URL";
+                validationErrors["Subreddit"] = result.ErrorMessage ?? "Invalid subreddit name";
                 return false;
             }
         }
 
         if (reportRequest.Type == "github")
         {
-            if (string.IsNullOrWhiteSpace(reportRequest.GitHubUrl))
+            if (string.IsNullOrWhiteSpace(reportRequest.Owner) || string.IsNullOrWhiteSpace(reportRequest.Repo))
                 return false;
                 
-            var result = UrlValidationService.ValidateGitHubUrl(reportRequest.GitHubUrl);
-            if (!result.IsValid)
+            var ownerResult = UrlValidationService.ValidateGitHubOwnerName(reportRequest.Owner);
+            if (!ownerResult.IsValid)
             {
-                validationErrors["GitHubUrl"] = result.ErrorMessage ?? "Invalid GitHub URL";
+                validationErrors["Owner"] = ownerResult.ErrorMessage ?? "Invalid owner name";
+                return false;
+            }
+            
+            var repoResult = UrlValidationService.ValidateGitHubRepoName(reportRequest.Repo);
+            if (!repoResult.IsValid)
+            {
+                validationErrors["Repo"] = repoResult.ErrorMessage ?? "Invalid repository name";
                 return false;
             }
         }
@@ -271,36 +295,6 @@
             successMessage = string.Empty;
             validationErrors.Clear();
 
-            // Parse URLs and populate legacy fields for backend compatibility
-            if (reportRequest.Type == "reddit" && !string.IsNullOrWhiteSpace(reportRequest.RedditUrl))
-            {
-                var result = UrlValidationService.ValidateRedditUrl(reportRequest.RedditUrl);
-                if (result.IsValid && result.ParsedData is RedditUrlData redditData)
-                {
-                    reportRequest.Subreddit = redditData.Subreddit;
-                }
-                else
-                {
-                    validationErrors["RedditUrl"] = result.ErrorMessage ?? "Invalid Reddit URL";
-                    return;
-                }
-            }
-            
-            if (reportRequest.Type == "github" && !string.IsNullOrWhiteSpace(reportRequest.GitHubUrl))
-            {
-                var result = UrlValidationService.ValidateGitHubUrl(reportRequest.GitHubUrl);
-                if (result.IsValid && result.ParsedData is GitHubUrlData githubData)
-                {
-                    reportRequest.Owner = githubData.Owner;
-                    reportRequest.Repo = githubData.Repository;
-                }
-                else
-                {
-                    validationErrors["GitHubUrl"] = result.ErrorMessage ?? "Invalid GitHub URL";
-                    return;
-                }
-            }
-
             // Generate deterministic ID
             var id = GenerateRequestId(reportRequest);
             
@@ -320,8 +314,6 @@
                 subreddit = reportRequest.Type == "reddit" ? reportRequest.Subreddit : null,
                 owner = reportRequest.Type == "github" ? reportRequest.Owner : null,
                 repo = reportRequest.Type == "github" ? reportRequest.Repo : null,
-                redditUrl = reportRequest.Type == "reddit" ? reportRequest.RedditUrl : null,
-                githubUrl = reportRequest.Type == "github" ? reportRequest.GitHubUrl : null,
                 createdAt = DateTimeOffset.UtcNow
             };
 
