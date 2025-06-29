@@ -21,7 +21,11 @@ public static class EmailUtils
         string weeklyAnalysis, 
         List<(RedditThreadModel Thread, string Analysis)> threadAnalyses,
         List<TopCommentInfo> topComments,
-        string reportId)
+        string reportId,
+        RedditSubredditInfo subredditInfo,
+        int newThreadsCount,
+        int totalCommentsCount,
+        int totalUpvotes)
     {
         var emailBuilder = new StringBuilder();
         emailBuilder.AppendLine(@"<!DOCTYPE html>
@@ -67,6 +71,37 @@ public static class EmailUtils
             gap: 10px;
             margin-top: 10px;
         }
+        .stats-section { 
+            background-color: #f8f9fa; 
+            padding: 20px; 
+            border-radius: 5px; 
+            margin: 20px 0; 
+            border-left: 4px solid #FF4500; 
+        }
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 15px; 
+            margin-top: 15px; 
+        }
+        .stat-item { 
+            background-color: white; 
+            padding: 15px; 
+            border-radius: 5px; 
+            text-align: center; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        .stat-number { 
+            font-size: 2em; 
+            font-weight: bold; 
+            color: #FF4500; 
+            display: block; 
+        }
+        .stat-label { 
+            color: #666; 
+            font-size: 0.9em; 
+            margin-top: 5px; 
+        }
     </style>
 </head>
 <body>");
@@ -77,6 +112,45 @@ public static class EmailUtils
         <p>Analysis for {1:MMMM dd, yyyy} - {2:MMMM dd, yyyy}</p>
         <a href='https://www.feedbackflow.app/report/{3}' class='feedback-button' style='background-color: white; color: #FF4500;'>Share report</a>
     </div>", subreddit, cutoffDate, DateTimeOffset.UtcNow, reportId);
+
+        // Subreddit Stats Section
+        var createdDate = DateTimeOffset.FromUnixTimeSeconds(subredditInfo.CreatedUtc);
+        var subredditAge = DateTimeOffset.UtcNow.Subtract(createdDate).Days;
+        
+        emailBuilder.AppendFormat(@"
+    <div class='stats-section'>
+        <h2>📊 r/{0} Statistics</h2>
+        <div class='stats-grid'>
+            <div class='stat-item'>
+                <span class='stat-number'>{1:n0}</span>
+                <div class='stat-label'>📝 New Threads (7 days)</div>
+            </div>
+            <div class='stat-item'>
+                <span class='stat-number'>{2:n0}</span>
+                <div class='stat-label'>💬 Total Comments</div>
+            </div>
+            <div class='stat-item'>
+                <span class='stat-number'>{3:n0}</span>
+                <div class='stat-label'>⬆️ Total Upvotes</div>
+            </div>
+            <div class='stat-item'>
+                <span class='stat-number'>{4:n0}</span>
+                <div class='stat-label'>👥 Subscribers</div>
+            </div>
+            <div class='stat-item'>
+                <span class='stat-number'>{5:n0}</span>
+                <div class='stat-label'>🟢 Active Users</div>
+            </div>
+            <div class='stat-item'>
+                <span class='stat-number'>{6:n0}</span>
+                <div class='stat-label'>📅 Days Since Created</div>
+            </div>
+        </div>
+        <p style='margin-top: 15px; color: #666; font-size: 0.9em;'><strong>{7}</strong> - {8}</p>
+    </div>", 
+            subreddit, newThreadsCount, totalCommentsCount, totalUpvotes, 
+            subredditInfo.Subscribers, subredditInfo.AccountsActive, subredditAge,
+            subredditInfo.Title, subredditInfo.PublicDescription);
 
         // Top Posts Quick Links
         emailBuilder.AppendLine(@"

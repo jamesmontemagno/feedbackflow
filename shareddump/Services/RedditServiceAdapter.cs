@@ -166,4 +166,9 @@ public class RedditServiceAdapter : IRedditService
             return false;
         }
     }
+
+    public async Task<RedditSubredditInfo> GetSubredditInfo(string subreddit)
+    {
+        return await _redditService.GetSubredditInfo(subreddit);
+    }
 }

@@ -14,6 +14,9 @@ public interface IRedditService
     Task<RedditListing<RedditComment>> GetSubmissionCommentsAsync(string submissionId, string sort = "top", int limit = 100);
     Task<RedditListing<RedditSubmission>> SearchPostsAsync(string query, string subreddit = "", string sort = "relevance", int limit = 25);
     
+    // Subreddit information
+    Task<RedditSubredditInfo> GetSubredditInfo(string subreddit);
+    
     // Validation method
     Task<bool> CheckSubredditValid(string subreddit);
 }

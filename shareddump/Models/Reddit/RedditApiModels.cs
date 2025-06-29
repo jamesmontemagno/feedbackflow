@@ -157,3 +157,48 @@ public class RedditComment
     public string SubredditNamePrefixed { get; set; } = "";
     public string Permalink { get; set; } = "";
 }
+
+public class RedditSubredditInfo
+{
+    public string DisplayName { get; set; } = "";
+    public string Title { get; set; } = "";
+    public string PublicDescription { get; set; } = "";
+    public string Description { get; set; } = "";
+    public long CreatedUtc { get; set; }
+    public int Subscribers { get; set; }
+    public int AccountsActive { get; set; }
+    public bool Over18 { get; set; }
+    public string SubredditType { get; set; } = "";
+}
+
+public class RedditSubredditData
+{
+    [JsonPropertyName("display_name")]
+    public string DisplayName { get; set; } = "";
+    
+    public string Title { get; set; } = "";
+    
+    [JsonPropertyName("public_description")]  
+    public string PublicDescription { get; set; } = "";
+    
+    public string Description { get; set; } = "";
+    
+    [JsonPropertyName("created_utc")]
+    public long CreatedUtc { get; set; }
+    
+    public int Subscribers { get; set; }
+    
+    [JsonPropertyName("accounts_active")]
+    public int AccountsActive { get; set; }
+    
+    public bool Over18 { get; set; }
+    
+    [JsonPropertyName("subreddit_type")]
+    public string SubredditType { get; set; } = "";
+}
+
+public class RedditSubredditResponse
+{
+    public string Kind { get; set; } = "";
+    public RedditSubredditData Data { get; set; } = new();
+}
