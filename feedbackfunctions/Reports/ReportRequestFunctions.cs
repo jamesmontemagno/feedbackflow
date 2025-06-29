@@ -127,7 +127,10 @@ public class ReportRequestFunctions
                 var subredditExists = await _redditService.CheckSubredditValid(request.Subreddit);
                 if (!subredditExists)
                 {
-                    _logger.LogWarning("Subreddit does not exist or is not accessible: {Subreddit}. Request will be processed but report generation may fail.", request.Subreddit);
+                    _logger.LogWarning($"Subreddit does not exist or is not accessible: {request.Subreddit}.");
+                    var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await validationResponse.WriteStringAsync($"Subreddit does not exist or is not accessible: {request.Subreddit}.");
+                    return validationResponse;
                 }
             }
             else if (request.Type == "github")
@@ -161,7 +164,10 @@ public class ReportRequestFunctions
                 var repoExists = await _githubService.CheckRepositoryValid(request.Owner, request.Repo);
                 if (!repoExists)
                 {
-                    _logger.LogWarning("GitHub repository does not exist or is not accessible: {Owner}/{Repo}. Request will be processed but report generation may fail.", request.Owner, request.Repo);
+                    _logger.LogWarning($"GitHub repository does not exist or is not accessible: {request.Owner}/{request.Repo}.");
+                    var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await validationResponse.WriteStringAsync($"GitHub repository does not exist or is not accessible: {request.Owner}/{request.Repo}.");
+                    return validationResponse;
                 }
             }
             else
