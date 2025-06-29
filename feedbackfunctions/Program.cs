@@ -21,10 +21,11 @@ var builder = FunctionsApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 builder.ConfigureFunctionsWebApplication();
+builder.Configuration.AddUserSecrets<Program>(true);
+
 
 var throwIfNullOrEmpty = false;
 #if DEBUG
-// Check if we should use mock services
 var useMocks = builder.Configuration.GetValue<bool>("UseMocks");
 #else
 var useMocks = false; // In production, we don't use mocks
@@ -56,7 +57,7 @@ else
         var configuration = GetConfig(serviceProvider);
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
         var githubToken = configuration["GitHub:AccessToken"];
-        if (githubToken is null)
+        if (string.IsNullOrWhiteSpace(githubToken))
         {
             Console.WriteLine("Using mock data for GitHub, no access token provided.");
             return new MockGitHubService();
@@ -69,7 +70,7 @@ else
         var configuration = GetConfig(serviceProvider);
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
         var ytApiKey = configuration["YouTube:ApiKey"];
-        if (ytApiKey is null)
+        if (string.IsNullOrWhiteSpace(ytApiKey))
         {
             if (throwIfNullOrEmpty)
                 throw new ConfigurationErrorsException("YouTube API key is not configured.");
@@ -93,7 +94,7 @@ else
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
         var clientId = configuration["Reddit:ClientId"];
         var clientSecret = configuration["Reddit:ClientSecret"];
-        if (clientId is null || clientSecret is null)
+        if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
         {
             if (throwIfNullOrEmpty)
                 throw new ConfigurationErrorsException("Reddit client ID and secret are not configured.");
@@ -133,7 +134,7 @@ else
         var configuration = GetConfig(serviceProvider);
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
         var twitterBearerToken = configuration["Twitter:BearerToken"];
-        if (twitterBearerToken is null)
+        if (string.IsNullOrWhiteSpace(twitterBearerToken))
         {
             if (throwIfNullOrEmpty)
                 throw new ConfigurationErrorsException("Twitter bearer token is not configured.");
@@ -153,7 +154,7 @@ else
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
         var blueSkyUsername = configuration["BlueSky:Username"];
         var blueSkyAppPassword = configuration["BlueSky:AppPassword"];
-        if (blueSkyUsername is null || blueSkyAppPassword is null)
+        if (string.IsNullOrWhiteSpace(blueSkyUsername) || string.IsNullOrWhiteSpace(blueSkyAppPassword))
         {
             if (throwIfNullOrEmpty)
                 throw new ConfigurationErrorsException("BlueSky username and app password are not configured.");
@@ -169,7 +170,11 @@ else
 
 IConfiguration GetConfig(IServiceProvider? serviceProvider = null)
 {
-    return builder.Configuration;
+#if DEBUG
+    return serviceProvider?.GetRequiredService<IConfiguration>() ?? builder.Configuration;
+#else
+    return serviceProvider?.GetRequiredService<IConfiguration>() ?? throw new InvalidOperationException("Configuration service not available.");
+#endif
 }
 
 // Application Insights isn't enabled by default. See https://aka.ms/AAt8mw4.

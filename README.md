@@ -227,7 +227,7 @@ FeedbackFlow can run in **mock mode** for testing without requiring API keys. Wh
 
 ### Production API Keys (Optional for Testing)
 
-If you want to test with real data, configure the following keys in your `appsettings.json`:
+If you want to test with real data, configure the following keys in your `local.settings.json` or ideally User Secrets:
 
 #### Required for Real Data Collection:
 - **GitHub Personal Access Token**: For GitHub issues, discussions, and pull requests
@@ -241,20 +241,30 @@ If you want to test with real data, configure the following keys in your `appset
 
 ### Configuration File
 
-Create `feedbackfunctions/appsettings.json` for production keys:
+Create `feedbackfunctions/local.settings.json` or just the values in user secretes for production keys:
 
 ```json
 {
-   "GitHub:AccessToken": "YOUR_ACCESS_TOKEN_HERE",
-   "YouTube:ApiKey": "YOUR_API_KEY_HERE",
-   "Azure:OpenAI:Endpoint": "YOUR_AZURE_OPENAI_ENDPOINT",
-   "Azure:OpenAI:ApiKey": "YOUR_AZURE_OPENAI_API_KEY",
-   "Azure:OpenAI:Deployment": "YOUR_DEPLOYMENT_NAME",
-   "Reddit:ClientId": "YOUR_REDDIT_CLIENT_ID",
-   "Reddit:ClientSecret": "YOUR_REDDIT_CLIENT_SECRET",
-   "Twitter:BearerToken": "YOUR_TWITTER_BEARER_TOKEN",
-   "BlueSky:Username": "YOUR_BLUESKY_USERNAME",
-   "BlueSky:AppPassword": "YOUR_BLUESKY_APP_PASSWORD"
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "AzureWebJobsSecretStorageType": "files",
+    "YouTube:ApiKey": "",
+    "Reddit:ClientId": "",
+    "Reddit:ClientSecret": "",
+    "GitHub:AccessToken": "",
+    "Azure:OpenAI:Endpoint": "",
+    "Azure:OpenAI:ApiKey": "",
+    "Azure:OpenAI:Deployment": "",
+    "Twitter:BearerToken": "",
+    "BlueSky:Username": "",
+    "BlueSky:AppPassword": "",
+    "Mastodon:AccessToken": "",
+    "Mastodon:ClientKey": "",
+    "Mastodon:ClientSecret": "",
+    "UseMocks": false
+  }
 }
 ```
 
