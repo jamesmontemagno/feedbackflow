@@ -11,6 +11,7 @@ using SharedDump.Services.Interfaces;
 using SharedDump.AI;
 using FeedbackFunctions.Utils;
 using FeedbackFunctions.Services;
+using SharedDump.Services;
 
 namespace FeedbackFunctions;
 
@@ -27,6 +28,8 @@ public class ReportRequestFunctions
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
     private readonly ReportGenerator _reportGenerator;
     private readonly IReportCacheService _cacheService;
+    private readonly IRedditService _redditService;
+    private readonly IGitHubService _githubService;
 
     public ReportRequestFunctions(
         ILogger<ReportRequestFunctions> logger,
@@ -46,6 +49,8 @@ public class ReportRequestFunctions
 #endif
         _logger = logger;
         _cacheService = cacheService;
+        _redditService = redditService;
+        _githubService = githubService;
         
         // Initialize table client
         var storageConnection = _configuration["AzureWebJobsStorage"] ?? throw new InvalidOperationException("Storage connection string not configured");
@@ -83,13 +88,92 @@ public class ReportRequestFunctions
                 return badRequestResponse;
             }
 
-            // Validate required fields
-            if (string.IsNullOrEmpty(request.Type) || 
-                (request.Type == "reddit" && string.IsNullOrEmpty(request.Subreddit)) ||
-                (request.Type == "github" && (string.IsNullOrEmpty(request.Owner) || string.IsNullOrEmpty(request.Repo))))
+            // Validate required fields and URLs
+            if (string.IsNullOrEmpty(request.Type))
             {
                 var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await validationResponse.WriteStringAsync("Missing required fields");
+                await validationResponse.WriteStringAsync("Source type is required");
+                return validationResponse;
+            }
+
+            // Validate required fields
+            if (string.IsNullOrEmpty(request.Type))
+            {
+                var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await validationResponse.WriteStringAsync("Source type is required");
+                return validationResponse;
+            }
+
+            // Validate fields based on type
+            if (request.Type == "reddit")
+            {
+                if (string.IsNullOrEmpty(request.Subreddit))
+                {
+                    var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await validationResponse.WriteStringAsync("Subreddit is required for Reddit reports");
+                    return validationResponse;
+                }
+                
+                // Validate subreddit name
+                var subredditValidation = UrlValidationService.ValidateSubredditName(request.Subreddit);
+                if (!subredditValidation.IsValid)
+                {
+                    var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await validationResponse.WriteStringAsync($"Invalid subreddit name: {subredditValidation.ErrorMessage}");
+                    return validationResponse;
+                }
+
+                // Check if subreddit is valid using Reddit API
+                var subredditExists = await _redditService.CheckSubredditValid(request.Subreddit);
+                if (!subredditExists)
+                {
+                    _logger.LogWarning($"Subreddit does not exist or is not accessible: {request.Subreddit}.");
+                    var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await validationResponse.WriteStringAsync($"Subreddit does not exist or is not accessible: {request.Subreddit}.");
+                    return validationResponse;
+                }
+            }
+            else if (request.Type == "github")
+            {
+                if (string.IsNullOrEmpty(request.Owner) || string.IsNullOrEmpty(request.Repo))
+                {
+                    var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await validationResponse.WriteStringAsync("Owner and repository are required for GitHub reports");
+                    return validationResponse;
+                }
+                
+                // Validate owner name
+                var ownerValidation = UrlValidationService.ValidateGitHubOwnerName(request.Owner);
+                if (!ownerValidation.IsValid)
+                {
+                    var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await validationResponse.WriteStringAsync($"Invalid GitHub owner name: {ownerValidation.ErrorMessage}");
+                    return validationResponse;
+                }
+                
+                // Validate repository name
+                var repoValidation = UrlValidationService.ValidateGitHubRepoName(request.Repo);
+                if (!repoValidation.IsValid)
+                {
+                    var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await validationResponse.WriteStringAsync($"Invalid GitHub repository name: {repoValidation.ErrorMessage}");
+                    return validationResponse;
+                }
+
+                // Check if GitHub repository is valid using GitHub API
+                var repoExists = await _githubService.CheckRepositoryValid(request.Owner, request.Repo);
+                if (!repoExists)
+                {
+                    _logger.LogWarning($"GitHub repository does not exist or is not accessible: {request.Owner}/{request.Repo}.");
+                    var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await validationResponse.WriteStringAsync($"GitHub repository does not exist or is not accessible: {request.Owner}/{request.Repo}.");
+                    return validationResponse;
+                }
+            }
+            else
+            {
+                var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await validationResponse.WriteStringAsync("Invalid source type. Must be 'reddit' or 'github'");
                 return validationResponse;
             }
 
@@ -303,4 +387,5 @@ public class ReportRequestFunctions
         var parts = id.Split('_', 2);
         return parts.Length > 0 ? parts[0] : "unknown";
     }
+
 }

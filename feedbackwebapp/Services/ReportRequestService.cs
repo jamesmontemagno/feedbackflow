@@ -1,13 +1,29 @@
+using System.Net;
 using System.Text.Json;
 using SharedDump.Models.Reports;
 
 namespace FeedbackWebApp.Services;
 
+public record RequestResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+    public HttpStatusCode? StatusCode { get; init; }
+    public bool IsBadRequest => StatusCode == HttpStatusCode.BadRequest;
+    public bool IsServerError => StatusCode >= HttpStatusCode.InternalServerError;
+    public bool IsNotFound => StatusCode == HttpStatusCode.NotFound;
+    
+    public static RequestResult CreateSuccess() => new() { Success = true };
+    
+    public static RequestResult CreateError(string errorMessage, HttpStatusCode? statusCode = null) => 
+        new() { Success = false, ErrorMessage = errorMessage, StatusCode = statusCode };
+}
+
 public interface IReportRequestService
 {
     Task<IEnumerable<ReportModel>> FilterReportsAsync(IEnumerable<object> userRequests);
-    Task<bool> AddReportRequestAsync(object request);
-    Task<bool> RemoveReportRequestAsync(string id);
+    Task<RequestResult> AddReportRequestAsync(object request);
+    Task<RequestResult> RemoveReportRequestAsync(string id);
 }
 
 public class ReportRequestService : IReportRequestService
@@ -50,7 +66,7 @@ public class ReportRequestService : IReportRequestService
         }
     }
 
-    public async Task<bool> AddReportRequestAsync(object request)
+    public async Task<RequestResult> AddReportRequestAsync(object request)
     {
         try
         {
@@ -63,16 +79,27 @@ public class ReportRequestService : IReportRequestService
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
             var response = await _httpClient.PostAsync($"{baseUrl}/api/AddReportRequest?code={Uri.EscapeDataString(code)}", content);
-            return response.IsSuccessStatusCode;
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return RequestResult.CreateSuccess();
+            }
+            
+            var errorContent = await response.Content.ReadAsStringAsync();
+            var errorMessage = string.IsNullOrWhiteSpace(errorContent) 
+                ? $"Request failed with status {response.StatusCode}" 
+                : errorContent;
+            
+            return RequestResult.CreateError(errorMessage, response.StatusCode);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error adding report request: {ex.Message}");
-            return false;
+            return RequestResult.CreateError($"Network error: {ex.Message}");
         }
     }
 
-    public async Task<bool> RemoveReportRequestAsync(string id)
+    public async Task<RequestResult> RemoveReportRequestAsync(string id)
     {
         try
         {
@@ -82,12 +109,23 @@ public class ReportRequestService : IReportRequestService
                 ?? throw new InvalidOperationException("Remove report request code not configured");
 
             var response = await _httpClient.DeleteAsync($"{baseUrl}/api/reportrequest/{Uri.EscapeDataString(id)}?code={Uri.EscapeDataString(code)}");
-            return response.IsSuccessStatusCode;
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return RequestResult.CreateSuccess();
+            }
+            
+            var errorContent = await response.Content.ReadAsStringAsync();
+            var errorMessage = string.IsNullOrWhiteSpace(errorContent) 
+                ? $"Request failed with status {response.StatusCode}" 
+                : errorContent;
+            
+            return RequestResult.CreateError(errorMessage, response.StatusCode);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error removing report request {id}: {ex.Message}");
-            return false;
+            return RequestResult.CreateError($"Network error: {ex.Message}");
         }
     }
 

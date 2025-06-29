@@ -14,8 +14,28 @@ public class MockGitHubService : IGitHubService
         // Simulate network delay
         await Task.Delay(100);
         
-        // Always return true for mock service
-        return true;
+        // Return false for invalid inputs
+        if (string.IsNullOrWhiteSpace(repoOwner) || string.IsNullOrWhiteSpace(repoName))
+            return false;
+        
+        // Mock some known valid repositories
+        var validRepos = new[]
+        {
+            ("microsoft", "vscode"),
+            ("dotnet", "runtime"),
+            ("dotnet", "aspnetcore"),
+            ("dotnet", "maui"),
+            ("github", "docs"),
+            ("facebook", "react"),
+            ("nodejs", "node"),
+            ("angular", "angular"),
+            ("vercel", "next.js"),
+            ("vuejs", "vue")
+        };
+        
+        return validRepos.Any(repo => 
+            repo.Item1.Equals(repoOwner, StringComparison.OrdinalIgnoreCase) &&
+            repo.Item2.Equals(repoName, StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task<List<GithubDiscussionModel>> GetDiscussionsAsync(string repoOwner, string repoName)

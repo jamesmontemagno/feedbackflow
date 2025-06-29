@@ -149,4 +149,21 @@ public class RedditServiceAdapter : IRedditService
             }
         });
     }
+
+    // Validation method
+    public async Task<bool> CheckSubredditValid(string subreddit)
+    {
+        try
+        {
+            // Try to get basic info about the subreddit
+            var posts = await GetSubredditPostsAsync(subreddit, "hot", 1);
+            return posts?.Data?.Children != null;
+        }
+        catch
+        {
+            // If any exception occurs (like subreddit not found, private, banned, etc.), 
+            // consider it invalid
+            return false;
+        }
+    }
 }
