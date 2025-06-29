@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\feedbackfunctions\Functions.csproj" />
     <ProjectReference Include="..\shareddump\Shared.csproj" />
     <ProjectReference Include="..\feedbackwebapp\WebApp.csproj" />
   </ItemGroup>
