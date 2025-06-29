@@ -2,6 +2,57 @@
 
 The github repo is jamesmontemagno/feedbackflow and the primary branch that I work off of is main
 
+## Core Commands
+
+### Building and Testing
+- **Build entire solution**: `dotnet build FeedbackFlow.slnx --configuration Release`
+- **Run all tests**: `dotnet test FeedbackFlow.slnx --configuration Release`
+- **Run specific test project**: `dotnet test feedbackflow.tests/Tests.csproj`
+- **Run single test class**: `dotnet test feedbackflow.tests/Tests.csproj --filter ClassName=GitHubUrlParserTests`
+- **Restore dependencies**: `dotnet restore FeedbackFlow.slnx`
+
+### Development Workflow
+- **Run full application** (recommended): `cd FeedbackFlow.AppHost && dotnet run`
+- **Build functions only**: Available as VS Code task "build (functions)"
+- **Run functions standalone**: Available as VS Code task with func host
+- **Clean build**: Available as VS Code task "clean (functions)"
+
+### CLI Data Collection Tools
+- **GitHub**: `cd ghdump && dotnet run -- -r owner/repository`
+- **YouTube**: `cd ytdump && dotnet run -- -v video-id -o output.json`
+- **Reddit**: `cd rddump && dotnet run -- -u reddit-url`
+- **Hacker News**: `cd hndump && dotnet run -- -i story-id`
+
+## Architecture Overview
+
+### Tech Stack
+- **.NET 9** with C# latest features, file-scoped namespaces
+- **Blazor Server** for interactive web UI with real-time updates
+- **Azure Functions** (.NET 9) for serverless backend APIs
+- **.NET Aspire** for local orchestration and service discovery
+- **Bootstrap** + custom CSS variables for responsive theming
+
+### Core Projects
+- **feedbackwebapp** (WebApp.csproj): Main Blazor Server application
+- **feedbackfunctions** (Functions.csproj): Azure Functions backend APIs
+- **shareddump** (Shared.csproj): Shared models, services, utilities
+- **FeedbackFlow.AppHost** (AppHost.csproj): .NET Aspire orchestration
+- **feedbackflow.tests** (Tests.csproj): MSTest unit/integration tests
+
+### CLI Collection Tools
+- **ghdump**: GitHub issues, PRs, discussions collector
+- **ytdump**: YouTube video comments collector  
+- **rddump**: Reddit posts and comments collector
+- **hndump**: Hacker News stories and comments collector
+
+### External Integrations
+- **Azure OpenAI**: Sentiment analysis and AI insights
+- **GitHub API**: Issues, PRs, discussions data
+- **YouTube Data API**: Video comments collection
+- **Reddit API**: Posts and comments
+- **Hacker News API**: Stories and discussions
+- **Azure Storage**: File/blob storage for reports and caching
+
 ## Project Structure
 - feedbackflow.tests is the main testing project using MSTests primarily for testing reusable logic from shareddump
 - feedbackfunctions are AzureFunctions written in C# that are backend for the webapp

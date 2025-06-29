@@ -19,7 +19,7 @@ blobs.AddBlobContainer("shared-analyses");
 blobs.AddBlobContainer("reports");
 blobs.AddBlobContainer("hackernews-cache");
 
-var feedbackFunctionsProject = builder.AddAzureFunctionsProject<Projects.feedbackfunctions>("feedback-functions")
+var feedbackFunctionsProject = builder.AddAzureFunctionsProject<Projects.Functions>("feedback-functions")
         .WithHostStorage(storage)
         .WithEnvironment(context =>
         {
@@ -70,7 +70,7 @@ builder.Eventing.Subscribe<BeforeResourceStartedEvent>(feedbackFunctionsProject.
 
 
 
-builder.AddProject<Projects.feedbackwebapp>("feedback-webapp")
+builder.AddProject<Projects.WebApp>("feedback-webapp")
         .WithEnvironment("FeedbackApi__BaseUrl", feedbackFunctionsProject.GetEndpoint("http"))
         .WithEnvironment("FeedbackApi__UseMocks", "false")
         .WithEnvironment("FeedbackApp__AccessPassword", frontendPassword);

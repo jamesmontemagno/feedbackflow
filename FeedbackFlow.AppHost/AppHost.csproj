@@ -17,8 +17,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\feedbackfunctions\feedbackfunctions.csproj" />
-    <ProjectReference Include="..\feedbackwebapp\feedbackwebapp.csproj" />
+    <ProjectReference Include="..\feedbackfunctions\Functions.csproj" />
+    <ProjectReference Include="..\feedbackwebapp\WebApp.csproj" />
   </ItemGroup>
 
 </Project>
