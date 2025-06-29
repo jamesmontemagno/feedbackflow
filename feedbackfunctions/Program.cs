@@ -23,15 +23,15 @@ var builder = FunctionsApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 builder.ConfigureFunctionsWebApplication();
-builder.Configuration.AddUserSecrets<Program>(true);
 
 
-var throwIfNullOrEmpty = false;
 #if DEBUG
-var useMocks = builder.Configuration.GetValue<bool>("UseMocks");
+var c = GetConfig(null);
+
+// Check if we should use mock services
+var useMocks = c.GetValue<bool>("UseMocks");
 #else
 var useMocks = false; // In production, we don't use mocks
-throwIfNullOrEmpty = true;
 #endif
 
 
@@ -54,7 +54,6 @@ builder.Services.AddSingleton<IReportCacheService>(serviceProvider =>
 // Register services based on UseMocks setting
 if (useMocks)
 {
-    Console.WriteLine("Using mock data 🍕🍕🍕");
     builder.Services.AddScoped<IGitHubService, MockGitHubService>();
     builder.Services.AddScoped<IYouTubeService, MockYouTubeService>();
     builder.Services.AddScoped<IHackerNewsService, MockHackerNewsService>();
@@ -70,12 +69,7 @@ else
     {
         var configuration = GetConfig(serviceProvider);
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-        var githubToken = configuration["GitHub:AccessToken"];
-        if (string.IsNullOrWhiteSpace(githubToken))
-        {
-            Console.WriteLine("Using mock data for GitHub, no access token provided.");
-            return new MockGitHubService();
-        }
+        var githubToken = configuration["GitHub:AccessToken"] ?? throw new InvalidOperationException("GitHub access token not configured");
         return new GitHubService(githubToken, httpClientFactory.CreateClient("GitHub"));
     });
     
@@ -83,15 +77,7 @@ else
     {
         var configuration = GetConfig(serviceProvider);
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-        var ytApiKey = configuration["YouTube:ApiKey"];
-        if (string.IsNullOrWhiteSpace(ytApiKey))
-        {
-            if (throwIfNullOrEmpty)
-                throw new ConfigurationErrorsException("YouTube API key is not configured.");
-
-            Console.WriteLine("Using mock data for YouTube, no API key provided.");
-            return new MockYouTubeService();
-        }
+        var ytApiKey = configuration["YouTube:ApiKey"] ?? throw new InvalidOperationException("YouTube API key not configured");
         return new YouTubeService(ytApiKey, httpClientFactory.CreateClient("YouTube"));
     });
     
@@ -106,15 +92,8 @@ else
     {
         var configuration = GetConfig(serviceProvider);
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-        var clientId = configuration["Reddit:ClientId"];
-        var clientSecret = configuration["Reddit:ClientSecret"];
-        if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
-        {
-            if (throwIfNullOrEmpty)
-                throw new ConfigurationErrorsException("Reddit client ID and secret are not configured.");
-            Console.WriteLine("Using mock data for Reddit, no client ID or secret provided.");
-            return new MockRedditService();
-        }
+        var clientId = configuration["Reddit:ClientId"] ?? throw new InvalidOperationException("Reddit client ID not configured");
+        var clientSecret = configuration["Reddit:ClientSecret"] ?? throw new InvalidOperationException("Reddit client secret not configured");
         var redditService = new RedditService(clientId, clientSecret, httpClientFactory.CreateClient("Reddit"));
         return new RedditServiceAdapter(redditService);
     });
@@ -133,13 +112,6 @@ else
         var endpoint = configuration["Azure:OpenAI:Endpoint"] ?? throw new InvalidOperationException("Azure OpenAI endpoint not configured");
         var apiKey = configuration["Azure:OpenAI:ApiKey"] ?? throw new InvalidOperationException("Azure OpenAI API key not configured");
         var deployment = configuration["Azure:OpenAI:Deployment"] ?? throw new InvalidOperationException("Azure OpenAI deployment name not configured");
-        if (string.IsNullOrWhiteSpace(endpoint) || string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(deployment))
-        {
-            if (throwIfNullOrEmpty)
-                throw new ConfigurationErrorsException("Azure OpenAI configuration is incomplete.");
-            Console.WriteLine("Using mock data for Feedback Analyzer, no Azure OpenAI configuration provided.");
-            return new MockFeedbackAnalyzerService();
-        }
         return new FeedbackAnalyzerService(endpoint, apiKey, deployment);
     });
     
@@ -147,15 +119,7 @@ else
     {
         var configuration = GetConfig(serviceProvider);
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-        var twitterBearerToken = configuration["Twitter:BearerToken"];
-        if (string.IsNullOrWhiteSpace(twitterBearerToken))
-        {
-            if (throwIfNullOrEmpty)
-                throw new ConfigurationErrorsException("Twitter bearer token is not configured.");
-
-            Console.WriteLine("Using mock data for Twitter, no bearer token provided.");
-            return new MockTwitterService();
-        }
+        var twitterBearerToken = configuration["Twitter:BearerToken"] ?? throw new InvalidOperationException("Twitter Bearer token not configured");
         var twitterHttpClient = httpClientFactory.CreateClient("Twitter");
         twitterHttpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", twitterBearerToken);
         var twitterFetcher = new TwitterFeedbackFetcher(twitterHttpClient, Microsoft.Extensions.Logging.Abstractions.NullLogger<TwitterFeedbackFetcher>.Instance);
@@ -166,16 +130,8 @@ else
     {
         var configuration = GetConfig(serviceProvider);
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-        var blueSkyUsername = configuration["BlueSky:Username"];
-        var blueSkyAppPassword = configuration["BlueSky:AppPassword"];
-        if (string.IsNullOrWhiteSpace(blueSkyUsername) || string.IsNullOrWhiteSpace(blueSkyAppPassword))
-        {
-            if (throwIfNullOrEmpty)
-                throw new ConfigurationErrorsException("BlueSky username and app password are not configured.");
-                
-            Console.WriteLine("Using mock data for BlueSky, no username or app password provided.");
-            return new MockBlueSkyService();
-        }
+        var blueSkyUsername = configuration["BlueSky:Username"] ?? throw new InvalidOperationException("BlueSky username not configured");
+        var blueSkyAppPassword = configuration["BlueSky:AppPassword"] ?? throw new InvalidOperationException("BlueSky app password not configured");
         var blueSkyFetcher = new BlueSkyFeedbackFetcher(httpClientFactory.CreateClient("BlueSky"), Microsoft.Extensions.Logging.Abstractions.NullLogger<BlueSkyFeedbackFetcher>.Instance);
         blueSkyFetcher.SetCredentials(blueSkyUsername, blueSkyAppPassword);
         return new BlueSkyServiceAdapter(blueSkyFetcher);
@@ -185,7 +141,10 @@ else
 IConfiguration GetConfig(IServiceProvider? serviceProvider = null)
 {
 #if DEBUG
-    return serviceProvider?.GetRequiredService<IConfiguration>() ?? builder.Configuration;
+    return new ConfigurationBuilder()
+                    .AddJsonFile("local.settings.json")
+                    .AddUserSecrets<Program>()
+                    .Build();
 #else
     return serviceProvider?.GetRequiredService<IConfiguration>() ?? throw new InvalidOperationException("Configuration service not available.");
 #endif
