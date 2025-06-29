@@ -34,6 +34,9 @@ public static class KeyConfiguration
             new() { InputType = InputType.SecretText, Label = "Reddit Client Secret", Placeholder = "Enter Reddit Client Secret", Value = Keys.RedditClientSecret },
             new() { InputType = InputType.SecretText, Label = "Twitter Bearer Token", Placeholder = "Enter Twitter Bearer Token", Value = Keys.TwitterBearerToken },
             new() { InputType = InputType.SecretText, Label = "GitHub Personal Access Token", Placeholder = "Enter GitHub Personal Access Token", Value = Keys.GitHubAccessToken },
+            new() { InputType = InputType.SecretText, Label = "Mastodon Access Token", Placeholder = "Enter Mastodon Access Token", Value = Keys.MastodonAccessToken },
+            new() { InputType = InputType.SecretText, Label = "Mastodon Client Key", Placeholder = "Enter Mastodon Client Key", Value = Keys.MastodonClientKey },
+            new() { InputType = InputType.SecretText, Label = "Mastodon Client Secret", Placeholder = "Enter Mastodon Client Secret", Value = Keys.MastodonClientSecret },
             new() { InputType = InputType.Boolean, Label = "Use Mocks", Placeholder = "Use mock data for services", Value = Keys.UseMocks  ? "true" : "false" }
         };
 
@@ -52,7 +55,10 @@ public static class KeyConfiguration
             Keys.RedditClientSecret = result.Data[8].Value;
             Keys.TwitterBearerToken = result.Data[9].Value;
             Keys.GitHubAccessToken = result.Data[10].Value;
-            Keys.UseMocks = result.Data[11].Value == "true";
+            Keys.MastodonAccessToken = result.Data[11].Value;
+            Keys.MastodonClientKey = result.Data[12].Value;
+            Keys.MastodonClientSecret = result.Data[13].Value;
+            Keys.UseMocks = result.Data[14].Value == "true";
 
             logger.LogInformation("Set Endpoint = {Endpoint}", Keys.AzureOpenAIEndpoint);
             logger.LogInformation("Set Model = {Model}", Keys.AzureOpenAIModel);
@@ -78,6 +84,9 @@ public static class KeyConfiguration
             Keys.RedditClientSecret = null;
             Keys.TwitterBearerToken = null;
             Keys.GitHubAccessToken = null;
+            Keys.MastodonAccessToken = null;
+            Keys.MastodonClientKey = null;
+            Keys.MastodonClientSecret = null;
             Keys.UseMocks = true;
         }
     }
@@ -102,6 +111,9 @@ public static class KeyConfiguration
         Keys.RedditClientSecret = context.EnvironmentVariables["Reddit__ClientSecret"] as string;
         Keys.TwitterBearerToken = context.EnvironmentVariables["Twitter__BearerToken"] as string;
         Keys.GitHubAccessToken = context.EnvironmentVariables["GitHub__AccessToken"] as string;
+        Keys.MastodonAccessToken = context.EnvironmentVariables["Mastodon__AccessToken"] as string;
+        Keys.MastodonClientKey = context.EnvironmentVariables["Mastodon__ClientKey"] as string;
+        Keys.MastodonClientSecret = context.EnvironmentVariables["Mastodon__ClientSecret"] as string;
         Keys.UseMocks = context.EnvironmentVariables.ContainsKey("UseMocks") && bool.TryParse(context.EnvironmentVariables["UseMocks"] as string, out var useMocks) ? useMocks : true;
     }
 
@@ -118,6 +130,9 @@ public static class KeyConfiguration
         context.EnvironmentVariables["Reddit__ClientSecret"] = Keys.RedditClientSecret ?? string.Empty;
         context.EnvironmentVariables["Twitter__BearerToken"] = Keys.TwitterBearerToken ?? string.Empty;
         context.EnvironmentVariables["GitHub__AccessToken"] = Keys.GitHubAccessToken ?? string.Empty;
+        context.EnvironmentVariables["Mastodon__AccessToken"] = Keys.MastodonAccessToken ?? string.Empty;
+        context.EnvironmentVariables["Mastodon__ClientKey"] = Keys.MastodonClientKey ?? string.Empty;
+        context.EnvironmentVariables["Mastodon__ClientSecret"] = Keys.MastodonClientSecret ?? string.Empty;
         context.EnvironmentVariables["UseMocks"] = Keys.UseMocks.ToString();
     }
     public static void ReadFromEnvFile(string directory)
@@ -170,6 +185,18 @@ public static class KeyConfiguration
                 {
                     Keys.GitHubAccessToken = line.Split('=')[1].Trim();
                 }
+                else if (line.StartsWith("Mastodon__AccessToken="))
+                {
+                    Keys.MastodonAccessToken = line.Split('=')[1].Trim();
+                }
+                else if (line.StartsWith("Mastodon__ClientKey="))
+                {
+                    Keys.MastodonClientKey = line.Split('=')[1].Trim();
+                }
+                else if (line.StartsWith("Mastodon__ClientSecret="))
+                {
+                    Keys.MastodonClientSecret = line.Split('=')[1].Trim();
+                }
                 else if (line.StartsWith("UseMocks="))
                 {
                     if (bool.TryParse(line.Split('=')[1].Trim(), out var useMocks))
@@ -204,6 +231,12 @@ public static class KeyConfiguration
             writer.WriteLine($"Twitter__BearerToken={Keys.TwitterBearerToken}");
         if (!string.IsNullOrEmpty(Keys.GitHubAccessToken))
             writer.WriteLine($"GitHub__AccessToken={Keys.GitHubAccessToken}");
+        if (!string.IsNullOrEmpty(Keys.MastodonAccessToken))
+            writer.WriteLine($"Mastodon__AccessToken={Keys.MastodonAccessToken}");
+        if (!string.IsNullOrEmpty(Keys.MastodonClientKey))
+            writer.WriteLine($"Mastodon__ClientKey={Keys.MastodonClientKey}");
+        if (!string.IsNullOrEmpty(Keys.MastodonClientSecret))
+            writer.WriteLine($"Mastodon__ClientSecret={Keys.MastodonClientSecret}");
         writer.WriteLine($"UseMocks={Keys.UseMocks}");
     }
 }
@@ -219,5 +252,8 @@ public class Keys{
     public string? RedditClientSecret { get; set; }
     public string? TwitterBearerToken { get; set; } 
     public string? GitHubAccessToken { get; set; }
+    public string? MastodonAccessToken { get; set; }
+    public string? MastodonClientKey { get; set; }
+    public string? MastodonClientSecret { get; set; }
     public bool UseMocks { get; set; } = true;
 }
