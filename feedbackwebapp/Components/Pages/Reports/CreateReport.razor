@@ -221,7 +221,7 @@
     }
 </div>
 
-<ValidationErrorModal @ref="validationModal" @bind-IsVisible="showValidationModal" />
+<ValidationErrorModal @ref="validationModal" IsVisible="showValidationModal" IsVisibleChanged="OnValidationModalVisibilityChanged" />
 
 @code {
     private bool isAuthenticated = false;
@@ -546,10 +546,12 @@
             }
             else
             {
-                var errorTitle = result.IsBadRequest ? "Invalid Request" : "Server Error";
+                var errorTitle = result.IsBadRequest ? "Invalid Request" : 
+                               result.IsServerError ? "Server Error" : 
+                               result.IsNotFound ? "Not Found" : "Request Failed";
                 var errorMsg = !string.IsNullOrEmpty(result.ErrorMessage) 
                     ? result.ErrorMessage 
-                    : "Failed to submit request to the server. The backend will validate the URLs and provide detailed error information.";
+                    : "Failed to submit request to the server. Please try again later.";
                 
                 await validationModal.Show(
                     errorTitle, 
@@ -576,6 +578,12 @@
     private void HandleCancel()
     {
         NavigationManager.NavigateTo("/reports");
+    }
+
+    private Task OnValidationModalVisibilityChanged(bool isVisible)
+    {
+        showValidationModal = isVisible;
+        return Task.CompletedTask;
     }
 
     private static string GenerateRequestId(ReportRequestModel request)

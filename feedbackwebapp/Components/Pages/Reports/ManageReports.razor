@@ -223,9 +223,9 @@
             successMessage = string.Empty;
 
             // First, try to remove from backend
-            var backendSuccess = await ReportRequestService.RemoveReportRequestAsync(id);
+            var result = await ReportRequestService.RemoveReportRequestAsync(id);
             
-            if (backendSuccess)
+            if (result.Success)
             {
                 // If backend removal was successful, remove from local storage
                 await JSRuntime.InvokeVoidAsync("window.indexedDbModule.deleteReportRequest", id);
@@ -237,11 +237,30 @@
             }
             else
             {
-                // If backend fails, still allow local deletion but warn user
-                await JSRuntime.InvokeVoidAsync("window.indexedDbModule.deleteReportRequest", id);
-                await LoadReportRequests();
-                
-                successMessage = "Report request removed locally. Backend removal may have failed - the request might still be processed.";
+                // Handle different error types
+                if (result.IsNotFound)
+                {
+                    // Request not found on backend, remove from local storage
+                    await JSRuntime.InvokeVoidAsync("window.indexedDbModule.deleteReportRequest", id);
+                    await LoadReportRequests();
+                    successMessage = "Report request removed locally (was not found on server).";
+                }
+                else if (result.IsServerError)
+                {
+                    // Server error - keep local copy but warn user
+                    errorMessage = $"Server error while deleting: {result.ErrorMessage ?? "Unknown server error"}. The request will remain locally and may still be processed.";
+                }
+                else
+                {
+                    // Other errors (bad request, network, etc.)
+                    var errorMsg = result.ErrorMessage ?? "Failed to delete report request from server";
+                    
+                    // Still allow local deletion for user convenience
+                    await JSRuntime.InvokeVoidAsync("window.indexedDbModule.deleteReportRequest", id);
+                    await LoadReportRequests();
+                    
+                    successMessage = $"Report request removed locally. Server error: {errorMsg}";
+                }
             }
         }
         catch (Exception ex)
