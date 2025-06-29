@@ -533,9 +533,9 @@
             };
 
             // Send to backend - backend will perform API validation and handle errors appropriately
-            var success = await ReportRequestService.AddReportRequestAsync(requestData);
+            var result = await ReportRequestService.AddReportRequestAsync(requestData);
             
-            if (success)
+            if (result.Success)
             {
                 // Only save to IndexedDB if backend request was successful
                 await JSRuntime.InvokeVoidAsync("window.indexedDbModule.saveReportRequest", requestData);
@@ -546,9 +546,14 @@
             }
             else
             {
+                var errorTitle = result.IsBadRequest ? "Invalid Request" : "Server Error";
+                var errorMsg = !string.IsNullOrEmpty(result.ErrorMessage) 
+                    ? result.ErrorMessage 
+                    : "Failed to submit request to the server. The backend will validate the URLs and provide detailed error information.";
+                
                 await validationModal.Show(
-                    "Server Error", 
-                    "Failed to submit request to the server. The backend will validate the URLs and provide detailed error information.",
+                    errorTitle, 
+                    errorMsg,
                     new List<string>()
                 );
             }

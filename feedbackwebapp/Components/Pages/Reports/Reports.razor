@@ -186,10 +186,20 @@
                 }
                 else if (reports == null || !reports.Any())
                 {
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-2"></i>
-                        No reports found for your requests. <a href="/reports/create" class="alert-link">Create a report request</a> to see reports here.
-                    </div>
+                    @if (hasUserRequests)
+                    {
+                        <div class="alert alert-info">
+                            <i class="bi bi-clock me-2"></i>
+                            No reports have been generated yet for your requests. Reports are automatically generated Monday morning for active communities.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            No reports found for your requests. <a href="/reports/create" class="alert-link">Create a report request</a> to see reports here.
+                        </div>
+                    }
                 }
                 else
                 {
@@ -254,6 +264,7 @@
     private string selectedSubSource = "";
     private HashSet<string> subSources = new();
     private IReportService? _reportService;
+    private bool hasUserRequests = false;
     
     private IEnumerable<string> FilteredSubSources => 
         reports?
@@ -312,8 +323,9 @@
             
             // Get user's report requests from IndexedDB
             var userRequests = await JSRuntime.InvokeAsync<object[]>("window.indexedDbModule.getAllReportRequests") ?? Array.Empty<object>();
+            hasUserRequests = userRequests.Any();
             
-            if (userRequests.Any())
+            if (hasUserRequests)
             {
                 // Filter reports based on user requests and sort by latest first
                 var filteredReports = await ReportRequestService.FilterReportsAsync(userRequests);
