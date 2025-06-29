@@ -38,6 +38,10 @@ var feedbackFunctionsProject = builder.AddAzureFunctionsProject<Projects.feedbac
         })
         .WithCommand("api-keys", "Enter API Keys", async context => 
         {
+            if (KeyConfiguration.HasEnvFile(builder.AppHostDirectory))
+            {
+                KeyConfiguration.ReadFromEnvFile(builder.AppHostDirectory);
+            }
             await KeyConfiguration.PromptForValues(context.ResourceName, context.ServiceProvider, builder.AppHostDirectory, restart: true, context.CancellationToken);
 
             return CommandResults.Success();
