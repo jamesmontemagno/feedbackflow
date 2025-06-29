@@ -13,6 +13,7 @@ public class UserSettingsService
         public int MaxCommentsToAnalyze { get; set; } = 1200;
         public bool UseCustomPrompts { get; set; } = false;
         public string? PreferredVoice { get; set; }
+        public DateTime? LastFeatureAnnouncementShown { get; set; }
         public Dictionary<string, string> ServicePrompts { get; set; } = new()
         {
             ["youtube"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("youtube"),
@@ -107,6 +108,25 @@ public class UserSettingsService
     {
         var settings = await GetSettingsAsync();
         settings.PreferredVoice = voiceUri;
+        await SaveSettingsAsync(settings);
+    }
+
+    public async Task<bool> ShouldShowFeatureAnnouncementAsync()
+    {
+        var settings = await GetSettingsAsync();
+        
+        // Define the latest feature announcement date (June 2025 features)
+        var latestFeatureDate = new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        
+        // Show if never shown before or if the latest features are newer than last shown
+        return !settings.LastFeatureAnnouncementShown.HasValue ||
+               settings.LastFeatureAnnouncementShown.Value < latestFeatureDate;
+    }
+
+    public async Task MarkFeatureAnnouncementShownAsync()
+    {
+        var settings = await GetSettingsAsync();
+        settings.LastFeatureAnnouncementShown = DateTime.UtcNow;
         await SaveSettingsAsync(settings);
     }
 }

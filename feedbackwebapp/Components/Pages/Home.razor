@@ -9,6 +9,7 @@
 @using FeedbackWebApp.Components.Feedback.Results
 @using FeedbackWebApp.Services.Interfaces
 @using FeedbackWebApp.Services.Feedback
+@using FeedbackWebApp.Components.Shared
 @using SharedDump.Models
 @using SharedDump.Models.BlueSkyFeedback
 @using SharedDump.Models.DevBlogs
@@ -21,8 +22,16 @@
 @inject FeedbackServiceProvider ServiceProvider
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
+@inject UserSettingsService UserSettings
+@inject IHistoryService HistoryService
 
 <PageTitle>Feedback Analysis - FeedbackFlow</PageTitle>
+
+<NewFeaturesDialog 
+    IsVisible="@showNewFeaturesDialog" 
+    OnClose="@CloseNewFeaturesDialog"
+    OnGotIt="@MarkNewFeaturesAsSeen" 
+    OnRemindLater="@CloseNewFeaturesDialog" />
 
 <div class="container">
     @if (!isAuthenticated)
@@ -129,6 +138,7 @@
     private string error = "";
     private bool isLoading = false;
     private bool isAuthenticated = false;
+    private bool showNewFeaturesDialog = false;
     private List<FeedbackSourceData>? feedbackSources;
     private object? currentAdditionalData;
     private FeedbackProcessStatus currentStatus;
@@ -141,7 +151,50 @@
         isAuthenticated = success;
         StateHasChanged();
 
-        await HandleQueryNav();
+        if (success)
+        {
+            await HandleQueryNav();
+            await CheckForNewFeatures();
+        }
+    }
+
+    private async Task CheckForNewFeatures()
+    {
+        try
+        {
+            // Check if user has history (indicating they've used the app before)
+            var hasHistory = (await HistoryService.GetHistoryCountAsync()) > 0;
+            
+            // Only show new features dialog if user has history and hasn't seen latest features
+            if (hasHistory && await UserSettings.ShouldShowFeatureAnnouncementAsync())
+            {
+                // Add a small delay to let the page fully render
+                await Task.Delay(1000);
+                showNewFeaturesDialog = true;
+                StateHasChanged();
+            }
+            else 
+            {
+                // if they are a new user or have seen the announcement, mark it as shown
+                await UserSettings.MarkFeatureAnnouncementShownAsync();
+            }
+        }
+        catch (Exception)
+        {
+            // If anything fails, silently continue without showing the dialog
+        }
+    }
+
+    private void CloseNewFeaturesDialog()
+    {
+        showNewFeaturesDialog = false;
+        StateHasChanged();
+    }
+
+    private async Task MarkNewFeaturesAsSeen()
+    {
+        await UserSettings.MarkFeatureAnnouncementShownAsync();
+        CloseNewFeaturesDialog();
     }
 
     private void HandleStatusUpdate(FeedbackProcessStatus status, string message)

@@ -1,0 +1,75 @@
+@if (IsVisible)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title d-flex align-items-center">
+                        <i class="bi bi-stars me-2"></i>
+                        What's New in FeedbackFlow
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="OnClose" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="new-features-content">
+                        <div class="feature-section mb-4">
+                            <h6 class="feature-title d-flex align-items-center">
+                                <i class="bi bi-graph-up-arrow me-2 text-success"></i>
+                                Custom Reports
+                            </h6>
+                            <p class="feature-description">
+                                Create your own custom reports for GitHub & Reddit that are generated automatically each week. 
+                                Get advanced sentiment trends and deeper insights into user engagement patterns.
+                            </p>
+                        </div>
+
+                        <div class="feature-section mb-4">
+                            <h6 class="feature-title d-flex align-items-center">
+                                <i class="bi bi-download me-2 text-info"></i>
+                                Export Analysis & Comments
+                            </h6>
+                            <p class="feature-description">
+                                Export your analysis results with 1 click to JSON, CSV, PDF, or Markdown formats. 
+                                Perfect for sharing findings with your team or including in reports.
+                            </p>
+                        </div>
+
+
+                        <div class="feature-section mb-4">
+                            <h6 class="feature-title d-flex align-items-center">
+                                <i class="bi bi-share me-2 text-warning"></i>
+                                Share Analysis Results
+                            </h6>
+                            <p class="feature-description">
+                                Generate unique shareable links for any analysis. Recipients don't need a FeedbackFlow account 
+                                to view shared analysis, and all formatting and insights are preserved.
+                            </p>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <div class="text-muted small">
+                        <i class="bi bi-calendar3 me-1"></i>
+                        June 2025 Update
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-secondary me-2" @onclick="OnRemindLater">Remind Me Later</button>
+                        <button type="button" class="btn btn-primary" @onclick="OnGotIt">
+                            <i class="bi bi-check-lg me-1"></i>
+                            Got It!
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnGotIt { get; set; }
+    [Parameter] public EventCallback OnRemindLater { get; set; }
+}
