@@ -7,7 +7,6 @@
 @inject AuthenticationService AuthService
 @inject IJSRuntime JSRuntime
 @inject IReportRequestService ReportRequestService
-@inject IUrlValidationHttpService UrlValidationService
 
 <PageTitle>Create Report - FeedbackFlow</PageTitle>
 
@@ -317,12 +316,7 @@
                 return (false, "Subreddit name is required");
 
             var result = SharedDump.Services.UrlValidationService.ValidateSubredditName(val);
-            if (!result.IsValid)
-                return (false, result.ErrorMessage);
-
-            // Check URL existence
-            var validation = await UrlValidationService.ValidateRedditSubredditAsync(val);
-            return validation;
+            return await Task.FromResult((result.IsValid, result.ErrorMessage));
         });
     }
 
@@ -369,8 +363,16 @@
 
         await ValidateFieldWithDebounce("GitHubRepo", $"{reportRequest.Owner}/{reportRequest.Repo}", async (val) =>
         {
-            var validation = await UrlValidationService.ValidateGitHubRepositoryAsync(reportRequest.Owner!, reportRequest.Repo!);
-            return validation;
+            // Only validate that both owner and repo have valid formats individually
+            var ownerResult = SharedDump.Services.UrlValidationService.ValidateGitHubOwnerName(reportRequest.Owner!);
+            if (!ownerResult.IsValid)
+                return (false, ownerResult.ErrorMessage);
+                
+            var repoResult = SharedDump.Services.UrlValidationService.ValidateGitHubRepoName(reportRequest.Repo!);
+            if (!repoResult.IsValid)
+                return (false, repoResult.ErrorMessage);
+                
+            return await Task.FromResult((true, (string?)null));
         });
     }
 
@@ -504,36 +506,6 @@
             successMessage = string.Empty;
             validationErrors.Clear();
 
-            // Perform comprehensive validation including URL reachability
-            var submitValidationErrors = new List<string>();
-
-            if (reportRequest.Type == "reddit" && !string.IsNullOrWhiteSpace(reportRequest.Subreddit))
-            {
-                var (isValid, errorMessage) = await UrlValidationService.ValidateRedditSubredditAsync(reportRequest.Subreddit);
-                if (!isValid)
-                {
-                    submitValidationErrors.Add($"Reddit: {errorMessage}");
-                }
-            }
-            else if (reportRequest.Type == "github" && !string.IsNullOrWhiteSpace(reportRequest.Owner) && !string.IsNullOrWhiteSpace(reportRequest.Repo))
-            {
-                var (isValid, errorMessage) = await UrlValidationService.ValidateGitHubRepositoryAsync(reportRequest.Owner, reportRequest.Repo);
-                if (!isValid)
-                {
-                    submitValidationErrors.Add($"GitHub: {errorMessage}");
-                }
-            }
-
-            if (submitValidationErrors.Any())
-            {
-                await validationModal.Show(
-                    "Validation Failed", 
-                    "The URLs you provided could not be validated or are not accessible:",
-                    submitValidationErrors
-                );
-                return;
-            }
-
             // Generate deterministic ID
             var id = GenerateRequestId(reportRequest);
             
@@ -560,7 +532,7 @@
                 createdAt = DateTimeOffset.UtcNow
             };
 
-            // Send to backend first
+            // Send to backend - backend will perform API validation and handle errors appropriately
             var success = await ReportRequestService.AddReportRequestAsync(requestData);
             
             if (success)
@@ -576,7 +548,7 @@
             {
                 await validationModal.Show(
                     "Server Error", 
-                    "Failed to submit request to the server. Please try again later.",
+                    "Failed to submit request to the server. The backend will validate the URLs and provide detailed error information.",
                     new List<string>()
                 );
             }
