@@ -37,10 +37,10 @@ public static class KeyConfiguration
             new() { InputType = InputType.SecretText, Label = "Mastodon Access Token", Placeholder = "Enter Mastodon Access Token", Value = Keys.MastodonAccessToken },
             new() { InputType = InputType.SecretText, Label = "Mastodon Client Key", Placeholder = "Enter Mastodon Client Key", Value = Keys.MastodonClientKey },
             new() { InputType = InputType.SecretText, Label = "Mastodon Client Secret", Placeholder = "Enter Mastodon Client Secret", Value = Keys.MastodonClientSecret },
-            new() { InputType = InputType.Boolean, Label = "Use Mocks", Placeholder = "Use mock data for services", Value = Keys.UseMocks  ? "true" : "false" }
+            new() { InputType = InputType.Boolean, Label = "Use Mocks For All", Placeholder = "Use mock data for services", Value = Keys.UseMocks  ? "true" : "false" }
         };
 
-        var result = await interactionService.PromptInputsAsync("Enter API Keys", "Enter the API keys ", inputs, cancellationToken: cancellationToken);
+        var result = await interactionService.PromptInputsAsync("API Keys", "Enter the API keys for services you would like to use. You can leave them blank and when debugging specific services will use mock data. Make sure to turn off Use Mocks For All when you want to use real data.", inputs, cancellationToken: cancellationToken);
 
         if (!result.Canceled)
         {
