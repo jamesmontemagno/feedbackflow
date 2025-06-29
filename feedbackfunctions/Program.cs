@@ -22,14 +22,13 @@ builder.AddServiceDefaults();
 
 builder.ConfigureFunctionsWebApplication();
 
-
+var throwIfNullOrEmpty = false;
 #if DEBUG
-var c = GetConfig(null);
-
 // Check if we should use mock services
-var useMocks = c.GetValue<bool>("UseMocks");
+var useMocks = builder.Configuration.GetValue<bool>("UseMocks");
 #else
 var useMocks = false; // In production, we don't use mocks
+throwIfNullOrEmpty = true;
 #endif
 
 
@@ -57,8 +56,11 @@ else
         var configuration = GetConfig(serviceProvider);
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
         var githubToken = configuration["GitHub:AccessToken"];
-        if(githubToken is null)
+        if (githubToken is null)
+        {
+            Console.WriteLine("Using mock data for GitHub, no access token provided.");
             return new MockGitHubService();
+        }
         return new GitHubService(githubToken, httpClientFactory.CreateClient("GitHub"));
     });
     
@@ -67,8 +69,14 @@ else
         var configuration = GetConfig(serviceProvider);
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
         var ytApiKey = configuration["YouTube:ApiKey"];
-        if(ytApiKey is null)
+        if (ytApiKey is null)
+        {
+            if (throwIfNullOrEmpty)
+                throw new ConfigurationErrorsException("YouTube API key is not configured.");
+
+            Console.WriteLine("Using mock data for YouTube, no API key provided.");
             return new MockYouTubeService();
+        }
         return new YouTubeService(ytApiKey, httpClientFactory.CreateClient("YouTube"));
     });
     
@@ -85,8 +93,13 @@ else
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
         var clientId = configuration["Reddit:ClientId"];
         var clientSecret = configuration["Reddit:ClientSecret"];
-        if(clientId is null || clientSecret is null)
+        if (clientId is null || clientSecret is null)
+        {
+            if (throwIfNullOrEmpty)
+                throw new ConfigurationErrorsException("Reddit client ID and secret are not configured.");
+            Console.WriteLine("Using mock data for Reddit, no client ID or secret provided.");
             return new MockRedditService();
+        }
         var redditService = new RedditService(clientId, clientSecret, httpClientFactory.CreateClient("Reddit"));
         return new RedditServiceAdapter(redditService);
     });
@@ -105,6 +118,13 @@ else
         var endpoint = configuration["Azure:OpenAI:Endpoint"] ?? throw new InvalidOperationException("Azure OpenAI endpoint not configured");
         var apiKey = configuration["Azure:OpenAI:ApiKey"] ?? throw new InvalidOperationException("Azure OpenAI API key not configured");
         var deployment = configuration["Azure:OpenAI:Deployment"] ?? throw new InvalidOperationException("Azure OpenAI deployment name not configured");
+        if (string.IsNullOrWhiteSpace(endpoint) || string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(deployment))
+        {
+            if (throwIfNullOrEmpty)
+                throw new ConfigurationErrorsException("Azure OpenAI configuration is incomplete.");
+            Console.WriteLine("Using mock data for Feedback Analyzer, no Azure OpenAI configuration provided.");
+            return new MockFeedbackAnalyzerService();
+        }
         return new FeedbackAnalyzerService(endpoint, apiKey, deployment);
     });
     
@@ -113,8 +133,14 @@ else
         var configuration = GetConfig(serviceProvider);
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
         var twitterBearerToken = configuration["Twitter:BearerToken"];
-        if(twitterBearerToken is null)
+        if (twitterBearerToken is null)
+        {
+            if (throwIfNullOrEmpty)
+                throw new ConfigurationErrorsException("Twitter bearer token is not configured.");
+
+            Console.WriteLine("Using mock data for Twitter, no bearer token provided.");
             return new MockTwitterService();
+        }
         var twitterHttpClient = httpClientFactory.CreateClient("Twitter");
         twitterHttpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", twitterBearerToken);
         var twitterFetcher = new TwitterFeedbackFetcher(twitterHttpClient, Microsoft.Extensions.Logging.Abstractions.NullLogger<TwitterFeedbackFetcher>.Instance);
@@ -127,8 +153,14 @@ else
         var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
         var blueSkyUsername = configuration["BlueSky:Username"];
         var blueSkyAppPassword = configuration["BlueSky:AppPassword"];
-        if(blueSkyUsername is null || blueSkyAppPassword is null)
+        if (blueSkyUsername is null || blueSkyAppPassword is null)
+        {
+            if (throwIfNullOrEmpty)
+                throw new ConfigurationErrorsException("BlueSky username and app password are not configured.");
+                
+            Console.WriteLine("Using mock data for BlueSky, no username or app password provided.");
             return new MockBlueSkyService();
+        }
         var blueSkyFetcher = new BlueSkyFeedbackFetcher(httpClientFactory.CreateClient("BlueSky"), Microsoft.Extensions.Logging.Abstractions.NullLogger<BlueSkyFeedbackFetcher>.Instance);
         blueSkyFetcher.SetCredentials(blueSkyUsername, blueSkyAppPassword);
         return new BlueSkyServiceAdapter(blueSkyFetcher);
@@ -138,14 +170,6 @@ else
 IConfiguration GetConfig(IServiceProvider? serviceProvider = null)
 {
     return builder.Configuration;
-// #if DEBUG
-//     return new ConfigurationBuilder()
-//                     .AddJsonFile("local.settings.json")
-//                     .AddUserSecrets<Program>()
-//                     .Build();
-// #else
-//     return serviceProvider?.GetRequiredService<IConfiguration>() ?? throw new InvalidOperationException("Configuration service not available.");
-// #endif
 }
 
 // Application Insights isn't enabled by default. See https://aka.ms/AAt8mw4.
