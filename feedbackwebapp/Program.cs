@@ -23,6 +23,9 @@ builder.Services.AddRazorComponents()
         options.EnableDetailedErrors = true;
         options.MaximumReceiveMessageSize = 1_024_000; // 200 KB or more
     });
+
+// Add Data Protection services for secure authentication
+builder.Services.AddDataProtection();
     
 // Register ToastService and other services
 builder.Services.AddScoped<IToastService, ToastService>();
@@ -35,6 +38,7 @@ builder.Services.AddScoped<ContentFeedServiceProvider>();
 builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<UserSettingsService>();
 builder.Services.AddScoped<IReportServiceProvider, ReportServiceProvider>();
+builder.Services.AddScoped<IReportRequestService, ReportRequestService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IHistoryService, HistoryService>();
 builder.Services.AddScoped<IAnalysisSharingService, AnalysisSharingService>();

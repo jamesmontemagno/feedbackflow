@@ -33,7 +33,7 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
 
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching Hacker News comments...");
 
-        var hnCode = Configuration["FeedbackApi:GetHackerNewsFeedbackCode"]
+        var hnCode = Configuration["FeedbackApi:FunctionsKey"]
             ?? throw new InvalidOperationException("Hacker News API code not configured");
 
         var maxComments = await GetMaxCommentsToAnalyze();

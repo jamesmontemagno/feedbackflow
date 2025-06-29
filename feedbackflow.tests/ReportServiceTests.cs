@@ -17,7 +17,8 @@ public class ReportServiceTests
     private HttpClient _httpClient = null!;
     private IConfiguration _configuration = null!;
     private IMemoryCache _memoryCache = null!;
-    private ReportService _reportService = null!;    [TestInitialize]
+    private ReportService _reportService = null!;
+    [TestInitialize]
     public void Setup()
     {
         _testHttpMessageHandler = new TestHttpMessageHandler();
@@ -25,7 +26,7 @@ public class ReportServiceTests
         
         _configuration = Substitute.For<IConfiguration>();
         _configuration["FeedbackApi:BaseUrl"].Returns("https://api.test.com");
-        _configuration["FeedbackApi:ListReportsCode"].Returns("test-code");
+        _configuration["FeedbackApi:FunctionsKey"].Returns("test-code");
 
         _memoryCache = Substitute.For<IMemoryCache>();
 
@@ -209,7 +210,7 @@ public class ReportServiceTests
             Content = new StringContent(responseContent, Encoding.UTF8, "application/json")
         };
 
-        _configuration["FeedbackApi:GetReportCode"].Returns("test-code");
+        _configuration["FeedbackApi:FunctionsKey"].Returns("test-code");
         _testHttpMessageHandler.SetResponse(response);
 
         // Act - First call

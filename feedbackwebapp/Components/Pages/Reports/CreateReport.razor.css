@@ -1,0 +1,292 @@
+/* Create Report Page Styles */
+
+/* ========== Header Section ========== */
+.create-report-header {
+    text-align: center;
+    animation: fadeIn 0.5s ease-in;
+}
+
+.create-report-header .feedbackflow-title {
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+}
+
+/* ========== Card Styling ========== */
+.card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    transition: box-shadow 0.3s ease, background-color 0.3s ease;
+    animation: fadeIn 0.5s ease-in;
+}
+
+.card-header {
+    background: var(--primary-gradient) !important;
+    color: var(--bg-secondary) !important;
+    border-bottom: none !important;
+    font-weight: 500 !important;
+    padding: 1rem 1.5rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* ========== Form Styling ========== */
+.form-label {
+    color: var(--text-primary);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.form-control,
+.form-select {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: var(--border-radius-sm);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    padding: 0.75rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--bg-primary);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(var(--primary-color-rgb), 0.25);
+    color: var(--text-primary);
+}
+
+.form-control::placeholder {
+    color: var(--text-secondary);
+}
+
+.input-group-text {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    border-radius: var(--border-radius-sm) 0 0 var(--border-radius-sm);
+}
+
+.form-text {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+/* ========== Button Styling ========== */
+.btn {
+    border-radius: var(--border-radius-sm);
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-primary {
+    background: var(--primary-gradient);
+    border: none;
+    color: var(--bg-secondary);
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--primary-gradient);
+    transform: translateY(-1px);
+    box-shadow: 0 0.25rem 0.75rem rgba(var(--primary-color-rgb), 0.3);
+}
+
+.btn-primary:disabled {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-outline-secondary {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.btn-outline-secondary:hover:not(:disabled) {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+
+/* ========== Alert Styling ========== */
+.alert {
+    border: none;
+    border-radius: var(--border-radius);
+    animation: slideIn 0.3s ease-in;
+}
+
+.alert-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    border-left: 4px solid #dc3545;
+}
+
+.alert-success {
+    background-color: rgba(25, 135, 84, 0.1);
+    color: #198754;
+    border-left: 4px solid #198754;
+}
+
+.alert-info {
+    background-color: rgba(13, 202, 240, 0.1);
+    color: #0dcaf0;
+    border-left: 4px solid #0dcaf0;
+}
+
+/* ========== Help Section ========== */
+.help-section {
+    animation: fadeIn 0.5s ease-in 0.2s both;
+}
+
+.help-section ol {
+    color: var(--text-primary);
+    padding-left: 1.5rem;
+}
+
+.help-section ol li {
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
+/* ========== Validation Messages ========== */
+.validation-message {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+/* ========== Enhanced Validation Styling ========== */
+::deep .input-group .input-group-text {
+    transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+}
+
+::deep .input-group .input-group-text.text-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+    border-color: var(--bs-danger);
+    color: var(--bs-danger);
+}
+
+::deep .input-group .input-group-text.text-success {
+    background-color: rgba(25, 135, 84, 0.1);
+    border-color: var(--bs-success);
+    color: var(--bs-success);
+}
+
+::deep .form-control.is-valid {
+    border-color: var(--bs-success);
+}
+
+::deep .form-control.is-valid:focus {
+    border-color: var(--bs-success);
+    box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
+}
+
+::deep .form-control.is-invalid {
+    border-color: var(--bs-danger);
+}
+
+::deep .form-control.is-invalid:focus {
+    border-color: var(--bs-danger);
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+::deep .invalid-feedback.d-block {
+    display: block !important;
+    margin-top: 0.25rem;
+    font-size: 0.875em;
+    color: var(--bs-danger);
+}
+
+::deep .validation-indicator {
+    cursor: help;
+    transition: opacity 0.3s ease;
+}
+
+::deep .validation-indicator:hover {
+    opacity: 0.8;
+}
+
+/* ========== Loading Spinner ========== */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.15em;
+}
+
+/* ========== Animations ========== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* ========== Responsive Design ========== */
+@media (max-width: 768px) {
+    .create-report-header .feedbackflow-title {
+        font-size: 2rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .btn {
+        padding: 0.6rem 1.2rem;
+        font-size: 0.9rem;
+    }
+    
+    .d-flex.gap-2 {
+        flex-direction: column;
+    }
+    
+    .d-flex.gap-2 .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 576px) {
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    .create-report-header .feedbackflow-title {
+        font-size: 1.75rem;
+    }
+    
+    .help-section ol {
+        padding-left: 1rem;
+    }
+}

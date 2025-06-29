@@ -12,4 +12,5 @@ public interface IGitHubService
     Task<List<GithubCommentModel>> GetPullRequestCommentsAsync(string repoOwner, string repoName, int pullNumber);
     Task<List<GithubCommentModel>> GetDiscussionCommentsAsync(string repoOwner, string repoName, int discussionNumber);
     Task<List<GithubIssueSummary>> GetRecentIssuesForReportAsync(string repoOwner, string repoName, int daysBack = 7);
+    Task<List<GithubIssueSummary>> GetOldestImportantIssuesWithRecentActivityAsync(string repoOwner, string repoName, int recentDays = 7, int topCount = 3);
 }

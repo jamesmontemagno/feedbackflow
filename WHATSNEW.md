@@ -2,17 +2,17 @@ This page tracks the latest features and improvements added to FeedbackFlow.
 
 ## 📆 June 2025
 
+### 📊 Custom Reports
+
+We've added a new Report section to FeedbackFlow! You can now create your own requests for GitHub & Reddit that are generated each week.
+
+- 📈 Advanced sentiment trend analysis over time
+- 🔍 Deeper insight into user engagement patterns
+- 📆 Updated automatically every week
+
 ### 🗃️ Export Analysis & Comments
 
 - Export with 1 click to json, csv, pdf, or markdown!
-
-### 📊 Reports
-
-We've added a new Report section to FeedbackFlow!
-
-- 📈 Advanced sentiment trend analysis over time for reddit
-- 🔍 Deeper insight into user engagement patterns
-- 📆 Updated automatically every week
 
 ### 🏠 Streamlined Home Experience
 

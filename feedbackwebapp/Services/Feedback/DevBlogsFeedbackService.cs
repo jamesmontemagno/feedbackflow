@@ -20,7 +20,7 @@ public class DevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackService
         if (string.IsNullOrWhiteSpace(ArticleUrl))
             throw new InvalidOperationException("DevBlogs article URL is required.");
 
-        var devBlogsCode = Configuration["FeedbackApi:GetDevBlogsFeedbackCode"] ?? throw new InvalidOperationException("DevBlogs feedback API code is required in configuration (FeedbackApi:GetDevBlogsFeedbackCode)");
+        var devBlogsCode = Configuration["FeedbackApi:FunctionsKey"] ?? throw new InvalidOperationException("DevBlogs feedback API code is required in configuration (FeedbackApi:FunctionsKey)");
         var url = $"{BaseUrl}/api/GetDevBlogsFeedback?articleUrl={Uri.EscapeDataString(ArticleUrl)}&code={Uri.EscapeDataString(devBlogsCode)}";
         var response = await Http.GetAsync(url);
         if (!response.IsSuccessStatusCode)

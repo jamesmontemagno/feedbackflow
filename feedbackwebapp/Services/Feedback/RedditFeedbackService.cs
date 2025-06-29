@@ -37,7 +37,7 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
 
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching Reddit comments...");
 
-        var redditCode = Configuration["FeedbackApi:GetRedditFeedbackCode"]
+        var redditCode = Configuration["FeedbackApi:FunctionsKey"]
             ?? throw new InvalidOperationException("Reddit API code not configured");
 
         var maxComments = await GetMaxCommentsToAnalyze();

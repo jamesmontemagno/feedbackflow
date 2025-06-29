@@ -4,9 +4,11 @@
 @using FeedbackWebApp.Components.Feedback.Forms
 @using SharedDump.Models.Reports
 @inject IReportServiceProvider ReportServiceProvider
+@inject IReportRequestService ReportRequestService
 @inject NavigationManager NavigationManager
 @inject AuthenticationService AuthService
 @inject IHistoryHelper HistoryHelper
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Reports - FeedbackFlow</PageTitle>
 
@@ -17,32 +19,52 @@
     }
     else
     {
-        <h1 class="mt-4 feedbackflow-title">Reports</h1>
-        <p class="text-muted mb-4">Reports are generated Monday morning for select communities</p>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="mt-4 feedbackflow-title mb-2">Reports</h1>
+                <p class="text-muted mb-0">Reports are generated Monday morning for select communities</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="/reports/create" class="btn btn-primary">
+                    <i class="bi bi-plus-lg me-2"></i>Create Report
+                </a>
+                <a href="/reports/manage" class="btn btn-outline-primary">
+                    <i class="bi bi-gear me-2"></i>Manage
+                </a>
+            </div>
+        </div>
         
-        @if (reports != null && reports.Any())
+        @if (reports != null && reports.Any() && HasMultipleSources)
         {
             <div class="filter-controls mb-4">
-                <div class="row g-3">
+                <div class="row g-3 align-items-start">
                     <div class="col-12 col-md-4">
                         <div class="filter-group">
-                            <label class="form-label">Source</label>
+                            <label class="form-label">
+                                <i class="bi bi-funnel me-1"></i>
+                                Source
+                            </label>
                             <div class="source-toggle-container">
                                 <div class="btn-group w-100" role="group" aria-label="Source filter">
                                     <input type="radio" class="btn-check" name="source-filter" id="source-all" autocomplete="off" 
                                            checked="@(selectedSource == "")" @onclick="@(() => SelectSource(""))">
-                                    <label class="btn btn-outline-primary" for="source-all">All</label>
+                                    <label class="btn btn-outline-primary" for="source-all">
+                                        <i class="bi bi-collection me-1"></i>
+                                        All
+                                    </label>
 
                                     <input type="radio" class="btn-check" name="source-filter" id="source-github" autocomplete="off" 
                                            checked="@(selectedSource == "github")" @onclick="@(() => SelectSource("github"))">
                                     <label class="btn btn-outline-primary" for="source-github">
-                                        <i class="bi bi-github me-1"></i> GitHub
+                                        <i class="bi bi-github me-1"></i> 
+                                        GitHub
                                     </label>
 
                                     <input type="radio" class="btn-check" name="source-filter" id="source-reddit" autocomplete="off" 
                                            checked="@(selectedSource == "reddit")" @onclick="@(() => SelectSource("reddit"))">
                                     <label class="btn btn-outline-primary" for="source-reddit">
-                                        <i class="bi bi-reddit me-1"></i> Reddit
+                                        <i class="bi bi-reddit me-1"></i> 
+                                        Reddit
                                     </label>
                                 </div>
                             </div>
@@ -52,7 +74,10 @@
                     {
                         <div class="col-12 col-md-4">
                             <div class="filter-group">
-                                <label class="form-label">SubSource</label>
+                                <label class="form-label">
+                                    <i class="bi bi-tags me-1"></i>
+                                    SubSource
+                                </label>
                                 <div class="input-group">
                                     <span class="input-group-text">
                                         <i class="bi bi-filter"></i>
@@ -81,7 +106,9 @@
                             <span class="badge filter-badge">
                                 <i class="bi @(selectedSource == "github" ? "bi-github" : "bi-reddit") me-1"></i>
                                 @selectedSource
-                                <button type="button" class="btn-close btn-close-white" aria-label="Clear source filter" @onclick="@(() => SelectSource(""))"></button>
+                                <button type="button" class="filter-badge-close" aria-label="Clear source filter" @onclick="@(() => SelectSource(""))">
+                                    <i class="bi bi-x"></i>
+                                </button>
                             </span>
                         }
                         @if (!string.IsNullOrEmpty(selectedSubSource))
@@ -89,7 +116,9 @@
                             <span class="badge filter-badge">
                                 <i class="bi bi-tag me-1"></i>
                                 @selectedSubSource
-                                <button type="button" class="btn-close btn-close-white" aria-label="Clear subsource filter" @onclick="@(() => selectedSubSource = "")"></button>
+                                <button type="button" class="filter-badge-close" aria-label="Clear subsource filter" @onclick="@(() => selectedSubSource = "")">
+                                    <i class="bi bi-x"></i>
+                                </button>
                             </span>
                         }
                     </div>
@@ -98,9 +127,11 @@
         }
         <div class="card mb-4">
             <div class="card-header">
-                <div>
-                    <i class="bi bi-file-earmark-text me-1"></i>
-                    Available Reports
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-file-earmark-text me-1"></i>
+                        My Reports
+                    </div>
                 </div>
             </div>
             <div class="card-body">
@@ -116,7 +147,6 @@
                                     <th scope="col" class="text-center">Threads</th>
                                     <th scope="col" class="d-none d-sm-table-cell text-center">Comments</th>
                                     <th scope="col" class="d-none d-lg-table-cell text-center">Period</th>
-                                    <th scope="col" class="text-end">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -141,9 +171,6 @@
                                         <td class="d-none d-lg-table-cell text-center">
                                             <div class="loading-placeholder stat-placeholder"></div>
                                         </td>
-                                        <td class="text-end">
-                                            <div class="loading-placeholder button-placeholder"></div>
-                                        </td>
                                     </tr>
                                 }
                             </tbody>
@@ -159,10 +186,20 @@
                 }
                 else if (reports == null || !reports.Any())
                 {
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-2"></i>
-                        No reports found.
-                    </div>
+                    @if (hasUserRequests)
+                    {
+                        <div class="alert alert-info">
+                            <i class="bi bi-clock me-2"></i>
+                            No reports have been generated yet for your requests. Reports are automatically generated Monday morning for active communities.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            No reports found for your requests. <a href="/reports/create" class="alert-link">Create a report request</a> to see reports here.
+                        </div>
+                    }
                 }
                 else
                 {
@@ -176,25 +213,22 @@
                                     <th scope="col" class="text-center">Threads</th>
                                     <th scope="col" class="d-none d-md-table-cell text-center">Comments</th>
                                     <th scope="col" class="d-none d-lg-table-cell text-center">Period</th>
-                                    <th scope="col" class="text-end">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach (var report in FilteredReports)
                                 {
-                                    <tr>
+                                    <tr class="clickable-row" @onclick="() => ViewReport(report.Id)" role="button" tabindex="0" 
+                                        @onkeydown="@(async (e) => { if (e.Key == "Enter" || e.Key == " ") await Task.Run(() => ViewReport(report.Id)); })"
+                                        aria-label="View report for @report.Source - @report.SubSource">
                                         <td>
-                                            <a href="/reports/@Uri.EscapeDataString(report.Source)" class="source-link text-decoration-none">
-                                                <span class="source-badge @report.Source.ToLowerInvariant()">
-                                                    <i class="bi @HistoryHelper.GetServiceIcon(report.Source) me-1"></i>
-                                                    @report.Source
-                                                </span>
-                                            </a>
+                                            <span class="source-badge @report.Source.ToLowerInvariant()">
+                                                <i class="bi @HistoryHelper.GetServiceIcon(report.Source) me-1"></i>
+                                                @report.Source
+                                            </span>
                                         </td>
                                         <td>
-                                            <a href="/reports/@Uri.EscapeDataString(report.Source)/@Uri.EscapeDataString(report.SubSource)" class="subsource-link text-decoration-none">
-                                                <span class="report-sub-source">@report.SubSource</span>
-                                            </a>
+                                            <span class="report-sub-source">@report.SubSource</span>
                                         </td>
                                         <td>
                                             <span class="report-date">
@@ -211,11 +245,6 @@
                                         <td class="d-none d-lg-table-cell text-center">
                                             <span class="stat-value">@((report.GeneratedAt - report.CutoffDate).Days) days</span>
                                         </td>
-                                        <td class="text-end">
-                                            <button class="btn btn-action" @onclick="() => ViewReport(report.Id)" aria-label="View Report">
-                                                <i class="bi bi-box-arrow-up-right"></i>
-                                            </button>
-                                        </td>
                                     </tr>
                                 }
                             </tbody>
@@ -228,13 +257,14 @@
 </div>
 
 @code {
-    private bool loading = true;
+    private bool loading = false;
     private bool isAuthenticated = false;
     private IEnumerable<ReportModel>? reports;
     private string selectedSource = "";
     private string selectedSubSource = "";
     private HashSet<string> subSources = new();
     private IReportService? _reportService;
+    private bool hasUserRequests = false;
     
     private IEnumerable<string> FilteredSubSources => 
         reports?
@@ -250,6 +280,12 @@
             (string.IsNullOrEmpty(selectedSource) || r.Source.Equals(selectedSource, StringComparison.OrdinalIgnoreCase)) &&
             (string.IsNullOrEmpty(selectedSubSource) || r.SubSource == selectedSubSource)
         ) ?? Enumerable.Empty<ReportModel>();
+
+    private bool HasMultipleSources =>
+        reports != null && 
+        reports.Select(r => r.Source.ToLowerInvariant()).Distinct().Count() > 1 &&
+        reports.Any(r => r.Source.Equals("github", StringComparison.OrdinalIgnoreCase)) &&
+        reports.Any(r => r.Source.Equals("reddit", StringComparison.OrdinalIgnoreCase));
         
     private void SelectSource(string source)
     {
@@ -276,12 +312,31 @@
     private string? errorMessage;
     private async Task LoadReports()
     {
+        if(loading)
+            return;
+            
         try
         {
+
             loading = true;
             errorMessage = null;
-            reports = await _reportService!.ListReportsAsync();
-            // We'll keep this for backwards compatibility
+            
+            // Get user's report requests from IndexedDB
+            var userRequests = await JSRuntime.InvokeAsync<object[]>("window.indexedDbModule.getAllReportRequests") ?? Array.Empty<object>();
+            hasUserRequests = userRequests.Any();
+            
+            if (hasUserRequests)
+            {
+                // Filter reports based on user requests and sort by latest first
+                var filteredReports = await ReportRequestService.FilterReportsAsync(userRequests);
+                reports = filteredReports.OrderByDescending(r => r.GeneratedAt);
+            }
+            else
+            {
+                // No user requests, show empty list to encourage creating requests
+                reports = Enumerable.Empty<ReportModel>();
+            }
+            
             subSources = reports.Select(r => r.SubSource).ToHashSet();
         }
         catch (Exception ex)

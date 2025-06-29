@@ -31,24 +31,6 @@ public static class GitHubIssuesUtils
             .ToList();
     }
 
-    /// <summary>
-    /// Gets the oldest issues that are still being actively discussed (high engagement)
-    /// </summary>
-    /// <param name="issues">List of GitHub issue summaries</param>
-    /// <param name="topCount">Number of oldest important issues to return</param>
-    /// <returns>Oldest issues with high engagement</returns>
-    public static List<GithubIssueSummary> GetOldestImportantIssues(List<GithubIssueSummary> issues, int topCount = 3)
-    {
-        // Only consider open issues that have decent engagement (at least 2 comments or 1 reaction)
-        var minEngagement = 2;
-        
-        return issues
-            .Where(i => i.State.Equals("OPEN", StringComparison.OrdinalIgnoreCase))
-            .Where(i => (i.CommentsCount + i.ReactionsCount) >= minEngagement)
-            .OrderBy(i => i.CreatedAt) // Oldest first
-            .Take(topCount)
-            .ToList();
-    }
 
     /// <summary>
     /// Analyzes issue titles to identify common keywords and trends
@@ -242,13 +224,13 @@ public static class GitHubIssuesUtils
         emailBuilder.AppendLine(@"
     </div>");
 
-        // Oldest Important Issues Section
+        // Oldest Important Issues with Recent Activity Section
         if (oldestImportantIssues.Any())
         {
             emailBuilder.AppendLine(@"
     <div class='section'>
-        <h2>⏰ Oldest Important Issues Still Being Discussed</h2>
-        <p style='color: #7c7c7c; margin-bottom: 15px;'>These are the oldest open issues that are still receiving attention from the community:</p>");
+        <h2>⏰ Oldest Important Issues with Recent Activity</h2>
+        <p style='color: #7c7c7c; margin-bottom: 15px;'>These are older open issues that are still receiving recent attention from the community:</p>");
 
             foreach (var issue in oldestImportantIssues)
             {

@@ -14,8 +14,28 @@ public class MockGitHubService : IGitHubService
         // Simulate network delay
         await Task.Delay(100);
         
-        // Always return true for mock service
-        return true;
+        // Return false for invalid inputs
+        if (string.IsNullOrWhiteSpace(repoOwner) || string.IsNullOrWhiteSpace(repoName))
+            return false;
+        
+        // Mock some known valid repositories
+        var validRepos = new[]
+        {
+            ("microsoft", "vscode"),
+            ("dotnet", "runtime"),
+            ("dotnet", "aspnetcore"),
+            ("dotnet", "maui"),
+            ("github", "docs"),
+            ("facebook", "react"),
+            ("nodejs", "node"),
+            ("angular", "angular"),
+            ("vercel", "next.js"),
+            ("vuejs", "vue")
+        };
+        
+        return validRepos.Any(repo => 
+            repo.Item1.Equals(repoOwner, StringComparison.OrdinalIgnoreCase) &&
+            repo.Item2.Equals(repoName, StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task<List<GithubDiscussionModel>> GetDiscussionsAsync(string repoOwner, string repoName)
@@ -359,5 +379,57 @@ public class MockGitHubService : IGitHubService
         // Filter to only include issues that would match GitHub's search criteria
         // GitHub's "created:>YYYY-MM-DD" filter would exclude older issues server-side
         return recentIssues.Where(issue => issue.CreatedAt >= cutoffDate).ToList();
+    }
+
+    /// <summary>
+    /// Gets the oldest important issues that have recent comment activity - mock implementation
+    /// </summary>
+    public async Task<List<GithubIssueSummary>> GetOldestImportantIssuesWithRecentActivityAsync(string repoOwner, string repoName, int recentDays = 7, int topCount = 3)
+    {
+        // Simulate network delay
+        await Task.Delay(600);
+
+        // Simulate old issues that have had recent comment activity
+        var oldImportantIssues = new List<GithubIssueSummary>
+        {
+            new()
+            {
+                Id = "old-issue-123",
+                Title = "Long-standing performance issue with large datasets",
+                State = "open",
+                CreatedAt = DateTime.UtcNow.AddDays(-180), // 6 months old
+                Author = "poweruser",
+                Labels = new[] { "performance", "bug", "needs-investigation" },
+                CommentsCount = 15,
+                ReactionsCount = 8,
+                Url = $"https://github.com/{repoOwner}/{repoName}/issues/123"
+            },
+            new()
+            {
+                Id = "old-issue-89",
+                Title = "API versioning strategy discussion",
+                State = "open",
+                CreatedAt = DateTime.UtcNow.AddDays(-120), // 4 months old
+                Author = "architect",
+                Labels = new[] { "api", "breaking-change", "discussion" },
+                CommentsCount = 22,
+                ReactionsCount = 12,
+                Url = $"https://github.com/{repoOwner}/{repoName}/issues/89"
+            },
+            new()
+            {
+                Id = "old-issue-67",
+                Title = "Security vulnerability in authentication flow",
+                State = "open",
+                CreatedAt = DateTime.UtcNow.AddDays(-90), // 3 months old
+                Author = "security-researcher",
+                Labels = new[] { "security", "critical", "authentication" },
+                CommentsCount = 18,
+                ReactionsCount = 25,
+                Url = $"https://github.com/{repoOwner}/{repoName}/issues/67"
+            }
+        };
+
+        return oldImportantIssues.Take(topCount).ToList();
     }
 }

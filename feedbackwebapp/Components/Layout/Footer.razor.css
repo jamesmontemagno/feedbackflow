@@ -16,12 +16,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-wrap: nowrap;
     max-width: var(--max-width, 1200px);
     width: 100%;
     margin: 0 auto;
     padding: 1rem 2rem;
-    height: 70px;
+    min-height: 60px;
 }
 
 .copyright {
@@ -32,8 +31,8 @@
 
 .footer-links {
     display: flex;
-    gap: 2.5rem;
     align-items: center;
+    gap: 2rem;
 }
 
 .footer-links a {
@@ -51,23 +50,61 @@
     background-color: rgba(var(--primary-color-rgb), 0.1);
 }
 
+.coffee-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--primary-color) !important;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem !important;
+    padding: 0.5rem 1rem !important;
+    background-color: rgba(var(--primary-color-rgb), 0.1);
+    border: 1.5px solid var(--primary-color);
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.coffee-link:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.2);
+    background-color: rgba(var(--primary-color-rgb), 0.15);
+    color: var(--primary-color) !important;
+}
+
+.coffee-link i {
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
 @media (max-width: 768px) {
     .footer-content {
-        height: auto;
-        padding: 1.5rem 1rem;
         flex-direction: column;
-        gap: 0.75rem;
-    }
-
-    .footer-links {
         gap: 1rem;
-        flex-wrap: wrap;
-        justify-content: center;
+        padding: 1.5rem 1rem;
+        text-align: center;
     }
 
     .copyright {
-        text-align: center;
-        margin-right: 0;
-        margin-bottom: 0.75rem;
+        order: 2;
+        margin: 0;
+    }
+
+    .footer-links {
+        order: 1;
+        flex-direction: column;
+        gap: 0.75rem;
+        width: 100%;
+    }
+
+    .coffee-link {
+        font-size: 0.85rem !important;
+        padding: 0.4rem 0.8rem !important;
+        align-self: center;
+    }
+
+    .footer-links a:not(.coffee-link) {
+        font-size: 0.85rem;
     }
 }

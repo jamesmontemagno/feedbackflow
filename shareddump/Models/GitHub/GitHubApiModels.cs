@@ -201,3 +201,45 @@ public class GithubDiscussionQuery
         public string? After { get; set; }
     }
 }
+
+public class GithubSingleIssueQuery
+{
+    public required string Query { get; set; }
+    public required SingleIssueQueryVariables Variables { get; set; }
+
+    public class SingleIssueQueryVariables
+    {
+        public required string Owner { get; set; }
+        public required string Name { get; set; }
+        public string? After { get; set; }
+        public required int IssueNumber { get; set; }
+    }
+}
+
+public class GithubSinglePullRequestQuery
+{
+    public required string Query { get; set; }
+    public required SinglePullRequestQueryVariables Variables { get; set; }
+
+    public class SinglePullRequestQueryVariables
+    {
+        public required string Owner { get; set; }
+        public required string Name { get; set; }
+        public string? After { get; set; }
+        public required int PullNumber { get; set; }
+    }
+}
+
+public class GithubSingleDiscussionQuery
+{
+    public required string Query { get; set; }
+    public required SingleDiscussionQueryVariables Variables { get; set; }
+
+    public class SingleDiscussionQueryVariables
+    {
+        public required string Owner { get; set; }
+        public required string Name { get; set; }
+        public string? After { get; set; }
+        public required int DiscussionNumber { get; set; }
+    }
+}

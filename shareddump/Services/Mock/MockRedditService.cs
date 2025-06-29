@@ -297,4 +297,14 @@ public class MockRedditService : IRedditService
             }
         };
     }
+
+    // Validation method
+    public async Task<bool> CheckSubredditValid(string subreddit)
+    {
+        await Task.Delay(100); // Simulate API delay
+        
+        // Mock valid subreddits - return true for the ones we have mock data for
+        var validSubreddits = new[] { "dotnet", "programming", "webdev", "csharp", "github" };
+        return validSubreddits.Contains(subreddit.ToLowerInvariant());
+    }
 }

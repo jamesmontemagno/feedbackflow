@@ -29,7 +29,7 @@ public class BlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackService
 
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching BlueSky feedback...");
 
-        var blueSkyCode = Configuration["FeedbackApi:GetBlueSkyFeedbackCode"]
+        var blueSkyCode = Configuration["FeedbackApi:FunctionsKey"]
             ?? throw new InvalidOperationException("BlueSky API code not configured");
 
         var maxComments = await GetMaxCommentsToAnalyze();
