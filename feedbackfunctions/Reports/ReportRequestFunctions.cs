@@ -28,7 +28,8 @@ public class ReportRequestFunctions
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
     private readonly ReportGenerator _reportGenerator;
     private readonly IReportCacheService _cacheService;
-    private readonly HttpClient _httpClient;
+    private readonly IRedditService _redditService;
+    private readonly IGitHubService _githubService;
 
     public ReportRequestFunctions(
         ILogger<ReportRequestFunctions> logger,
@@ -48,10 +49,8 @@ public class ReportRequestFunctions
 #endif
         _logger = logger;
         _cacheService = cacheService;
-        
-        // Initialize HTTP client for URL checking
-        _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "FeedbackFlow-Validator/1.0");
+        _redditService = redditService;
+        _githubService = githubService;
         
         // Initialize table client
         var storageConnection = _configuration["AzureWebJobsStorage"] ?? throw new InvalidOperationException("Storage connection string not configured");
@@ -124,12 +123,11 @@ public class ReportRequestFunctions
                     return validationResponse;
                 }
 
-                // Check if subreddit URL exists
-                var subredditUrl = UrlValidationService.ConstructRedditUrl(request.Subreddit);
-                var urlExists = await CheckUrlExistsAsync(subredditUrl);
-                if (!urlExists)
+                // Check if subreddit is valid using Reddit API
+                var subredditExists = await _redditService.CheckSubredditValid(request.Subreddit);
+                if (!subredditExists)
                 {
-                    _logger.LogWarning("Subreddit URL does not exist: {Url}. Request will be processed but report generation may fail.", subredditUrl);
+                    _logger.LogWarning("Subreddit does not exist or is not accessible: {Subreddit}. Request will be processed but report generation may fail.", request.Subreddit);
                 }
             }
             else if (request.Type == "github")
@@ -159,12 +157,11 @@ public class ReportRequestFunctions
                     return validationResponse;
                 }
 
-                // Check if GitHub repository URL exists
-                var githubUrl = UrlValidationService.ConstructGitHubUrl(request.Owner, request.Repo);
-                var urlExists = await CheckUrlExistsAsync(githubUrl);
-                if (!urlExists)
+                // Check if GitHub repository is valid using GitHub API
+                var repoExists = await _githubService.CheckRepositoryValid(request.Owner, request.Repo);
+                if (!repoExists)
                 {
-                    _logger.LogWarning("GitHub repository URL does not exist: {Url}. Request will be processed but report generation may fail.", githubUrl);
+                    _logger.LogWarning("GitHub repository does not exist or is not accessible: {Owner}/{Repo}. Request will be processed but report generation may fail.", request.Owner, request.Repo);
                 }
             }
             else
@@ -385,29 +382,4 @@ public class ReportRequestFunctions
         return parts.Length > 0 ? parts[0] : "unknown";
     }
 
-    /// <summary>
-    /// Check if a URL exists by making a HEAD request
-    /// </summary>
-    private async Task<bool> CheckUrlExistsAsync(string url)
-    {
-        try
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Head, url);
-            using var response = await _httpClient.SendAsync(request);
-            
-            // Consider 2xx and 3xx status codes as "exists"
-            // GitHub might return 429 for rate limiting, treat that as exists too
-            return response.IsSuccessStatusCode || 
-                   response.StatusCode == HttpStatusCode.Redirect ||
-                   response.StatusCode == HttpStatusCode.MovedPermanently ||
-                   response.StatusCode == HttpStatusCode.Found ||
-                   response.StatusCode == HttpStatusCode.TooManyRequests;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error checking URL existence: {Url}", url);
-            // If we can't check, assume it exists to avoid false negatives
-            return true;
-        }
-    }
 }
