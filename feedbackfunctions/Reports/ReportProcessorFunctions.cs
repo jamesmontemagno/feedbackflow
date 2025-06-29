@@ -62,6 +62,45 @@ public class ReportProcessorFunctions
         _reportGenerator = new ReportGenerator(_logger, redditService, githubService, analyzerService, reportsContainerClient, _cacheService);
     }
 
+    /// <summary>
+    /// Checks if there's a recent report (within last 24 hours) for the given source and subsource.
+    /// </summary>
+    /// <param name="source">The report source (e.g., "reddit", "github")</param>
+    /// <param name="subSource">The report subsource (e.g., subreddit name, repo name)</param>
+    /// <returns>The most recent report if found within 24 hours, otherwise null</returns>
+    private async Task<ReportModel?> GetRecentReportAsync(string source, string subSource)
+    {
+        try
+        {
+            _logger.LogDebug("Checking for recent reports with source '{Source}' and subsource '{SubSource}'", source, subSource);
+            
+            var reports = await _cacheService.GetReportsAsync(source, subSource);
+            var cutoff = DateTimeOffset.UtcNow.AddHours(-24);
+            
+            var recentReport = reports
+                .Where(r => r.GeneratedAt >= cutoff)
+                .OrderByDescending(r => r.GeneratedAt)
+                .FirstOrDefault();
+
+            if (recentReport != null)
+            {
+                _logger.LogInformation("Found recent report {ReportId} generated at {GeneratedAt} for {Source}/{SubSource}", 
+                    recentReport.Id, recentReport.GeneratedAt, source, subSource);
+            }
+            else
+            {
+                _logger.LogDebug("No recent report found for {Source}/{SubSource}", source, subSource);
+            }
+
+            return recentReport;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error checking for recent reports for {Source}/{SubSource}. Will proceed with generating new report.", source, subSource);
+            return null;
+        }
+    }
+
       /// <summary>
     /// Generates a comprehensive report of a subreddit's threads and comments
     /// </summary>
@@ -100,8 +139,22 @@ public class ReportProcessorFunctions
 
         try
         {
-            var cutoffDate = DateTimeOffset.UtcNow.AddDays(-7);
-            var report = await _reportGenerator.GenerateRedditReportAsync(subreddit, cutoffDate);
+            // First, check if we have a recent report (last 24 hours)
+            var recentReport = await GetRecentReportAsync("reddit", subreddit);
+            ReportModel report;
+
+            if (recentReport != null)
+            {
+                _logger.LogInformation("Using existing report {ReportId} for r/{Subreddit} generated {TimeSinceGeneration} ago", 
+                    recentReport.Id, subreddit, DateTime.UtcNow - recentReport.GeneratedAt);
+                report = recentReport;
+            }
+            else
+            {
+                _logger.LogInformation("No recent report found for r/{Subreddit}, generating new report", subreddit);
+                var cutoffDate = DateTimeOffset.UtcNow.AddDays(-7);
+                report = await _reportGenerator.GenerateRedditReportAsync(subreddit, cutoffDate);
+            }
 
             var processingTime = DateTime.UtcNow - startTime;
             _logger.LogInformation("Reddit Report processing completed for r/{Subreddit} in {ProcessingTime:c}", 
@@ -172,7 +225,21 @@ public class ReportProcessorFunctions
 
         try
         {
-            var report = await _reportGenerator.GenerateGitHubReportAsync(repoOwner, repoName, days);
+            // First, check if we have a recent report (last 24 hours)
+            var recentReport = await GetRecentReportAsync("github", repo);
+            ReportModel report;
+
+            if (recentReport != null)
+            {
+                _logger.LogInformation("Using existing report {ReportId} for {RepoOwner}/{RepoName} generated {TimeSinceGeneration} ago", 
+                    recentReport.Id, repoOwner, repoName, DateTime.UtcNow - recentReport.GeneratedAt);
+                report = recentReport;
+            }
+            else
+            {
+                _logger.LogInformation("No recent report found for {RepoOwner}/{RepoName}, generating new report", repoOwner, repoName);
+                report = await _reportGenerator.GenerateGitHubReportAsync(repoOwner, repoName, days);
+            }
 
             var processingTime = DateTime.UtcNow - startTime;
             _logger.LogInformation("GitHub Issues Report processing completed for {RepoOwner}/{RepoName} in {ProcessingTime:c}", 
