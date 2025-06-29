@@ -106,23 +106,9 @@ To use FeedbackFlow, ensure you have the following:
    dotnet build
    ```
 
-### Running the Web Application
+### Running the Application
 
-1. Navigate to the web app directory:
-   ```bash
-   cd feedbackwebapp
-   ```
-
-2. Run the application:
-   ```bash
-   dotnet run
-   ```
-
-3. Open your browser to `https://localhost:7154` (or the URL shown in the terminal)
-
-### Running with .NET Aspire (Recommended for Development)
-
-For the full development experience with orchestration:
+The easiest way to run FeedbackFlow is using .NET Aspire, which orchestrates both the web application and Azure Functions:
 
 1. Navigate to the AppHost directory:
    ```bash
@@ -134,7 +120,7 @@ For the full development experience with orchestration:
    dotnet run
    ```
 
-This will start both the web application and Azure Functions locally with proper service discovery.
+This will start both the web application and Azure Functions locally with proper service discovery and monitoring. You will be prompted to enter API keys for the Azure Function to you on startup for the first time or you can enter them later on the ... menu.
 
 ### Command-Line Tools Usage
 
@@ -230,11 +216,32 @@ Set up the following environments:
 - **Production**: `https://feedbackflow.app`
 - **Staging**: `https://staging.feedbackflow.app` (deployed on PR creation)
 
-## Azure Functions Configuration
+## API Keys and Configuration
 
-### Local Development Setup
+FeedbackFlow can run in **mock mode** for testing without requiring API keys. When running in debug mode without configured keys, the application will automatically use mock data.
 
-To run the Azure Functions project locally, you'll need to configure the `local.settings.json` file in the `feedbackfunctions` directory. Create the file with the following structure:
+### Mock Mode (No Keys Required)
+- **Hacker News**: Works without keys in all modes
+- **Dev Blogs**: Works without keys in all modes  
+- **Other Sources**: Use mock data when keys are not configured in debug mode
+
+### Production API Keys (Optional for Testing)
+
+If you want to test with real data, configure the following keys in your `local.settings.json` or ideally User Secrets:
+
+#### Required for Real Data Collection:
+- **GitHub Personal Access Token**: For GitHub issues, discussions, and pull requests
+- **YouTube API Key**: For YouTube video comments
+- **Azure OpenAI**: For AI-powered sentiment analysis and insights
+
+#### Optional:
+- **Reddit Client ID/Secret**: For Reddit posts and comments
+- **Twitter Bearer Token**: For Twitter/X data collection
+- **BlueSky Credentials**: For BlueSky social media integration
+
+### Configuration File
+
+Create `feedbackfunctions/local.settings.json` or just the values in user secretes for production keys:
 
 ```json
 {
@@ -242,70 +249,28 @@ To run the Azure Functions project locally, you'll need to configure the `local.
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
-    "GitHub:AccessToken": "your_github_pat_here",
-    "YouTube:ApiKey": "your_youtube_api_key_here",
-    "Azure:OpenAI:Endpoint": "your_azure_openai_endpoint",
-    "Azure:OpenAI:ApiKey": "your_azure_openai_key",
-    "Azure:OpenAI:Deployment": "your_model_deployment_name"
+    "AzureWebJobsSecretStorageType": "files",
+    "YouTube:ApiKey": "",
+    "Reddit:ClientId": "",
+    "Reddit:ClientSecret": "",
+    "GitHub:AccessToken": "",
+    "Azure:OpenAI:Endpoint": "",
+    "Azure:OpenAI:ApiKey": "",
+    "Azure:OpenAI:Deployment": "",
+    "Twitter:BearerToken": "",
+    "BlueSky:Username": "",
+    "BlueSky:AppPassword": "",
+    "Mastodon:AccessToken": "",
+    "Mastodon:ClientKey": "",
+    "Mastodon:ClientSecret": "",
+    "UseMocks": false
   }
 }
 ```
 
-### Required API Keys and Configuration
+> **Note**: Without this configuration file, the application will run in mock mode, which is perfect for testing and development.
 
-1. **GitHub Personal Access Token (PAT)**
-   - Create a GitHub PAT with `repo` scope
-   - Set it in `GitHub:AccessToken`
-
-2. **YouTube API Key**
-   - Create a project in Google Cloud Console
-   - Enable YouTube Data API v3
-   - Create API credentials
-   - Set the key in `YouTube:ApiKey`
-
-3. **Azure OpenAI Configuration**
-   - Create an Azure OpenAI resource
-   - Set the endpoint URL in `Azure:OpenAI:Endpoint`
-   - Set the API key in `Azure:OpenAI:ApiKey`
-   - Deploy a model and set its name in `Azure:OpenAI:Deployment`
-
-4. **Azure Storage Emulator**
-   - Install Azure Storage Emulator for local development
-   - The default connection string is already set in `AzureWebJobsStorage`
-
-### Running the Functions
-
-After configuring the settings:
-
-```bash
-cd feedbackfunctions
-func start
-```
-
-> Note: Keep your API keys and tokens secure and never commit them to source control.
-
-## Azure Functions local.settings.json
-
-You will need the following:
-```json
-{
-   "IsEncrypted": false,
-   "Values": {
-      "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-      "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated"
-   },
-   "YouTube:ApiKey": "YOUR_API_KEY_HERE",
-   "Reddit:ClientId": "YOUR_REDDIT_CLIENT_ID",
-   "Reddit:ClientSecret": "YOUR_REDDIT_CLIENT_SECRET", 
-   "GitHub:AccessToken": "YOUR_ACCESS_TOKEN_HERE",
-   "Azure:OpenAI:Endpoint": "YOUR_AZURE_OPENAI_ENDPOINT",
-   "Azure:OpenAI:ApiKey": "YOUR_AZURE_OPENAI_API_KEY",
-   "Azure:OpenAI:Deployment": "YOUR_DEPLOYMENT_NAME",
-   "Twitter:BearerToken": "YOUR_TWITTER_BEARER_TOKEN",
-   "BlueSky:Username": "YOUR_BLUESKY_USERNAME",
-   "BlueSky:AppPassword": "YOUR_BLUESKY_APP_PASSWORD"
-}
-```
+> **IMPORTANT**: Do not check these into source control!
 
 ## License
 

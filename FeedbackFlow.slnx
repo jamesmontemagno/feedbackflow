@@ -4,10 +4,6 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Folder Name="/Aspire/">
-    <Project Path="FeedbackFlow.AppHost/FeedbackFlow.AppHost.csproj" />
-    <Project Path="FeedbackFlow.ServiceDefaults/FeedbackFlow.ServiceDefaults.csproj" />
-  </Folder>
   <Folder Name="/CLI/">
     <Project Path="ghdump/ghdump.csproj" />
     <Project Path="hndump/hndump.csproj" />
@@ -26,9 +22,11 @@
     <File Path="GitVersion.yml" />
     <File Path="README.md" />
   </Folder>
-  <Project Path="feedbackflow.tests/feedbackflow.tests.csproj" />
-  <Project Path="feedbackfunctions/feedbackfunctions.csproj" />
-  <Project Path="feedbackmcp/feedbackmcp.csproj" />
-  <Project Path="feedbackwebapp/feedbackwebapp.csproj" />
-  <Project Path="shareddump/shareddump.csproj" />
+  <Project Path="FeedbackFlow.AppHost/AppHost.csproj" />
+  <Project Path="FeedbackFlow.ServiceDefaults/ServiceDefaults.csproj" />
+  <Project Path="feedbackflow.tests/Tests.csproj" />
+  <Project Path="feedbackfunctions/Functions.csproj" />
+  <Project Path="feedbackmcp/McpServer.csproj" />
+  <Project Path="feedbackwebapp/WebApp.csproj" />
+  <Project Path="shareddump/Shared.csproj" />
 </Solution>

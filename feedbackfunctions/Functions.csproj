@@ -24,8 +24,8 @@
     <PackageReference Include="Markdig" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\FeedbackFlow.ServiceDefaults\FeedbackFlow.ServiceDefaults.csproj" />
-    <ProjectReference Include="..\shareddump\shareddump.csproj" />
+    <ProjectReference Include="..\FeedbackFlow.ServiceDefaults\ServiceDefaults.csproj" />
+    <ProjectReference Include="..\shareddump\Shared.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">

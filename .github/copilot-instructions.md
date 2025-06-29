@@ -4,43 +4,54 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 
 ## Core Commands
 
-### Build & Test
-- **Build solution**: `dotnet build FeedbackFlow.slnx --configuration Release`
-- **Restore packages**: `dotnet restore FeedbackFlow.slnx`
-- **Run tests**: `dotnet test FeedbackFlow.slnx --configuration Release`
-- **Single test file**: `dotnet test feedbackflow.tests/[TestFileName].cs`
+### Building and Testing
+- **Build entire solution**: `dotnet build FeedbackFlow.slnx --configuration Release`
+- **Run all tests**: `dotnet test FeedbackFlow.slnx --configuration Release`
+- **Run specific test project**: `dotnet test feedbackflow.tests/Tests.csproj`
+- **Run single test class**: `dotnet test feedbackflow.tests/Tests.csproj --filter ClassName=GitHubUrlParserTests`
+- **Restore dependencies**: `dotnet restore FeedbackFlow.slnx`
 
-### Development
-- **Run web app**: `cd feedbackwebapp && dotnet run`
-- **Run with Aspire**: `cd FeedbackFlow.AppHost && dotnet run`
-- **Run Azure Functions**: `cd feedbackfunctions && func start` (requires Azure Functions Core Tools)
-- **CLI tools**: `cd [ghdump|ytdump|rddump|hndump] && dotnet run -- [args]`
+### Development Workflow
+- **Run full application** (recommended): `cd FeedbackFlow.AppHost && dotnet run`
+- **Build functions only**: Available as VS Code task "build (functions)"
+- **Run functions standalone**: Available as VS Code task with func host
+- **Clean build**: Available as VS Code task "clean (functions)"
 
-### Available VS Code Tasks
-- `clean (functions)`, `build (functions)`, `publish (functions)` - Azure Functions build pipeline
-- `func: 4` - Background task to start Azure Functions with auto-rebuild
+### CLI Data Collection Tools
+- **GitHub**: `cd ghdump && dotnet run -- -r owner/repository`
+- **YouTube**: `cd ytdump && dotnet run -- -v video-id -o output.json`
+- **Reddit**: `cd rddump && dotnet run -- -u reddit-url`
+- **Hacker News**: `cd hndump && dotnet run -- -i story-id`
 
-## Architecture
+## Architecture Overview
 
-### High-Level Components
-- **feedbackwebapp** - Blazor Server app (.NET 9) with real-time UI, authentication, theming
-- **feedbackfunctions** - Azure Functions (.NET 9) providing serverless backend APIs
-- **shareddump** - Shared library with models, services, and business logic
-- **CLI tools** - Data collection utilities for GitHub, YouTube, Reddit, Hacker News
-- **FeedbackFlow.AppHost** - .NET Aspire orchestration for local development
+### Tech Stack
+- **.NET 9** with C# latest features, file-scoped namespaces
+- **Blazor Server** for interactive web UI with real-time updates
+- **Azure Functions** (.NET 9) for serverless backend APIs
+- **.NET Aspire** for local orchestration and service discovery
+- **Bootstrap** + custom CSS variables for responsive theming
 
-### Major External Dependencies
-- **Azure Services**: Blob Storage, Tables, OpenAI, Functions, App Service
-- **APIs**: GitHub (repos, issues, PRs), YouTube Data API v3, Reddit API
-- **AI**: Azure OpenAI for sentiment analysis and content processing
-- **UI**: Bootstrap 5, Bootstrap Icons, custom CSS variables for theming
-- **Data**: JSON serialization, CSV export, PDF reports (QuestPDF), Markdown processing
+### Core Projects
+- **feedbackwebapp** (WebApp.csproj): Main Blazor Server application
+- **feedbackfunctions** (Functions.csproj): Azure Functions backend APIs
+- **shareddump** (Shared.csproj): Shared models, services, utilities
+- **FeedbackFlow.AppHost** (AppHost.csproj): .NET Aspire orchestration
+- **feedbackflow.tests** (Tests.csproj): MSTest unit/integration tests
 
-### Data Flow
-1. CLI tools collect data from external APIs → JSON files
-2. Web app uploads data → Azure Functions process and analyze
-3. Functions use Azure OpenAI for sentiment analysis → store in Blob/Tables
-4. Web app displays results with caching and sharing capabilities
+### CLI Collection Tools
+- **ghdump**: GitHub issues, PRs, discussions collector
+- **ytdump**: YouTube video comments collector  
+- **rddump**: Reddit posts and comments collector
+- **hndump**: Hacker News stories and comments collector
+
+### External Integrations
+- **Azure OpenAI**: Sentiment analysis and AI insights
+- **GitHub API**: Issues, PRs, discussions data
+- **YouTube Data API**: Video comments collection
+- **Reddit API**: Posts and comments
+- **Hacker News API**: Stories and discussions
+- **Azure Storage**: File/blob storage for reports and caching
 
 ## Project Structure
 - **feedbackflow.tests** - MSTest unit tests for shared logic and service integrations

@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <Sdk Name="Aspire.AppHost.Sdk" Version="9.3.0" />
+  <Sdk Name="Aspire.AppHost.Sdk" Version="9.4.0-preview.1.25327.4" />
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -13,11 +13,12 @@
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" />
     <PackageReference Include="Aspire.Hosting.Azure.Functions" />
+    <PackageReference Include="Aspire.Hosting.Azure.Storage" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\feedbackfunctions\feedbackfunctions.csproj" />
-    <ProjectReference Include="..\feedbackwebapp\feedbackwebapp.csproj" />
+    <ProjectReference Include="..\feedbackfunctions\Functions.csproj" />
+    <ProjectReference Include="..\feedbackwebapp\WebApp.csproj" />
   </ItemGroup>
 
 </Project>

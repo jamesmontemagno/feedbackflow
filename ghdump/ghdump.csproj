@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\shareddump\shareddump.csproj" />
+    <ProjectReference Include="..\shareddump\Shared.csproj" />
   </ItemGroup>
 
 </Project>
