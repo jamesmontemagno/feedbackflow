@@ -164,7 +164,6 @@ public class RedditSubredditInfo
     public string Title { get; set; } = "";
     public string PublicDescription { get; set; } = "";
     public string Description { get; set; } = "";
-    public long? CreatedUtc { get; set; }
     public int Subscribers { get; set; }
     public int AccountsActive { get; set; }
     public bool Over18 { get; set; }
@@ -182,9 +181,6 @@ public class RedditSubredditData
     public string PublicDescription { get; set; } = "";
     
     public string Description { get; set; } = "";
-    
-    [JsonPropertyName("created_utc")]
-    public long? CreatedUtc { get; set; }
     
     public int Subscribers { get; set; }
     

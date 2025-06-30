@@ -309,7 +309,6 @@ public class MockRedditService : IRedditService
             Title = $"r/{subreddit}",
             PublicDescription = $"Mock public description for r/{subreddit}",
             Description = $"Mock description for r/{subreddit} - This is a mock subreddit for testing purposes.",
-            CreatedUtc = null, // Ignore created date as requested
             Subscribers = subreddit.ToLowerInvariant() switch
             {
                 "dotnet" => 156234,

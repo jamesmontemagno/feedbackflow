@@ -223,7 +223,6 @@ public sealed class RedditService : IDisposable
             Title = subredditResponse.Data.Title,
             PublicDescription = subredditResponse.Data.PublicDescription,
             Description = subredditResponse.Data.Description,
-            CreatedUtc = subredditResponse.Data.CreatedUtc,
             Subscribers = subredditResponse.Data.Subscribers,
             AccountsActive = subredditResponse.Data.AccountsActive,
             Over18 = subredditResponse.Data.Over18,
