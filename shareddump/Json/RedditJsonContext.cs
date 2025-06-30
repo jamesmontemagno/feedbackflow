@@ -12,4 +12,6 @@ namespace SharedDump.Json;
 [JsonSerializable(typeof(RedditCommentData))]
 [JsonSerializable(typeof(RedditThreadModel))]
 [JsonSerializable(typeof(RedditCommentModel[]))]
+[JsonSerializable(typeof(RedditSubredditResponse))]
+[JsonSerializable(typeof(RedditSubredditData))]
 public partial class RedditJsonContext : JsonSerializerContext { }

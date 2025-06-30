@@ -298,6 +298,31 @@ public class MockRedditService : IRedditService
         };
     }
 
+    public async Task<RedditSubredditInfo> GetSubredditInfo(string subreddit)
+    {
+        await Task.Delay(150); // Simulate API delay
+        
+        // Return mock subreddit info based on the subreddit name
+        return new RedditSubredditInfo
+        {
+            DisplayName = subreddit,
+            Title = $"r/{subreddit}",
+            PublicDescription = $"Mock public description for r/{subreddit}",
+            Description = $"Mock description for r/{subreddit} - This is a mock subreddit for testing purposes.",
+            Subscribers = subreddit.ToLowerInvariant() switch
+            {
+                "dotnet" => 156234,
+                "programming" => 4567890,
+                "webdev" => 1234567,
+                "csharp" => 234567,
+                "github" => 345678,
+                _ => 50000
+            },
+            Over18 = false,
+            SubredditType = "public"
+        };
+    }
+
     // Validation method
     public async Task<bool> CheckSubredditValid(string subreddit)
     {

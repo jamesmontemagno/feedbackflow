@@ -61,6 +61,12 @@ public class ReportGenerator
             var threads = await _redditService.GetSubredditThreadsBasicInfo(subreddit, "hot", actualCutoffDate);
             _logger.LogInformation("Retrieved {ThreadCount} threads from r/{Subreddit}", threads.Count, subreddit);
 
+            // Fetch subreddit statistics
+            _logger.LogInformation("Fetching subreddit statistics for r/{Subreddit}", subreddit);
+            var subredditInfo = await _redditService.GetSubredditInfo(subreddit);
+            _logger.LogInformation("Retrieved subreddit info: {Subscribers} subscribers", 
+                subredditInfo.Subscribers);
+
             var topThreads = threads
                 .OrderByDescending(t => (t.NumComments * 0.7) + (t.Score * 0.3))
                 .Take(5)
@@ -145,13 +151,23 @@ Keep each section very brief and focused. Total analysis should be no more than 
             };
 
             _logger.LogInformation("Generating HTML email report");
+            
+            // Calculate additional stats
+            var totalUpvotes = threads.Sum(t => t.Score);
+            var newThreadsCount = threads.Count;
+            var totalCommentsCount = threads.Sum(t => t.NumComments);
+            
             var emailHtml = EmailUtils.GenerateRedditReportEmail(
                 subreddit, 
                 actualCutoffDate, 
                 weeklyAnalysis, 
                 threadAnalyses, 
                 topComments,
-                report.Id.ToString());
+                report.Id.ToString(),
+                subredditInfo, 
+                newThreadsCount, 
+                totalCommentsCount, 
+                totalUpvotes);
 
             var processingTime = DateTime.UtcNow - startTime;
             _logger.LogInformation("Reddit Report generation completed for r/{Subreddit} in {ProcessingTime:c}. Analyzed {ThreadCount} threads and {CommentCount} comments", 
