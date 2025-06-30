@@ -165,7 +165,6 @@ public class RedditSubredditInfo
     public string PublicDescription { get; set; } = "";
     public string Description { get; set; } = "";
     public int Subscribers { get; set; }
-    public int AccountsActive { get; set; }
     public bool Over18 { get; set; }
     public string SubredditType { get; set; } = "";
 }
@@ -183,9 +182,6 @@ public class RedditSubredditData
     public string Description { get; set; } = "";
     
     public int Subscribers { get; set; }
-    
-    [JsonPropertyName("accounts_active")]
-    public int AccountsActive { get; set; }
     
     public bool Over18 { get; set; }
     

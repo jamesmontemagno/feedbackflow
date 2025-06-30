@@ -25,7 +25,8 @@ public static class EmailUtils
         RedditSubredditInfo subredditInfo,
         int newThreadsCount,
         int totalCommentsCount,
-        int totalUpvotes)
+        int totalUpvotes,
+        int totalDownvotes)
     {
         var emailBuilder = new StringBuilder();
         emailBuilder.AppendLine(@"<!DOCTYPE html>
@@ -132,17 +133,17 @@ public static class EmailUtils
             </div>
             <div class='stat-item'>
                 <span class='stat-number'>{4:n0}</span>
-                <div class='stat-label'>👥 Subscribers</div>
+                <div class='stat-label'>⬇️ Total Downvotes</div>
             </div>
             <div class='stat-item'>
                 <span class='stat-number'>{5:n0}</span>
-                <div class='stat-label'>🟢 Active Users</div>
+                <div class='stat-label'>👥 Subscribers</div>
             </div>
         </div>
         <p style='margin-top: 15px; color: #666; font-size: 0.9em;'><strong>{6}</strong> - {7}</p>
     </div>", 
             subreddit, newThreadsCount, totalCommentsCount, totalUpvotes, 
-            subredditInfo.Subscribers, subredditInfo.AccountsActive,
+            totalDownvotes, subredditInfo.Subscribers,
             subredditInfo.Title, subredditInfo.PublicDescription);
 
         // Top Posts Quick Links

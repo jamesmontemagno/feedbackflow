@@ -64,8 +64,8 @@ public class ReportGenerator
             // Fetch subreddit statistics
             _logger.LogInformation("Fetching subreddit statistics for r/{Subreddit}", subreddit);
             var subredditInfo = await _redditService.GetSubredditInfo(subreddit);
-            _logger.LogInformation("Retrieved subreddit info: {Subscribers} subscribers, {ActiveUsers} active users", 
-                subredditInfo.Subscribers, subredditInfo.AccountsActive);
+            _logger.LogInformation("Retrieved subreddit info: {Subscribers} subscribers", 
+                subredditInfo.Subscribers);
 
             var topThreads = threads
                 .OrderByDescending(t => (t.NumComments * 0.7) + (t.Score * 0.3))
@@ -157,6 +157,21 @@ Keep each section very brief and focused. Total analysis should be no more than 
             var newThreadsCount = threads.Count;
             var totalCommentsCount = threads.Sum(t => t.NumComments);
             
+            // Calculate estimated downvotes using upvote ratio
+            // Score = upvotes - downvotes, and upvote_ratio = upvotes / total_votes
+            // So: total_votes = upvotes / upvote_ratio, and downvotes = total_votes - upvotes
+            var totalDownvotes = threads.Sum(t => 
+            {
+                if (t.UpvoteRatio > 0 && t.UpvoteRatio < 1)
+                {
+                    var totalVotes = (int)(t.Score / (2 * t.UpvoteRatio - 1));
+                    var upvotes = (int)(totalVotes * t.UpvoteRatio);
+                    var downvotes = totalVotes - upvotes;
+                    return Math.Max(0, downvotes); // Ensure non-negative
+                }
+                return 0; // Can't estimate without ratio
+            });
+            
             var emailHtml = EmailUtils.GenerateRedditReportEmail(
                 subreddit, 
                 actualCutoffDate, 
@@ -167,7 +182,8 @@ Keep each section very brief and focused. Total analysis should be no more than 
                 subredditInfo, 
                 newThreadsCount, 
                 totalCommentsCount, 
-                totalUpvotes);
+                totalUpvotes,
+                totalDownvotes);
 
             var processingTime = DateTime.UtcNow - startTime;
             _logger.LogInformation("Reddit Report generation completed for r/{Subreddit} in {ProcessingTime:c}. Analyzed {ThreadCount} threads and {CommentCount} comments", 

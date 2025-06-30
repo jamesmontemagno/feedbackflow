@@ -318,15 +318,6 @@ public class MockRedditService : IRedditService
                 "github" => 345678,
                 _ => 50000
             },
-            AccountsActive = subreddit.ToLowerInvariant() switch
-            {
-                "dotnet" => 423,
-                "programming" => 12345,
-                "webdev" => 8765,
-                "csharp" => 567,
-                "github" => 789,
-                _ => 150
-            },
             Over18 = false,
             SubredditType = "public"
         };

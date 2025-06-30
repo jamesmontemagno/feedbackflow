@@ -224,7 +224,6 @@ public sealed class RedditService : IDisposable
             PublicDescription = subredditResponse.Data.PublicDescription,
             Description = subredditResponse.Data.Description,
             Subscribers = subredditResponse.Data.Subscribers,
-            AccountsActive = subredditResponse.Data.AccountsActive,
             Over18 = subredditResponse.Data.Over18,
             SubredditType = subredditResponse.Data.SubredditType
         };

@@ -19,7 +19,6 @@ public class RedditSubredditInfoTests
         Assert.AreEqual("dotnet", subredditInfo.DisplayName);
         Assert.AreEqual("r/dotnet", subredditInfo.Title);
         Assert.IsTrue(subredditInfo.Subscribers > 0);
-        Assert.IsTrue(subredditInfo.AccountsActive > 0);
         Assert.IsFalse(subredditInfo.Over18);
         Assert.AreEqual("public", subredditInfo.SubredditType);
         Assert.IsNotNull(subredditInfo.PublicDescription);
@@ -38,7 +37,6 @@ public class RedditSubredditInfoTests
         
         // Assert
         Assert.AreNotEqual(dotnetInfo.Subscribers, programmingInfo.Subscribers);
-        Assert.AreNotEqual(dotnetInfo.AccountsActive, programmingInfo.AccountsActive);
         Assert.AreEqual("dotnet", dotnetInfo.DisplayName);
         Assert.AreEqual("programming", programmingInfo.DisplayName);
     }
@@ -56,6 +54,5 @@ public class RedditSubredditInfoTests
         Assert.IsNotNull(subredditInfo);
         Assert.AreEqual("unknownsubreddit", subredditInfo.DisplayName);
         Assert.AreEqual(50000, subredditInfo.Subscribers); // Default value
-        Assert.AreEqual(150, subredditInfo.AccountsActive); // Default value
     }
 }
