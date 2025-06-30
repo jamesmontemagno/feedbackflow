@@ -112,12 +112,13 @@ public class ReportProcessorFunctions
     /// - days: Optional. Number of days of history to analyze (default: 7)
     /// - limit: Optional. Maximum number of threads to analyze (default: 25)
     /// - sort: Optional. Sort method for threads ("hot", "new", "top", etc.)
+    /// - force: Optional. If true, bypasses cache and forces new report generation (default: false)
     /// 
     /// The function fetches Reddit threads, analyzes their content using AI,
     /// and returns a markdown-formatted report with insights, trends, and key takeaways.
     /// </remarks>
     /// <example>
-    /// GET /api/RedditReport?subreddit=dotnet&amp;days=30&amp;limit=50&amp;sort=top
+    /// GET /api/RedditReport?subreddit=dotnet&amp;days=30&amp;limit=50&amp;sort=top&amp;force=true
     /// </example>
     [Function("RedditReport")]
     public async Task<HttpResponseData> RedditReport(
@@ -128,6 +129,8 @@ public class ReportProcessorFunctions
 
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var subreddit = queryParams["subreddit"];
+        var forceParam = queryParams["force"];
+        var force = bool.TryParse(forceParam, out var parsedForce) && parsedForce;
 
         if (string.IsNullOrEmpty(subreddit))
         {
@@ -139,8 +142,8 @@ public class ReportProcessorFunctions
 
         try
         {
-            // First, check if we have a recent report (last 24 hours)
-            var recentReport = await GetRecentReportAsync("reddit", subreddit);
+            // First, check if we have a recent report (last 24 hours) unless forced
+            var recentReport = force ? null : await GetRecentReportAsync("reddit", subreddit);
             ReportModel report;
 
             if (recentReport != null)
@@ -151,7 +154,10 @@ public class ReportProcessorFunctions
             }
             else
             {
-                _logger.LogInformation("No recent report found for r/{Subreddit}, generating new report", subreddit);
+                var logMessage = force 
+                    ? "Force parameter specified, generating new report for r/{Subreddit}" 
+                    : "No recent report found for r/{Subreddit}, generating new report";
+                _logger.LogInformation(logMessage, subreddit);
                 var cutoffDate = DateTimeOffset.UtcNow.AddDays(-7);
                 report = await _reportGenerator.GenerateRedditReportAsync(subreddit, cutoffDate);
             }
@@ -184,12 +190,13 @@ public class ReportProcessorFunctions
     /// Query parameters:
     /// - repo: Required. The repository in format "owner/name" (e.g., "microsoft/vscode")
     /// - days: Optional. Number of days of history to analyze (default: 7)
+    /// - force: Optional. If true, bypasses cache and forces new report generation (default: false)
     /// 
     /// The function fetches GitHub issues from the last week, analyzes their content using AI,
     /// and returns an HTML-formatted report with insights, trends, and key takeaways.
     /// </remarks>
     /// <example>
-    /// GET /api/GitHubIssuesReport?repo=microsoft/vscode&amp;days=7
+    /// GET /api/GitHubIssuesReport?repo=microsoft/vscode&amp;days=7&amp;force=true
     /// </example>
     [Function("GitHubIssuesReport")]
     public async Task<HttpResponseData> GitHubIssuesReport(
@@ -201,7 +208,9 @@ public class ReportProcessorFunctions
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var repo = queryParams["repo"];
         var daysParam = queryParams["days"];
+        var forceParam = queryParams["force"];
         var days = int.TryParse(daysParam, out var parsedDays) ? parsedDays : 7;
+        var force = bool.TryParse(forceParam, out var parsedForce) && parsedForce;
 
         if (string.IsNullOrEmpty(repo))
         {
@@ -225,8 +234,8 @@ public class ReportProcessorFunctions
 
         try
         {
-            // First, check if we have a recent report (last 24 hours)
-            var recentReport = await GetRecentReportAsync("github", repo);
+            // First, check if we have a recent report (last 24 hours) unless forced
+            var recentReport = force ? null : await GetRecentReportAsync("github", repo);
             ReportModel report;
 
             if (recentReport != null)
@@ -237,7 +246,10 @@ public class ReportProcessorFunctions
             }
             else
             {
-                _logger.LogInformation("No recent report found for {RepoOwner}/{RepoName}, generating new report", repoOwner, repoName);
+                var logMessage = force 
+                    ? "Force parameter specified, generating new report for {RepoOwner}/{RepoName}" 
+                    : "No recent report found for {RepoOwner}/{RepoName}, generating new report";
+                _logger.LogInformation(logMessage, repoOwner, repoName);
                 report = await _reportGenerator.GenerateGitHubReportAsync(repoOwner, repoName, days);
             }
 
