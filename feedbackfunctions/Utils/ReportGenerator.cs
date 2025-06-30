@@ -157,21 +157,6 @@ Keep each section very brief and focused. Total analysis should be no more than 
             var newThreadsCount = threads.Count;
             var totalCommentsCount = threads.Sum(t => t.NumComments);
             
-            // Calculate estimated downvotes using upvote ratio
-            // Score = upvotes - downvotes, and upvote_ratio = upvotes / total_votes
-            // So: total_votes = upvotes / upvote_ratio, and downvotes = total_votes - upvotes
-            var totalDownvotes = threads.Sum(t => 
-            {
-                if (t.UpvoteRatio > 0 && t.UpvoteRatio < 1)
-                {
-                    var totalVotes = (int)(t.Score / (2 * t.UpvoteRatio - 1));
-                    var upvotes = (int)(totalVotes * t.UpvoteRatio);
-                    var downvotes = totalVotes - upvotes;
-                    return Math.Max(0, downvotes); // Ensure non-negative
-                }
-                return 0; // Can't estimate without ratio
-            });
-            
             var emailHtml = EmailUtils.GenerateRedditReportEmail(
                 subreddit, 
                 actualCutoffDate, 
@@ -182,8 +167,7 @@ Keep each section very brief and focused. Total analysis should be no more than 
                 subredditInfo, 
                 newThreadsCount, 
                 totalCommentsCount, 
-                totalUpvotes,
-                totalDownvotes);
+                totalUpvotes);
 
             var processingTime = DateTime.UtcNow - startTime;
             _logger.LogInformation("Reddit Report generation completed for r/{Subreddit} in {ProcessingTime:c}. Analyzed {ThreadCount} threads and {CommentCount} comments", 

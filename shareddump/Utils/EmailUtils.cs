@@ -25,8 +25,7 @@ public static class EmailUtils
         RedditSubredditInfo subredditInfo,
         int newThreadsCount,
         int totalCommentsCount,
-        int totalUpvotes,
-        int totalDownvotes)
+        int totalUpvotes)
     {
         var emailBuilder = new StringBuilder();
         emailBuilder.AppendLine(@"<!DOCTYPE html>
@@ -110,9 +109,9 @@ public static class EmailUtils
         // Header
         emailBuilder.AppendFormat(@"    <div class='header'>
         <h1>Weekly r/<a href='https://reddit.com/r/{0}' style='color: white; text-decoration: none;'>{0}</a> Report</h1>
-        <p>Analysis for {1:MMMM dd, yyyy} - {2:MMMM dd, yyyy}</p>
+        <p>Analysis for {1:MMMM dd, yyyy} - {2:MMMM dd, yyyy} • {4:n0} total members</p>
         <a href='https://www.feedbackflow.app/report/{3}' class='feedback-button' style='background-color: white; color: #FF4500;'>Share report</a>
-    </div>", subreddit, cutoffDate, DateTimeOffset.UtcNow, reportId);
+    </div>", subreddit, cutoffDate, DateTimeOffset.UtcNow, reportId, subredditInfo.Subscribers);
 
         // Subreddit Stats Section
         emailBuilder.AppendFormat(@"
@@ -131,19 +130,10 @@ public static class EmailUtils
                 <span class='stat-number'>{3:n0}</span>
                 <div class='stat-label'>⬆️ Total Upvotes</div>
             </div>
-            <div class='stat-item'>
-                <span class='stat-number'>{4:n0}</span>
-                <div class='stat-label'>⬇️ Total Downvotes</div>
-            </div>
-            <div class='stat-item'>
-                <span class='stat-number'>{5:n0}</span>
-                <div class='stat-label'>👥 Subscribers</div>
-            </div>
         </div>
-        <p style='margin-top: 15px; color: #666; font-size: 0.9em;'><strong>{6}</strong> - {7}</p>
+        <p style='margin-top: 15px; color: #666; font-size: 0.9em;'><strong>{4}</strong> - {5}</p>
     </div>", 
             subreddit, newThreadsCount, totalCommentsCount, totalUpvotes, 
-            totalDownvotes, subredditInfo.Subscribers,
             subredditInfo.Title, subredditInfo.PublicDescription);
 
         // Top Posts Quick Links
