@@ -309,7 +309,7 @@ public class MockRedditService : IRedditService
             Title = $"r/{subreddit}",
             PublicDescription = $"Mock public description for r/{subreddit}",
             Description = $"Mock description for r/{subreddit} - This is a mock subreddit for testing purposes.",
-            CreatedUtc = DateTimeOffset.UtcNow.AddYears(-3).ToUnixTimeSeconds(),
+            CreatedUtc = null, // Ignore created date as requested
             Subscribers = subreddit.ToLowerInvariant() switch
             {
                 "dotnet" => 156234,

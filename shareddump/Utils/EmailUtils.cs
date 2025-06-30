@@ -114,9 +114,6 @@ public static class EmailUtils
     </div>", subreddit, cutoffDate, DateTimeOffset.UtcNow, reportId);
 
         // Subreddit Stats Section
-        var createdDate = DateTimeOffset.FromUnixTimeSeconds(subredditInfo.CreatedUtc);
-        var subredditAge = DateTimeOffset.UtcNow.Subtract(createdDate).Days;
-        
         emailBuilder.AppendFormat(@"
     <div class='stats-section'>
         <h2>📊 r/{0} Statistics</h2>
@@ -141,15 +138,11 @@ public static class EmailUtils
                 <span class='stat-number'>{5:n0}</span>
                 <div class='stat-label'>🟢 Active Users</div>
             </div>
-            <div class='stat-item'>
-                <span class='stat-number'>{6:n0}</span>
-                <div class='stat-label'>📅 Days Since Created</div>
-            </div>
         </div>
-        <p style='margin-top: 15px; color: #666; font-size: 0.9em;'><strong>{7}</strong> - {8}</p>
+        <p style='margin-top: 15px; color: #666; font-size: 0.9em;'><strong>{6}</strong> - {7}</p>
     </div>", 
             subreddit, newThreadsCount, totalCommentsCount, totalUpvotes, 
-            subredditInfo.Subscribers, subredditInfo.AccountsActive, subredditAge,
+            subredditInfo.Subscribers, subredditInfo.AccountsActive,
             subredditInfo.Title, subredditInfo.PublicDescription);
 
         // Top Posts Quick Links
