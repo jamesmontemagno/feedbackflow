@@ -2,7 +2,7 @@
 
 ## Overview
 
-FeedbackFlow is a comprehensive feedback collection and analysis platform that helps teams gather, consolidate, and analyze feedback from multiple sources including GitHub, YouTube, Reddit, Hacker News, and social media platforms. The platform consists of a modern Blazor web application, Azure Functions backend, and command-line tools for data collection.
+FeedbackFlow is a comprehensive feedback collection and analysis platform that helps teams gather, consolidate, and analyze feedback from multiple sources including GitHub, YouTube, Reddit, Hacker News, and social media platforms. The platform consists of a modern Blazor web application and Azure Functions backend.
 
 ## Live Application
 
@@ -33,30 +33,12 @@ FeedbackFlow follows a modern .NET architecture with the following components:
 - Business logic shared between components
 - Serialization and validation helpers
 
-### 🛠️ Command-Line Tools
-Collection tools for different platforms:
-
-#### GitHub Feedback Collector (`ghdump`)
-Retrieves data from GitHub issues, discussions, and pull requests with associated comments.
-
-#### YouTube Comment Collector (`ytdump`)
-Gathers comments from YouTube videos and playlists, supporting bulk operations.
-
-#### Reddit Collector (`rddump`)
-Extracts posts and comments from Reddit discussions and threads.
-
-#### Hacker News Collector (`hndump`)
-Collects stories and comments from Hacker News discussions.
-
 ### 🧪 Testing (`feedbackflow.tests`)
 Comprehensive test suite using MSTest for:
 - URL parsing and validation
 - Data transformation logic
 - Service integrations
 - Business rule validation
-
-### 🔧 Model Context Protocol Server (`feedbackmcp`)
-*Work in progress* - MCP server for AI integration and automated analysis.
 
 ## Features
 
@@ -120,47 +102,7 @@ The easiest way to run FeedbackFlow is using .NET Aspire, which orchestrates bot
    dotnet run
    ```
 
-This will start both the web application and Azure Functions locally with proper service discovery and monitoring. You will be prompted to enter API keys for the Azure Function to you on startup for the first time or you can enter them later on the ... menu.
-
-### Command-Line Tools Usage
-
-#### GitHub Feedback Collector (`ghdump`)
-
-```bash
-cd ghdump
-dotnet run -- -r <owner/repository>
-```
-
-Example:
-```bash
-dotnet run -- -r microsoft/dotnet
-```
-
-#### YouTube Comment Collector (`ytdump`)
-
-```bash
-cd ytdump
-dotnet run -- -v <video-id> -o <output-file.json>
-```
-
-Example:
-```bash
-dotnet run -- -v dQw4w9WgXcQ -o youtube-comments.json
-```
-
-#### Reddit Collector (`rddump`)
-
-```bash
-cd rddump
-dotnet run -- -u <reddit-url>
-```
-
-#### Hacker News Collector (`hndump`)
-
-```bash
-cd hndump
-dotnet run -- -i <story-id>
-```
+This will start both the web application and Azure Functions locally with proper service discovery and monitoring. You will be prompted to enter API keys for the Azure Function on startup for the first time or you can enter them later on the settings menu.
 
 ## Development
 
@@ -172,12 +114,7 @@ FeedbackFlow/
 ├── feedbackfunctions/       # Azure Functions backend
 ├── shareddump/             # Shared library and models
 ├── FeedbackFlow.AppHost/   # .NET Aspire orchestration
-├── feedbackflow.tests/     # Unit and integration tests
-├── ghdump/                 # GitHub collection tool
-├── ytdump/                 # YouTube collection tool
-├── rddump/                 # Reddit collection tool
-├── hndump/                 # Hacker News collection tool
-└── feedbackmcp/           # MCP server (WIP)
+└── feedbackflow.tests/     # Unit and integration tests
 ```
 
 ### Contributing

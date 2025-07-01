@@ -4,12 +4,7 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Folder Name="/CLI/">
-    <Project Path="ghdump/ghdump.csproj" />
-    <Project Path="hndump/hndump.csproj" />
-    <Project Path="rddump/rddump.csproj" />
-    <Project Path="ytdump/ytdump.csproj" />
-  </Folder>
+  <Folder Name="/CLI/" />
   <Folder Name="/.github/">
     <File Path=".github/copilot-instructions.md" />
     <File Path=".github/workflows/build.yaml" />
@@ -26,7 +21,6 @@
   <Project Path="FeedbackFlow.ServiceDefaults/ServiceDefaults.csproj" />
   <Project Path="feedbackflow.tests/Tests.csproj" />
   <Project Path="feedbackfunctions/Functions.csproj" />
-  <Project Path="feedbackmcp/McpServer.csproj" />
   <Project Path="feedbackwebapp/WebApp.csproj" />
   <Project Path="shareddump/Shared.csproj" />
 </Solution>
