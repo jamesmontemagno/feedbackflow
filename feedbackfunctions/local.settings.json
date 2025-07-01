@@ -17,6 +17,10 @@
     "Mastodon:AccessToken": "",
     "Mastodon:ClientKey": "",
     "Mastodon:ClientSecret": "",
-    "UseMocks": false
+    "UseMocks": false,
+    "Authentication": {
+      "UseEasyAuth": false,
+      "BypassInDevelopment": true
+    }
   }
 }

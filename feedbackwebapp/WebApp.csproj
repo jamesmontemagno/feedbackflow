@@ -12,6 +12,7 @@
   <ItemGroup>
     <PackageReference Include="Blazor.SpeechSynthesis" />
     <PackageReference Include="Markdig" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.MicrosoftAccount" />
   </ItemGroup>
 
   <ItemGroup>
