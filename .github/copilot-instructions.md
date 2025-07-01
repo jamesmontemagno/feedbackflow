@@ -17,12 +17,6 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 - **Run functions standalone**: Available as VS Code task with func host
 - **Clean build**: Available as VS Code task "clean (functions)"
 
-### CLI Data Collection Tools
-- **GitHub**: `cd ghdump && dotnet run -- -r owner/repository`
-- **YouTube**: `cd ytdump && dotnet run -- -v video-id -o output.json`
-- **Reddit**: `cd rddump && dotnet run -- -u reddit-url`
-- **Hacker News**: `cd hndump && dotnet run -- -i story-id`
-
 ## Architecture Overview
 
 ### Tech Stack
@@ -39,12 +33,6 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 - **FeedbackFlow.AppHost** (AppHost.csproj): .NET Aspire orchestration
 - **feedbackflow.tests** (Tests.csproj): MSTest unit/integration tests
 
-### CLI Collection Tools
-- **ghdump**: GitHub issues, PRs, discussions collector
-- **ytdump**: YouTube video comments collector  
-- **rddump**: Reddit posts and comments collector
-- **hndump**: Hacker News stories and comments collector
-
 ### External Integrations
 - **Azure OpenAI**: Sentiment analysis and AI insights
 - **GitHub API**: Issues, PRs, discussions data
@@ -56,10 +44,8 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 ## Project Structure
 - **feedbackflow.tests** - MSTest unit tests for shared logic and service integrations
 - **feedbackfunctions** - Azure Functions backend with HTTP triggers, timers, blob bindings
-- **feedbackmcp** - C# MCP server (work in progress, inactive)
 - **feedbackwebapp** - Blazor Server app with components, services, and responsive UI
 - **shareddump** - Shared library containing reusable logic and models
-- **ghdump/ytdump/rddump/hndump** - CLI tools for platform-specific data collection
 - **FeedbackFlow.ServiceDefaults** - Aspire service defaults and telemetry
 
 ## Blazor
@@ -206,7 +192,7 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 - **Streaming Analysis**: AI services use `IAsyncEnumerable<string>` for real-time analysis streaming to UI
 
 ### Data Collection Flow
-1. **CLI Tools** (`ghdump`, `ytdump`, etc.) collect raw platform data
+1. **Web Application** collects feedback data through direct API integrations
 2. **Service Adapters** normalize data to universal models
 3. **Azure Functions** expose HTTP endpoints for web app consumption
 4. **Cache Layer** (`ReportCacheService`) stores processed reports in Azure Blob Storage
