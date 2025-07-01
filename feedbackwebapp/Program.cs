@@ -47,7 +47,7 @@ else
 }
 
 // Keep the old AuthenticationService for backward compatibility
-builder.Services.AddScoped<AuthenticationService>();
+//builder.Services.AddScoped<AuthenticationService>();
 
 builder.Services.AddScoped<UserSettingsService>();
 builder.Services.AddScoped<IReportServiceProvider, ReportServiceProvider>();
