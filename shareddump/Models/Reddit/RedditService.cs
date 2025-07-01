@@ -204,6 +204,31 @@ public sealed class RedditService : IDisposable
         return threads;
     }
 
+    public async Task<RedditSubredditInfo> GetSubredditInfo(string subreddit)
+    {
+        await EnsureValidTokenAsync();
+
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+
+        var url = $"https://oauth.reddit.com/r/{subreddit}/about";
+        var response = await _client.GetStringAsync(url);
+        
+        var subredditResponse = JsonSerializer.Deserialize(response, RedditJsonContext.Default.RedditSubredditResponse);
+        if (subredditResponse?.Data == null)
+            throw new InvalidOperationException($"Failed to get subreddit info for r/{subreddit}");
+
+        return new RedditSubredditInfo
+        {
+            DisplayName = subredditResponse.Data.DisplayName,
+            Title = subredditResponse.Data.Title,
+            PublicDescription = subredditResponse.Data.PublicDescription,
+            Description = subredditResponse.Data.Description,
+            Subscribers = subredditResponse.Data.Subscribers,
+            Over18 = subredditResponse.Data.Over18,
+            SubredditType = subredditResponse.Data.SubredditType
+        };
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
