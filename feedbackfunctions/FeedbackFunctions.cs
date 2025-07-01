@@ -18,6 +18,9 @@ using SharedDump.Models.BlueSkyFeedback;
 using SharedDump.Json;
 using SharedDump.Services;
 using SharedDump.Services.Interfaces;
+using FeedbackFunctions.Services.Authentication;
+using FeedbackFunctions.Extensions;
+using FeedbackFunctions.Attributes;
 
 namespace FeedbackFunctions;
 
@@ -39,6 +42,7 @@ public class FeedbackFunctions
     private readonly IFeedbackAnalyzerService _analyzerService;
     private readonly ITwitterService _twitterService;
     private readonly IBlueSkyService _blueSkyService;
+    private readonly AuthenticationMiddleware _authMiddleware;
 
     /// <summary>
     /// Initializes a new instance of the FeedbackFunctions class
@@ -61,7 +65,8 @@ public class FeedbackFunctions
         IDevBlogsService devBlogsService, 
         IFeedbackAnalyzerService analyzerService,
         ITwitterService twitterService,
-        IBlueSkyService blueSkyService)
+        IBlueSkyService blueSkyService,
+        AuthenticationMiddleware authMiddleware)
     {
         _logger = logger;
         _githubService = githubService;
@@ -72,6 +77,7 @@ public class FeedbackFunctions
         _analyzerService = analyzerService;
         _twitterService = twitterService;
         _blueSkyService = blueSkyService;
+        _authMiddleware = authMiddleware;
     }
 
     /// <summary>
@@ -88,10 +94,16 @@ public class FeedbackFunctions
     /// GET /api/GetGitHubFeedback?url=https://github.com/dotnet/maui/issues/123&maxComments=50
     /// </remarks>
     [Function("GetGitHubFeedback")]
+    [Authorize]
     public async Task<HttpResponseData> GetGitHubFeedback(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
         _logger.LogInformation("Processing GitHub feedback request");
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
 
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var url = queryParams["url"];

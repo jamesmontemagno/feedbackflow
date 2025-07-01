@@ -11,6 +11,9 @@ using SharedDump.Services.Interfaces;
 using SharedDump.AI;
 using FeedbackFunctions.Utils;
 using FeedbackFunctions.Services;
+using FeedbackFunctions.Services.Authentication;
+using FeedbackFunctions.Extensions;
+using FeedbackFunctions.Attributes;
 using SharedDump.Services;
 
 namespace FeedbackFunctions;
@@ -30,6 +33,7 @@ public class ReportRequestFunctions
     private readonly IReportCacheService _cacheService;
     private readonly IRedditService _redditService;
     private readonly IGitHubService _githubService;
+    private readonly AuthenticationMiddleware _authMiddleware;
 
     public ReportRequestFunctions(
         ILogger<ReportRequestFunctions> logger,
@@ -37,7 +41,8 @@ public class ReportRequestFunctions
         IRedditService redditService,
         IGitHubService githubService,
         IFeedbackAnalyzerService analyzerService,
-        IReportCacheService cacheService)
+        IReportCacheService cacheService,
+        AuthenticationMiddleware authMiddleware)
     {
 #if DEBUG
         _configuration = new ConfigurationBuilder()
@@ -51,6 +56,7 @@ public class ReportRequestFunctions
         _cacheService = cacheService;
         _redditService = redditService;
         _githubService = githubService;
+        _authMiddleware = authMiddleware;
         
         // Initialize table client
         var storageConnection = _configuration["AzureWebJobsStorage"] ?? throw new InvalidOperationException("Storage connection string not configured");
@@ -71,10 +77,16 @@ public class ReportRequestFunctions
     /// Add a new report request
     /// </summary>
     [Function("AddReportRequest")]
+    [Authorize]
     public async Task<HttpResponseData> AddReportRequest(
         [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
         _logger.LogInformation("Adding new report request");
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
 
         try
         {
@@ -271,11 +283,17 @@ public class ReportRequestFunctions
     /// Remove a report request by ID
     /// </summary>
     [Function("RemoveReportRequest")]
+    [Authorize]
     public async Task<HttpResponseData> RemoveReportRequest(
         [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "reportrequest/{id}")] HttpRequestData req,
         string id)
     {
         _logger.LogInformation("Removing report request {RequestId}", id);
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
 
         try
         {
@@ -344,10 +362,16 @@ public class ReportRequestFunctions
     /// List all report requests (for admin/timer trigger use)
     /// </summary>
     [Function("ListReportRequests")]
+    [Authorize]
     public async Task<HttpResponseData> ListReportRequests(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
         _logger.LogInformation("Listing all report requests");
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
 
         try
         {
