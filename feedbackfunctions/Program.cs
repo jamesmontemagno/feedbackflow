@@ -14,9 +14,11 @@ using SharedDump.Models.YouTube;
 using SharedDump.Services;
 using SharedDump.Services.Interfaces;
 using SharedDump.Services.Mock;
+using SharedDump.Services.Authentication;
 using System.Configuration;
 using Azure.Storage.Blobs;
 using FeedbackFunctions.Services;
+using FeedbackFunctions.Services.Authentication;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
@@ -38,6 +40,10 @@ throwIfNullOrEmpty = true;
 
 // Register HTTP client factory
 builder.Services.AddHttpClient();
+
+// Register authentication services
+builder.Services.AddScoped<IAuthUserTableService, AuthUserTableService>();
+builder.Services.AddScoped<AuthenticationMiddleware>();
 
 // Register blob storage and cache services
 builder.Services.AddSingleton<IReportCacheService>(serviceProvider =>
