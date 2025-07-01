@@ -34,6 +34,7 @@ public class MockYouTubeFeedbackService(
         // Use shared mock analysis provider
         var mockAnalysis = MockAnalysisProvider.GetMockAnalysis("youtube", commentCount ?? 0);
 
+        UpdateStatus(FeedbackProcessStatus.Completed, "YouTube analysis completed");
         return (mockAnalysis, additionalData);
     }
 
@@ -43,7 +44,12 @@ public class MockYouTubeFeedbackService(
         var (comments, commentCount, additionalData) = await GetComments();
         
         // Analyze comments
-        return await AnalyzeComments(comments, commentCount, additionalData);
+        var result = await AnalyzeComments(comments, commentCount, additionalData);
+        
+        // Ensure completion status is set
+        UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed successfully");
+        
+        return result;
     }
 }
 
@@ -80,6 +86,7 @@ public class MockHackerNewsFeedbackService(
         // Use shared mock analysis provider
         var mockAnalysis = MockAnalysisProvider.GetMockAnalysis("hackernews", totalComments);
 
+        UpdateStatus(FeedbackProcessStatus.Completed, "Hacker News analysis completed");
         return (mockAnalysis, additionalData);
     }
 
@@ -90,10 +97,16 @@ public class MockHackerNewsFeedbackService(
         
         if (string.IsNullOrWhiteSpace(comments))
         {
+            UpdateStatus(FeedbackProcessStatus.Completed, "No comments found");
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
         }
 
         // Analyze comments
-        return await AnalyzeComments(comments, commentCount, additionalData);
+        var result = await AnalyzeComments(comments, commentCount, additionalData);
+        
+        // Ensure completion status is set
+        UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed successfully");
+        
+        return result;
     }
 }

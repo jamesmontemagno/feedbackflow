@@ -289,6 +289,8 @@
             feedbackSources = null;
             currentAdditionalData = null;
             isLoading = true;
+            currentStatus = FeedbackProcessStatus.GatheringComments;
+            currentStatusMessage = "Starting analysis...";
 
             IFeedbackService service = selectedSource switch
             {
@@ -315,11 +317,15 @@
         catch (Exception ex)
         {
             error = $"An error occurred: {ex.Message}";
+            StateHasChanged();
         }
         finally
         {
+            await Task.Delay(500); // Give time for UI to update before finalizing
             isLoading = false;
+            currentStatus = FeedbackProcessStatus.Completed;
             currentStatusMessage = "";
+            StateHasChanged();
         }
     }
 

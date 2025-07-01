@@ -119,6 +119,7 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
             {
                 var data = sourceData[0];
                 var markdown = await AnalyzeCommentsInternal(data.Source, data.Comments, data.CommentCount);
+                UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed");
                 return ($"# {char.ToUpper(data.Source[0]) + data.Source[1..]} Feedback Analysis\n\n{markdown}", sourceData);
             }
 
@@ -126,23 +127,28 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
             var analysisBySource = new List<string>();
             
             // First do the overall analysis of everything
+            UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Creating overall analysis...");
             var allCommentsText = string.Join("\n---\n", sourceData.Select(s => s.Comments));
-            var overallAnalysis = await AnalyzeCommentsInternal("auto", allCommentsText, totalComments);
+            var overallAnalysis = await AnalyzeCommentsInternalWithoutStatusUpdate("auto", allCommentsText, totalComments);
             analysisBySource.Add("## Overall Analysis\n\n" + overallAnalysis);
 
             // Then analyze each source individually
-            foreach (var data in sourceData)
+            for (int i = 0; i < sourceData.Count; i++)
             {
-                var markdown = await AnalyzeCommentsInternal(data.Source, data.Comments, data.CommentCount);
+                var data = sourceData[i];
+                UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {char.ToUpper(data.Source[0]) + data.Source[1..]} feedback ({i + 1}/{sourceData.Count})...");
+                var markdown = await AnalyzeCommentsInternalWithoutStatusUpdate(data.Source, data.Comments, data.CommentCount);
                 analysisBySource.Add($"## {char.ToUpper(data.Source[0]) + data.Source[1..]} Analysis\n\n{markdown}");
             }
 
+            UpdateStatus(FeedbackProcessStatus.Completed, "Multi-source analysis completed");
             var combinedAnalysis = string.Join("\n\n", analysisBySource);
             return ($"# Multi-Source Feedback Analysis\n\n{combinedAnalysis}", sourceData);
         }
         
         // Fallback to regular analysis if we don't have the source data
         var defaultMarkdown = await AnalyzeCommentsInternal("auto", comments, totalComments);
+        UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed");
         return (defaultMarkdown, additionalData);
     }
 
@@ -153,11 +159,17 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         
         if (string.IsNullOrWhiteSpace(comments))
         {
+            UpdateStatus(FeedbackProcessStatus.Completed, "No comments found");
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
         }
 
         // Analyze all comments together
-        return await AnalyzeComments(comments, commentCount, additionalData);
+        var result = await AnalyzeComments(comments, commentCount, additionalData);
+        
+        // Ensure completion status is set
+        UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed successfully");
+        
+        return result;
     }
 
     private async Task<(string comments, int commentCount, object? additionalData)> GetCommentsFromUrl(string url)

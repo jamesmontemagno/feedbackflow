@@ -62,6 +62,7 @@ Comments:
         // Use shared mock analysis provider - using default for multi-source
         var mockAnalysis = MockAnalysisProvider.GetMockAnalysis("default", totalComments, "# Multi-Source Feedback Analysis 📊");
 
+        UpdateStatus(FeedbackProcessStatus.Completed, "Multi-source analysis completed");
         return (mockAnalysis, additionalData);
     }
 
@@ -72,10 +73,16 @@ Comments:
         
         if (string.IsNullOrWhiteSpace(comments))
         {
+            UpdateStatus(FeedbackProcessStatus.Completed, "No comments found");
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
         }
 
         // Analyze comments with count
-        return await AnalyzeComments(comments, commentCount, additionalData);
+        var result = await AnalyzeComments(comments, commentCount, additionalData);
+        
+        // Ensure completion status is set
+        UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed successfully");
+        
+        return result;
     }
 }

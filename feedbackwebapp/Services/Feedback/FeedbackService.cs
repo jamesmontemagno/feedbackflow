@@ -128,6 +128,52 @@ public abstract class FeedbackService : IFeedbackService
         return await analyzeResponse.Content.ReadAsStringAsync();
     }
 
+    protected async Task<string> AnalyzeCommentsInternalWithoutStatusUpdate(string serviceType, string comments, int commentCount, string? explicitCustomPrompt = null)
+    {
+        var maxComments = await GetMaxCommentsToAnalyze();
+
+        var analyzeCode = Configuration["FeedbackApi:FunctionsKey"]
+            ?? throw new InvalidOperationException("Analyze API code not configured");
+
+        var settings = await _userSettings.GetSettingsAsync();
+        string? customPrompt = null;
+
+        // If an explicit custom prompt is provided, use it (for manual mode)
+        if (!string.IsNullOrEmpty(explicitCustomPrompt))
+        {
+            customPrompt = explicitCustomPrompt;
+        }
+        // Otherwise, check user settings for custom prompts (for other service types)
+        else if (settings.UseCustomPrompts)
+        {
+            customPrompt = settings.ServicePrompts.GetValueOrDefault(serviceType.ToLower());
+        }
+
+        if (customPrompt != null)
+        {
+            customPrompt = customPrompt.TrimEnd() + " Format your response in markdown.";
+        }
+
+        var analyzeRequestBody = JsonSerializer.Serialize(new
+        {
+            serviceType,
+            comments,
+            customPrompt
+        });
+
+        var analyzeContent = new StringContent(
+            analyzeRequestBody,
+            Encoding.UTF8,
+            "application/json");
+
+        var getAnalysisUrl = $"{BaseUrl}/api/AnalyzeComments?code={Uri.EscapeDataString(analyzeCode)}";
+        var analyzeResponse = await Http.PostAsync(getAnalysisUrl, analyzeContent);
+        analyzeResponse.EnsureSuccessStatusCode();
+
+        // Note: This method doesn't call UpdateStatus to avoid multiple completion status updates
+        return await analyzeResponse.Content.ReadAsStringAsync();
+    }
+
     protected async Task<int> GetMaxCommentsToAnalyze()
     {
         var settings = await _userSettings.GetSettingsAsync();

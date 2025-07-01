@@ -191,3 +191,107 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 - Uses **Central Package Management** via `Directory.Packages.props`
 - Key packages: Azure.AI.OpenAI, Azure.Data.Tables, Microsoft.Azure.Functions.Worker, Blazor.SpeechSynthesis
 - All projects target **.NET 9** with nullable reference types enabled
+
+## Domain Architecture & Data Flow
+
+### Core Domain Models
+- **CommentData**: Universal comment structure supporting nested replies across all platforms (GitHub, YouTube, Reddit, etc.)
+- **CommentThread**: Container for posts/videos with associated comments, includes platform-specific metadata via JsonExtensionData
+- **AnalysisData**: AI-generated insights with title, summary, full analysis, and source tracking
+- **Platform-Specific Models**: Each platform (GitHub, YouTube, Reddit, etc.) has dedicated models in `shareddump/Models/[Platform]/`
+
+### Service Layer Patterns
+- **Mock Services**: All external APIs have mock implementations for local development (UseMocks=true in debug mode)
+- **Service Adapters**: Convert platform-specific models to universal CommentData/CommentThread structure
+- **Streaming Analysis**: AI services use `IAsyncEnumerable<string>` for real-time analysis streaming to UI
+
+### Data Collection Flow
+1. **CLI Tools** (`ghdump`, `ytdump`, etc.) collect raw platform data
+2. **Service Adapters** normalize data to universal models
+3. **Azure Functions** expose HTTP endpoints for web app consumption
+4. **Cache Layer** (`ReportCacheService`) stores processed reports in Azure Blob Storage
+
+### Authentication & Security Patterns
+- **Function-level auth**: All Azure Functions use `AuthorizationLevel.Function`
+- **Web app password**: Single shared password for demo access via `FeedbackApp__AccessPassword`
+- **API Key Management**: Platform APIs use conditional mock fallback when keys unavailable
+- **User Secrets**: Local development uses user secrets, production uses environment variables
+
+## Development Patterns
+
+### Error Handling Convention
+```csharp
+try
+{
+    // Operation logic
+    var response = req.CreateResponse(HttpStatusCode.OK);
+    await response.WriteAsJsonAsync(result);
+    return response;
+}
+catch (Exception ex)
+{
+    _logger.LogError(ex, "Error message with context");
+    var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+    await errorResponse.WriteStringAsync("User-friendly error message");
+    return errorResponse;
+}
+```
+
+### Service Registration Pattern
+Services are registered conditionally based on `UseMocks` configuration:
+```csharp
+if (useMocks)
+{
+    builder.Services.AddScoped<IGitHubService, MockGitHubService>();
+}
+else
+{
+    builder.Services.AddScoped<IGitHubService>(serviceProvider => {
+        var token = configuration["GitHub:AccessToken"];
+        return string.IsNullOrWhiteSpace(token) 
+            ? new MockGitHubService() 
+            : new GitHubService(token, httpClient);
+    });
+}
+```
+
+### Blazor Component Structure
+- **Page Components**: Located in `Components/Pages/`, include `@namespace` declarations
+- **Shared Components**: In `Components/Shared/`, reusable across pages
+- **Form Components**: In `Components/Feedback/Forms/`, handle user input and validation
+- **Result Components**: In `Components/Feedback/Results/`, display analysis results
+
+### JSON Serialization Context
+Uses source-generated JSON serialization contexts for better performance:
+- `FeedbackJsonContext` in Functions project for API models
+- Platform-specific contexts like `TwitterFeedbackJsonContext`, `BlueSkyFeedbackJsonContext`
+
+### Testing Strategy
+- **MSTest** with **NSubstitute** for mocking
+- Focus on business logic, URL parsing, data transformations
+- **ReportCacheServiceTests**, **UrlParsingTests**, **GitHubIssuesUtilsTests** show patterns
+- Test naming: `MethodName_Scenario_ExpectedResult`
+
+## Critical Integration Points
+
+### .NET Aspire Orchestration
+- **AppHost**: Orchestrates web app + functions with service discovery
+- **Storage Emulator**: Uses Azurite for local blob storage during development
+- **Environment Variables**: Functions get configuration via Aspire's environment context
+- **API Key Prompting**: Interactive setup via `KeyConfiguration.PromptForValues()`
+
+### Azure Functions Binding Patterns
+- **HTTP Triggers**: All use `HttpRequestData` and create `HttpResponseData`
+- **Blob Bindings**: Report caching uses blob containers: `shared-analyses`, `reports`, `hackernews-cache`
+- **Timer Functions**: Background processing for scheduled reports (in Reports/ folder)
+
+### Cross-Component Communication
+- **Web App → Functions**: Uses `FeedbackServiceProvider` with configured base URL
+- **Shared Models**: `shareddump` project provides DTOs shared between all components
+- **Service Discovery**: Aspire handles service-to-service communication via named endpoints
+
+### Platform API Patterns
+- **GitHub**: Uses GraphQL for issues/discussions, REST for comments
+- **YouTube**: Paginated video/comment collection with quota management
+- **Reddit**: OAuth2 client credentials flow, handles shortlink resolution
+- **Hacker News**: Public API, recursive comment tree traversal

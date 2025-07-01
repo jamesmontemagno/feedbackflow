@@ -132,6 +132,7 @@ public class MockRedditFeedbackService : FeedbackService, IRedditFeedbackService
         // Use shared mock analysis provider
         var mockAnalysis = MockAnalysisProvider.GetMockAnalysis("reddit", totalComments);
 
+        UpdateStatus(FeedbackProcessStatus.Completed, "Reddit analysis completed");
         return (mockAnalysis, additionalData);
     }
 
@@ -142,10 +143,16 @@ public class MockRedditFeedbackService : FeedbackService, IRedditFeedbackService
         
         if (string.IsNullOrWhiteSpace(comments))
         {
+            UpdateStatus(FeedbackProcessStatus.Completed, "No comments found");
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
         }
 
         // Analyze comments with count
-        return await AnalyzeComments(comments, commentCount, additionalData);
+        var result = await AnalyzeComments(comments, commentCount, additionalData);
+        
+        // Ensure completion status is set
+        UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed successfully");
+        
+        return result;
     }
 }
