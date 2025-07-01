@@ -80,7 +80,7 @@ app.UseHttpsRedirection();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
-app.MapRazorComponents<App>()
+app.MapRazorComponents<FeedbackWebApp.Components.App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
