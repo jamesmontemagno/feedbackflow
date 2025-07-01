@@ -137,7 +137,7 @@ public class AuthenticationMiddleware
     {
         return identityProvider switch
         {
-            "microsoftaccount" => "Microsoft",
+            "aad" => "Microsoft",
             "google" => "Google",
             "github" => "GitHub",
             "facebook" => "Facebook",

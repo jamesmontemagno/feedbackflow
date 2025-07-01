@@ -8,7 +8,7 @@ namespace SharedDump.Models.Authentication;
 public class ClientPrincipal
 {
 	/// <summary>
-	/// The identity provider (e.g., "microsoftaccount", "google", "github")
+	/// The identity provider (e.g., "aad", "google", "github")
 	/// </summary>
 	[JsonPropertyName("identityProvider")]
     public string IdentityProvider { get; set; } = string.Empty;
