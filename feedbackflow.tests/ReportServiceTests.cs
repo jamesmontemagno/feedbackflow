@@ -8,7 +8,7 @@ using NSubstitute;
 using FeedbackWebApp.Services;
 using SharedDump.Models.Reports;
 
-namespace feedbackflow.tests;
+namespace FeedbackFlow.Tests;
 
 [TestClass]
 public class ReportServiceTests

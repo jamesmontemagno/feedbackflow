@@ -86,6 +86,7 @@ public class IssueConnection
 public class Issue
 {
     public required string Id { get; set; }
+    public required int Number { get; set; }
     public required Author Author { get; set; }
     public required string Title { get; set; }
     public required string Body { get; set; }
@@ -106,6 +107,7 @@ public class PullRequestConnection
 public class PullRequest
 {
     public required string Id { get; set; }
+    public required int Number { get; set; }
     public required Author Author { get; set; }
     public required string Title { get; set; }
     public required string Body { get; set; }

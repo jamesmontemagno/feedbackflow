@@ -138,13 +138,7 @@ public static class UrlParsing
 
     public static bool IsGitHubUrl(string url)
     {
-        if (string.IsNullOrWhiteSpace(url))
-            return false;
-
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
-            return false;
-
-        return uri.Host.Contains("github.com", StringComparison.OrdinalIgnoreCase);
+        return GitHubUrlParser.IsGitHubUrl(url);
     }
 
     public static bool IsRedditUrl(string url)

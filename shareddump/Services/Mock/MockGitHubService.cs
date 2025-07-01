@@ -122,6 +122,7 @@ public class MockGitHubService : IGitHubService
             new()
             {
                 Id = "42",
+                Number = 42,
                 Title = "Fix dark mode contrast issues",
                 Author = "userA",
                 URL = $"https://github.com/{repoOwner}/{repoName}/issues/42",
@@ -153,6 +154,7 @@ public class MockGitHubService : IGitHubService
             new()
             {
                 Id = "57",
+                Number = 57,
                 Title = "Add keyboard shortcuts for common actions",
                 Author = "userD",
                 URL = $"https://github.com/{repoOwner}/{repoName}/issues/57",
@@ -184,6 +186,7 @@ public class MockGitHubService : IGitHubService
             new()
             {
                 Id = "63",
+                Number = 63,
                 Title = "Export functionality for reports",
                 Author = "userG",
                 URL = $"https://github.com/{repoOwner}/{repoName}/issues/63",
@@ -217,6 +220,7 @@ public class MockGitHubService : IGitHubService
             new()
             {
                 Id = "pr-44",
+                Number = 44,
                 Title = "Fix accessibility issues in dark mode",
                 Author = "mockDeveloper1",
                 URL = $"https://github.com/{repoOwner}/{repoName}/pull/44",
@@ -240,6 +244,7 @@ public class MockGitHubService : IGitHubService
             new()
             {
                 Id = "pr-45",
+                Number = 45,
                 Title = "Implement keyboard shortcuts",
                 Author = "mockDeveloper2",
                 URL = $"https://github.com/{repoOwner}/{repoName}/pull/45",
@@ -263,68 +268,7 @@ public class MockGitHubService : IGitHubService
         };
     }
 
-    public async Task<List<GithubCommentModel>> GetIssueCommentsAsync(string repoOwner, string repoName, int issueNumber)
-    {
-        // Simulate network delay
-        await Task.Delay(300);
-
-        return new List<GithubCommentModel>
-        {
-            new()
-            {
-                Id = $"mock-issue-comment-{issueNumber}-1",
-                Author = "mockCommenter1",
-                Content = $"This is a mock comment for issue #{issueNumber}. Great point about the implementation approach!",
-                CreatedAt = DateTime.UtcNow.AddDays(-2).ToString("O"),
-                Url = $"https://github.com/{repoOwner}/{repoName}/issues/{issueNumber}#issuecomment-1"
-            },
-            new()
-            {
-                Id = $"mock-issue-comment-{issueNumber}-2",
-                Author = "mockCommenter2",
-                Content = $"I've encountered a similar issue. Here's a potential workaround that might help with issue #{issueNumber}.",
-                CreatedAt = DateTime.UtcNow.AddDays(-1).ToString("O"),
-                Url = $"https://github.com/{repoOwner}/{repoName}/issues/{issueNumber}#issuecomment-2"
-            }
-        };
-    }
-
-    public async Task<List<GithubCommentModel>> GetPullRequestCommentsAsync(string repoOwner, string repoName, int pullNumber)
-    {
-        // Simulate network delay
-        await Task.Delay(300);
-
-        return new List<GithubCommentModel>
-        {
-            new()
-            {
-                Id = $"mock-pr-comment-{pullNumber}-1",
-                Author = "mockReviewer1",
-                Content = $"Mock review comment for PR #{pullNumber}. The implementation looks solid, but consider adding unit tests.",
-                CreatedAt = DateTime.UtcNow.AddHours(-12).ToString("O"),
-                Url = $"https://github.com/{repoOwner}/{repoName}/pull/{pullNumber}#issuecomment-1"
-            }
-        };
-    }
-
-    public async Task<List<GithubCommentModel>> GetDiscussionCommentsAsync(string repoOwner, string repoName, int discussionNumber)
-    {
-        // Simulate network delay
-        await Task.Delay(300);
-
-        return new List<GithubCommentModel>
-        {
-            new()
-            {
-                Id = $"mock-discussion-comment-{discussionNumber}-1",
-                Author = "mockParticipant1",
-                Content = $"Great discussion topic #{discussionNumber}! I think we should consider the user feedback more carefully.",
-                CreatedAt = DateTime.UtcNow.AddDays(-1).ToString("O"),
-                Url = $"https://github.com/{repoOwner}/{repoName}/discussions/{discussionNumber}#discussioncomment-1"
-            }
-        };
-    }
-
+   
     public async Task<List<GithubIssueSummary>> GetRecentIssuesForReportAsync(string repoOwner, string repoName, int daysBack = 7)
     {
         // Simulate network delay
@@ -431,5 +375,182 @@ public class MockGitHubService : IGitHubService
         };
 
         return oldImportantIssues.Take(topCount).ToList();
+    }
+
+    /// <summary>
+    /// Gets a specific GitHub issue with all its comments - mock implementation
+    /// </summary>
+    public async Task<GithubIssueModel?> GetIssueWithCommentsAsync(string repoOwner, string repoName, int issueNumber)
+    {
+        // Simulate network delay
+        await Task.Delay(800);
+
+        // Return null for invalid inputs
+        if (string.IsNullOrWhiteSpace(repoOwner) || string.IsNullOrWhiteSpace(repoName) || issueNumber <= 0)
+            return null;
+
+        // Mock issue data
+        var mockIssue = new GithubIssueModel
+        {
+            Id = $"issue_{issueNumber}",
+            Number = issueNumber,
+            Author = "contributor123",
+            Title = $"Sample Issue #{issueNumber}: Integration problems with new API",
+            Body = "We're experiencing issues when integrating with the new API endpoints. The authentication flow seems to be inconsistent and sometimes returns 401 errors even with valid tokens.",
+            URL = $"https://github.com/{repoOwner}/{repoName}/issues/{issueNumber}",
+            CreatedAt = DateTime.UtcNow.AddDays(-5),
+            LastUpdated = DateTime.UtcNow.AddHours(-2),
+            Upvotes = 8,
+            Labels = new[] { "bug", "api", "authentication" },
+            Comments = new[]
+            {
+                new GithubCommentModel
+                {
+                    Id = $"comment_{issueNumber}_1",
+                    Author = "maintainer",
+                    Content = "Thanks for reporting this! Can you provide more details about your authentication setup?",
+                    CreatedAt = DateTime.UtcNow.AddDays(-4).ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    Url = $"https://github.com/{repoOwner}/{repoName}/issues/{issueNumber}#issuecomment-1"
+                },
+                new GithubCommentModel
+                {
+                    Id = $"comment_{issueNumber}_2",
+                    Author = "contributor123",
+                    Content = "Sure! I'm using OAuth2 with the client credentials flow. Here's my configuration: [code block]",
+                    CreatedAt = DateTime.UtcNow.AddDays(-3).ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    Url = $"https://github.com/{repoOwner}/{repoName}/issues/{issueNumber}#issuecomment-2"
+                },
+                new GithubCommentModel
+                {
+                    Id = $"comment_{issueNumber}_3",
+                    Author = "developer456",
+                    Content = "I'm seeing the same issue. It seems to happen more frequently during peak hours.",
+                    CreatedAt = DateTime.UtcNow.AddDays(-2).ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    Url = $"https://github.com/{repoOwner}/{repoName}/issues/{issueNumber}#issuecomment-3"
+                }
+            }
+        };
+
+        return mockIssue;
+    }
+
+    /// <summary>
+    /// Gets a specific GitHub pull request with all its comments - mock implementation
+    /// </summary>
+    public async Task<GithubIssueModel?> GetPullRequestWithCommentsAsync(string repoOwner, string repoName, int pullNumber)
+    {
+        // Simulate network delay
+        await Task.Delay(900);
+
+        // Return null for invalid inputs
+        if (string.IsNullOrWhiteSpace(repoOwner) || string.IsNullOrWhiteSpace(repoName) || pullNumber <= 0)
+            return null;
+
+        // Mock pull request data
+        var mockPr = new GithubIssueModel
+        {
+            Id = $"pr_{pullNumber}",
+            Number = pullNumber,
+            Author = "developer789",
+            Title = $"Pull Request #{pullNumber}: Fix authentication timeout issues",
+            Body = "This PR addresses the authentication timeout issues reported in #123. Changes include:\n\n- Increased timeout values for OAuth flows\n- Added retry logic for transient failures\n- Improved error handling and logging",
+            URL = $"https://github.com/{repoOwner}/{repoName}/pull/{pullNumber}",
+            CreatedAt = DateTime.UtcNow.AddDays(-3),
+            LastUpdated = DateTime.UtcNow.AddHours(-1),
+            Upvotes = 5,
+            Labels = new[] { "enhancement", "authentication", "bug-fix" },
+            Comments = new[]
+            {
+                new GithubCommentModel
+                {
+                    Id = $"pr_comment_{pullNumber}_1",
+                    Author = "reviewer1",
+                    Content = "Great work! The retry logic looks solid. Can you add some unit tests for the timeout scenarios?",
+                    CreatedAt = DateTime.UtcNow.AddDays(-2).ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    Url = $"https://github.com/{repoOwner}/{repoName}/pull/{pullNumber}#issuecomment-1"
+                },
+                new GithubCommentModel
+                {
+                    Id = $"pr_comment_{pullNumber}_2",
+                    Author = "developer789",
+                    Content = "Good point! I'll add tests for the timeout and retry scenarios. Should have them up in a few hours.",
+                    CreatedAt = DateTime.UtcNow.AddDays(-2).ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    Url = $"https://github.com/{repoOwner}/{repoName}/pull/{pullNumber}#issuecomment-2"
+                },
+                new GithubCommentModel
+                {
+                    Id = $"pr_review_comment_{pullNumber}_1",
+                    Author = "senior-dev",
+                    Content = "Consider using exponential backoff for the retry logic instead of fixed delays.",
+                    CreatedAt = DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    Url = $"https://github.com/{repoOwner}/{repoName}/pull/{pullNumber}#discussion_r789012345",
+                    FilePath = "src/Auth/AuthService.cs",
+                    LinePosition = 45,
+                    CodeContext = "@@ -42,6 +42,12 @@ public async Task<AuthResult> AuthenticateAsync()\n+            await Task.Delay(1000); // Fixed delay\n+            return await RetryAuthenticationAsync();"
+                }
+            }
+        };
+
+        return mockPr;
+    }
+
+    /// <summary>
+    /// Gets a specific GitHub discussion with all its comments - mock implementation
+    /// </summary>
+    public async Task<GithubDiscussionModel?> GetDiscussionWithCommentsAsync(string repoOwner, string repoName, int discussionNumber)
+    {
+        // Simulate network delay
+        await Task.Delay(700);
+
+        // Return null for invalid inputs
+        if (string.IsNullOrWhiteSpace(repoOwner) || string.IsNullOrWhiteSpace(repoName) || discussionNumber <= 0)
+            return null;
+
+        // Mock discussion data
+        var mockDiscussion = new GithubDiscussionModel
+        {
+            Title = $"Discussion #{discussionNumber}: Best practices for API versioning",
+            AnswerId = $"answer_{discussionNumber}_2", // Second comment is the accepted answer
+            Url = $"https://github.com/{repoOwner}/{repoName}/discussions/{discussionNumber}",
+            Comments = new[]
+            {
+                new GithubCommentModel
+                {
+                    Id = $"discussion_comment_{discussionNumber}_1",
+                    Author = "community-member",
+                    Content = "What's the recommended approach for versioning APIs in this project? Should we use URL versioning, header versioning, or something else?",
+                    CreatedAt = DateTime.UtcNow.AddDays(-7).ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    Url = $"https://github.com/{repoOwner}/{repoName}/discussions/{discussionNumber}#discussioncomment-1"
+                },
+                new GithubCommentModel
+                {
+                    Id = $"answer_{discussionNumber}_2",
+                    Author = "maintainer",
+                    Content = "We recommend using semantic versioning in the URL path (e.g., `/api/v1/`, `/api/v2/`). This makes it clear which version clients are using and allows for easier deprecation of old versions. Here's our versioning strategy:\n\n1. Major versions for breaking changes\n2. Minor versions for new features\n3. Patch versions for bug fixes\n\nWe maintain backward compatibility within major versions.",
+                    CreatedAt = DateTime.UtcNow.AddDays(-6).ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    Url = $"https://github.com/{repoOwner}/{repoName}/discussions/{discussionNumber}#discussioncomment-2"
+                },
+                new GithubCommentModel
+                {
+                    Id = $"discussion_comment_{discussionNumber}_3",
+                    Author = "api-expert",
+                    Content = "Great answer! I'd also recommend using deprecation headers to warn clients about upcoming changes.",
+                    CreatedAt = DateTime.UtcNow.AddDays(-5).ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    Url = $"https://github.com/{repoOwner}/{repoName}/discussions/{discussionNumber}#discussioncomment-3",
+                    ParentId = $"answer_{discussionNumber}_2"
+                },
+                new GithubCommentModel
+                {
+                    Id = $"discussion_comment_{discussionNumber}_4",
+                    Author = "community-member",
+                    Content = "Thanks for the detailed explanation! This is exactly what I was looking for.",
+                    CreatedAt = DateTime.UtcNow.AddDays(-4).ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    Url = $"https://github.com/{repoOwner}/{repoName}/discussions/{discussionNumber}#discussioncomment-4",
+                    ParentId = $"answer_{discussionNumber}_2"
+                }
+            }
+        };
+
+        return mockDiscussion;
     }
 }

@@ -23,7 +23,7 @@
                             <div class="list-group-item issue-item" @key="issue.Id">
                                 <div class="d-flex w-100 justify-content-between mb-2">
                                     <h5 class="mb-1">
-                                        #@issue.Id: @issue.Title
+                                        #@issue.Number: @issue.Title
                                     </h5>
                                     <small>
                                         Updated: @issue.LastUpdated.ToString("MMM dd, yyyy")
@@ -39,11 +39,11 @@
                                 @if (issue.Comments?.Any() == true)
                                 {
                                     <div class="issue-comments mt-3">
-                                        <button class="btn btn-sm btn-outline-secondary mb-2" @onclick="() => ToggleComments(issue.Id)">
-                                            @(ExpandedItems.Contains(issue.Id) ? "Hide Comments" : $"Show Comments ({issue.Comments.Length})")
+                                        <button class="btn btn-sm btn-outline-secondary mb-2" @onclick="() => ToggleComments(issue.Number.ToString())">
+                                            @(ExpandedItems.Contains(issue.Number.ToString()) ? "Hide Comments" : "Show Comments (" + issue.Comments.Length + ")")
                                         </button>
                                         
-                                        @if (ExpandedItems.Contains(issue.Id))
+                                        @if (ExpandedItems.Contains(issue.Number.ToString()))
                                         {
                                             <div class="comments-container" style="max-height: 400px; overflow-y: auto;">
                                                 <Virtualize Items="issue.Comments" Context="comment" ItemSize="100">
@@ -107,7 +107,7 @@
                                 {
                                     <div class="pr-comments mt-3">
                                         <button class="btn btn-sm btn-outline-secondary mb-2" @onclick="() => ToggleComments(pr.Id)">
-                                            @(ExpandedItems.Contains(pr.Id) ? "Hide Comments" : $"Show Comments ({pr.Comments.Length})")
+                                            @(ExpandedItems.Contains(pr.Id) ? "Hide Comments" : "Show Comments (" + pr.Comments.Length + ")")
                                         </button>
                                         
                                         @if (ExpandedItems.Contains(pr.Id))
@@ -169,7 +169,7 @@
                                 {
                                     <div class="discussion-comments mt-3">
                                         <button class="btn btn-sm btn-outline-secondary mb-2" @onclick="() => ToggleComments(discussion.Url)">
-                                            @(ExpandedItems.Contains(discussion.Url) ? "Hide Comments" : $"Show Comments ({discussion.Comments.Length})")
+                                            @(ExpandedItems.Contains(discussion.Url) ? "Hide Comments" : "Show Comments (" + discussion.Comments.Length + ")")
                                         </button>
                                         
                                         @if (ExpandedItems.Contains(discussion.Url))

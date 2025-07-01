@@ -11,6 +11,7 @@ public class GithubDiscussionModel
 public class GithubIssueModel
 {
     public required string Id { get; set; }
+    public required int Number { get; set; }
     public required string Author { get; set; }
     public required string Title { get; set; }
     public required string URL { get; set; }

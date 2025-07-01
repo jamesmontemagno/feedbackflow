@@ -6,6 +6,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using SharedDump.Models;
 using SharedDump.Models.GitHub;
 using SharedDump.Models.HackerNews;
 using SharedDump.Models.YouTube;
@@ -15,6 +16,7 @@ using SharedDump.AI;
 using SharedDump.Models.TwitterFeedback;
 using SharedDump.Models.BlueSkyFeedback;
 using SharedDump.Json;
+using SharedDump.Services;
 using SharedDump.Services.Interfaces;
 
 namespace FeedbackFunctions;
@@ -73,20 +75,17 @@ public class FeedbackFunctions
     }
 
     /// <summary>
-    /// Retrieves feedback from GitHub repositories (issues, pull requests, discussions)
+    /// Gets GitHub feedback (issues, pull requests, or discussions) based on a GitHub URL
     /// </summary>
-    /// <param name="req">HTTP request containing query parameters</param>
-    /// <returns>HTTP response with GitHub feedback data</returns>
+    /// <param name="req">HTTP request containing the GitHub URL</param>
+    /// <returns>GitHub feedback data in JSON format</returns>
     /// <remarks>
-    /// Query parameters:
-    /// - repo: Required. Repository in format "owner/name"
-    /// - labels: Optional. Comma-separated list of issue/PR labels to filter by
-    /// - issues: Optional. Boolean (default: true) whether to include issues
-    /// - pulls: Optional. Boolean (default: false) whether to include pull requests
-    /// - discussions: Optional. Boolean (default: false) whether to include discussions
+    /// Parameters:
+    /// - url: Required. GitHub URL (issue, PR, discussion, or repository)
+    /// - maxComments: Optional. Maximum number of comments to return (default: 100)
     /// 
     /// Example usage:
-    /// GET /api/GetGitHubFeedback?repo=dotnet/maui&amp;labels=bug,documentation&amp;pulls=true
+    /// GET /api/GetGitHubFeedback?url=https://github.com/dotnet/maui/issues/123&maxComments=50
     /// </remarks>
     [Function("GetGitHubFeedback")]
     public async Task<HttpResponseData> GetGitHubFeedback(
@@ -95,54 +94,138 @@ public class FeedbackFunctions
         _logger.LogInformation("Processing GitHub feedback request");
 
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
-        var repo = queryParams["repo"];
-        var labels = queryParams["labels"]?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
-        var includeIssues = bool.Parse(queryParams["issues"] ?? "true");
-        var includePullRequests = bool.Parse(queryParams["pulls"] ?? "false");
-        var includeDiscussions = bool.Parse(queryParams["discussions"] ?? "false");
+        var url = queryParams["url"];
+        var maxCommentsStr = queryParams["maxComments"];
 
-        if (string.IsNullOrEmpty(repo))
+        if (string.IsNullOrEmpty(url))
         {
             var response = req.CreateResponse(HttpStatusCode.BadRequest);
-            await response.WriteStringAsync("'repo' parameter is required");
+            await response.WriteStringAsync("'url' parameter is required");
             return response;
         }
+
+        var maxComments = int.TryParse(maxCommentsStr, out var max) ? max : 100;
 
         try
         {
-            var (repoOwner, repoName) = repo.Split('/', StringSplitOptions.RemoveEmptyEntries) switch
+            // Parse the GitHub URL to determine what type of content to fetch
+            var urlInfo = SharedDump.Utils.GitHubUrlParser.ParseGitHubUrl(url);
+            if (urlInfo == null)
             {
-                [var owner, var name] => (owner, name),
-                _ => throw new InvalidOperationException("Invalid repository format, expected owner/repo")
-            };
-
-            if (!await _githubService.CheckRepositoryValid(repoOwner, repoName))
-            {
-                var response2 = req.CreateResponse(HttpStatusCode.BadRequest);
-                await response2.WriteStringAsync("Invalid repository");
-                return response2;
+                var response = req.CreateResponse(HttpStatusCode.BadRequest);
+                await response.WriteStringAsync("Invalid GitHub URL provided");
+                return response;
             }
 
-            var discussionsTask = includeDiscussions ? _githubService.GetDiscussionsAsync(repoOwner, repoName) : Task.FromResult(new List<GithubDiscussionModel>());
-            var issuesTask = includeIssues ? _githubService.GetIssuesAsync(repoOwner, repoName, labels) : Task.FromResult(new List<GithubIssueModel>());
-            var pullsTask = includePullRequests ? _githubService.GetPullRequestsAsync(repoOwner, repoName, labels) : Task.FromResult(new List<GithubIssueModel>());
-
-            await Task.WhenAll(discussionsTask, issuesTask, pullsTask);
-
-            var result = new
+            // Validate repository exists
+            if (!await _githubService.CheckRepositoryValid(urlInfo.Owner, urlInfo.Repository))
             {
-                Discussions = await discussionsTask,
-                Issues = await issuesTask,
-                PullRequests = await pullsTask
-            };
+                var response = req.CreateResponse(HttpStatusCode.BadRequest);
+                await response.WriteStringAsync("Invalid repository");
+                return response;
+            }
 
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            await response.WriteAsJsonAsync(result);
-            return response;
+            object result;
+
+            switch (urlInfo.Type)
+            {
+                case SharedDump.Utils.GitHubUrlType.Issue:
+                    if (urlInfo.Number.HasValue)
+                    {
+                        var issueModel = await _githubService.GetIssueWithCommentsAsync(urlInfo.Owner, urlInfo.Repository, urlInfo.Number.Value);
+                        
+                        if (issueModel == null)
+                        {
+                            var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+                            await notFoundResponse.WriteStringAsync("Issue not found");
+                            return notFoundResponse;
+                        }
+
+                        // Limit comments to maxComments
+                        if (issueModel.Comments.Length > maxComments)
+                        {
+                            issueModel.Comments = issueModel.Comments.Take(maxComments).ToArray();
+                        }
+
+                        result = new[] { issueModel };
+                    }
+                    else
+                    {
+                        var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                        await badResponse.WriteStringAsync("Issue number is required in the URL");
+                        return badResponse;
+                    }
+                    break;
+
+                case SharedDump.Utils.GitHubUrlType.PullRequest:
+                    if (urlInfo.Number.HasValue)
+                    {
+                        var prModel = await _githubService.GetPullRequestWithCommentsAsync(urlInfo.Owner, urlInfo.Repository, urlInfo.Number.Value);
+                        
+                        if (prModel == null)
+                        {
+                            var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+                            await notFoundResponse.WriteStringAsync("Pull request not found");
+                            return notFoundResponse;
+                        }
+
+                        // Limit comments to maxComments
+                        if (prModel.Comments.Length > maxComments)
+                        {
+                            prModel.Comments = prModel.Comments.Take(maxComments).ToArray();
+                        }
+
+                        result = new[] { prModel };
+                    }
+                    else
+                    {
+                        var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                        await badResponse.WriteStringAsync("Pull request number is required in the URL");
+                        return badResponse;
+                    }
+                    break;
+
+                case SharedDump.Utils.GitHubUrlType.Discussion:
+                    if (urlInfo.Number.HasValue)
+                    {
+                        var discussionModel = await _githubService.GetDiscussionWithCommentsAsync(urlInfo.Owner, urlInfo.Repository, urlInfo.Number.Value);
+                        
+                        if (discussionModel == null)
+                        {
+                            var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+                            await notFoundResponse.WriteStringAsync("Discussion not found");
+                            return notFoundResponse;
+                        }
+
+                        // Limit comments to maxComments
+                        if (discussionModel.Comments.Length > maxComments)
+                        {
+                            discussionModel.Comments = discussionModel.Comments.Take(maxComments).ToArray();
+                        }
+
+                        result = new[] { discussionModel };
+                    }
+                    else
+                    {
+                        var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                        await badResponse.WriteStringAsync("Discussion number is required in the URL");
+                        return badResponse;
+                    }
+                    break;
+
+                default:
+                    var invalidResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await invalidResponse.WriteStringAsync("URL must be a specific GitHub issue, pull request, or discussion");
+                    return invalidResponse;
+            }
+
+            var successResponse = req.CreateResponse(HttpStatusCode.OK);
+            await successResponse.WriteAsJsonAsync(result);
+            return successResponse;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing GitHub feedback request");
+            _logger.LogError(ex, "Error processing GitHub feedback request for URL: {Url}", url);
             var response = req.CreateResponse(HttpStatusCode.InternalServerError);
             await response.WriteStringAsync("An error occurred processing the request");
             return response;
@@ -468,66 +551,7 @@ public class FeedbackFunctions
         }
     }
 
-    [Function("GetGitHubItemComments")]
-    public async Task<HttpResponseData> GetGitHubItemComments(
-        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
-    {
-        _logger.LogInformation("Processing GitHub item comments request");
-
-        var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
-        var repo = queryParams["repo"];
-        var itemType = queryParams["type"]?.ToLowerInvariant() ?? "issue";
-        
-        if (!int.TryParse(queryParams["number"], out var itemNumber))
-        {
-            var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-            await badResponse.WriteStringAsync("'number' parameter is required and must be an integer");
-            return badResponse;
-        }
-
-        if (string.IsNullOrEmpty(repo))
-        {
-            var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-            await badResponse.WriteStringAsync("'repo' parameter is required");
-            return badResponse;
-        }
-
-        try
-        {
-            var (repoOwner, repoName) = repo.Split('/', StringSplitOptions.RemoveEmptyEntries) switch
-            {
-                [var owner, var name] => (owner, name),
-                _ => throw new InvalidOperationException("Invalid repository format, expected owner/repo")
-            };
-
-            if (!await _githubService.CheckRepositoryValid(repoOwner, repoName))
-            {
-                var errorResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await errorResponse.WriteStringAsync("Invalid repository");
-                return errorResponse;
-            }
-
-            List<GithubCommentModel> comments = itemType switch
-            {
-                "issue" => await _githubService.GetIssueCommentsAsync(repoOwner, repoName, itemNumber),
-                "pull" or "pr" => await _githubService.GetPullRequestCommentsAsync(repoOwner, repoName, itemNumber),
-                "discussion" => await _githubService.GetDiscussionCommentsAsync(repoOwner, repoName, itemNumber),
-                _ => throw new ArgumentException($"Invalid item type: {itemType}. Expected 'issue', 'pull', or 'discussion'")
-            };
-
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            await response.WriteAsJsonAsync(comments);
-            return response;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error processing GitHub item comments request");
-            var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await errorResponse.WriteStringAsync("An error occurred processing the request");
-            return errorResponse;
-        }
-    }
-
+   
     [Function("GetTwitterFeedback")]
     public async Task<HttpResponseData> GetTwitterFeedback(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)

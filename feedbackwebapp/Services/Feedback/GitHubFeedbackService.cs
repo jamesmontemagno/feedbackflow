@@ -42,35 +42,44 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
         var totalComments = 0;
 
-        // Determine if this is an issue/PR or a discussion
-        if (_url.Contains("/discussions/"))
-        {
-            var discussions = JsonSerializer.Deserialize<List<GithubDiscussionModel>>(responseContent);
-            if (discussions == null || !discussions.Any())
-            {
-                UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
-                return ("No comments available", 0, null);
-            }
-
-            totalComments = discussions.Sum(discussion => 
-                (discussion.Comments?.Count() ?? 0) + 1); // +1 for the discussion body
-
-            return (responseContent, totalComments, discussions);
-        }
-        else
+        // The API now returns either an array of GithubIssueModel or GithubDiscussionModel
+        // Try to deserialize as issues first (covers both issues and PRs)
+        try
         {
             var issues = JsonSerializer.Deserialize<List<GithubIssueModel>>(responseContent);
-            if (issues == null || !issues.Any())
+            if (issues != null && issues.Any())
             {
+                totalComments = issues.Sum(issue => 
+                    (issue.Comments?.Length ?? 0) + 1); // +1 for the issue body
+
+                return (responseContent, totalComments, issues);
+            }
+        }
+        catch (JsonException)
+        {
+            // If it fails, try deserializing as discussions
+            try
+            {
+                var discussions = JsonSerializer.Deserialize<List<GithubDiscussionModel>>(responseContent);
+                if (discussions != null && discussions.Any())
+                {
+                    totalComments = discussions.Sum(discussion => 
+                        (discussion.Comments?.Length ?? 0) + 1); // +1 for the discussion body
+
+                    return (responseContent, totalComments, discussions);
+                }
+            }
+            catch (JsonException)
+            {
+                // If both fail, return empty
                 UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
                 return ("No comments available", 0, null);
             }
-
-            totalComments = issues.Sum(issue => 
-                (issue.Comments?.Count() ?? 0) + 1); // +1 for the issue body
-
-            return (responseContent, totalComments, issues);
         }
+
+        // If we get here, no valid data was found
+        UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
+        return ("No comments available", 0, null);
     }
 
     public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
