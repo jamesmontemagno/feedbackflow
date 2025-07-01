@@ -1,6 +1,5 @@
 using System.Text.Json;
 using SharedDump.Models.GitHub;
-using FeedbackWebApp.Components.Feedback;
 using FeedbackWebApp.Services.Interfaces;
 
 namespace FeedbackWebApp.Services.Feedback;

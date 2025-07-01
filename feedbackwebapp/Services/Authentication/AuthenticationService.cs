@@ -2,16 +2,19 @@ using Microsoft.JSInterop;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.DataProtection;
 using System.Security.Cryptography;
+using SharedDump.Models.Authentication;
 
 namespace FeedbackWebApp.Services.Authentication;
 
-public class AuthenticationService
+public class AuthenticationService : IAuthenticationService
 {
     private readonly IJSRuntime _jsRuntime;
     private readonly IConfiguration _configuration;
     private readonly IDataProtector _dataProtector;
     private const string AUTH_KEY = "feedbackflow_auth";
     private bool? _isAuthenticated;
+
+    public event EventHandler<bool>? AuthenticationStateChanged;
 
     public AuthenticationService(IJSRuntime jsRuntime, IConfiguration configuration, IDataProtectionProvider dataProtectionProvider)
     {
@@ -73,10 +76,12 @@ public class AuthenticationService
             var protectedToken = _dataProtector.Protect("FeedbackFlow_Authenticated");
             await _jsRuntime.InvokeVoidAsync("localStorage.setItem", AUTH_KEY, protectedToken);
             _isAuthenticated = true;
+            AuthenticationStateChanged?.Invoke(this, true);
         }
         else
         {
             _isAuthenticated = false;
+            AuthenticationStateChanged?.Invoke(this, false);
         }
 
         return isValid;
@@ -94,5 +99,31 @@ public class AuthenticationService
     public async Task LogoutAsync()
     {
         await SetAuthenticatedAsync(false);
+        AuthenticationStateChanged?.Invoke(this, false);
+    }
+
+    public async Task<AuthenticatedUser?> GetCurrentUserAsync()
+    {
+        var isAuthenticated = await IsAuthenticatedAsync();
+        if (!isAuthenticated)
+            return null;
+
+        // For password auth, we don't have user details, so return a basic user
+        return new AuthenticatedUser
+        {
+            UserId = "password-user",
+            Email = "password@local.dev",
+            Name = "Password User",
+            AuthProvider = "Password",
+            ProviderUserId = "password-user",
+            CreatedAt = DateTime.UtcNow,
+            LastLoginAt = DateTime.UtcNow
+        };
+    }
+
+    public string GetLoginUrl(string provider, string? redirectUrl = null)
+    {
+        // Password auth doesn't use login URLs
+        return "/";
     }
 }

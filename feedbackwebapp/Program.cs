@@ -1,4 +1,3 @@
-using FeedbackWebApp.Components;
 using FeedbackWebApp.Services;
 using FeedbackWebApp.Services.Authentication;
 using FeedbackWebApp.Services.ContentFeed;
@@ -35,7 +34,21 @@ builder.Services.AddHttpClient("DefaultClient")
     .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(3));
 builder.Services.AddScoped<FeedbackServiceProvider>();
 builder.Services.AddScoped<ContentFeedServiceProvider>();
+
+// Register authentication service based on configuration
+var useEasyAuth = builder.Configuration.GetValue<bool>("Authentication:UseEasyAuth", false);
+if (useEasyAuth)
+{
+    builder.Services.AddScoped<IAuthenticationService, EasyAuthService>();
+}
+else
+{
+    builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
+}
+
+// Keep the old AuthenticationService for backward compatibility
 builder.Services.AddScoped<AuthenticationService>();
+
 builder.Services.AddScoped<UserSettingsService>();
 builder.Services.AddScoped<IReportServiceProvider, ReportServiceProvider>();
 builder.Services.AddScoped<IReportRequestService, ReportRequestService>();
