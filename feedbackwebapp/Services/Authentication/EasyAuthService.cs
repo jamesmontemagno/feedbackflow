@@ -80,7 +80,7 @@ public class EasyAuthService : IAuthenticationService
         var baseUrl = _navigationManager.BaseUri.TrimEnd('/');
         var providerPath = provider.ToLower() switch
         {
-            "microsoft" => "aad",
+            "microsoft" => "microsoftaccount",
             "google" => "google",
             "github" => "github",
             "facebook" => "facebook",
@@ -182,7 +182,7 @@ public class EasyAuthService : IAuthenticationService
     {
         return identityProvider switch
         {
-            "microsoftaccount" => "Microsoft",
+			"microsoftaccount" => "Microsoft",
             "google" => "Google",
             "github" => "GitHub",
             "facebook" => "Facebook",
