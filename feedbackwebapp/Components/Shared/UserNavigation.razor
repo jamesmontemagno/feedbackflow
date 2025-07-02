@@ -1,3 +1,4 @@
+@implements IDisposable
 @using FeedbackWebApp.Services.Authentication
 @using SharedDump.Models.Authentication
 @inject IAuthenticationService AuthService
@@ -58,75 +59,21 @@
     else
     {
         <!-- Login button -->
-        <button class="btn btn-outline-light d-flex align-items-center" @onclick="ShowLoginModal">
+        <button class="btn btn-outline-light d-flex align-items-center" @onclick="NavigateToLogin">
             <i class="bi bi-box-arrow-in-right me-2"></i>
             <span class="d-none d-md-inline">Login</span>
         </button>
     }
 </div>
 
-<!-- Login Modal -->
-@if (showLoginModal)
-{
-    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Sign in to FeedbackFlow</h5>
-                    <button type="button" class="btn-close" @onclick="HideLoginModal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="d-flex flex-column gap-3">
-                        <button class="btn btn-primary d-flex align-items-center justify-content-center gap-2" 
-                                @onclick="@(() => LoginWithProvider("Microsoft"))">
-                            <i class="bi bi-microsoft"></i>
-                            Sign in with Microsoft
-                        </button>
-                        
-                        @if (enabledProviders.Contains("Google"))
-                        {
-                            <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
-                                    @onclick="@(() => LoginWithProvider("Google"))">
-                                <i class="bi bi-google"></i>
-                                Sign in with Google
-                            </button>
-                        }
-                        
-                        @if (enabledProviders.Contains("GitHub"))
-                        {
-                            <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
-                                    @onclick="@(() => LoginWithProvider("GitHub"))">
-                                <i class="bi bi-github"></i>
-                                Sign in with GitHub
-                            </button>
-                        }
-                    </div>
-                    
-                    @if (!string.IsNullOrEmpty(loginError))
-                    {
-                        <div class="alert alert-danger mt-3" role="alert">
-                            @loginError
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
 @code {
     private bool isLoading = true;
     private bool isAuthenticated = false;
     private AuthenticatedUser? currentUser;
-    private bool showLoginModal = false;
     private string loginError = "";
-    private List<string> enabledProviders = new();
 
     protected override async Task OnInitializedAsync()
     {
-        // Load configuration
-        await LoadConfigurationAsync();
-        
         // Check authentication status
         await CheckAuthenticationAsync();
         
@@ -140,22 +87,6 @@
         {
             // Check for redirect after authentication
             await CheckForPostAuthRedirectAsync();
-        }
-    }
-
-    private async Task LoadConfigurationAsync()
-    {
-        try
-        {
-            // For now, we'll support Microsoft by default
-            // This can be expanded based on your configuration needs
-            enabledProviders.Add("Microsoft");
-            // enabledProviders.Add("Google");
-            // enabledProviders.Add("GitHub");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading configuration: {ex.Message}");
         }
     }
 
@@ -225,41 +156,9 @@
         return "User";
     }
 
-    private void ShowLoginModal()
+    private void NavigateToLogin()
     {
-        showLoginModal = true;
-        loginError = "";
-        StateHasChanged();
-    }
-
-    private void HideLoginModal()
-    {
-        showLoginModal = false;
-        loginError = "";
-        StateHasChanged();
-    }
-
-    private async Task LoginWithProvider(string provider)
-    {
-        try
-        {
-            HideLoginModal();
-            
-            // Store current URL for redirect after authentication
-            var currentUrl = Navigation.Uri;
-            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "feedbackflow_redirect_after_auth", currentUrl);
-            
-            // Clear any existing auth data to ensure fresh login
-            await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "feedbackflow_easyauth_user");
-            
-            var loginUrl = AuthService.GetLoginUrl(provider, currentUrl);
-            Navigation.NavigateTo(loginUrl, forceLoad: true);
-        }
-        catch (Exception ex)
-        {
-            loginError = $"Error initiating login: {ex.Message}";
-            StateHasChanged();
-        }
+        Navigation.NavigateTo("/");
     }
 
     private async Task LogoutAsync()

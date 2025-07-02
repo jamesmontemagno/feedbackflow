@@ -122,64 +122,6 @@
     color: white;
 }
 
-/* Modal styles */
-.modal-content {
-    border-radius: var(--border-radius);
-    border: none;
-    box-shadow: var(--card-shadow);
-    background: var(--card-background);
-    color: var(--text-color);
-}
-
-.modal-header {
-    border-bottom: 1px solid var(--border-color);
-    background: var(--card-background);
-}
-
-.modal-body {
-    background: var(--card-background);
-}
-
-.modal-title {
-    color: var(--text-color);
-    font-weight: 600;
-}
-
-.btn-close {
-    filter: var(--bs-btn-close-white-filter, invert(1) grayscale(100%) brightness(200%));
-}
-
-/* Provider sign-in buttons */
-.btn i {
-    font-size: 1.1rem;
-}
-
-.btn-primary {
-    background: var(--primary-gradient);
-    border: none;
-    transition: all 0.3s ease;
-}
-
-.btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.3);
-}
-
-.btn-outline-primary {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-    background: transparent;
-    transition: all 0.3s ease;
-}
-
-.btn-outline-primary:hover {
-    background: var(--primary-color);
-    border-color: var(--primary-color);
-    color: white;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.3);
-}
-
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .user-dropdown-menu {
