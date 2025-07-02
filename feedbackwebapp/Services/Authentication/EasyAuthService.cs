@@ -143,6 +143,27 @@ public class EasyAuthService : IAuthenticationService
     {
         try
         {
+            // First check if we have cached user data in localStorage
+            var cachedUserJson = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", AUTH_USER_KEY);
+            if (!string.IsNullOrEmpty(cachedUserJson))
+            {
+                try
+                {
+                    var cachedUser = JsonSerializer.Deserialize<AuthenticatedUser>(cachedUserJson);
+                    if (cachedUser != null)
+                    {
+                        // Return cached user, but still validate with Easy Auth in background
+                        _ = Task.Run(async () => await ValidateEasyAuthAsync());
+                        return cachedUser;
+                    }
+                }
+                catch
+                {
+                    // Invalid cached data, remove it
+                    await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
+                }
+            }
+
             // Try to get user info from /.auth/me endpoint
             using var httpClient = new HttpClient();
             httpClient.Timeout = TimeSpan.FromSeconds(5); // Set a reasonable timeout
@@ -153,7 +174,8 @@ public class EasyAuthService : IAuthenticationService
             if (!response.IsSuccessStatusCode)
             {
                 // If we get 401/403, user is not authenticated
-                // If we get other errors, Easy Auth might not be configured
+                // Clear any cached data
+                await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
                 return null;
             }
             
@@ -161,6 +183,7 @@ public class EasyAuthService : IAuthenticationService
             if (string.IsNullOrEmpty(content) || content.Trim() == "[]")
             {
                 // Empty array means no authenticated user
+                await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
                 return null;
             }
             
@@ -168,6 +191,7 @@ public class EasyAuthService : IAuthenticationService
             var authMeResponse = JsonSerializer.Deserialize<EasyAuthUser[]>(content);
             if (authMeResponse == null || authMeResponse.Length == 0)
             {
+                await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
                 return null;
             }
             
@@ -180,7 +204,7 @@ public class EasyAuthService : IAuthenticationService
                       userInfo.Claims?.FirstOrDefault(c => c.Typ == "given_name")?.Val ??
                       email;
                       
-            return new AuthenticatedUser
+            var authenticatedUser = new AuthenticatedUser
             {
                 UserId = userInfo.UserId,
                 Email = email,
@@ -190,21 +214,58 @@ public class EasyAuthService : IAuthenticationService
                 CreatedAt = DateTime.UtcNow,
                 LastLoginAt = DateTime.UtcNow
             };
+
+            // Store user data in localStorage for faster subsequent loads
+            var userJson = JsonSerializer.Serialize(authenticatedUser);
+            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", AUTH_USER_KEY, userJson);
+            
+            return authenticatedUser;
         }
         catch (HttpRequestException)
         {
             // Network error or Easy Auth not available
+            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
             return null;
         }
         catch (TaskCanceledException)
         {
             // Timeout
+            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
             return null;
         }
         catch (Exception)
         {
             // Any other error - Easy Auth not configured or not working
+            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Validate Easy Auth status in background (for cached users)
+    /// </summary>
+    private async Task ValidateEasyAuthAsync()
+    {
+        try
+        {
+            using var httpClient = new HttpClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(3);
+            
+            var baseUrl = _navigationManager.BaseUri.TrimEnd('/');
+            var response = await httpClient.GetAsync($"{baseUrl}/.auth/me");
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                // User is no longer authenticated, clear cache and reset state
+                await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
+                _isAuthenticated = false;
+                _currentUser = null;
+                AuthenticationStateChanged?.Invoke(this, false);
+            }
+        }
+        catch
+        {
+            // If validation fails, we'll catch it on the next regular check
         }
     }
 
@@ -229,10 +290,21 @@ public class EasyAuthService : IAuthenticationService
     /// <summary>
     /// Reset authentication state to force a fresh check
     /// </summary>
+    internal async Task ResetAuthenticationStateAsync()
+    {
+        _isAuthenticated = null;
+        _currentUser = null;
+        await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
+    }
+
+    /// <summary>
+    /// Reset authentication state to force a fresh check (synchronous version for reflection)
+    /// </summary>
     internal void ResetAuthenticationState()
     {
         _isAuthenticated = null;
         _currentUser = null;
+        // Note: Cannot clear localStorage synchronously, will be cleared on next auth check
     }
 
     /// <summary>

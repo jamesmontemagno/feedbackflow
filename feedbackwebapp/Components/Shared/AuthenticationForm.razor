@@ -94,7 +94,9 @@ else
             // Load enabled providers
             var providersConfig = Configuration.GetSection("Authentication:Providers");
             enabledProviders.Clear();
-            enabledProviders.Add("Microsoft"); // Always include Microsoft as default
+            
+            if(providersConfig.GetValue<bool>("Microsoft:Enabled", true))
+                enabledProviders.Add("Microsoft");
             
             if (providersConfig.GetValue<bool>("Google:Enabled", false))
                 enabledProviders.Add("Google");
@@ -152,6 +154,9 @@ else
             // Store current URL for redirect after authentication
             var currentUrl = Navigation.Uri;
             await JSRuntime.InvokeVoidAsync("localStorage.setItem", "feedbackflow_redirect_after_auth", currentUrl);
+            
+            // Clear any existing auth data to ensure fresh login
+            await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "feedbackflow_easyauth_user");
             
             var loginUrl = AuthService.GetLoginUrl(providerName, currentUrl);
             Navigation.NavigateTo(loginUrl, forceLoad: true);
