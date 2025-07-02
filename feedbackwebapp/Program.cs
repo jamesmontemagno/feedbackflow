@@ -46,6 +46,9 @@ else
     builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 }
 
+// Register authentication header service
+builder.Services.AddScoped<IAuthenticationHeaderService, AuthenticationHeaderService>();
+
 // Keep the old AuthenticationService for backward compatibility
 //builder.Services.AddScoped<AuthenticationService>();
 

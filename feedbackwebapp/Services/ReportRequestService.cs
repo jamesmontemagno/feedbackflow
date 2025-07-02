@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using SharedDump.Models.Reports;
+using FeedbackWebApp.Services.Authentication;
 
 namespace FeedbackWebApp.Services;
 
@@ -30,12 +31,14 @@ public class ReportRequestService : IReportRequestService
 {
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
+    private readonly IAuthenticationHeaderService _authHeaderService;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-    public ReportRequestService(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+    public ReportRequestService(IHttpClientFactory httpClientFactory, IConfiguration configuration, IAuthenticationHeaderService authHeaderService)
     {
         _httpClient = httpClientFactory.CreateClient();
         _configuration = configuration;
+        _authHeaderService = authHeaderService;
     }
 
     public async Task<IEnumerable<ReportModel>> FilterReportsAsync(IEnumerable<object> userRequests)
@@ -50,7 +53,16 @@ public class ReportRequestService : IReportRequestService
             var json = JsonSerializer.Serialize(userRequests, _jsonOptions);
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync($"{baseUrl}/api/FilterReports?code={Uri.EscapeDataString(code)}", content);
+            // Create the request message to add authentication headers
+            var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/FilterReports?code={Uri.EscapeDataString(code)}")
+            {
+                Content = content
+            };
+
+            // Add authentication headers
+            await _authHeaderService.AddAuthenticationHeadersAsync(requestMessage);
+
+            var response = await _httpClient.SendAsync(requestMessage);
             response.EnsureSuccessStatusCode();
 
             var responseContent = await response.Content.ReadAsStringAsync();
@@ -78,7 +90,16 @@ public class ReportRequestService : IReportRequestService
             var json = JsonSerializer.Serialize(request, _jsonOptions);
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync($"{baseUrl}/api/AddReportRequest?code={Uri.EscapeDataString(code)}", content);
+            // Create the request message to add authentication headers
+            var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/AddReportRequest?code={Uri.EscapeDataString(code)}")
+            {
+                Content = content
+            };
+
+            // Add authentication headers
+            await _authHeaderService.AddAuthenticationHeadersAsync(requestMessage);
+
+            var response = await _httpClient.SendAsync(requestMessage);
             
             if (response.IsSuccessStatusCode)
             {
@@ -108,7 +129,13 @@ public class ReportRequestService : IReportRequestService
             var code = _configuration["FeedbackApi:FunctionsKey"]
                 ?? throw new InvalidOperationException("Remove report request code not configured");
 
-            var response = await _httpClient.DeleteAsync($"{baseUrl}/api/reportrequest/{Uri.EscapeDataString(id)}?code={Uri.EscapeDataString(code)}");
+            // Create the request message to add authentication headers
+            var requestMessage = new HttpRequestMessage(HttpMethod.Delete, $"{baseUrl}/api/reportrequest/{Uri.EscapeDataString(id)}?code={Uri.EscapeDataString(code)}");
+
+            // Add authentication headers
+            await _authHeaderService.AddAuthenticationHeadersAsync(requestMessage);
+
+            var response = await _httpClient.SendAsync(requestMessage);
             
             if (response.IsSuccessStatusCode)
             {
