@@ -165,22 +165,42 @@ public class EasyAuthService : IAuthenticationService
             }
 
             // Try to get user info from /.auth/me endpoint
-            using var httpClient = new HttpClient();
-            httpClient.Timeout = TimeSpan.FromSeconds(5); // Set a reasonable timeout
+            // Note: We can't use HttpClient from Blazor Server to call /.auth/me because 
+            // it won't include the authentication cookies. Instead, we'll use JS interop.
+            return await GetEasyAuthUserViaJSAsync();
+        }
+        catch (HttpRequestException)
+        {
+            // Network error or Easy Auth not available
+            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
+            return null;
+        }
+        catch (TaskCanceledException)
+        {
+            // Timeout
+            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
+            return null;
+        }
+        catch (Exception)
+        {
+            // Any other error - Easy Auth not configured or not working
+            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Get user information from Azure Easy Auth using JavaScript fetch to include cookies
+    /// </summary>
+    /// <returns>Authenticated user or null</returns>
+    private async Task<AuthenticatedUser?> GetEasyAuthUserViaJSAsync()
+    {
+        try
+        {
+            // Use JavaScript fetch to call /.auth/me with credentials included
+            var authMeResponse = await _jsRuntime.InvokeAsync<string>("fetchAuthMe");
             
-            var baseUrl = _navigationManager.BaseUri.TrimEnd('/');
-            var response = await httpClient.GetAsync($"{baseUrl}/.auth/me");
-            
-            if (!response.IsSuccessStatusCode)
-            {
-                // If we get 401/403, user is not authenticated
-                // Clear any cached data
-                await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
-                return null;
-            }
-            
-            var content = await response.Content.ReadAsStringAsync();
-            if (string.IsNullOrEmpty(content) || content.Trim() == "[]")
+            if (string.IsNullOrEmpty(authMeResponse) || authMeResponse.Trim() == "[]")
             {
                 // Empty array means no authenticated user
                 await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
@@ -188,14 +208,14 @@ public class EasyAuthService : IAuthenticationService
             }
             
             // Parse the Easy Auth response
-            var authMeResponse = JsonSerializer.Deserialize<EasyAuthUser[]>(content);
-            if (authMeResponse == null || authMeResponse.Length == 0)
+            var userArray = JsonSerializer.Deserialize<EasyAuthUser[]>(authMeResponse);
+            if (userArray == null || userArray.Length == 0)
             {
                 await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
                 return null;
             }
             
-            var userInfo = authMeResponse[0];
+            var userInfo = userArray[0];
             var provider = GetProviderFromIdentityProvider(userInfo.IdentityProvider);
             
             // Extract user details from claims
@@ -223,21 +243,9 @@ public class EasyAuthService : IAuthenticationService
             
             return authenticatedUser;
         }
-        catch (HttpRequestException)
-        {
-            // Network error or Easy Auth not available
-            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
-            return null;
-        }
-        catch (TaskCanceledException)
-        {
-            // Timeout
-            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
-            return null;
-        }
         catch (Exception)
         {
-            // Any other error - Easy Auth not configured or not working
+            // Any error with JS interop or JSON parsing
             await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
             return null;
         }
@@ -250,13 +258,10 @@ public class EasyAuthService : IAuthenticationService
     {
         try
         {
-            using var httpClient = new HttpClient();
-            httpClient.Timeout = TimeSpan.FromSeconds(3);
+            // Use JavaScript fetch to validate auth status with credentials
+            var authResponse = await _jsRuntime.InvokeAsync<string?>("fetchAuthMe");
             
-            var baseUrl = _navigationManager.BaseUri.TrimEnd('/');
-            var response = await httpClient.GetAsync($"{baseUrl}/.auth/me");
-            
-            if (!response.IsSuccessStatusCode)
+            if (string.IsNullOrEmpty(authResponse) || authResponse.Trim() == "[]")
             {
                 // User is no longer authenticated, clear cache and reset state
                 await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);

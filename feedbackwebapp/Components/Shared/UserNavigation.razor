@@ -85,8 +85,11 @@
     {
         if (firstRender)
         {
-            // Check for redirect after authentication
+            // Check for redirect after authentication and force a fresh auth check
             await CheckForPostAuthRedirectAsync();
+            
+            // Always do a fresh auth check on first render to handle post-login scenarios
+            await ForceAuthenticationRefreshAsync();
         }
     }
 
@@ -129,6 +132,31 @@
         catch (Exception ex)
         {
             Console.WriteLine($"Error checking post-auth redirect: {ex.Message}");
+        }
+    }
+
+    private async Task ForceAuthenticationRefreshAsync()
+    {
+        try
+        {
+            // Force a fresh authentication check by resetting the service state
+            // Use reflection to call ResetAuthenticationStateAsync if it exists
+            var resetMethod = AuthService.GetType().GetMethod("ResetAuthenticationStateAsync");
+            if (resetMethod != null)
+            {
+                var task = resetMethod.Invoke(AuthService, null) as Task;
+                if (task != null)
+                {
+                    await task;
+                }
+            }
+            
+            // Now check authentication status fresh
+            await CheckAuthenticationAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error forcing auth refresh: {ex.Message}");
         }
     }
 

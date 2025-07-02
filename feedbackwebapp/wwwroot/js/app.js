@@ -125,6 +125,32 @@ function downloadFile(dataUrl, fileName) {
 
 window.downloadFile = downloadFile;
 
+// Easy Auth utility function
+async function fetchAuthMe() {
+    try {
+        const response = await fetch('/.auth/me', {
+            method: 'GET',
+            credentials: 'include', // This is the key - include cookies
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            console.warn('Auth check failed with status:', response.status);
+            return null;
+        }
+        
+        const text = await response.text();
+        return text;
+    } catch (error) {
+        console.error('Error fetching auth info:', error);
+        return null;
+    }
+}
+
+window.fetchAuthMe = fetchAuthMe;
+
 document.addEventListener('DOMContentLoaded', async () => {
     // Add the toast container to the DOM if it doesn't exist
     if (!document.getElementById('toast-container')) {
