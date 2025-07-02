@@ -64,8 +64,9 @@
     border-radius: var(--border-radius);
     min-width: 250px;
     padding: 0.5rem 0;
-    background: var(--card-background);
-    color: var(--text-color);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
 }
 
 .user-dropdown-menu .dropdown-header {
@@ -80,24 +81,24 @@
 
 .user-display-name {
     font-weight: 600;
-    color: var(--text-color);
+    color: var(--text-primary);
     margin-bottom: 0.25rem;
 }
 
 .user-email {
     font-size: 0.875rem;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     margin-bottom: 0.25rem;
 }
 
 .user-provider {
     font-size: 0.75rem;
-    color: var(--text-muted);
+    color: var(--text-secondary);
 }
 
 .user-dropdown-menu .dropdown-item {
     padding: 0.5rem 1rem;
-    color: var(--text-color);
+    color: var(--text-primary);
     transition: all 0.2s ease;
     border: none;
     background: none;
@@ -107,8 +108,8 @@
 
 .user-dropdown-menu .dropdown-item:hover,
 .user-dropdown-menu .dropdown-item:focus {
-    background: var(--hover-background);
-    color: var(--text-color);
+    background: var(--hover-bg);
+    color: var(--text-primary);
 }
 
 .user-dropdown-menu .dropdown-divider {
