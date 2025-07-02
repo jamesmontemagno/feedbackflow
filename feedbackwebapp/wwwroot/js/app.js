@@ -128,28 +128,78 @@ window.downloadFile = downloadFile;
 // Easy Auth utility function
 async function fetchAuthMe() {
     try {
+        console.log('fetchAuthMe: Starting request to /.auth/me');
+        console.log('fetchAuthMe: Current URL:', window.location.href);
+        console.log('fetchAuthMe: Document cookies:', document.cookie);
+        
         const response = await fetch('/.auth/me', {
             method: 'GET',
             credentials: 'include', // This is the key - include cookies
             headers: {
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
             }
         });
         
+        console.log('fetchAuthMe: Response status:', response.status);
+        console.log('fetchAuthMe: Response headers:', [...response.headers.entries()]);
+        
         if (!response.ok) {
-            console.warn('Auth check failed with status:', response.status);
+            console.warn('fetchAuthMe: Auth check failed with status:', response.status);
+            const errorText = await response.text();
+            console.warn('fetchAuthMe: Error response body:', errorText);
             return null;
         }
         
         const text = await response.text();
+        console.log('fetchAuthMe: Response text:', text);
         return text;
     } catch (error) {
-        console.error('Error fetching auth info:', error);
+        console.error('fetchAuthMe: Error fetching auth info:', error);
         return null;
     }
 }
 
 window.fetchAuthMe = fetchAuthMe;
+
+// Enhanced debug function for detailed auth info
+async function fetchAuthMeDetailed() {
+    try {
+        const startTime = performance.now();
+        
+        const response = await fetch('/.auth/me', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            }
+        });
+        
+        const endTime = performance.now();
+        const text = await response.text();
+        
+        return {
+            success: true,
+            status: response.status,
+            statusText: response.statusText,
+            headers: Object.fromEntries(response.headers.entries()),
+            body: text,
+            timing: endTime - startTime,
+            cookies: document.cookie,
+            url: response.url
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message,
+            stack: error.stack,
+            cookies: document.cookie
+        };
+    }
+}
+
+window.fetchAuthMeDetailed = fetchAuthMeDetailed;
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Add the toast container to the DOM if it doesn't exist
