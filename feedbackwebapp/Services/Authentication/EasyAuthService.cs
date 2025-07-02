@@ -197,6 +197,32 @@ public class EasyAuthService : IAuthenticationService
     {
         try
         {
+            // Ensure JavaScript function is available with retry logic
+            var maxAttempts = 3;
+            var functionExists = false;
+            
+            for (int attempt = 0; attempt < maxAttempts; attempt++)
+            {
+                try
+                {
+                    functionExists = await _jsRuntime.InvokeAsync<bool>("eval", "typeof fetchAuthMe === 'function'");
+                    if (functionExists) break;
+                    
+                    // Wait a bit before retrying
+                    await Task.Delay(100);
+                }
+                catch (JSException)
+                {
+                    if (attempt == maxAttempts - 1) throw;
+                    await Task.Delay(100);
+                }
+            }
+            
+            if (!functionExists)
+            {
+                throw new InvalidOperationException("fetchAuthMe JavaScript function is not available after retries");
+            }
+
             // Use JavaScript fetch to call /.auth/me with credentials included
             var authMeResponse = await _jsRuntime.InvokeAsync<string>("fetchAuthMe");
             
@@ -216,14 +242,34 @@ public class EasyAuthService : IAuthenticationService
             }
             
             var userInfo = userArray[0];
-            var provider = GetProviderFromIdentityProvider(userInfo.IdentityProvider);
+            var provider = GetProviderFromIdentityProvider(userInfo.ProviderName);
             
-            // Extract user details from claims
-            var email = userInfo.UserDetails;
-            var name = userInfo.Claims?.FirstOrDefault(c => c.Typ == "name")?.Val ??
-                      userInfo.Claims?.FirstOrDefault(c => c.Typ == "given_name")?.Val ??
+            // Extract user details from claims - be more thorough with name extraction
+            var email = userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Val ??
+                       userInfo.UserId; // Fallback to user_id if no email claim
+            
+            // Try multiple claim types for name
+            var name = userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "name")?.Val ??
+                      userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname")?.Val ??
+                      userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name")?.Val ??
+                      userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "given_name")?.Val ??
+                      userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "preferred_username")?.Val ??
                       email;
-            var profileImageUrl = GetProfileImageUrl(userInfo.IdentityProvider, userInfo.Claims);
+                      
+            // If name is still empty or same as email, try to extract from email
+            if (string.IsNullOrEmpty(name) || name == email)
+            {
+                if (!string.IsNullOrEmpty(email) && email.Contains('@'))
+                {
+                    name = email.Split('@')[0];
+                }
+                else
+                {
+                    name = "User"; // Fallback
+                }
+            }
+            
+            var profileImageUrl = GetProfileImageUrl(userInfo.ProviderName, userInfo.UserClaims);
                       
             var authenticatedUser = new AuthenticatedUser
             {
@@ -241,13 +287,43 @@ public class EasyAuthService : IAuthenticationService
             var userJson = JsonSerializer.Serialize(authenticatedUser);
             await _jsRuntime.InvokeVoidAsync("localStorage.setItem", AUTH_USER_KEY, userJson);
             
+            // Also store debug info to help with troubleshooting (temporary)
+            try
+            {
+                var debugInfo = new
+                {
+                    RawUserInfo = userInfo,
+                    ParsedUser = authenticatedUser,
+                    AllClaims = userInfo.UserClaims?.Select(c => new { c.Typ, c.Val }).ToArray(),
+                    Timestamp = DateTime.UtcNow
+                };
+                var debugJson = JsonSerializer.Serialize(debugInfo, new JsonSerializerOptions { WriteIndented = true });
+                await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "feedbackflow_debug_claims", debugJson);
+            }
+            catch
+            {
+                // Ignore debug info errors
+            }
+            
             return authenticatedUser;
         }
-        catch (Exception)
+        catch (JsonException jsonEx)
         {
-            // Any error with JS interop or JSON parsing
+            // JSON parsing error - likely invalid response format
             await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
-            return null;
+            throw new InvalidOperationException($"Failed to parse Easy Auth response: {jsonEx.Message}", jsonEx);
+        }
+        catch (JSException jsEx)
+        {
+            // JavaScript interop error
+            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
+            throw new InvalidOperationException($"JavaScript interop error calling fetchAuthMe: {jsEx.Message}", jsEx);
+        }
+        catch (Exception ex)
+        {
+            // Any other error with JS interop or JSON parsing
+            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_USER_KEY);
+            throw new InvalidOperationException($"Unexpected error getting Easy Auth user: {ex.Message}", ex);
         }
     }
 
@@ -317,32 +393,32 @@ public class EasyAuthService : IAuthenticationService
     /// <summary>
     /// Map identity provider names to standard provider names
     /// </summary>
-    /// <param name="identityProvider">Identity provider from Azure Easy Auth</param>
+    /// <param name="providerName">Provider name from Azure Easy Auth</param>
     /// <returns>Standardized provider name</returns>
-    private static string GetProviderFromIdentityProvider(string identityProvider)
+    private static string GetProviderFromIdentityProvider(string providerName)
     {
-        return identityProvider switch
+        return providerName switch
         {
 			"aad" => "Microsoft",
             "google" => "Google",
             "github" => "GitHub",
             "facebook" => "Facebook",
             "twitter" => "Twitter",
-            _ => identityProvider
+            _ => providerName
         };
     }
 
     /// <summary>
     /// Extract profile image URL from provider claims
     /// </summary>
-    /// <param name="identityProvider">Identity provider from Azure Easy Auth</param>
+    /// <param name="providerName">Provider name from Azure Easy Auth</param>
     /// <param name="claims">User claims</param>
     /// <returns>Profile image URL or null</returns>
-    private static string? GetProfileImageUrl(string identityProvider, EasyAuthClaim[]? claims)
+    private static string? GetProfileImageUrl(string providerName, EasyAuthClaim[]? claims)
     {
         if (claims == null) return null;
 
-        return identityProvider switch
+        return providerName switch
         {
             "aad" => claims.FirstOrDefault(c => c.Typ == "picture")?.Val,
             "google" => claims.FirstOrDefault(c => c.Typ == "picture")?.Val,
@@ -359,17 +435,23 @@ public class EasyAuthService : IAuthenticationService
 /// </summary>
 internal class EasyAuthUser
 {
-    [JsonPropertyName("userId")]
+    [JsonPropertyName("user_id")]
     public string UserId { get; set; } = string.Empty;
     
-    [JsonPropertyName("userDetails")]
-    public string UserDetails { get; set; } = string.Empty;
+    [JsonPropertyName("provider_name")]
+    public string ProviderName { get; set; } = string.Empty;
     
-    [JsonPropertyName("identityProvider")]
-    public string IdentityProvider { get; set; } = string.Empty;
+    [JsonPropertyName("user_claims")]
+    public EasyAuthClaim[]? UserClaims { get; set; }
     
-    [JsonPropertyName("claims")]
-    public EasyAuthClaim[]? Claims { get; set; }
+    [JsonPropertyName("access_token")]
+    public string? AccessToken { get; set; }
+    
+    [JsonPropertyName("expires_on")]
+    public string? ExpiresOn { get; set; }
+    
+    [JsonPropertyName("id_token")]
+    public string? IdToken { get; set; }
 }
 
 /// <summary>

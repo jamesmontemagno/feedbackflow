@@ -422,6 +422,7 @@
             var keysToCheck = new[] 
             {
                 "feedbackflow_easyauth_user",
+                "feedbackflow_debug_claims",
                 "feedbackflow_redirect_after_auth",
                 "theme"
             };
@@ -443,6 +444,18 @@
                         catch (Exception parseEx)
                         {
                             localStorageInfo += $"  Parse error: {parseEx.Message}\n";
+                        }
+                    }
+                    else if (key == "feedbackflow_debug_claims" && !string.IsNullOrEmpty(value))
+                    {
+                        try
+                        {
+                            var debugData = JsonSerializer.Deserialize<object>(value);
+                            localStorageInfo += $"  Debug claims data available (check raw value above)\n";
+                        }
+                        catch (Exception parseEx)
+                        {
+                            localStorageInfo += $"  Debug claims parse error: {parseEx.Message}\n";
                         }
                     }
                 }
