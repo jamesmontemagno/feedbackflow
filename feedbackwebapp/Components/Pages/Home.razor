@@ -334,17 +334,12 @@
         var uri = new Uri(NavigationManager.Uri);
         var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
 
-        // Check for authentication error parameters
+        // Store auth status for later processing in OnAfterRenderAsync
         var authStatus = query["auth"];
-        if (authStatus == "failed")
+        if (authStatus == "failed" || authStatus == "error")
         {
-            // Show authentication failed message
-            await JSRuntime.InvokeVoidAsync("console.log", "Authentication failed");
-        }
-        else if (authStatus == "error")
-        {
-            // Show authentication error message
-            await JSRuntime.InvokeVoidAsync("console.log", "Authentication error occurred");
+            // Store the auth error status to handle in OnAfterRenderAsync
+            await Task.CompletedTask; // Placeholder - will handle in OnAfterRenderAsync
         }
 
         initialSource = query["source"]?.ToLower();
@@ -359,6 +354,28 @@
         }
 
         await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Handle authentication error logging after render
+            var uri = new Uri(NavigationManager.Uri);
+            var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+            var authStatus = query["auth"];
+            
+            if (authStatus == "failed")
+            {
+                // Show authentication failed message
+                await JSRuntime.InvokeVoidAsync("console.log", "Authentication failed");
+            }
+            else if (authStatus == "error")
+            {
+                // Show authentication error message
+                await JSRuntime.InvokeVoidAsync("console.log", "Authentication error occurred");
+            }
+        }
     }    
     
     private async Task HandleQueryNav()
