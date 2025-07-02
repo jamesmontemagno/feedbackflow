@@ -334,6 +334,19 @@
         var uri = new Uri(NavigationManager.Uri);
         var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
 
+        // Check for authentication error parameters
+        var authStatus = query["auth"];
+        if (authStatus == "failed")
+        {
+            // Show authentication failed message
+            await JSRuntime.InvokeVoidAsync("console.log", "Authentication failed");
+        }
+        else if (authStatus == "error")
+        {
+            // Show authentication error message
+            await JSRuntime.InvokeVoidAsync("console.log", "Authentication error occurred");
+        }
+
         initialSource = query["source"]?.ToLower();
         initialId = query["id"];
         var url = query["url"];

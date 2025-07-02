@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Components;
 using SharedDump.Models.Authentication;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text;
 
 namespace FeedbackWebApp.Services.Authentication;
@@ -136,17 +137,48 @@ public class EasyAuthService : IAuthenticationService
     {
         try
         {
-            // For now, let's use a simpler check - just verify that auth bypass is not enabled
-            // In a real implementation, this would call /.auth/me endpoint
+            // Try to get user info from /.auth/me endpoint
+            using var httpClient = new HttpClient();
+            var baseUrl = _navigationManager.BaseUri.TrimEnd('/');
+            var response = await httpClient.GetAsync($"{baseUrl}/.auth/me");
             
-            // TODO: Implement proper Azure Easy Auth user info retrieval
-            // This would typically involve:
-            // 1. Making a HTTP request to /.auth/me endpoint
-            // 2. Parsing the returned user information
-            // 3. Creating AuthenticatedUser from the response
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
             
-            // For now, return null to indicate not authenticated via Easy Auth
-            return null;
+            var content = await response.Content.ReadAsStringAsync();
+            if (string.IsNullOrEmpty(content))
+            {
+                return null;
+            }
+            
+            // Parse the Easy Auth response
+            var authMeResponse = JsonSerializer.Deserialize<EasyAuthUser[]>(content);
+            if (authMeResponse == null || authMeResponse.Length == 0)
+            {
+                return null;
+            }
+            
+            var userInfo = authMeResponse[0];
+            var provider = GetProviderFromIdentityProvider(userInfo.IdentityProvider);
+            
+            // Extract user details from claims
+            var email = userInfo.UserDetails;
+            var name = userInfo.Claims?.FirstOrDefault(c => c.Typ == "name")?.Val ??
+                      userInfo.Claims?.FirstOrDefault(c => c.Typ == "given_name")?.Val ??
+                      email;
+                      
+            return new AuthenticatedUser
+            {
+                UserId = userInfo.UserId,
+                Email = email,
+                Name = name,
+                AuthProvider = provider,
+                ProviderUserId = userInfo.UserId,
+                CreatedAt = DateTime.UtcNow,
+                LastLoginAt = DateTime.UtcNow
+            };
         }
         catch (Exception)
         {
@@ -174,6 +206,15 @@ public class EasyAuthService : IAuthenticationService
     }
 
     /// <summary>
+    /// Reset authentication state to force a fresh check
+    /// </summary>
+    internal void ResetAuthenticationState()
+    {
+        _isAuthenticated = null;
+        _currentUser = null;
+    }
+
+    /// <summary>
     /// Map identity provider names to standard provider names
     /// </summary>
     /// <param name="identityProvider">Identity provider from Azure Easy Auth</param>
@@ -190,4 +231,34 @@ public class EasyAuthService : IAuthenticationService
             _ => identityProvider
         };
     }
+}
+
+/// <summary>
+/// Represents the Easy Auth user information from /.auth/me endpoint
+/// </summary>
+internal class EasyAuthUser
+{
+    [JsonPropertyName("userId")]
+    public string UserId { get; set; } = string.Empty;
+    
+    [JsonPropertyName("userDetails")]
+    public string UserDetails { get; set; } = string.Empty;
+    
+    [JsonPropertyName("identityProvider")]
+    public string IdentityProvider { get; set; } = string.Empty;
+    
+    [JsonPropertyName("claims")]
+    public EasyAuthClaim[]? Claims { get; set; }
+}
+
+/// <summary>
+/// Represents a claim from Easy Auth
+/// </summary>
+internal class EasyAuthClaim
+{
+    [JsonPropertyName("typ")]
+    public string Typ { get; set; } = string.Empty;
+    
+    [JsonPropertyName("val")]
+    public string Val { get; set; } = string.Empty;
 }
