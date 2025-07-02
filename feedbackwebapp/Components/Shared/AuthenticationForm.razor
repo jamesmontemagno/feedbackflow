@@ -10,11 +10,15 @@
             <h5 class="card-title">Authentication Required</h5>
             <p class="text-muted mb-3">Please log in to access this feature</p>
             <div class="d-flex flex-column gap-2">
-                <button class="btn btn-primary d-flex align-items-center justify-content-center gap-2" 
-                        @onclick="@(async () => await LoginWithProvider("Microsoft"))">
-                    <i class="bi bi-microsoft"></i>
-                    Login with Microsoft
-                </button>
+
+                @if (enabledProviders.Contains("Microsoft"))
+                {
+                    <button class="btn btn-primary d-flex align-items-center justify-content-center gap-2" 
+                            @onclick="@(async () => await LoginWithProvider("Microsoft"))">
+                        <i class="bi bi-microsoft"></i>
+                            Login with Microsoft
+                    </button>
+                }
                 
                 @if (enabledProviders.Contains("Google"))
                 {
@@ -74,11 +78,20 @@ else
             
             // Load enabled providers
             enabledProviders.Clear();
-            enabledProviders.Add("Microsoft"); // Always enabled
+            if(Configuration.GetValue<bool>("Authentication:Providers:Microsoft:Enabled", false))
+            {
+                enabledProviders.Add("Microsoft");
+            }
             
             // Add other providers based on configuration if needed
-            // enabledProviders.Add("Google");
-            // enabledProviders.Add("GitHub");
+            if(Configuration.GetValue<bool>("Authentication:Providers:Google:Enabled", false))
+            {
+                enabledProviders.Add("Google");
+            }
+            if(Configuration.GetValue<bool>("Authentication:Providers:GitHub:Enabled", false))
+            {
+                enabledProviders.Add("GitHub");
+            }
 
             if (useMockMode)
             {
