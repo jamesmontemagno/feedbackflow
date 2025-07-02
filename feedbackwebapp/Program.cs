@@ -49,6 +49,9 @@ else
 // Register authentication header service
 builder.Services.AddScoped<IAuthenticationHeaderService, AuthenticationHeaderService>();
 
+// Register user management service
+builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+
 // Keep the old AuthenticationService for backward compatibility
 //builder.Services.AddScoped<AuthenticationService>();
 

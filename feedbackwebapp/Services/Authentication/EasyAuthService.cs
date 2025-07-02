@@ -5,6 +5,7 @@ using SharedDump.Models.Authentication;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text;
+using FeedbackWebApp.Services;
 
 namespace FeedbackWebApp.Services.Authentication;
 
@@ -16,6 +17,7 @@ public class EasyAuthService : IAuthenticationService
     private readonly IJSRuntime _jsRuntime;
     private readonly IConfiguration _configuration;
     private readonly NavigationManager _navigationManager;
+    private readonly IServiceProvider _serviceProvider;
     private const string AUTH_USER_KEY = "feedbackflow_easyauth_user";
     private AuthenticatedUser? _currentUser;
     private bool? _isAuthenticated;
@@ -25,11 +27,13 @@ public class EasyAuthService : IAuthenticationService
     public EasyAuthService(
         IJSRuntime jsRuntime, 
         IConfiguration configuration, 
-        NavigationManager navigationManager)
+        NavigationManager navigationManager,
+        IServiceProvider serviceProvider)
     {
         _jsRuntime = jsRuntime;
         _configuration = configuration;
         _navigationManager = navigationManager;
+        _serviceProvider = serviceProvider;
     }
 
     /// <inheritdoc />
@@ -287,6 +291,9 @@ public class EasyAuthService : IAuthenticationService
             var userJson = JsonSerializer.Serialize(authenticatedUser);
             await _jsRuntime.InvokeVoidAsync("localStorage.setItem", AUTH_USER_KEY, userJson);
             
+            // Auto-register user in the backend system (fire and forget)
+            _ = Task.Run(async () => await AutoRegisterUserAsync());
+            
             // Also store debug info to help with troubleshooting (temporary)
             try
             {
@@ -388,6 +395,29 @@ public class EasyAuthService : IAuthenticationService
         _isAuthenticated = null;
         _currentUser = null;
         // Note: Cannot clear localStorage synchronously, will be cleared on next auth check
+    }
+
+    /// <summary>
+    /// Auto-register the current user in the backend system
+    /// </summary>
+    private async Task AutoRegisterUserAsync()
+    {
+        try
+        {
+            // Use scoped service to avoid circular dependency
+            using var scope = _serviceProvider.CreateScope();
+            var userManagementService = scope.ServiceProvider.GetService<IUserManagementService>();
+            
+            if (userManagementService != null)
+            {
+                await userManagementService.RegisterCurrentUserAsync();
+            }
+        }
+        catch (Exception)
+        {
+            // Silently ignore registration errors to not impact user experience
+            // User registration can be retried later if needed
+        }
     }
 
     /// <summary>

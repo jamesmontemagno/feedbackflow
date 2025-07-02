@@ -1,0 +1,228 @@
+@page "/account-settings"
+@using FeedbackWebApp.Services
+@using FeedbackWebApp.Services.Authentication
+@using FeedbackWebApp.Services.Interfaces
+@inject IUserManagementService UserManagementService
+@inject IAuthenticationService AuthService
+@inject IToastService ToastService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+
+<PageTitle>Account Settings - FeedbackFlow</PageTitle>
+
+<div class="container my-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-person-gear me-2"></i>
+                        Account Settings
+                    </h4>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Loading account information...</p>
+                        </div>
+                    }
+                    else if (userInfo != null)
+                    {
+                        <!-- Account Information -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <h5 class="text-primary">Account Information</h5>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Name</label>
+                                    <p class="form-control-plaintext">@userInfo.Name</p>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Email</label>
+                                    <p class="form-control-plaintext">@userInfo.Email</p>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Authentication Provider</label>
+                                    <p class="form-control-plaintext">
+                                        <span class="badge bg-secondary">@userInfo.AuthProvider</span>
+                                    </p>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Account Created</label>
+                                    <p class="form-control-plaintext">@userInfo.CreatedAt.ToString("MMMM d, yyyy 'at' h:mm tt")</p>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Last Login</label>
+                                    <p class="form-control-plaintext">@userInfo.LastLoginAt.ToString("MMMM d, yyyy 'at' h:mm tt")</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <!-- Danger Zone -->
+                        <div class="danger-zone">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h5 class="text-danger">
+                                        <i class="bi bi-exclamation-triangle me-2"></i>
+                                        Danger Zone
+                                    </h5>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="alert alert-danger" role="alert">
+                                        <h6 class="alert-heading">Delete Account</h6>
+                                        <p class="mb-3">
+                                            Permanently deactivate your account. This action cannot be undone. 
+                                            Your account will be deactivated but your data will be preserved for audit purposes.
+                                        </p>
+                                        <ul class="mb-3">
+                                            <li>Your account will be deactivated and you will be logged out</li>
+                                            <li>You will no longer be able to access your reports</li>
+                                            <li>Your data will be preserved for audit and compliance purposes</li>
+                                        </ul>
+                                        <button class="btn btn-danger" 
+                                                @onclick="ShowDeleteConfirmation" 
+                                                disabled="@isDeleting">
+                                            @if (isDeleting)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                                <span>Deleting Account...</span>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-trash me-2"></i>
+                                                <span>Delete My Account</span>
+                                            }
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            @errorMessage
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private UserInfo? userInfo;
+    private bool isLoading = true;
+    private bool isDeleting = false;
+    private string errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserInfoAsync();
+    }
+
+    private async Task LoadUserInfoAsync()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = "";
+            
+            // Check if user is authenticated
+            var isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (!isAuthenticated)
+            {
+                Navigation.NavigateTo("/");
+                return;
+            }
+
+            // Load user information from backend
+            userInfo = await UserManagementService.GetCurrentUserInfoAsync();
+            
+            if (userInfo == null)
+            {
+                errorMessage = "Unable to load account information. Please try again later.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading account information: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ShowDeleteConfirmation()
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+            "Are you absolutely sure you want to deactivate your account?\n\n" +
+            "This will:\n" +
+            "• Deactivate your account and log you out\n" +
+            "• Prevent access to your reports\n" +
+            "• Preserve your data for audit purposes\n\n" +
+            "This action cannot be undone!\n\n" +
+            "Type 'DELETE' to confirm:");
+
+        if (confirmed)
+        {
+            // Second confirmation with typing requirement
+            var deleteConfirmation = await JSRuntime.InvokeAsync<string>("prompt", 
+                "Please type 'DELETE' (in capital letters) to confirm account deletion:");
+
+            if (deleteConfirmation == "DELETE")
+            {
+                await DeleteAccountAsync();
+            }
+            else if (!string.IsNullOrEmpty(deleteConfirmation))
+            {
+                await ToastService.ShowToastAsync("Account deletion cancelled. You must type 'DELETE' exactly to confirm.", ToastType.Danger);
+            }
+        }
+    }
+
+    private async Task DeleteAccountAsync()
+    {
+        try
+        {
+            isDeleting = true;
+            StateHasChanged();
+
+            var result = await UserManagementService.DeleteCurrentUserAsync();
+            
+            if (result.Success)
+            {
+                await ToastService.ShowToastAsync("Your account has been deleted successfully. You will be logged out.", ToastType.Success);
+                
+                // Wait a moment for the toast to be visible
+                await Task.Delay(2000);
+                
+                // Log out the user
+                await AuthService.LogoutAsync();
+            }
+            else
+            {
+                await ToastService.ShowToastAsync($"Failed to delete account: {result.ErrorMessage}", ToastType.Danger);
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastService.ShowToastAsync($"Error deleting account: {ex.Message}", ToastType.Danger);
+        }
+        finally
+        {
+            isDeleting = false;
+            StateHasChanged();
+        }
+    }
+}
