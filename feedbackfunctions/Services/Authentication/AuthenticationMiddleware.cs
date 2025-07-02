@@ -78,6 +78,9 @@ public class AuthenticationMiddleware
             var name = clientPrincipal.Claims?.FirstOrDefault(c => c.Type == "name")?.Value ?? 
                       clientPrincipal.Claims?.FirstOrDefault(c => c.Type == "given_name")?.Value ?? 
                       email;
+            
+            // Extract profile image URL based on provider
+            var profileImageUrl = GetProfileImageUrl(clientPrincipal.IdentityProvider, clientPrincipal.Claims);
 
             if (string.IsNullOrEmpty(providerUserId) || string.IsNullOrEmpty(email))
             {
@@ -90,14 +93,18 @@ public class AuthenticationMiddleware
             if (user == null)
             {
                 _logger.LogInformation("Creating new user for {Provider} provider with ID {ProviderUserId}", provider, providerUserId);
-                user = new AuthUserEntity(provider, providerUserId, email, name);
+                user = new AuthUserEntity(provider, providerUserId, email, name)
+                {
+                    ProfileImageUrl = profileImageUrl
+                };
                 await _userService.CreateOrUpdateUserAsync(user);
                 await _userService.UpdateEmailIndexAsync(email, user.UserId, provider, providerUserId);
             }
             else
             {
-                // Update last login time
+                // Update last login time and profile image URL
                 user.LastLoginAt = DateTime.UtcNow;
+                user.ProfileImageUrl = profileImageUrl;
                 await _userService.CreateOrUpdateUserAsync(user);
             }
 
@@ -125,6 +132,27 @@ public class AuthenticationMiddleware
             ProviderUserId = "dev-provider-id",
             CreatedAt = DateTime.UtcNow,
             LastLoginAt = DateTime.UtcNow
+        };
+    }
+
+    /// <summary>
+    /// Extract profile image URL from provider claims
+    /// </summary>
+    /// <param name="identityProvider">Identity provider from Azure Easy Auth</param>
+    /// <param name="claims">User claims</param>
+    /// <returns>Profile image URL or null</returns>
+    private static string? GetProfileImageUrl(string identityProvider, ClientPrincipalClaim[]? claims)
+    {
+        if (claims == null) return null;
+
+        return identityProvider switch
+        {
+            "aad" => claims.FirstOrDefault(c => c.Type == "picture")?.Value,
+            "google" => claims.FirstOrDefault(c => c.Type == "picture")?.Value,
+            "github" => claims.FirstOrDefault(c => c.Type == "urn:github:avatar_url")?.Value,
+            "facebook" => claims.FirstOrDefault(c => c.Type == "urn:facebook:picture")?.Value,
+            "twitter" => claims.FirstOrDefault(c => c.Type == "urn:twitter:profile_image_url_https")?.Value,
+            _ => null
         };
     }
 

@@ -1,4 +1,3 @@
-@using FeedbackWebApp.Services.Authentication
 @inject IConfiguration Configuration
 @inject IAuthenticationService AuthService
 @inject NavigationManager Navigation
@@ -9,47 +8,32 @@
     <div class="card shadow-sm">
         <div class="card-body">
             <h5 class="card-title">Authentication Required</h5>
-            
-            @if (useEasyAuth)
-            {
-                <p class="text-muted mb-3">Please log in to access this feature</p>
-                <div class="d-flex flex-column gap-2">
-                    <button class="btn btn-primary d-flex align-items-center justify-content-center gap-2" 
-                            @onclick="@(async () => await LoginWithProvider(0))">
-                        <i class="bi bi-microsoft"></i>
-                        Login with Microsoft
+            <p class="text-muted mb-3">Please log in to access this feature</p>
+            <div class="d-flex flex-column gap-2">
+                <button class="btn btn-primary d-flex align-items-center justify-content-center gap-2" 
+                        @onclick="@(async () => await LoginWithProvider("Microsoft"))">
+                    <i class="bi bi-microsoft"></i>
+                    Login with Microsoft
+                </button>
+                
+                @if (enabledProviders.Contains("Google"))
+                {
+                    <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
+                            @onclick="@(async () => await LoginWithProvider("Google"))">
+                        <i class="bi bi-google"></i>
+                        Login with Google
                     </button>
-                    
-                    @* Future providers can be added here *@
-                    @if (enabledProviders.Contains("Google"))
-                    {
-                        <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
-                                @onclick="@(async () => await LoginWithProvider(1))">
-                            <i class="bi bi-google"></i>
-                            Login with Google
-                        </button>
-                    }
-                    
-                    @if (enabledProviders.Contains("GitHub"))
-                    {
-                        <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
-                                @onclick="@(async () => await LoginWithProvider(2))">
-                            <i class="bi bi-github"></i>
-                            Login with GitHub
-                        </button>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="form-floating mb-3">
-                    <input type="password" class="form-control" id="password" @bind="password" @onkeyup="HandleKeyPress" placeholder="Enter password" />
-                    <label for="password">Password</label>
-                </div>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-primary" @onclick="AuthenticateHandler">Login</button>
-                </div>
-            }
+                }
+                
+                @if (enabledProviders.Contains("GitHub"))
+                {
+                    <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
+                            @onclick="@(async () => await LoginWithProvider("GitHub"))">
+                        <i class="bi bi-github"></i>
+                        Login with GitHub
+                    </button>
+                }
+            </div>
             
             @if (!string.IsNullOrEmpty(authError))
             {
@@ -71,10 +55,8 @@ else
 }
 
 @code {
-    private string password = "";
     private string authError = "";
     private bool useMockMode;
-    private bool useEasyAuth;
     private bool isAuthenticated;
     private bool isLoading = true;
     private List<string> enabledProviders = new();
@@ -89,19 +71,14 @@ else
         try
         {
             useMockMode = Configuration.GetValue<bool>("FeedbackApi:UseMocks");
-            useEasyAuth = Configuration.GetValue<bool>("Authentication:UseEasyAuth", false);
             
             // Load enabled providers
-            var providersConfig = Configuration.GetSection("Authentication:Providers");
             enabledProviders.Clear();
+            enabledProviders.Add("Microsoft"); // Always enabled
             
-            if(providersConfig.GetValue<bool>("Microsoft:Enabled", true))
-                enabledProviders.Add("Microsoft");
-            
-            if (providersConfig.GetValue<bool>("Google:Enabled", false))
-                enabledProviders.Add("Google");
-            if (providersConfig.GetValue<bool>("GitHub:Enabled", false))
-                enabledProviders.Add("GitHub");
+            // Add other providers based on configuration if needed
+            // enabledProviders.Add("Google");
+            // enabledProviders.Add("GitHub");
 
             if (useMockMode)
             {
@@ -116,17 +93,6 @@ else
                 await HandleAuthenticated(true);
                 return;
             }
-
-            // For password auth, check if password is configured
-            if (!useEasyAuth)
-            {
-                var configuredPassword = Configuration["FeedbackApp:AccessPassword"];
-                if (string.IsNullOrEmpty(configuredPassword))
-                {
-                    authError = "System error: Password not configured";
-                }
-            }
-
         }
         catch (Exception ex)
         {
@@ -139,18 +105,10 @@ else
         }
     }
 
-    private async Task LoginWithProvider(int provider)
+    private async Task LoginWithProvider(string provider)
     {
         try
         {
-            var providerName = provider switch
-            {
-                0 => "Microsoft",
-                1 => "Google",
-                2 => "GitHub",
-                _ => throw new ArgumentException("Invalid provider index")
-            };
-            
             // Store current URL for redirect after authentication
             var currentUrl = Navigation.Uri;
             await JSRuntime.InvokeVoidAsync("localStorage.setItem", "feedbackflow_redirect_after_auth", currentUrl);
@@ -158,7 +116,7 @@ else
             // Clear any existing auth data to ensure fresh login
             await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "feedbackflow_easyauth_user");
             
-            var loginUrl = AuthService.GetLoginUrl(providerName, currentUrl);
+            var loginUrl = AuthService.GetLoginUrl(provider, currentUrl);
             Navigation.NavigateTo(loginUrl, forceLoad: true);
         }
         catch (Exception ex)
@@ -168,47 +126,9 @@ else
         }
     }
 
-    private async Task HandleKeyPress(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter")
-        {
-            await AuthenticateHandler();
-        }
-    }
-
     private async Task HandleAuthenticated(bool success)
     {
         isAuthenticated = success;
         await OnAuthenticated.InvokeAsync(success);
-    }
-
-    private async Task AuthenticateHandler()
-    {
-        var configuredPassword = Configuration["FeedbackApp:AccessPassword"];
-        if (string.IsNullOrEmpty(configuredPassword))
-        {
-            authError = "System error: Password not configured";
-            return;
-        }
-
-        // For password auth, we need to cast to the concrete type
-        if (AuthService is AuthenticationService passwordAuthService)
-        {
-            var isAuthenticated = await passwordAuthService.AuthenticateAsync(password);
-            if (isAuthenticated)
-            {
-                authError = "";
-                await HandleAuthenticated(true);
-            }
-            else
-            {
-                authError = "Invalid password";
-                password = "";
-            }
-        }
-        else
-        {
-            authError = "Password authentication not supported in this mode";
-        }
     }
 }

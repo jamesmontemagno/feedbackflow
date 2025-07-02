@@ -203,6 +203,7 @@ public class EasyAuthService : IAuthenticationService
             var name = userInfo.Claims?.FirstOrDefault(c => c.Typ == "name")?.Val ??
                       userInfo.Claims?.FirstOrDefault(c => c.Typ == "given_name")?.Val ??
                       email;
+            var profileImageUrl = GetProfileImageUrl(userInfo.IdentityProvider, userInfo.Claims);
                       
             var authenticatedUser = new AuthenticatedUser
             {
@@ -211,6 +212,7 @@ public class EasyAuthService : IAuthenticationService
                 Name = name,
                 AuthProvider = provider,
                 ProviderUserId = userInfo.UserId,
+                ProfileImageUrl = profileImageUrl,
                 CreatedAt = DateTime.UtcNow,
                 LastLoginAt = DateTime.UtcNow
             };
@@ -322,6 +324,27 @@ public class EasyAuthService : IAuthenticationService
             "facebook" => "Facebook",
             "twitter" => "Twitter",
             _ => identityProvider
+        };
+    }
+
+    /// <summary>
+    /// Extract profile image URL from provider claims
+    /// </summary>
+    /// <param name="identityProvider">Identity provider from Azure Easy Auth</param>
+    /// <param name="claims">User claims</param>
+    /// <returns>Profile image URL or null</returns>
+    private static string? GetProfileImageUrl(string identityProvider, EasyAuthClaim[]? claims)
+    {
+        if (claims == null) return null;
+
+        return identityProvider switch
+        {
+            "aad" => claims.FirstOrDefault(c => c.Typ == "picture")?.Val,
+            "google" => claims.FirstOrDefault(c => c.Typ == "picture")?.Val,
+            "github" => claims.FirstOrDefault(c => c.Typ == "urn:github:avatar_url")?.Val,
+            "facebook" => claims.FirstOrDefault(c => c.Typ == "urn:facebook:picture")?.Val,
+            "twitter" => claims.FirstOrDefault(c => c.Typ == "urn:twitter:profile_image_url_https")?.Val,
+            _ => null
         };
     }
 }

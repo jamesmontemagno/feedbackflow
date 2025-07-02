@@ -3,10 +3,6 @@ using Microsoft.Extensions.Logging;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-var defaultPW = new GenerateParameterDefault{MinLength = 8};
-var frontendPassword = ParameterResourceBuilderExtensions.CreateGeneratedParameter(builder, "password", secret: true, defaultPW);
-builder.AddResource(frontendPassword);
-
 var storage = builder.AddAzureStorage("ff-storage")
         .RunAsEmulator( (ctx) =>
         {
@@ -73,6 +69,6 @@ builder.Eventing.Subscribe<BeforeResourceStartedEvent>(feedbackFunctionsProject.
 builder.AddProject<Projects.WebApp>("feedback-webapp")
         .WithEnvironment("FeedbackApi__BaseUrl", feedbackFunctionsProject.GetEndpoint("http"))
         .WithEnvironment("FeedbackApi__UseMocks", "false")
-        .WithEnvironment("FeedbackApp__AccessPassword", frontendPassword);
+        .WithEnvironment("Authentication__UseEasyAuth", "true");
 
 builder.Build().Run();

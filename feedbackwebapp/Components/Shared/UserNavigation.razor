@@ -1,0 +1,283 @@
+@using FeedbackWebApp.Services.Authentication
+@using SharedDump.Models.Authentication
+@inject IAuthenticationService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<div class="user-navigation d-flex align-items-center">
+    @if (isLoading)
+    {
+        <div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div>
+    }
+    else if (isAuthenticated && currentUser != null)
+    {
+        <!-- User dropdown -->
+        <div class="dropdown">
+            <button class="btn btn-link dropdown-toggle user-dropdown-toggle d-flex align-items-center p-0" 
+                    type="button" 
+                    data-bs-toggle="dropdown" 
+                    aria-expanded="false">
+                <div class="d-flex align-items-center gap-2">
+                    @if (!string.IsNullOrEmpty(currentUser.ProfileImageUrl))
+                    {
+                        <img src="@currentUser.ProfileImageUrl" 
+                             alt="@currentUser.Name" 
+                             class="user-avatar rounded-circle" 
+                             width="32" 
+                             height="32" />
+                    }
+                    else
+                    {
+                        <div class="user-avatar-placeholder rounded-circle d-flex align-items-center justify-content-center">
+                            <i class="bi bi-person-fill"></i>
+                        </div>
+                    }
+                    <span class="user-name d-none d-md-inline">@GetDisplayName()</span>
+                </div>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end user-dropdown-menu">
+                <li class="dropdown-header">
+                    <div class="user-info">
+                        <div class="user-display-name">@currentUser.Name</div>
+                        <div class="user-email text-muted">@currentUser.Email</div>
+                        <div class="user-provider text-muted">
+                            <small>Signed in with @currentUser.AuthProvider</small>
+                        </div>
+                    </div>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <button class="dropdown-item d-flex align-items-center" @onclick="LogoutAsync">
+                        <i class="bi bi-box-arrow-right me-2"></i>
+                        <span>Log Out</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+    }
+    else
+    {
+        <!-- Login button -->
+        <button class="btn btn-outline-light d-flex align-items-center" @onclick="ShowLoginModal">
+            <i class="bi bi-box-arrow-in-right me-2"></i>
+            <span class="d-none d-md-inline">Login</span>
+        </button>
+    }
+</div>
+
+<!-- Login Modal -->
+@if (showLoginModal)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Sign in to FeedbackFlow</h5>
+                    <button type="button" class="btn-close" @onclick="HideLoginModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex flex-column gap-3">
+                        <button class="btn btn-primary d-flex align-items-center justify-content-center gap-2" 
+                                @onclick="@(() => LoginWithProvider("Microsoft"))">
+                            <i class="bi bi-microsoft"></i>
+                            Sign in with Microsoft
+                        </button>
+                        
+                        @if (enabledProviders.Contains("Google"))
+                        {
+                            <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
+                                    @onclick="@(() => LoginWithProvider("Google"))">
+                                <i class="bi bi-google"></i>
+                                Sign in with Google
+                            </button>
+                        }
+                        
+                        @if (enabledProviders.Contains("GitHub"))
+                        {
+                            <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
+                                    @onclick="@(() => LoginWithProvider("GitHub"))">
+                                <i class="bi bi-github"></i>
+                                Sign in with GitHub
+                            </button>
+                        }
+                    </div>
+                    
+                    @if (!string.IsNullOrEmpty(loginError))
+                    {
+                        <div class="alert alert-danger mt-3" role="alert">
+                            @loginError
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private bool isAuthenticated = false;
+    private AuthenticatedUser? currentUser;
+    private bool showLoginModal = false;
+    private string loginError = "";
+    private List<string> enabledProviders = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load configuration
+        await LoadConfigurationAsync();
+        
+        // Check authentication status
+        await CheckAuthenticationAsync();
+        
+        // Subscribe to authentication state changes
+        AuthService.AuthenticationStateChanged += OnAuthenticationStateChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Check for redirect after authentication
+            await CheckForPostAuthRedirectAsync();
+        }
+    }
+
+    private async Task LoadConfigurationAsync()
+    {
+        try
+        {
+            // For now, we'll support Microsoft by default
+            // This can be expanded based on your configuration needs
+            enabledProviders.Add("Microsoft");
+            // enabledProviders.Add("Google");
+            // enabledProviders.Add("GitHub");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading configuration: {ex.Message}");
+        }
+    }
+
+    private async Task CheckAuthenticationAsync()
+    {
+        try
+        {
+            isLoading = true;
+            isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (isAuthenticated)
+            {
+                currentUser = await AuthService.GetCurrentUserAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error checking authentication: {ex.Message}");
+            isAuthenticated = false;
+            currentUser = null;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CheckForPostAuthRedirectAsync()
+    {
+        try
+        {
+            // After successful authentication, refresh the auth state
+            var storedRedirect = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", "feedbackflow_redirect_after_auth");
+            if (!string.IsNullOrEmpty(storedRedirect))
+            {
+                await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "feedbackflow_redirect_after_auth");
+                await CheckAuthenticationAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error checking post-auth redirect: {ex.Message}");
+        }
+    }
+
+    private void OnAuthenticationStateChanged(object? sender, bool isAuth)
+    {
+        InvokeAsync(async () =>
+        {
+            await CheckAuthenticationAsync();
+        });
+    }
+
+    private string GetDisplayName()
+    {
+        if (currentUser == null) return "";
+        
+        if (!string.IsNullOrEmpty(currentUser.Name))
+            return currentUser.Name;
+            
+        if (!string.IsNullOrEmpty(currentUser.Email))
+        {
+            var atIndex = currentUser.Email.IndexOf('@');
+            return atIndex > 0 ? currentUser.Email.Substring(0, atIndex) : currentUser.Email;
+        }
+        
+        return "User";
+    }
+
+    private void ShowLoginModal()
+    {
+        showLoginModal = true;
+        loginError = "";
+        StateHasChanged();
+    }
+
+    private void HideLoginModal()
+    {
+        showLoginModal = false;
+        loginError = "";
+        StateHasChanged();
+    }
+
+    private async Task LoginWithProvider(string provider)
+    {
+        try
+        {
+            HideLoginModal();
+            
+            // Store current URL for redirect after authentication
+            var currentUrl = Navigation.Uri;
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "feedbackflow_redirect_after_auth", currentUrl);
+            
+            // Clear any existing auth data to ensure fresh login
+            await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "feedbackflow_easyauth_user");
+            
+            var loginUrl = AuthService.GetLoginUrl(provider, currentUrl);
+            Navigation.NavigateTo(loginUrl, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            loginError = $"Error initiating login: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private async Task LogoutAsync()
+    {
+        try
+        {
+            await AuthService.LogoutAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error during logout: {ex.Message}");
+            // Force navigation to logout endpoint
+            Navigation.NavigateTo("/.auth/logout", forceLoad: true);
+        }
+    }
+
+    public void Dispose()
+    {
+        AuthService.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+    }
+}
