@@ -1,0 +1,163 @@
+@page "/auth-debug"
+@namespace FeedbackWebApp.Components.Pages
+
+@using FeedbackWebApp.Services.Authentication
+@using System.Text.Json
+@inject IConfiguration Configuration
+@inject IAuthenticationService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Authentication Debug - FeedbackFlow</PageTitle>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h3 class="card-title">Authentication Debug</h3>
+                    
+                    <div class="mb-4">
+                        <h5>Configuration</h5>
+                        <ul>
+                            <li><strong>UseEasyAuth:</strong> @useEasyAuth</li>
+                            <li><strong>BypassInDevelopment:</strong> @bypassAuth</li>
+                            <li><strong>Environment:</strong> @environment</li>
+                            <li><strong>Current URL:</strong> @Navigation.Uri</li>
+                        </ul>
+                    </div>
+
+                    <div class="mb-4">
+                        <h5>Authentication Status</h5>
+                        <ul>
+                            <li><strong>Is Authenticated:</strong> @isAuthenticated</li>
+                            <li><strong>Service Type:</strong> @AuthService.GetType().Name</li>
+                            <li><strong>Current User:</strong> @(currentUser?.Name ?? "None")</li>
+                            <li><strong>Auth Provider:</strong> @(currentUser?.AuthProvider ?? "None")</li>
+                        </ul>
+                    </div>
+
+                    <div class="mb-4">
+                        <h5>Easy Auth Test</h5>
+                        <button class="btn btn-primary me-2" @onclick="TestEasyAuthMe">Test /.auth/me</button>
+                        <button class="btn btn-outline-primary" @onclick="RefreshAuth">Refresh Auth Status</button>
+                        
+                        @if (!string.IsNullOrEmpty(easyAuthResult))
+                        {
+                            <div class="mt-3">
+                                <h6>/.auth/me Response:</h6>
+                                <pre class="bg-light p-2 rounded">@easyAuthResult</pre>
+                            </div>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger mt-3">
+                                @errorMessage
+                            </div>
+                        }
+                    </div>
+
+                    <div class="mb-4">
+                        <h5>Login URLs</h5>
+                        <ul>
+                            <li><strong>Microsoft:</strong> <a href="@GetLoginUrl("Microsoft")" target="_blank">@GetLoginUrl("Microsoft")</a></li>
+                            <li><strong>Google:</strong> <a href="@GetLoginUrl("Google")" target="_blank">@GetLoginUrl("Google")</a></li>
+                            <li><strong>GitHub:</strong> <a href="@GetLoginUrl("GitHub")" target="_blank">@GetLoginUrl("GitHub")</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool useEasyAuth;
+    private bool bypassAuth;
+    private string environment = "";
+    private bool isAuthenticated;
+    private SharedDump.Models.Authentication.AuthenticatedUser? currentUser;
+    private string easyAuthResult = "";
+    private string errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        useEasyAuth = Configuration.GetValue<bool>("Authentication:UseEasyAuth", false);
+        bypassAuth = Configuration.GetValue<bool>("Authentication:BypassInDevelopment", false);
+        environment = Configuration.GetValue<string>("ASPNETCORE_ENVIRONMENT") ?? "Unknown";
+        
+        await RefreshAuthStatus();
+    }
+
+    private async Task RefreshAuth()
+    {
+        await RefreshAuthStatus();
+        StateHasChanged();
+    }
+
+    private async Task RefreshAuthStatus()
+    {
+        try
+        {
+            errorMessage = "";
+            isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            currentUser = await AuthService.GetCurrentUserAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error refreshing auth status: {ex.Message}";
+        }
+    }
+
+    private async Task TestEasyAuthMe()
+    {
+        try
+        {
+            errorMessage = "";
+            easyAuthResult = "";
+
+            using var httpClient = new HttpClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(10);
+            
+            var baseUrl = Navigation.BaseUri.TrimEnd('/');
+            var response = await httpClient.GetAsync($"{baseUrl}/.auth/me");
+            
+            easyAuthResult = $"Status: {response.StatusCode}\n";
+            easyAuthResult += $"Headers: {string.Join(", ", response.Headers.Select(h => $"{h.Key}: {string.Join(", ", h.Value)}"))}\n\n";
+            
+            var content = await response.Content.ReadAsStringAsync();
+            
+            if (!string.IsNullOrEmpty(content))
+            {
+                try
+                {
+                    // Try to format JSON nicely
+                    var jsonDocument = JsonDocument.Parse(content);
+                    easyAuthResult += JsonSerializer.Serialize(jsonDocument, new JsonSerializerOptions { WriteIndented = true });
+                }
+                catch
+                {
+                    // If it's not valid JSON, just show raw content
+                    easyAuthResult += content;
+                }
+            }
+            else
+            {
+                easyAuthResult += "(Empty response)";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error testing /.auth/me: {ex.Message}";
+            easyAuthResult = "";
+        }
+        
+        StateHasChanged();
+    }
+
+    private string GetLoginUrl(string provider)
+    {
+        return AuthService.GetLoginUrl(provider, Navigation.Uri);
+    }
+}

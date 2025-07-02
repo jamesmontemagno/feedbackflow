@@ -96,6 +96,12 @@ public class EasyAuthService : IAuthenticationService
             var encodedRedirect = Uri.EscapeDataString(redirectUrl);
             loginUrl += $"?post_login_redirect_url={encodedRedirect}";
         }
+        else
+        {
+            // Default redirect to home page
+            var defaultRedirect = Uri.EscapeDataString($"{baseUrl}/");
+            loginUrl += $"?post_login_redirect_url={defaultRedirect}";
+        }
 
         return loginUrl;
     }
@@ -139,17 +145,22 @@ public class EasyAuthService : IAuthenticationService
         {
             // Try to get user info from /.auth/me endpoint
             using var httpClient = new HttpClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(5); // Set a reasonable timeout
+            
             var baseUrl = _navigationManager.BaseUri.TrimEnd('/');
             var response = await httpClient.GetAsync($"{baseUrl}/.auth/me");
             
             if (!response.IsSuccessStatusCode)
             {
+                // If we get 401/403, user is not authenticated
+                // If we get other errors, Easy Auth might not be configured
                 return null;
             }
             
             var content = await response.Content.ReadAsStringAsync();
-            if (string.IsNullOrEmpty(content))
+            if (string.IsNullOrEmpty(content) || content.Trim() == "[]")
             {
+                // Empty array means no authenticated user
                 return null;
             }
             
@@ -180,9 +191,19 @@ public class EasyAuthService : IAuthenticationService
                 LastLoginAt = DateTime.UtcNow
             };
         }
+        catch (HttpRequestException)
+        {
+            // Network error or Easy Auth not available
+            return null;
+        }
+        catch (TaskCanceledException)
+        {
+            // Timeout
+            return null;
+        }
         catch (Exception)
         {
-            // If we can't get user info from Easy Auth, user is not authenticated
+            // Any other error - Easy Auth not configured or not working
             return null;
         }
     }
