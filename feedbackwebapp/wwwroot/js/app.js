@@ -125,16 +125,14 @@ function downloadFile(dataUrl, fileName) {
 
 window.downloadFile = downloadFile;
 
-// Easy Auth utility function
+// Easy Auth utility function - simplified for server-side authentication
 async function fetchAuthMe() {
     try {
         console.log('fetchAuthMe: Starting request to /.auth/me');
-        console.log('fetchAuthMe: Current URL:', window.location.href);
-        console.log('fetchAuthMe: Document cookies:', document.cookie);
         
         const response = await fetch('/.auth/me', {
             method: 'GET',
-            credentials: 'include', // This is the key - include cookies
+            credentials: 'include', // Include cookies for authentication
             headers: {
                 'Accept': 'application/json',
                 'Cache-Control': 'no-cache'
@@ -142,12 +140,9 @@ async function fetchAuthMe() {
         });
         
         console.log('fetchAuthMe: Response status:', response.status);
-        console.log('fetchAuthMe: Response headers:', [...response.headers.entries()]);
         
         if (!response.ok) {
             console.warn('fetchAuthMe: Auth check failed with status:', response.status);
-            const errorText = await response.text();
-            console.warn('fetchAuthMe: Error response body:', errorText);
             return null;
         }
         

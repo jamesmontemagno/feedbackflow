@@ -69,6 +69,7 @@ builder.Eventing.Subscribe<BeforeResourceStartedEvent>(feedbackFunctionsProject.
 builder.AddProject<Projects.WebApp>("feedback-webapp")
         .WithEnvironment("FeedbackApi__BaseUrl", feedbackFunctionsProject.GetEndpoint("http"))
         .WithEnvironment("FeedbackApi__UseMocks", "false")
-        .WithEnvironment("Authentication__UseEasyAuth", "true");
+        .WithEnvironment("Authentication__UseEasyAuth", "false")
+        .WithEnvironment("Authentication__BypassInDevelopment", "true"); // Use real auth in development too
 
 builder.Build().Run();

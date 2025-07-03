@@ -23,6 +23,9 @@ builder.Services.AddRazorComponents()
         options.MaximumReceiveMessageSize = 1_024_000; // 200 KB or more
     });
 
+// Add HttpContextAccessor for server-side authentication
+builder.Services.AddHttpContextAccessor();
+
 // Add Data Protection services for secure authentication
 builder.Services.AddDataProtection();
     
@@ -39,15 +42,16 @@ builder.Services.AddScoped<ContentFeedServiceProvider>();
 var useEasyAuth = builder.Configuration.GetValue<bool>("Authentication:UseEasyAuth", false);
 if (useEasyAuth)
 {
-    builder.Services.AddScoped<IAuthenticationService, EasyAuthService>();
+    // Use server-side authentication service for better security
+    builder.Services.AddScoped<IAuthenticationService, ServerSideAuthService>();
+    builder.Services.AddScoped<IAuthenticationHeaderService, ServerSideAuthenticationHeaderService>();
 }
 else
 {
+    // Fallback to old authentication service
     builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
+    builder.Services.AddScoped<IAuthenticationHeaderService, AuthenticationHeaderService>();
 }
-
-// Register authentication header service
-builder.Services.AddScoped<IAuthenticationHeaderService, AuthenticationHeaderService>();
 
 // Register user management service
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();

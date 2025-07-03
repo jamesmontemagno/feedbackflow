@@ -3,7 +3,6 @@
 @using SharedDump.Models.Authentication
 @inject IAuthenticationService AuthService
 @inject NavigationManager Navigation
-@inject IJSRuntime JSRuntime
 
 <div class="user-navigation d-flex align-items-center">
     @if (isLoading)
@@ -76,7 +75,6 @@
     private bool isLoading = true;
     private bool isAuthenticated = false;
     private AuthenticatedUser? currentUser;
-    private string loginError = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -85,18 +83,6 @@
         
         // Subscribe to authentication state changes
         AuthService.AuthenticationStateChanged += OnAuthenticationStateChanged;
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            // Check for redirect after authentication and force a fresh auth check
-            await CheckForPostAuthRedirectAsync();
-            
-            // Always do a fresh auth check on first render to handle post-login scenarios
-            await ForceAuthenticationRefreshAsync();
-        }
     }
 
     private async Task CheckAuthenticationAsync()
@@ -120,49 +106,6 @@
         {
             isLoading = false;
             StateHasChanged();
-        }
-    }
-
-    private async Task CheckForPostAuthRedirectAsync()
-    {
-        try
-        {
-            // After successful authentication, refresh the auth state
-            var storedRedirect = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", "feedbackflow_redirect_after_auth");
-            if (!string.IsNullOrEmpty(storedRedirect))
-            {
-                await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "feedbackflow_redirect_after_auth");
-                await CheckAuthenticationAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error checking post-auth redirect: {ex.Message}");
-        }
-    }
-
-    private async Task ForceAuthenticationRefreshAsync()
-    {
-        try
-        {
-            // Force a fresh authentication check by resetting the service state
-            // Use reflection to call ResetAuthenticationStateAsync if it exists
-            var resetMethod = AuthService.GetType().GetMethod("ResetAuthenticationStateAsync");
-            if (resetMethod != null)
-            {
-                var task = resetMethod.Invoke(AuthService, null) as Task;
-                if (task != null)
-                {
-                    await task;
-                }
-            }
-            
-            // Now check authentication status fresh
-            await CheckAuthenticationAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error forcing auth refresh: {ex.Message}");
         }
     }
 
