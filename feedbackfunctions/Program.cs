@@ -50,7 +50,7 @@ builder.Services.AddSingleton<IReportCacheService>(serviceProvider =>
 {
     var configuration = GetConfig(serviceProvider);
     var logger = serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ReportCacheService>>();
-    var storageConnection = configuration["AzureWebJobsStorage"] ?? throw new InvalidOperationException("Storage connection string not configured");
+    var storageConnection = configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
     var serviceClient = new BlobServiceClient(storageConnection);
     var containerClient = serviceClient.GetBlobContainerClient("reports");
     containerClient.CreateIfNotExists();

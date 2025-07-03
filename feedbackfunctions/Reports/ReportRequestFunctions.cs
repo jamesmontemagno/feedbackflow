@@ -59,7 +59,7 @@ public class ReportRequestFunctions
         _authMiddleware = authMiddleware;
         
         // Initialize table client
-        var storageConnection = _configuration["AzureWebJobsStorage"] ?? throw new InvalidOperationException("Storage connection string not configured");
+        var storageConnection = _configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
         var tableServiceClient = new TableServiceClient(storageConnection);
         _tableClient = tableServiceClient.GetTableClient(TableName);
         _tableClient.CreateIfNotExists();

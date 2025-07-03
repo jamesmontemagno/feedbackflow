@@ -73,7 +73,7 @@ public class ReportingFunctions
         _cacheService = cacheService;
         
         // Initialize blob container
-        var storageConnection = _configuration["AzureWebJobsStorage"] ?? throw new InvalidOperationException("Storage connection string not configured");
+        var storageConnection = _configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
         var serviceClient = new BlobServiceClient(storageConnection);
         _containerClient = serviceClient.GetBlobContainerClient(ContainerName);
         _containerClient.CreateIfNotExists();

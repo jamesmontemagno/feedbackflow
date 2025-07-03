@@ -156,7 +156,7 @@ public class ContentFeedFunctions
     [Function("SearchHackerNewsArticles")]
     public async Task<HttpResponseData> SearchHackerNewsArticles(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req,
-        [BlobInput("hackernews-cache/all.json")] string? cachedBlob)
+        [BlobInput("hackernews-cache/all.json", Connection = "ProductionStorage")] string? cachedBlob)
     {
         _logger.LogInformation("Processing Hacker News search request");
 
@@ -190,7 +190,7 @@ public class ContentFeedFunctions
     }
 
     [Function("CacheHackerNewsArticlesHourly")]
-    [BlobOutput("hackernews-cache/all.json")]
+    [BlobOutput("hackernews-cache/all.json", Connection = "ProductionStorage")]
     public async Task<string> CacheHackerNewsArticlesHourly(
         [TimerTrigger("0 0 */2 * * *")] TimerInfo timerInfo)
     {

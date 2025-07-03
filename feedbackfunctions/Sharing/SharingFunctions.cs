@@ -56,7 +56,7 @@ public class SharingFunctions
     [Function("SaveSharedAnalysis")]
     public async Task<HttpResponseData> SaveSharedAnalysis(
         [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequestData req,
-        [BlobInput(ContainerName, Connection = "AzureWebJobsStorage")] BlobContainerClient containerClient)
+        [BlobInput(ContainerName, Connection = "ProductionStorage")] BlobContainerClient containerClient)
     {
         _logger.LogInformation("Processing shared analysis save request");
         
@@ -93,7 +93,7 @@ public class SharingFunctions
     public async Task<HttpResponseData> GetSharedAnalysis(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "GetSharedAnalysis/{id}")] HttpRequestData req,
         string id,
-        [BlobInput($"{ContainerName}/{{id}}.json", Connection = "AzureWebJobsStorage")] string? analysisJson)
+        [BlobInput($"{ContainerName}/{{id}}.json", Connection = "ProductionStorage")] string? analysisJson)
     {
         _logger.LogInformation($"Retrieving shared analysis with ID: {id}");
 
@@ -131,7 +131,7 @@ public class SharingFunctions
     [Function("CleanupOldAnalyses")]
     public async Task CleanupOldAnalyses(
         [TimerTrigger("0 0 0 * * *")] TimerInfo timerInfo,  // Run at midnight every day
-        [BlobInput(ContainerName, Connection = "AzureWebJobsStorage")] BlobContainerClient containerClient)
+        [BlobInput(ContainerName, Connection = "ProductionStorage")] BlobContainerClient containerClient)
     {
         _logger.LogInformation($"Starting cleanup of old analyses at: {DateTime.UtcNow}");
 
