@@ -65,6 +65,59 @@
 
                         <hr class="my-4">
 
+                        <!-- Email Preferences -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <h5 class="text-primary">Email Preferences</h5>
+                                <p class="text-muted small">
+                                    Set a preferred email address for notifications. If not set, your account email will be used.
+                                </p>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label for="preferredEmail" class="form-label fw-bold">Preferred Email Address</label>
+                                    <div class="input-group">
+                                        <input type="email" 
+                                               class="form-control" 
+                                               id="preferredEmail"
+                                               @bind="preferredEmailInput" 
+                                               @bind:event="oninput"
+                                               placeholder="@userInfo.Email (your account email)"
+                                               disabled="@isUpdatingEmail" />
+                                        <button class="btn btn-outline-primary" 
+                                                type="button" 
+                                                @onclick="UpdatePreferredEmailAsync"
+                                                disabled="@(isUpdatingEmail || !hasEmailChanged)">
+                                            @if (isUpdatingEmail)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                                <span>Saving...</span>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-check-lg me-1"></i>
+                                                <span>Update</span>
+                                            }
+                                        </button>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(emailUpdateMessage))
+                                    {
+                                        <div class="@($"alert alert-{(emailUpdateSuccess ? "success" : "danger")} mt-2 mb-0")" role="alert">
+                                            <i class="@($"bi bi-{(emailUpdateSuccess ? "check-circle" : "exclamation-triangle")}-fill me-2")"></i>
+                                            @emailUpdateMessage
+                                        </div>
+                                    }
+                                    <div class="form-text">
+                                        <small class="text-muted">
+                                            <strong>Current:</strong> @(string.IsNullOrEmpty(userInfo.PreferredEmail) ? $"{userInfo.Email} (account email)" : userInfo.PreferredEmail)
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
                         <!-- Danger Zone -->
                         <div class="danger-zone">
                             <div class="row">
@@ -123,6 +176,13 @@
     private bool isLoading = true;
     private bool isDeleting = false;
     private string errorMessage = "";
+    
+    // Email preferences fields
+    private string preferredEmailInput = "";
+    private bool isUpdatingEmail = false;
+    private string emailUpdateMessage = "";
+    private bool emailUpdateSuccess = false;
+    private bool hasEmailChanged => preferredEmailInput != (userInfo?.PreferredEmail ?? "");
 
     protected override async Task OnInitializedAsync()
     {
@@ -170,6 +230,9 @@
                     errorMessage = "Unable to load account information. Please try logging out and back in.";
                 }
             }
+
+            // Initialize preferred email input
+            preferredEmailInput = userInfo?.PreferredEmail ?? userInfo?.Email ?? "";
         }
         catch (Exception ex)
         {
@@ -192,6 +255,8 @@
                         CreatedAt = currentUser.CreatedAt,
                         LastLoginAt = currentUser.LastLoginAt ?? DateTime.UtcNow
                     };
+                    // Initialize preferred email input
+                    preferredEmailInput = userInfo?.PreferredEmail ?? userInfo?.Email ?? "";
                     errorMessage = ""; // Clear error if fallback works
                 }
             }
@@ -266,6 +331,45 @@
         finally
         {
             isDeleting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task UpdatePreferredEmailAsync()
+    {
+        try
+        {
+            isUpdatingEmail = true;
+            emailUpdateMessage = "";
+            StateHasChanged();
+
+            var result = await UserManagementService.UpdatePreferredEmailAsync(preferredEmailInput);
+            
+            if (result.Success)
+            {
+                // Update the userInfo object with the new preferred email
+                if (userInfo != null)
+                {
+                    userInfo.PreferredEmail = preferredEmailInput;
+                }
+                
+                emailUpdateMessage = "Email preference updated successfully!";
+                await ToastService.ShowToastAsync("Email preference updated successfully!", ToastType.Success);
+            }
+            else
+            {
+                emailUpdateMessage = $"Failed to update email preference: {result.ErrorMessage}";
+                await ToastService.ShowToastAsync($"Failed to update email preference: {result.ErrorMessage}", ToastType.Danger);
+            }
+        }
+        catch (Exception ex)
+        {
+            emailUpdateMessage = $"Error updating email preference: {ex.Message}";
+            await ToastService.ShowToastAsync($"Error updating email preference: {ex.Message}", ToastType.Danger);
+        }
+        finally
+        {
+            isUpdatingEmail = false;
             StateHasChanged();
         }
     }

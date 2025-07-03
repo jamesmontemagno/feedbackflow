@@ -26,6 +26,13 @@ public interface IUserManagementService
     /// </summary>
     /// <returns>User information or null if not found</returns>
     Task<UserInfo?> GetCurrentUserInfoAsync();
+    
+    /// <summary>
+    /// Update the user's preferred email address
+    /// </summary>
+    /// <param name="preferredEmail">The new preferred email address</param>
+    /// <returns>Result of the update operation</returns>
+    Task<RequestResult> UpdatePreferredEmailAsync(string? preferredEmail);
 }
 
 /// <summary>
@@ -35,6 +42,7 @@ public class UserInfo
 {
     public string UserId { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
+    public string? PreferredEmail { get; set; }
     public string Name { get; set; } = string.Empty;
     public string AuthProvider { get; set; } = string.Empty;
     public string? ProviderUserId { get; set; }
@@ -169,6 +177,51 @@ public class UserManagementService : IUserManagementService
         {
             Console.WriteLine($"Error getting current user info: {ex.Message}");
             return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<RequestResult> UpdatePreferredEmailAsync(string? preferredEmail)
+    {
+        try
+        {
+            var baseUrl = _configuration["FeedbackApi:BaseUrl"] 
+                ?? throw new InvalidOperationException("API base URL not configured");
+            var code = _configuration["FeedbackApi:FunctionsKey"]
+                ?? throw new InvalidOperationException("Functions key not configured");
+
+            // Create the request message
+            var requestMessage = new HttpRequestMessage(HttpMethod.Put, $"{baseUrl}/api/UpdatePreferredEmail?code={Uri.EscapeDataString(code)}");
+
+            // Add authentication headers
+            await _authHeaderService.AddAuthenticationHeadersAsync(requestMessage);
+
+            // Add the preferred email as request body
+            var requestData = new { PreferredEmail = preferredEmail };
+            var requestJson = JsonSerializer.Serialize(requestData, _jsonOptions);
+            requestMessage.Content = new StringContent(requestJson, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.SendAsync(requestMessage);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return new RequestResult { Success = true };
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            return new RequestResult 
+            { 
+                Success = false, 
+                ErrorMessage = $"API error: {response.StatusCode} - {errorContent}" 
+            };
+        }
+        catch (Exception ex)
+        {
+            return new RequestResult 
+            { 
+                Success = false, 
+                ErrorMessage = $"Error updating preferred email: {ex.Message}" 
+            };
         }
     }
 

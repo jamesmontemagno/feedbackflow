@@ -58,4 +58,13 @@ public interface IAuthUserTableService
     /// <param name="providerUserId">Provider-specific user ID</param>
     /// <returns>Task representing the operation</returns>
     Task UpdateEmailIndexAsync(string email, string userId, string provider, string providerUserId);
+
+    /// <summary>
+    /// Update the user's preferred email address
+    /// </summary>
+    /// <param name="provider">Authentication provider name</param>
+    /// <param name="providerUserId">Provider-specific user ID</param>
+    /// <param name="preferredEmail">New preferred email address (can be null to clear)</param>
+    /// <returns>True if successful, false if user not found</returns>
+    Task<bool> UpdatePreferredEmailAsync(string provider, string providerUserId, string? preferredEmail);
 }

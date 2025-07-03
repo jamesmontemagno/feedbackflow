@@ -39,6 +39,11 @@ public class AuthUserEntity : ITableEntity
     public string Email { get; set; } = string.Empty;
 
     /// <summary>
+    /// User's preferred email address for notifications (independent of auth provider email)
+    /// </summary>
+    public string? PreferredEmail { get; set; }
+
+    /// <summary>
     /// User's display name
     /// </summary>
     public string Name { get; set; } = string.Empty;
