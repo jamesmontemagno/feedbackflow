@@ -24,8 +24,7 @@ public class AuthUserTableService : IAuthUserTableService
     /// <param name="logger">Logger for diagnostic information</param>
     public AuthUserTableService(IConfiguration configuration, ILogger<AuthUserTableService> logger)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection") ?? 
-                             configuration["ProductionStorage"] ??
+        var connectionString = configuration["ProductionStorage"] ??
                              configuration["AzureWebJobsStorage"] ??
                              throw new InvalidOperationException("No storage connection string configured");
 

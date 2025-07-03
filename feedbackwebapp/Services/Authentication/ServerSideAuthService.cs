@@ -190,18 +190,26 @@ public class ServerSideAuthService : IAuthenticationService
             var provider = GetProviderFromIdentityProvider(userInfo.ProviderName);
             
             // Extract user details from claims
-            var email = userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Val ??
-                       userInfo.UserId;
+            var email = userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Val;
             
             var name = userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "name")?.Val ??
                       userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname")?.Val ??
                       userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name")?.Val ??
                       userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "given_name")?.Val ??
-                      userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "preferred_username")?.Val ??
-                      email;
+                      userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "preferred_username")?.Val;
+            
+            // Provider-specific fallbacks for name
+            if (string.IsNullOrEmpty(name))
+            {
+                name = provider switch
+                {
+                    "GitHub" => userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "urn:github:login")?.Val,
+                    _ => null
+                };
+            }
                       
-            // If name is still empty or same as email, try to extract from email
-            if (string.IsNullOrEmpty(name) || name == email)
+            // Final fallbacks for name
+            if (string.IsNullOrEmpty(name))
             {
                 if (!string.IsNullOrEmpty(email) && email.Contains('@'))
                 {
@@ -209,7 +217,7 @@ public class ServerSideAuthService : IAuthenticationService
                 }
                 else
                 {
-                    name = "User";
+                    name = userInfo.UserId ?? "User";
                 }
             }
             
@@ -217,11 +225,11 @@ public class ServerSideAuthService : IAuthenticationService
                       
             var authenticatedUser = new AuthenticatedUser
             {
-                UserId = userInfo.UserId,
-                Email = email,
+                UserId = userInfo.UserId ?? string.Empty,
+                Email = email ?? string.Empty,
                 Name = name,
                 AuthProvider = provider,
-                ProviderUserId = userInfo.UserId,
+                ProviderUserId = userInfo.UserId ?? string.Empty,
                 ProfileImageUrl = profileImageUrl,
                 CreatedAt = DateTime.UtcNow,
                 LastLoginAt = DateTime.UtcNow
@@ -327,4 +335,40 @@ public class ServerSideAuthService : IAuthenticationService
             _ => null
         };
     }
+}
+
+/// <summary>
+/// Represents the Easy Auth user information from /.auth/me endpoint
+/// </summary>
+internal class EasyAuthUser
+{
+    [JsonPropertyName("user_id")]
+    public string? UserId { get; set; }
+    
+    [JsonPropertyName("provider_name")]
+    public string ProviderName { get; set; } = string.Empty;
+    
+    [JsonPropertyName("user_claims")]
+    public EasyAuthClaim[]? UserClaims { get; set; }
+    
+    [JsonPropertyName("access_token")]
+    public string? AccessToken { get; set; }
+    
+    [JsonPropertyName("expires_on")]
+    public string? ExpiresOn { get; set; }
+    
+    [JsonPropertyName("id_token")]
+    public string? IdToken { get; set; }
+}
+
+/// <summary>
+/// Represents a claim from Easy Auth
+/// </summary>
+internal class EasyAuthClaim
+{
+    [JsonPropertyName("typ")]
+    public string Typ { get; set; } = string.Empty;
+    
+    [JsonPropertyName("val")]
+    public string? Val { get; set; }
 }
