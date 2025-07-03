@@ -50,6 +50,11 @@ public class AuthenticationMiddleware
             if (!req.Headers.TryGetValues("X-MS-CLIENT-PRINCIPAL", out var principalHeaders))
             {
                 _logger.LogWarning("No X-MS-CLIENT-PRINCIPAL header found in request");
+                // Debug: Log all headers to see what we're getting
+                foreach (var header in req.Headers)
+                {
+                    _logger.LogInformation("[DEBUG] Header: {HeaderName} = {HeaderValue}", header.Key, string.Join(", ", header.Value));
+                }
                 return null;
             }
 
@@ -60,9 +65,12 @@ public class AuthenticationMiddleware
                 return null;
             }
 
+            _logger.LogInformation("[DEBUG] Received X-MS-CLIENT-PRINCIPAL header: {Header}", principalHeader);
+
             // Decode the base64-encoded principal
             var decoded = Convert.FromBase64String(principalHeader);
             var json = Encoding.UTF8.GetString(decoded);
+            _logger.LogInformation("[DEBUG] Decoded JSON: {Json}", json);
             var clientPrincipal = JsonSerializer.Deserialize<ClientPrincipal>(json);
 
             if (clientPrincipal == null)

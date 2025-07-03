@@ -67,6 +67,11 @@ public class AuthenticationHeaderService : IAuthenticationHeaderService
             var json = JsonSerializer.Serialize(clientPrincipal, _jsonOptions);
             var base64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
 
+            // Debug logging to see what we're sending
+            Console.WriteLine($"[DEBUG] Sending X-MS-CLIENT-PRINCIPAL header:");
+            Console.WriteLine($"[DEBUG] JSON: {json}");
+            Console.WriteLine($"[DEBUG] Base64: {base64}");
+
             // Add the authentication header
             request.Headers.Add("X-MS-CLIENT-PRINCIPAL", base64);
         }
