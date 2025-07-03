@@ -103,3 +103,35 @@
         transform: translateY(0);
     }
 }
+
+/* Account Creation Notice Styling */
+.alert-info {
+    background: linear-gradient(135deg, rgba(var(--info-color-rgb), 0.1) 0%, rgba(var(--primary-color-rgb), 0.05) 100%);
+    border: 1px solid rgba(var(--info-color-rgb), 0.2);
+    border-radius: var(--border-radius-sm);
+    color: var(--text-primary);
+    box-shadow: 0 2px 8px rgba(var(--info-color-rgb), 0.1);
+}
+
+.alert-info .bi-info-circle-fill {
+    color: var(--info-color);
+    font-size: 1.1rem;
+}
+
+.alert-info .alert-heading {
+    color: var(--primary-color);
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.alert-info p {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.alert-info small {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.3;
+}
