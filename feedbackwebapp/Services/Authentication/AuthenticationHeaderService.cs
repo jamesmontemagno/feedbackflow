@@ -1,5 +1,7 @@
+using System.Text;
 using System.Text.Json;
 using FeedbackWebApp.Services.Authentication;
+using SharedDump.Models.Authentication;
 
 namespace FeedbackWebApp.Services.Authentication;
 
@@ -46,28 +48,27 @@ public class AuthenticationHeaderService : IAuthenticationHeaderService
                 return;
             }
 
-            // Create a client principal object similar to what Azure Easy Auth would create
-            var clientPrincipal = new
+            // Create a ClientPrincipal object matching what the Azure Function expects
+            var clientPrincipal = new ClientPrincipal
             {
-                userId = currentUser.ProviderUserId,
-                userDetails = currentUser.Email,
-                identityProvider = GetIdentityProviderName(currentUser.AuthProvider),
-                claims = new[]
+                IdentityProvider = GetIdentityProviderName(currentUser.AuthProvider),
+                UserId = currentUser.ProviderUserId,
+                UserDetails = currentUser.Email,
+                Claims = new[]
                 {
-                    new { type = "name", value = currentUser.Name },
-                    new { type = "email", value = currentUser.Email },
-                    new { type = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress", value = currentUser.Email },
-                    new { type = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", value = currentUser.Name }
-                }.Where(c => !string.IsNullOrEmpty(c.value)).ToArray()
+                    new ClientPrincipalClaim { Type = "name", Value = currentUser.Name },
+                    new ClientPrincipalClaim { Type = "email", Value = currentUser.Email },
+                    new ClientPrincipalClaim { Type = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress", Value = currentUser.Email },
+                    new ClientPrincipalClaim { Type = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", Value = currentUser.Name }
+                }.Where(c => !string.IsNullOrEmpty(c.Value)).ToArray()
             };
 
-            // Serialize and encode the principal
-            var principalJson = JsonSerializer.Serialize(clientPrincipal, _jsonOptions);
-            var principalBytes = System.Text.Encoding.UTF8.GetBytes(principalJson);
-            var principalBase64 = Convert.ToBase64String(principalBytes);
+            // Serialize to JSON and encode as base64
+            var json = JsonSerializer.Serialize(clientPrincipal, _jsonOptions);
+            var base64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
 
             // Add the authentication header
-            request.Headers.Add("X-MS-CLIENT-PRINCIPAL", principalBase64);
+            request.Headers.Add("X-MS-CLIENT-PRINCIPAL", base64);
         }
         catch (Exception ex)
         {
@@ -90,6 +91,7 @@ public class AuthenticationHeaderService : IAuthenticationHeaderService
             "GitHub" => "github",
             "Facebook" => "facebook",
             "Twitter" => "twitter",
+            "Password" => "password",
             _ => authProvider.ToLower()
         };
     }
