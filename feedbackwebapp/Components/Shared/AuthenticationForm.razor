@@ -8,8 +8,36 @@
     <div class="card shadow-sm">
         <div class="card-body">
             <h5 class="card-title">Authentication Required</h5>
-            <p class="text-muted mb-3">Please log in to access this feature</p>
-            <div class="d-flex flex-column gap-2">
+            
+            @* Password Authentication (if OAuth providers are not enabled) *@
+            @if (!enabledProviders.Any())
+            {
+                <div class="form-floating mb-3">
+                    <input type="password" class="form-control" id="password" @bind="password" @onkeyup="HandleKeyPress" placeholder="Enter password" />
+                    <label for="password">Password</label>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary" @onclick="AuthenticateHandler" disabled="@isAuthenticating">
+                        @if (isAuthenticating)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            <span>Authenticating...</span>
+                        }
+                        else
+                        {
+                            <span>Login</span>
+                        }
+                    </button>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted mb-3">Please log in to access this feature</p>
+            }
+            else
+            {
+                <p class="text-muted mb-3">Please log in to access this feature</p>
+                <div class="d-flex flex-column gap-2">
 
                 @if (enabledProviders.Contains("Microsoft"))
                 {
@@ -37,7 +65,8 @@
                         Login with GitHub
                     </button>
                 }
-            </div>
+                </div>
+            }
             
             <!-- Account Creation Notice -->
             <div class="alert alert-info mt-3" role="alert">
@@ -75,10 +104,12 @@ else
 }
 
 @code {
+    private string password = "";
     private string authError = "";
     private bool useMockMode;
     private bool isAuthenticated;
     private bool isLoading = true;
+    private bool isAuthenticating = false;
     private List<string> enabledProviders = new();
 
     [Parameter]
@@ -159,5 +190,48 @@ else
     {
         isAuthenticated = success;
         await OnAuthenticated.InvokeAsync(success);
+    }
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await AuthenticateHandler();
+        }
+    }
+
+    private async Task AuthenticateHandler()
+    {
+        if (isAuthenticating) return;
+
+        try
+        {
+            isAuthenticating = true;
+            authError = "";
+            StateHasChanged();
+
+            var isAuthenticated = await ((AuthenticationService)AuthService).AuthenticateAsync(password);
+            if (isAuthenticated)
+            {
+                await HandleAuthenticated(true);
+            }
+            else
+            {
+                // Check if there's a specific error message
+                var errorMsg = ((AuthenticationService)AuthService).LastAuthenticationError;
+                authError = errorMsg ?? "Authentication failed";
+                password = "";
+            }
+        }
+        catch (Exception ex)
+        {
+            authError = $"System error: {ex.Message}";
+            password = "";
+        }
+        finally
+        {
+            isAuthenticating = false;
+            StateHasChanged();
+        }
     }
 }
