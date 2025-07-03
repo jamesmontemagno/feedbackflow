@@ -122,7 +122,10 @@
         if (currentUser == null) return "";
         
         if (!string.IsNullOrEmpty(currentUser.Name))
-            return currentUser.Name;
+        {
+            var firstName = currentUser.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            return firstName ?? currentUser.Name;
+        }
             
         if (!string.IsNullOrEmpty(currentUser.Email))
         {

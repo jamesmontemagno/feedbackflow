@@ -122,6 +122,20 @@ else
     {
         try
         {
+            // Show confirmation dialog about auto account creation
+            var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+                $"Account Creation Notice\n\n" +
+                $"By proceeding to log in with {provider}, you understand that:\n\n" +
+                $"• An account will be automatically created for you if this is your first time\n" +
+                $"• Your account information will be stored in our system\n" +
+                $"• You can manage or delete your account later in Account Settings\n\n" +
+                $"Do you want to proceed with login?");
+
+            if (!confirmed)
+            {
+                return; // User cancelled, don't proceed with login
+            }
+
             // Store current URL for redirect after authentication
             var currentUrl = Navigation.Uri;
             await JSRuntime.InvokeVoidAsync("localStorage.setItem", "feedbackflow_redirect_after_auth", currentUrl);

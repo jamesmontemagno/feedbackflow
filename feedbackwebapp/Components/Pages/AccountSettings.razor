@@ -144,17 +144,61 @@
                 return;
             }
 
-            // Load user information from backend
+            // Get user info from the backend - this returns UserInfo? directly
             userInfo = await UserManagementService.GetCurrentUserInfoAsync();
             
             if (userInfo == null)
             {
-                errorMessage = "Unable to load account information. Please try again later.";
+                // Fallback: create UserInfo from AuthenticatedUser if backend fails
+                var currentUser = await AuthService.GetCurrentUserAsync();
+                if (currentUser != null)
+                {
+                    userInfo = new UserInfo
+                    {
+                        UserId = currentUser.UserId,
+                        Email = currentUser.Email,
+                        Name = currentUser.Name,
+                        AuthProvider = currentUser.AuthProvider,
+                        ProviderUserId = currentUser.ProviderUserId,
+                        ProfileImageUrl = currentUser.ProfileImageUrl,
+                        CreatedAt = currentUser.CreatedAt,
+                        LastLoginAt = currentUser.LastLoginAt ?? DateTime.UtcNow
+                    };
+                }
+                else
+                {
+                    errorMessage = "Unable to load account information. Please try logging out and back in.";
+                }
             }
         }
         catch (Exception ex)
         {
             errorMessage = $"Error loading account information: {ex.Message}";
+            
+            // Try fallback approach
+            try
+            {
+                var currentUser = await AuthService.GetCurrentUserAsync();
+                if (currentUser != null)
+                {
+                    userInfo = new UserInfo
+                    {
+                        UserId = currentUser.UserId,
+                        Email = currentUser.Email,
+                        Name = currentUser.Name,
+                        AuthProvider = currentUser.AuthProvider,
+                        ProviderUserId = currentUser.ProviderUserId,
+                        ProfileImageUrl = currentUser.ProfileImageUrl,
+                        CreatedAt = currentUser.CreatedAt,
+                        LastLoginAt = currentUser.LastLoginAt ?? DateTime.UtcNow
+                    };
+                    errorMessage = ""; // Clear error if fallback works
+                }
+            }
+            catch (Exception fallbackEx)
+            {
+                errorMessage = $"Error loading account information: {fallbackEx.Message}";
+            }
         }
         finally
         {
