@@ -80,15 +80,18 @@ public class AuthenticationMiddleware
             }
 
             // Extract provider and user information
-            var provider = GetProviderFromIdentityProvider(clientPrincipal.IdentityProvider);
-            var providerUserId = clientPrincipal.UserId;
-            var email = clientPrincipal.UserDetails;
+            var provider = GetProviderFromIdentityProvider(clientPrincipal.GetEffectiveIdentityProvider());
+            var providerUserId = clientPrincipal.GetEffectiveUserId();
+            var email = clientPrincipal.GetEffectiveUserDetails();
             var name = clientPrincipal.Claims?.FirstOrDefault(c => c.Type == "name")?.Value ?? 
                       clientPrincipal.Claims?.FirstOrDefault(c => c.Type == "given_name")?.Value ?? 
                       email;
             
+            _logger.LogInformation("[DEBUG] Extracted values - Provider: {Provider}, UserId: {UserId}, Email: {Email}, Name: {Name}", 
+                provider, providerUserId, email, name);
+            
             // Extract profile image URL based on provider
-            var profileImageUrl = GetProfileImageUrl(clientPrincipal.IdentityProvider, clientPrincipal.Claims);
+            var profileImageUrl = GetProfileImageUrl(clientPrincipal.GetEffectiveIdentityProvider(), clientPrincipal.Claims);
 
             if (string.IsNullOrEmpty(providerUserId) || string.IsNullOrEmpty(email))
             {
@@ -178,6 +181,7 @@ public class AuthenticationMiddleware
             "github" => "GitHub",
             "facebook" => "Facebook",
             "twitter" => "Twitter",
+            "password" => "Password",
             _ => identityProvider
         };
     }
