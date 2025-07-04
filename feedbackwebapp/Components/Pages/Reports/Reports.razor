@@ -321,15 +321,15 @@
             loading = true;
             errorMessage = null;
             
-            // Get user's report requests from IndexedDB
-            var userRequests = await JSRuntime.InvokeAsync<object[]>("window.indexedDbModule.getAllReportRequests") ?? Array.Empty<object>();
+            // Get user's report requests from server and filter reports accordingly
+            var userRequests = await ReportRequestService.GetUserReportRequestsAsync();
             hasUserRequests = userRequests.Any();
             
             if (hasUserRequests)
             {
-                // Filter reports based on user requests and sort by latest first
-                var filteredReports = await ReportRequestService.FilterReportsAsync(userRequests);
-                reports = filteredReports.OrderByDescending(r => r.GeneratedAt);
+                // Get reports for the authenticated user and sort by latest first
+                var userReports = await ReportRequestService.GetUserReportsAsync();
+                reports = userReports.OrderByDescending(r => r.GeneratedAt);
             }
             else
             {

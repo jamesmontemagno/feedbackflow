@@ -15,13 +15,7 @@ export {
     clearHistory,
     getHistoryItemsPaged,
     getHistoryItemsCount,
-    updateHistoryItem,
-    // Report requests-specific exports
-    getReportRequest,
-    saveReportRequest,
-    getAllReportRequests,
-    deleteReportRequest,
-    clearReportRequests
+    updateHistoryItem
 };
 
 // Initialize database
@@ -149,12 +143,6 @@ const HISTORY_CONFIG = {
     storeName: 'HistoryItems'
 };
 
-// Report requests-specific configuration and helper functions
-const REPORT_REQUESTS_CONFIG = {
-    dbName: 'ReportRequests',
-    storeName: 'ReportRequestItems'
-};
-
 async function getHistoryItem(id) {
     return getItem(
         HISTORY_CONFIG.dbName, 
@@ -266,42 +254,4 @@ async function getHistoryItemsCount(searchTerm) {
 async function updateHistoryItem(item) {
     // For simplicity, just use saveHistoryItem since it handles both insert and update
     return saveHistoryItem(item);
-}
-
-async function getReportRequest(id) {
-    return getItem(
-        REPORT_REQUESTS_CONFIG.dbName, 
-        REPORT_REQUESTS_CONFIG.storeName, 
-        id
-    );
-}
-
-async function saveReportRequest(request) {
-    return saveItem(
-        REPORT_REQUESTS_CONFIG.dbName, 
-        REPORT_REQUESTS_CONFIG.storeName, 
-        request
-    );
-}
-
-async function getAllReportRequests() {
-    return getAllItems(
-        REPORT_REQUESTS_CONFIG.dbName, 
-        REPORT_REQUESTS_CONFIG.storeName
-    );
-}
-
-async function deleteReportRequest(id) {
-    return deleteItem(
-        REPORT_REQUESTS_CONFIG.dbName, 
-        REPORT_REQUESTS_CONFIG.storeName, 
-        id
-    );
-}
-
-async function clearReportRequests() {
-    return clearStore(
-        REPORT_REQUESTS_CONFIG.dbName, 
-        REPORT_REQUESTS_CONFIG.storeName
-    );
 }

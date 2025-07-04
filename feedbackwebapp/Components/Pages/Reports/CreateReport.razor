@@ -209,7 +209,7 @@
                         <div class="card-body">
                             <ol class="mb-0">
                                 <li>Submit your report request for a Reddit subreddit or GitHub repository</li>
-                                <li>Your request is saved locally and sent to our backend</li>
+                                <li>Your request is saved to your account and processed by our backend</li>
                                 <li>Reports are generated every Monday morning at 4 AM Pacific</li>
                                 <li>You'll see matching reports on your Reports page when available</li>
                             </ol>
@@ -506,22 +506,10 @@
             successMessage = string.Empty;
             validationErrors.Clear();
 
-            // Generate deterministic ID
+            // Generate deterministic ID for the request
             var id = GenerateRequestId(reportRequest);
-            
-            // Check if request already exists locally
-            var existingRequest = await JSRuntime.InvokeAsync<object?>("window.indexedDbModule.getReportRequest", id);
-            if (existingRequest != null)
-            {
-                await validationModal.Show(
-                    "Duplicate Request", 
-                    "You've already requested this report.",
-                    new List<string>()
-                );
-                return;
-            }
 
-            // Create request object for storage
+            // Create request object for backend
             var requestData = new
             {
                 id = id,
@@ -532,32 +520,44 @@
                 createdAt = DateTimeOffset.UtcNow
             };
 
-            // Send to backend - backend will perform API validation and handle errors appropriately
+            // Send to backend - backend will perform API validation and handle duplicate checking
             var result = await ReportRequestService.AddReportRequestAsync(requestData);
             
             if (result.Success)
             {
-                // Only save to IndexedDB if backend request was successful
-                await JSRuntime.InvokeVoidAsync("window.indexedDbModule.saveReportRequest", requestData);
-                
                 successMessage = $"Report request created successfully! Reports are generated every Monday morning.";
                 reportRequest = new ReportRequestModel(); // Reset form
                 fieldValidationStates.Clear(); // Reset validation states
             }
             else
             {
-                var errorTitle = result.IsBadRequest ? "Invalid Request" : 
-                               result.IsServerError ? "Server Error" : 
-                               result.IsNotFound ? "Not Found" : "Request Failed";
-                var errorMsg = !string.IsNullOrEmpty(result.ErrorMessage) 
-                    ? result.ErrorMessage 
-                    : "Failed to submit request to the server. Please try again later.";
-                
-                await validationModal.Show(
-                    errorTitle, 
-                    errorMsg,
-                    new List<string>()
-                );
+                if (result.IsConflict)
+                {
+                    var conflictMessage = !string.IsNullOrEmpty(result.ErrorMessage) 
+                        ? result.ErrorMessage 
+                        : "You've already submitted a request for this source.";
+                    
+                    await validationModal.Show(
+                        "Request Already Exists", 
+                        $"{conflictMessage} You can view your existing requests on the Manage Requests page.",
+                        new List<string>()
+                    );
+                }
+                else
+                {
+                    var errorTitle = result.IsBadRequest ? "Invalid Request" : 
+                                   result.IsServerError ? "Server Error" : 
+                                   result.IsNotFound ? "Not Found" : "Request Failed";
+                    var errorMsg = !string.IsNullOrEmpty(result.ErrorMessage) 
+                        ? result.ErrorMessage 
+                        : "Failed to submit request to the server. Please try again later.";
+                    
+                    await validationModal.Show(
+                        errorTitle, 
+                        errorMsg,
+                        new List<string>()
+                    );
+                }
             }
         }
         catch (Exception ex)

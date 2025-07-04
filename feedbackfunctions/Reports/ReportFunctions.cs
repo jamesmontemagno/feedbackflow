@@ -131,26 +131,52 @@ public class ReportingFunctions
     }
 
      /// <summary>
-    /// Filter reports based on user's requests
+    /// Get reports for the authenticated user
     /// </summary>
-    [Function("FilterReports")]
+    [Function("GetUserReports")]
     [Authorize]
-    public async Task<HttpResponseData> FilterReports(
-        [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
+    public async Task<HttpResponseData> GetUserReports(
+        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
-        _logger.LogInformation("Filtering reports based on user requests");
+        _logger.LogInformation("Getting reports for authenticated user");
 
         // Authenticate the request
         var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
         if (authErrorResponse != null)
             return authErrorResponse;
 
+        if (user == null)
+        {
+            var errorResponse = req.CreateResponse(HttpStatusCode.Unauthorized);
+            await errorResponse.WriteStringAsync("User authentication failed");
+            return errorResponse;
+        }
+
         try
         {
-            var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            var userRequests = JsonSerializer.Deserialize<List<ReportRequestModel>>(requestBody, _jsonOptions);
+            // Get user's report requests instead of parsing from request body
+            // This ensures we only return reports for sources the user has actually requested
+            var userReportRequests = new List<ReportRequestModel>();
+            
+            // Connect to user requests table
+            var storageConnection = _configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
+            var tableServiceClient = new Azure.Data.Tables.TableServiceClient(storageConnection);
+            var userRequestsTableClient = tableServiceClient.GetTableClient("userreportrequests");
 
-            if (userRequests == null || !userRequests.Any())
+            await foreach (var entity in userRequestsTableClient.QueryAsync<UserReportRequestModel>(
+                filter: $"PartitionKey eq '{user.UserId}'"))
+            {
+                // Convert user request to ReportRequestModel for consistency
+                userReportRequests.Add(new ReportRequestModel
+                {
+                    Type = entity.Type,
+                    Subreddit = entity.Subreddit,
+                    Owner = entity.Owner,
+                    Repo = entity.Repo
+                });
+            }
+
+            if (!userReportRequests.Any())
             {
                 var emptyResponse = req.CreateResponse(HttpStatusCode.OK);
                 emptyResponse.Headers.Add("Content-Type", "application/json");
@@ -165,7 +191,7 @@ public class ReportingFunctions
             foreach (var report in allReports)
             {
                 // Check if this report matches any of the user's requests
-                var matchesRequest = userRequests.Any(userReq =>
+                var matchesRequest = userReportRequests.Any(userReq =>
                     userReq.Type == report.Source &&
                     ((userReq.Type == "reddit" && userReq.Subreddit == report.SubSource) ||
                      (userReq.Type == "github" && $"{userReq.Owner}/{userReq.Repo}" == report.SubSource)));
@@ -185,6 +211,11 @@ public class ReportingFunctions
                 }
             }
 
+            // Sort by generation date (newest first)
+            matchingReports = matchingReports
+                .OrderByDescending(r => ((dynamic)r).generatedAt)
+                .ToList();
+
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "application/json");
             await response.WriteStringAsync(JsonSerializer.Serialize(new { reports = matchingReports }));
@@ -192,9 +223,9 @@ public class ReportingFunctions
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error filtering reports");
+            _logger.LogError(ex, "Error getting reports for user {UserId}", user.UserId);
             var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await errorResponse.WriteStringAsync($"Error filtering reports: {ex.Message}");
+            await errorResponse.WriteStringAsync($"Error getting user reports: {ex.Message}");
             return errorResponse;
         }
     }

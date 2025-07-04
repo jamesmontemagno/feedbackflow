@@ -1,9 +1,9 @@
 @page "/reports/manage"
 @using FeedbackWebApp.Services
 @using FeedbackWebApp.Services.Authentication
+@using SharedDump.Models.Reports
 @inject NavigationManager NavigationManager
 @inject IAuthenticationService AuthService
-@inject IJSRuntime JSRuntime
 @inject IReportRequestService ReportRequestService
 
 <PageTitle>Manage Report Requests - FeedbackFlow</PageTitle>
@@ -157,18 +157,8 @@
     private bool isLoading = true;
     private string errorMessage = string.Empty;
     private string successMessage = string.Empty;
-    private IEnumerable<ReportRequestModel>? reportRequests;
+    private IEnumerable<UserReportRequestModel>? reportRequests;
     private readonly HashSet<string> deletingRequests = new();
-
-    public class ReportRequestModel
-    {
-        public string Id { get; set; } = string.Empty;
-        public string Type { get; set; } = string.Empty;
-        public string? Subreddit { get; set; }
-        public string? Owner { get; set; }
-        public string? Repo { get; set; }
-        public DateTimeOffset CreatedAt { get; set; }
-    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -194,13 +184,13 @@
             isLoading = true;
             errorMessage = string.Empty;
 
-            var requests = await JSRuntime.InvokeAsync<ReportRequestModel[]>("window.indexedDbModule.getAllReportRequests");
-            reportRequests = requests?.OrderByDescending(r => r.CreatedAt) ?? Enumerable.Empty<ReportRequestModel>();
+            var requests = await ReportRequestService.GetUserReportRequestsAsync();
+            reportRequests = requests?.OrderByDescending(r => r.CreatedAt) ?? Enumerable.Empty<UserReportRequestModel>();
         }
         catch (Exception ex)
         {
             errorMessage = $"Failed to load report requests: {ex.Message}";
-            reportRequests = Enumerable.Empty<ReportRequestModel>();
+            reportRequests = Enumerable.Empty<UserReportRequestModel>();
         }
         finally
         {
@@ -219,45 +209,18 @@
             errorMessage = string.Empty;
             successMessage = string.Empty;
 
-            // First, try to remove from backend
+            // Remove from backend
             var result = await ReportRequestService.RemoveReportRequestAsync(id);
             
             if (result.Success)
             {
-                // If backend removal was successful, remove from local storage
-                await JSRuntime.InvokeVoidAsync("window.indexedDbModule.deleteReportRequest", id);
-                
-                // Reload the list
+                // Reload the list to reflect changes
                 await LoadReportRequests();
-                
                 successMessage = "Report request deleted successfully.";
             }
             else
             {
-                // Handle different error types
-                if (result.IsNotFound)
-                {
-                    // Request not found on backend, remove from local storage
-                    await JSRuntime.InvokeVoidAsync("window.indexedDbModule.deleteReportRequest", id);
-                    await LoadReportRequests();
-                    successMessage = "Report request removed locally (was not found on server).";
-                }
-                else if (result.IsServerError)
-                {
-                    // Server error - keep local copy but warn user
-                    errorMessage = $"Server error while deleting: {result.ErrorMessage ?? "Unknown server error"}. The request will remain locally and may still be processed.";
-                }
-                else
-                {
-                    // Other errors (bad request, network, etc.)
-                    var errorMsg = result.ErrorMessage ?? "Failed to delete report request from server";
-                    
-                    // Still allow local deletion for user convenience
-                    await JSRuntime.InvokeVoidAsync("window.indexedDbModule.deleteReportRequest", id);
-                    await LoadReportRequests();
-                    
-                    successMessage = $"Report request removed locally. Server error: {errorMsg}";
-                }
+                errorMessage = $"Failed to delete request: {result.ErrorMessage ?? "Unknown error occurred"}";
             }
         }
         catch (Exception ex)

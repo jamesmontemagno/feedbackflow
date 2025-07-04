@@ -28,11 +28,17 @@ public class SomeComponent
 ```
 
 2. **Azure Functions**
-   - `ReportingFunctions` - Backend functions handling report generation and retrieval
-   - Main endpoints:
-     - `RedditReport` - Generates reports from Reddit data
-     - `GetReport` - Retrieves a specific report
-     - `FilterReports` - Filters reports based on user requests
+   - **Report Generation Functions** (`ReportingFunctions`):
+     - `GetReport` - Retrieves individual reports by ID
+     - `GetUserReports` - Gets reports for the authenticated user
+   - **Report Request Functions** (`ReportRequestFunctions`):
+     - Global request management (for background processing):     - `AddUserReportRequest` - Adds user-specific report requests
+     - `RemoveUserReportRequest` - Removes user-specific report requests
+     - `ListUserReportRequests` - Lists user-specific report requests
+     - User-specific request management (requires authentication):
+       - `AddUserReportRequest` - Adds user-specific report requests
+       - `RemoveUserReportRequest` - Removes user-specific report requests  
+       - `ListUserReportRequests` - Lists authenticated user's report requests
 
 3. **UI Components**
    - `Reports.razor` - Main reports listing page
@@ -46,6 +52,51 @@ The report system can be configured to use mock data by setting:
   "UseMockServices": true
 }
 ```
+
+### User-Specific Report Request Architecture
+
+The system now supports user-specific report requests with a dual-table approach:
+
+#### Table Structure
+
+1. **`reportrequests` Table** (Global requests for background processing):
+   - **PartitionKey**: Source type (`reddit`, `github`)
+   - **RowKey**: Generated ID based on source and details
+   - **SubscriberCount**: Number of users interested in this request
+   - Used for background report generation and tracking overall demand
+
+2. **`userreportrequests` Table** (User-specific requests):
+   - **PartitionKey**: User ID
+   - **RowKey**: Generated ID based on source and details
+   - **UserId**: The authenticated user who made the request
+   - **Type, Subreddit, Owner, Repo**: Request details
+   - Used for filtering reports per user and managing individual subscriptions
+
+#### Request Flow
+
+1. **Adding a Request**:
+   - User authenticates and adds a request via `AddUserReportRequest`
+   - System validates the request (subreddit/repo exists)
+   - User request is stored in `userreportrequests` table
+   - Global request is created/updated in `reportrequests` table with incremented subscriber count
+   - Background report generation is triggered for new global requests
+
+2. **Removing a Request**:
+   - User request is removed from `userreportrequests` table
+   - Global request subscriber count is decremented
+   - If subscriber count reaches 0, global request is deleted
+
+3. **Filtering Reports**:
+   - `GetUserReports` function now uses the authenticated user's ID
+   - Only returns reports for sources the user has specifically requested
+   - No longer accepts request data in the POST body - uses stored user preferences
+
+#### Cache Optimization
+
+The cache system is still utilized for report retrieval but now works in conjunction with user-specific filtering:
+- Reports are cached globally for performance
+- User-specific filtering happens at query time using the user's stored requests
+- This provides the best balance of performance and personalization
 
 ### Authentication
 
