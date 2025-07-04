@@ -22,7 +22,7 @@ public static class HttpRequestExtensions
     {
         try
         {
-            var user = await authMiddleware.GetOrCreateUserAsync(req);
+            var user = await authMiddleware.GetUserAsync(req);
             if (user == null)
             {
                 var errorResponse = req.CreateResponse(HttpStatusCode.Unauthorized);

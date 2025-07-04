@@ -41,18 +41,18 @@ public class UserManagement
         {
             _logger.LogInformation("RegisterUser function triggered");
 
-            // Get authenticated user from middleware
-            var authenticatedUser = await _authMiddleware.GetOrCreateUserAsync(req);
+            // Create or get authenticated user from middleware
+            var authenticatedUser = await _authMiddleware.CreateUserAsync(req);
             if (authenticatedUser == null)
             {
-                _logger.LogWarning("No authenticated user found for RegisterUser request");
+                _logger.LogWarning("Failed to create or authenticate user for RegisterUser request");
                 var unauthorizedResponse = req.CreateResponse(HttpStatusCode.Unauthorized);
-                await unauthorizedResponse.WriteStringAsync("User authentication required");
+                await unauthorizedResponse.WriteStringAsync("User authentication or registration failed");
                 return unauthorizedResponse;
             }
 
-            // User is automatically created or updated by the middleware
-            _logger.LogInformation("User registered/updated successfully: {UserId}", authenticatedUser.UserId);
+            // User is created by the middleware
+            _logger.LogInformation("User registered successfully: {UserId}", authenticatedUser.UserId);
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(new
@@ -97,7 +97,7 @@ public class UserManagement
             _logger.LogInformation("DeleteUser function triggered");
 
             // Get authenticated user from middleware
-            var authenticatedUser = await _authMiddleware.GetOrCreateUserAsync(req);
+            var authenticatedUser = await _authMiddleware.GetUserAsync(req);
             if (authenticatedUser == null)
             {
                 _logger.LogWarning("No authenticated user found for DeleteUser request");
@@ -150,7 +150,7 @@ public class UserManagement
             _logger.LogInformation("GetCurrentUser function triggered");
 
             // Get authenticated user from middleware
-            var authenticatedUser = await _authMiddleware.GetOrCreateUserAsync(req);
+            var authenticatedUser = await _authMiddleware.GetUserAsync(req);
             if (authenticatedUser == null)
             {
                 _logger.LogWarning("No authenticated user found for GetCurrentUser request");
@@ -200,7 +200,7 @@ public class UserManagement
             _logger.LogInformation("UpdatePreferredEmail function triggered");
 
             // Get authenticated user from middleware
-            var authenticatedUser = await _authMiddleware.GetOrCreateUserAsync(req);
+            var authenticatedUser = await _authMiddleware.GetUserAsync(req);
             if (authenticatedUser == null)
             {
                 _logger.LogWarning("No authenticated user found for UpdatePreferredEmail request");

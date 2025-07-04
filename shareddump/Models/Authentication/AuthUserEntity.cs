@@ -105,6 +105,7 @@ public class AuthUserEntity : ITableEntity
         Email = email ?? string.Empty;
         Name = name;
         CreatedAt = DateTime.UtcNow;
+        LastLoginAt = DateTime.UtcNow;
         IsActive = true;
         
         // Set PreferredEmail to the provided email if available
