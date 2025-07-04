@@ -83,19 +83,30 @@ public class AuthenticationMiddleware
             var provider = GetProviderFromIdentityProvider(clientPrincipal.GetEffectiveIdentityProvider());
             var providerUserId = clientPrincipal.GetEffectiveUserId();
             var email = clientPrincipal.GetEffectiveUserDetails();
-            var name = clientPrincipal.Claims?.FirstOrDefault(c => c.Type == "name")?.Value ?? 
+            var name = clientPrincipal.Claims?.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name")?.Value ?? 
+                      clientPrincipal.Claims?.FirstOrDefault(c => c.Type == "name")?.Value ?? 
                       clientPrincipal.Claims?.FirstOrDefault(c => c.Type == "given_name")?.Value ?? 
-                      email;
+                      clientPrincipal.Claims?.FirstOrDefault(c => c.Type == "urn:github:login")?.Value ??  // Fallback to GitHub username
+                      email ?? "Unknown User";
+            
+            // For GitHub, if no email is available, log it but continue without email
+            if (string.IsNullOrEmpty(email) && provider == "GitHub")
+            {
+                var githubLogin = clientPrincipal.Claims?.FirstOrDefault(c => c.Type == "urn:github:login")?.Value;
+                _logger.LogInformation("[DEBUG] GitHub user '{GitHubLogin}' has no email address available", githubLogin);
+                email = null; // Explicitly set to null for GitHub users without email
+            }
             
             _logger.LogInformation("[DEBUG] Extracted values - Provider: {Provider}, UserId: {UserId}, Email: {Email}, Name: {Name}", 
-                provider, providerUserId, email, name);
+                provider, providerUserId, email ?? "(none)", name);
             
             // Extract profile image URL based on provider
             var profileImageUrl = GetProfileImageUrl(clientPrincipal.GetEffectiveIdentityProvider(), clientPrincipal.Claims);
 
-            if (string.IsNullOrEmpty(providerUserId) || string.IsNullOrEmpty(email))
+            // Only require providerUserId - email is now optional
+            if (string.IsNullOrEmpty(providerUserId))
             {
-                _logger.LogWarning("Missing required user information from client principal");
+                _logger.LogWarning("Missing required user information from client principal. UserId: '{UserId}'", providerUserId);
                 return null;
             }
 
@@ -109,13 +120,32 @@ public class AuthenticationMiddleware
                     ProfileImageUrl = profileImageUrl
                 };
                 await _userService.CreateOrUpdateUserAsync(user);
-                await _userService.UpdateEmailIndexAsync(email, user.UserId, provider, providerUserId);
+                
+                // Only update email index if email is available
+                if (!string.IsNullOrEmpty(email))
+                {
+                    await _userService.UpdateEmailIndexAsync(email, user.UserId, provider, providerUserId);
+                }
             }
             else
             {
                 // Update last login time and profile image URL
                 user.LastLoginAt = DateTime.UtcNow;
                 user.ProfileImageUrl = profileImageUrl;
+                
+                // Update email if it was previously empty and now we have one
+                if (string.IsNullOrEmpty(user.Email) && !string.IsNullOrEmpty(email))
+                {
+                    user.Email = email;
+                    // Set PreferredEmail if not already set
+                    if (string.IsNullOrEmpty(user.PreferredEmail))
+                    {
+                        user.PreferredEmail = email;
+                    }
+                    // Update email index
+                    await _userService.UpdateEmailIndexAsync(email, user.UserId, provider, providerUserId);
+                }
+                
                 await _userService.CreateOrUpdateUserAsync(user);
             }
 

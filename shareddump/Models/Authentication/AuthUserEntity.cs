@@ -93,18 +93,24 @@ public class AuthUserEntity : ITableEntity
     /// </summary>
     /// <param name="provider">Authentication provider name</param>
     /// <param name="providerUserId">Provider-specific user ID</param>
-    /// <param name="email">User's email address</param>
+    /// <param name="email">User's email address (optional)</param>
     /// <param name="name">User's display name</param>
-    public AuthUserEntity(string provider, string providerUserId, string email, string name)
+    public AuthUserEntity(string provider, string providerUserId, string? email, string name)
     {
         PartitionKey = provider;
         RowKey = providerUserId;
         AuthProvider = provider;
         ProviderUserId = providerUserId;
         UserId = Guid.NewGuid().ToString();
-        Email = email;
+        Email = email ?? string.Empty;
         Name = name;
         CreatedAt = DateTime.UtcNow;
         IsActive = true;
+        
+        // Set PreferredEmail to the provided email if available
+        if (!string.IsNullOrEmpty(email))
+        {
+            PreferredEmail = email;
+        }
     }
 }
