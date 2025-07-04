@@ -9,9 +9,8 @@
 @inject ILogger<AnalysisResults> Logger
 @inject FeedbackWebApp.Services.UserSettingsService UserSettings
 @inject ISpeechSynthesisService SpeechSynthesisService
-@inject FeedbackWebApp.Services.Interfaces.IHistoryService HistoryService
+@inject FeedbackWebApp.Services.ISharedHistoryServiceProvider SharedHistoryServiceProvider
 @inject FeedbackWebApp.Services.IToastService ToastService
-@inject FeedbackWebApp.Services.Interfaces.IAnalysisSharingService SharingService
 @inject SharedDump.Services.Interfaces.IExportService ExportService
 @inject NavigationManager NavigationManager
 @implements IDisposable
@@ -151,25 +150,7 @@
                 _isSaved = false;
                 _savedItemId = null;
                 _previousMarkdown = MarkdownResult;
-                
-                // Check if this analysis is already saved
-                await CheckIfItemIsSaved();
             }
-        }
-    }
-
-    private async Task CheckIfItemIsSaved()
-    {
-        if (string.IsNullOrEmpty(MarkdownResult))
-            return;
-            
-        var historyItems = await HistoryService.GetHistoryAsync();
-        var existingItem = historyItems.FirstOrDefault(h => h.FullAnalysis == MarkdownResult);
-        if (existingItem != null)
-        {
-            _isSaved = true;
-            _savedItemId = existingItem.Id;
-            StateHasChanged();
         }
     }
 
@@ -208,20 +189,43 @@
             }
         }
     }    
-      private async Task SaveToHistory()
+    private async Task SaveToHistory()
     {
         if (!string.IsNullOrEmpty(MarkdownResult))
         {            
-            var historyItem = new SharedDump.Models.AnalysisHistoryItem
+            try
             {
-                FullAnalysis = MarkdownResult,
-                SourceType = SourceType,
-                UserInput = UserInput
-            };
-            await HistoryService.SaveToHistoryAsync(historyItem);
-            _isSaved = true;
-            _savedItemId = historyItem.Id;
-            await ToastService.ShowSuccessAsync("Analysis saved to history", 3000);
+                var analysisData = new SharedDump.Models.AnalysisData
+                {
+                    Id = _savedItemId ?? Guid.NewGuid().ToString(),
+                    Title = $"{SourceType} Analysis",
+                    Summary = MarkdownResult.Length > 500 ? MarkdownResult.Substring(0, 500) + "..." : MarkdownResult,
+                    FullAnalysis = MarkdownResult,
+                    SourceType = SourceType,
+                    UserInput = UserInput,
+                    CreatedDate = DateTime.UtcNow
+                };
+
+                var savedId = await SharedHistoryServiceProvider.GetService().ShareAnalysisAsync(analysisData);
+                
+                if (string.IsNullOrEmpty(savedId))
+                {
+                    await ToastService.ShowErrorAsync("Failed to save analysis. Please try again.");
+                    return;
+                }
+                
+                _isSaved = true;
+                _savedItemId = savedId;
+                sharedId = savedId; // The shared ID is the same as the analysis ID
+                shareLink = $"{NavigationManager.BaseUri.TrimEnd('/')}/shared/{sharedId}";
+                
+                await ToastService.ShowSuccessAsync("Analysis saved to cloud history", 3000);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to save analysis to cloud history");
+                await ToastService.ShowErrorAsync("Failed to save analysis. Please try again.");
+            }
         }
     }
 
@@ -332,52 +336,40 @@
 
         try
         {
-            SharedDump.Models.AnalysisHistoryItem historyItem;
-            
-            // If the item is already saved, use that instead of creating a new one
-            if (_isSaved && !string.IsNullOrEmpty(_savedItemId))
+            // If already saved, just copy the existing share link
+            if (_isSaved && !string.IsNullOrEmpty(sharedId) && !string.IsNullOrEmpty(shareLink))
             {
-                var historyItems = await HistoryService.GetHistoryAsync();
-                historyItem = historyItems.First(h => h.Id == _savedItemId);
+                await CopyShareLink();
+                return;
             }
-            else
+
+            // Create new analysis in cloud
+            var analysisData = new SharedDump.Models.AnalysisData
             {
-                // Create and save new history item
-                var commentThreads = ConvertAdditionalDataToCommentThreads();
-                  historyItem = new SharedDump.Models.AnalysisHistoryItem
-                {
-                    FullAnalysis = MarkdownResult,
-                    SourceType = SourceType,
-                    UserInput = UserInput,
-                    CommentThreads = commentThreads
-                };
-                await HistoryService.SaveToHistoryAsync(historyItem);
-                _isSaved = true;
-                _savedItemId = historyItem.Id;
-            }            var analysisData = new SharedDump.Models.AnalysisData
-            {
-                Id = historyItem.Id,
+                Id = _savedItemId ?? Guid.NewGuid().ToString(),
                 Title = $"{SourceType} Analysis",
-                Summary = historyItem.Summary, // Using the computed property
-                FullAnalysis = historyItem.FullAnalysis,
+                Summary = MarkdownResult.Length > 500 ? MarkdownResult.Substring(0, 500) + "..." : MarkdownResult,
+                FullAnalysis = MarkdownResult,
                 SourceType = SourceType,
                 UserInput = UserInput,
                 CreatedDate = DateTime.UtcNow
             };
 
-            sharedId = await SharingService.ShareAnalysisAsync(analysisData);
+            var savedId = await SharedHistoryServiceProvider.GetService().ShareAnalysisAsync(analysisData);
 
-            if (string.IsNullOrEmpty(sharedId))
+            if (string.IsNullOrEmpty(savedId))
             {
                 await ToastService.ShowErrorAsync("Unable to create share link.");
                 return;
             }
             
-            await SharingService.UpdateHistoryItemWithShareInfoAsync(historyItem.Id, sharedId);
-            
-            // Store and copy share link
+            // Update component state
+            _isSaved = true;
+            _savedItemId = savedId;
+            sharedId = savedId;
             shareLink = $"{NavigationManager.BaseUri.TrimEnd('/')}/shared/{sharedId}";
             
+            // Copy share link to clipboard
             var copySuccess = await JSRuntime.InvokeAsync<bool>("copyToClipboard", shareLink);
             
             if (copySuccess)

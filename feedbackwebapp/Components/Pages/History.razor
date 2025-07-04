@@ -1,6 +1,5 @@
 @page "/history"
 @inject FeedbackWebApp.Services.Interfaces.IHistoryService HistoryService
-@inject FeedbackWebApp.Services.Interfaces.IAnalysisSharingService SharingService
 @inject FeedbackWebApp.Services.Authentication.IAuthenticationService AuthService
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
@@ -161,13 +160,7 @@
                                 <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="() => HistoryHelper.CopyToClipboard(item, JSRuntime, ToastService, ShowCopyFailedDialog)">
                                     <i class="bi bi-clipboard"></i> Copy
                                 </button>
-                                @if (!item.IsShared)
-                                {            
-                                    <button class="btn btn-sm btn-outline-success action-btn" title="Create Share Link" @onclick="() => ShareAnalysis(item)">
-                                        <i class="bi bi-share"></i> Share
-                                    </button>
-                                }
-                                else
+                                @if (item.IsShared)
                                 {
                                     <button class="btn btn-sm btn-outline-success action-btn" title="Copy Share Link" @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
                                         <i class="bi bi-link-45deg"></i> Copy Link
@@ -187,13 +180,7 @@
                                 <li><button class="dropdown-item" @onclick="() => HistoryHelper.CopyToClipboard(item, JSRuntime, ToastService, ShowCopyFailedDialog)">
                                     <i class="bi bi-clipboard"></i> Copy Analysis
                                 </button></li>
-                                @if (!item.IsShared)
-                                {       
-                                    <li><button class="dropdown-item" @onclick="() => ShareAnalysis(item)">
-                                        <i class="bi bi-share"></i> Share
-                                    </button></li>
-                                }
-                                else
+                                @if (item.IsShared)
                                 {
                                     <li><button class="dropdown-item" @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
                                         <i class="bi bi-link-45deg"></i> Copy Share Link
@@ -304,7 +291,6 @@
     private string sourceFilter = "all";
     private string sharedFilter = "all";
     private string searchTerm = string.Empty;
-    private bool isProcessingShare = false;
     private bool isAuthenticated = false;
     
     // Pagination state
@@ -604,82 +590,6 @@
     private void NavigateToLogin()
     {
         NavigationManager.NavigateTo("/");
-    }
-  
-    private async Task ShareAnalysis(AnalysisHistoryItem item)
-    {
-        if(isProcessingShare)
-            return;
-            
-        isProcessingShare = true;
-        StateHasChanged();
-
-        
-        await ToastService.ShowInfoAsync("Creating share link...", 3000);
-
-        try
-        {            var analysisData = new AnalysisData
-            {
-                Id = item.Id,
-                Title = $"{item.SourceType} Analysis",
-                Summary = item.Summary, // Using the computed property
-                FullAnalysis = item.FullAnalysis,
-                SourceType = item.SourceType,
-                UserInput = item.UserInput,
-                CreatedDate = item.Timestamp
-            };
-
-            var sharedId = await SharingService.ShareAnalysisAsync(analysisData);
-            await Task.Delay(1000); // Simulate processing delay
-
-            if (string.IsNullOrEmpty(sharedId))
-            {
-                isProcessingShare = false;
-                await ToastService.ShowErrorAsync("Unable to save analysis.");
-                StateHasChanged();
-                return;
-            }
-            
-            await SharingService.UpdateHistoryItemWithShareInfoAsync(item.Id, sharedId);
-              // Refresh the current item in the list
-            var itemIndex = historyItems?.FindIndex(h => h.Id == item.Id);
-            if (itemIndex >= 0 && historyItems != null)
-            {
-                var updatedHistoryItems = await HistoryService.GetHistoryPagedAsync(0, historyItems.Count, string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm.Trim());
-                var updatedItem = updatedHistoryItems.FirstOrDefault(h => h.Id == item.Id);
-                if (updatedItem != null)
-                {
-                    historyItems[itemIndex.Value] = updatedItem;
-                }
-            }
-              // Trigger confetti and show success message
-            var confettiOptions = new { particleCount = 100, spread = 70, origin = new { y = 0.6 } };
-            await JSRuntime.InvokeVoidAsync("confetti", confettiOptions);
-            var shareLink = $"{NavigationManager.BaseUri.TrimEnd('/')}/shared/{sharedId}";
-            
-            var copySuccess = await JSRuntime.InvokeAsync<bool>("copyToClipboard", shareLink);
-            
-            if (copySuccess)
-            {
-                // Trigger confetti and show success message
-                await ToastService.ShowSuccessAsync("Share link copied to clipboard! The link will be valid for 30 days.", 5000);
-            }
-            else
-            {
-                // Show dialog instead of generic message
-                ShowCopyFailedDialog(shareLink, "Share Link");
-                await ToastService.ShowSuccessAsync("Share link created! The link will be valid for 30 days.", 5000);
-            }
-        }
-        catch (Exception ex)
-        {
-            await ToastService.ShowErrorAsync($"Unable to save analysis: {ex.Message}");
-        }
-        finally
-        {
-            isProcessingShare = false;
-            StateHasChanged();
-        }
     }
     
     private void ShowCopyFailedDialog(string content, string contentType)

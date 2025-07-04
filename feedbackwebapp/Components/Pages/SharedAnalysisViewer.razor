@@ -1,6 +1,5 @@
 @page "/shared/{Id}"
-@inject FeedbackWebApp.Services.Interfaces.IAnalysisSharingService SharingService
-@inject FeedbackWebApp.Services.Interfaces.IHistoryService HistoryService
+@inject FeedbackWebApp.Services.ISharedHistoryServiceProvider SharedHistoryServiceProvider
 @inject FeedbackWebApp.Services.IToastService ToastService
 @inject SharedDump.Services.Interfaces.IExportService ExportService
 @inject IJSRuntime JSRuntime
@@ -64,14 +63,11 @@
                     </div>                      
                     <ActionMenu>
                         <PrimaryAction>
-                            <button class="btn btn-sm btn-outline-success action-btn" title="Save to History" @onclick="SaveToHistoryAsync">
-                                <i class="bi bi-bookmark-plus"></i> Save to History
+                            <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="CopyToClipboard">
+                                <i class="bi bi-clipboard"></i> Copy Analysis
                             </button>
                         </PrimaryAction>                        
                         <ChildContent>
-                            <button class="btn btn-sm btn-outline-success action-btn" title="Save to History" @onclick="SaveToHistoryAsync">
-                                <i class="bi bi-bookmark-plus"></i> Save to History
-                            </button>
                             <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="CopyToClipboard">
                                 <i class="bi bi-clipboard"></i> Copy Analysis
                             </button>
@@ -170,7 +166,7 @@
                 return;
             }
 
-            analysis = await SharingService.GetSharedAnalysisAsync(Id);
+            analysis = await SharedHistoryServiceProvider.GetService().GetSharedAnalysisAsync(Id);
             
             if (analysis == null)
             {
@@ -192,34 +188,6 @@
         finally
         {
             isLoading = false;
-        }
-    }
-
-    private async Task SaveToHistoryAsync()
-    {
-        if (analysis == null) 
-            return;
-        
-        try
-        {            
-            var historyItem = new AnalysisHistoryItem
-            {
-                Id = Id,
-                UserInput = analysis.UserInput,
-                FullAnalysis = analysis.FullAnalysis, // Summary is now computed from FullAnalysis
-                SourceType = analysis.SourceType,
-                Timestamp = analysis.CreatedDate,
-                IsShared = true,
-                SharedId = Id
-            };
-
-            await HistoryService.SaveToHistoryAsync(historyItem);
-            await ToastService.ShowSuccessAsync("Analysis saved to history");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error saving analysis to history");
-            await ToastService.ShowErrorAsync("Failed to save analysis to history");
         }
     }    
     
@@ -270,21 +238,6 @@
         {
             await ToastService.ShowErrorAsync($"Failed to copy to clipboard: {ex.Message}");
         }
-    }
-      
-      private AnalysisHistoryItem ConvertToHistoryItem(AnalysisData analysis)
-    {
-        return new AnalysisHistoryItem
-        {
-            Id = analysis.Id,
-            Timestamp = analysis.CreatedDate,
-            FullAnalysis = analysis.FullAnalysis, // Summary is now computed from FullAnalysis
-            SourceType = analysis.SourceType,
-            UserInput = analysis.UserInput,
-            IsShared = true,
-            SharedId = Id,
-            SharedDate = analysis.CreatedDate
-        };
     }
     
     // IsValidUrl and GetYouTubeThumbnailUrl methods have been moved to UrlParsing class
