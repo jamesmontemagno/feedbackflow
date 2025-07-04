@@ -6,6 +6,9 @@ using Microsoft.Extensions.Logging;
 using SharedDump.Models;
 using System.Text;
 using System.Text.Json;
+using FeedbackFunctions.Services.Authentication;
+using FeedbackFunctions.Extensions;
+using FeedbackFunctions.Attributes;
 
 namespace FeedbackFunctions;
 
@@ -20,15 +23,18 @@ public class SharingFunctions
 {
     private const string ContainerName = "shared-analyses";
     private readonly ILogger<SharingFunctions> _logger;
+    private readonly AuthenticationMiddleware _authMiddleware;
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _sharedAnalysisCache = new();
 
     /// <summary>
     /// Initializes a new instance of the SharingFunctions class
     /// </summary>
     /// <param name="logger">Logger for diagnostic information</param>
-    public SharingFunctions(ILogger<SharingFunctions> logger)
+    /// <param name="authMiddleware">Authentication middleware for request validation</param>
+    public SharingFunctions(ILogger<SharingFunctions> logger, AuthenticationMiddleware authMiddleware)
     {
         _logger = logger;
+        _authMiddleware = authMiddleware;
     }
 
     /// <summary>
@@ -54,11 +60,17 @@ public class SharingFunctions
     /// }
     /// </example>
     [Function("SaveSharedAnalysis")]
+    [Authorize]
     public async Task<HttpResponseData> SaveSharedAnalysis(
         [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequestData req,
         [BlobInput(ContainerName, Connection = "ProductionStorage")] BlobContainerClient containerClient)
     {
         _logger.LogInformation("Processing shared analysis save request");
+        
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
         
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var analysisData = JsonSerializer.Deserialize<AnalysisData>(requestBody, 

@@ -1,5 +1,6 @@
 // filepath: c:\GitHub\feedbackflow\feedbackwebapp\Services\Feedback\ManualFeedbackService.cs
 using FeedbackWebApp.Services.Interfaces;
+using FeedbackWebApp.Services.Authentication;
 
 namespace FeedbackWebApp.Services.Feedback;
 
@@ -12,10 +13,11 @@ public class ManualFeedbackService : FeedbackService, IManualFeedbackService
         IHttpClientFactory http, 
         IConfiguration configuration, 
         UserSettingsService userSettings,
+        IAuthenticationHeaderService authenticationHeaderService,
         string content,
         string? customPrompt = null,
         FeedbackStatusUpdate? onStatusUpdate = null)
-        : base(http, configuration, userSettings, onStatusUpdate)
+        : base(http, configuration, userSettings, authenticationHeaderService, onStatusUpdate)
     {
         Content = content;
         if (!string.IsNullOrEmpty(customPrompt))

@@ -8,6 +8,9 @@ using SharedDump.Models.HackerNews;
 using SharedDump.Models.YouTube;
 using SharedDump.Models.Reddit;
 using SharedDump.Services.Interfaces;
+using FeedbackFunctions.Services.Authentication;
+using FeedbackFunctions.Extensions;
+using FeedbackFunctions.Attributes;
 
 namespace FeedbackFunctions;
 
@@ -25,6 +28,7 @@ public class ContentFeedFunctions
     private readonly IHackerNewsService _hnService;
     private readonly IYouTubeService _ytService;
     private readonly IRedditService _redditService;
+    private readonly AuthenticationMiddleware _authMiddleware;
     private static readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(10);
 
     /// <summary>
@@ -34,16 +38,19 @@ public class ContentFeedFunctions
     /// <param name="hackerNewsService">HackerNews service for story operations</param>
     /// <param name="youtubeService">YouTube service for video operations</param>
     /// <param name="redditService">Reddit service for thread operations</param>
+    /// <param name="authMiddleware">Authentication middleware for request validation</param>
     public ContentFeedFunctions(
         ILogger<ContentFeedFunctions> logger,
         IHackerNewsService hackerNewsService,
         IYouTubeService youtubeService,
-        IRedditService redditService)
+        IRedditService redditService,
+        AuthenticationMiddleware authMiddleware)
     {
         _logger = logger;
         _hnService = hackerNewsService;
         _ytService = youtubeService;
         _redditService = redditService;
+        _authMiddleware = authMiddleware;
     }
 
     /// <summary>
@@ -62,10 +69,16 @@ public class ContentFeedFunctions
     /// GET /api/GetRecentYouTubeVideos?days=7&amp;query=dotnet&amp;maxResults=20
     /// </remarks>
     [Function("GetRecentYouTubeVideos")]
+    [Authorize]
     public async Task<HttpResponseData> GetRecentYouTubeVideos(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
         _logger.LogInformation("Processing recent YouTube videos request");
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
 
         try
         {
@@ -105,10 +118,16 @@ public class ContentFeedFunctions
     }
 
     [Function("GetTrendingRedditThreads")]
+    [Authorize]
     public async Task<HttpResponseData> GetTrendingRedditThreads(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
         _logger.LogInformation("Processing trending Reddit threads request");
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
 
         try
         {
@@ -151,14 +170,18 @@ public class ContentFeedFunctions
         }
     }
 
-#if !DEBUG
-
     [Function("SearchHackerNewsArticles")]
+    [Authorize]
     public async Task<HttpResponseData> SearchHackerNewsArticles(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req,
         [BlobInput("hackernews-cache/all.json", Connection = "ProductionStorage")] string? cachedBlob)
     {
         _logger.LogInformation("Processing Hacker News search request");
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
 
         try
         {
@@ -209,5 +232,4 @@ public class ContentFeedFunctions
             return string.Empty;
         }
     }
-#endif
 }

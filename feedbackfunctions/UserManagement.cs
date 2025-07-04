@@ -65,9 +65,13 @@ public class UserManagement
                     name = authenticatedUser.Name,
                     authProvider = authenticatedUser.AuthProvider,
                     createdAt = authenticatedUser.CreatedAt,
-                    lastLoginAt = authenticatedUser.LastLoginAt
+                    lastLoginAt = authenticatedUser.LastLoginAt,
+                    preferredEmail = authenticatedUser.PreferredEmail,
+                    profileImageUrl = authenticatedUser.ProfileImageUrl,
+                    providerUserId = authenticatedUser.ProviderUserId
                 }
             });
+            
             return response;
         }
         catch (Exception ex)

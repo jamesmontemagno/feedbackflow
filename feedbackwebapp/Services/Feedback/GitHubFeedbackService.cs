@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SharedDump.Models.GitHub;
 using FeedbackWebApp.Services.Interfaces;
+using FeedbackWebApp.Services.Authentication;
 
 namespace FeedbackWebApp.Services.Feedback;
 
@@ -12,9 +13,10 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
         IHttpClientFactory http,
         IConfiguration configuration,
         UserSettingsService userSettings,
+        IAuthenticationHeaderService authHeaderService,
         string url,
         FeedbackStatusUpdate? onStatusUpdate = null)
-        : base(http, configuration, userSettings, onStatusUpdate)
+        : base(http, configuration, userSettings, authHeaderService, onStatusUpdate)
     {
         _url = url;
     }
@@ -35,7 +37,7 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
 
         // Get comments from the GitHub API
         var getFeedbackUrl = $"{BaseUrl}/api/GetGitHubFeedback?code={Uri.EscapeDataString(githubCode)}&url={Uri.EscapeDataString(_url)}&maxComments={maxComments}";
-        var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
+        var feedbackResponse = await SendAuthenticatedRequestAsync(HttpMethod.Get, getFeedbackUrl);
         feedbackResponse.EnsureSuccessStatusCode();
         
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();

@@ -14,6 +14,9 @@ using SharedDump.Utils;
 using Azure.Storage.Blobs;
 using FeedbackFunctions.Utils;
 using FeedbackFunctions.Services;
+using FeedbackFunctions.Services.Authentication;
+using FeedbackFunctions.Extensions;
+using FeedbackFunctions.Attributes;
 
 namespace FeedbackFunctions;
 
@@ -33,6 +36,7 @@ public class ReportingFunctions
     private readonly IFeedbackAnalyzerService _analyzerService;
     private readonly IConfiguration _configuration;
     private readonly IReportCacheService _cacheService;
+    private readonly AuthenticationMiddleware _authMiddleware;
     private const string ContainerName = "reports";
     private readonly BlobContainerClient _containerClient;
     private readonly ReportGenerator _reportGenerator;
@@ -47,13 +51,15 @@ public class ReportingFunctions
     /// <param name="githubService">GitHub service for repository operations</param>
     /// <param name="analyzerService">Feedback analyzer service for AI-powered analysis</param>
     /// <param name="cacheService">Report cache service for in-memory caching</param>
+    /// <param name="authMiddleware">Authentication middleware for request validation</param>
     public ReportingFunctions(
         ILogger<ReportingFunctions> logger,
         IConfiguration configuration,
         IRedditService redditService,
         IGitHubService githubService,
         IFeedbackAnalyzerService analyzerService,
-        IReportCacheService cacheService)
+        IReportCacheService cacheService,
+        AuthenticationMiddleware authMiddleware)
     {
 
 #if DEBUG
@@ -71,6 +77,7 @@ public class ReportingFunctions
         _githubService = githubService;
         _analyzerService = analyzerService;
         _cacheService = cacheService;
+        _authMiddleware = authMiddleware;
         
         // Initialize blob container
         var storageConnection = _configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
@@ -127,10 +134,16 @@ public class ReportingFunctions
     /// Filter reports based on user's requests
     /// </summary>
     [Function("FilterReports")]
+    [Authorize]
     public async Task<HttpResponseData> FilterReports(
         [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
         _logger.LogInformation("Filtering reports based on user requests");
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
 
         try
         {
