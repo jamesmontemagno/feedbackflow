@@ -36,7 +36,6 @@ The report caching system has been implemented to improve performance by reducin
 ### Report Endpoints (`ReportingFunctions`)
 All existing report endpoints now use the cache:
 - `GET /api/Report/{id}` - Uses cache for individual report retrieval
-- `GET /api/ListReports` - Uses cache with optional filtering
 - `POST /api/FilterReports` - Uses cache for filtering operations
 
 ## Implementation Details

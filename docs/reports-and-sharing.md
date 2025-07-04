@@ -32,11 +32,10 @@ public class SomeComponent
    - Main endpoints:
      - `RedditReport` - Generates reports from Reddit data
      - `GetReport` - Retrieves a specific report
-     - `ListReports` - Lists available reports with filtering
+     - `FilterReports` - Filters reports based on user requests
 
 3. **UI Components**
    - `Reports.razor` - Main reports listing page
-   - `ReportsBySource.razor` - Source-specific report listing
    - `Report.razor` - Individual report view
 
 ### Configuration
