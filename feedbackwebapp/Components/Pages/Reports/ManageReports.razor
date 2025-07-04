@@ -29,9 +29,9 @@
                         <h1 class="feedbackflow-title mb-2">Manage Report Requests</h1>
                         <p class="text-muted mb-0">View and manage your report requests</p>
                     </div>
-                    <a href="/reports/create" class="btn btn-primary">
+                    <button type="button" class="btn btn-primary" @onclick="OpenCreateModal">
                         <i class="bi bi-plus-lg me-2"></i>Create Report
-                    </a>
+                    </button>
                 </div>
 
                 @if (isLoading)
@@ -57,9 +57,9 @@
                             <i class="bi bi-inbox display-4 text-muted mb-3"></i>
                             <h5 class="card-title">No Report Requests</h5>
                             <p class="card-text text-muted">You haven't created any report requests yet.</p>
-                            <a href="/reports/create" class="btn btn-primary">
+                            <button type="button" class="btn btn-primary" @onclick="OpenCreateModal">
                                 <i class="bi bi-plus-lg me-2"></i>Create Your First Request
-                            </a>
+                            </button>
                         </div>
                     </div>
                 }
@@ -138,9 +138,9 @@
                             </div>
                             <div class="card-body">
                                 <ul class="mb-0">
-                                    <li>Report requests are stored locally in your browser and synchronized with our backend</li>
+                                    <li>Report requests are stored securely in our backend with your user account</li>
                                     <li>Reports are generated automatically every Monday morning at 4 AM Pacific</li>
-                                    <li>Deleting a request will remove it from both your local storage and our backend</li>
+                                    <li>Deleting a request will remove it from our backend completely</li>
                                     <li>You can view generated reports on the <a href="/reports">Reports page</a></li>
                                 </ul>
                             </div>
@@ -152,6 +152,10 @@
     }
 </div>
 
+<CreateReportModal IsVisible="showCreateModal" 
+                   IsVisibleChanged="OnCreateModalVisibilityChanged" 
+                   OnReportCreated="OnReportCreated" />
+
 @code {
     private bool isAuthenticated = false;
     private bool isLoading = true;
@@ -159,6 +163,7 @@
     private string successMessage = string.Empty;
     private IEnumerable<UserReportRequestModel>? reportRequests;
     private readonly HashSet<string> deletingRequests = new();
+    private bool showCreateModal = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -256,5 +261,23 @@
         }
 
         return date.ToString("MMM d, yyyy");
+    }
+
+    private void OpenCreateModal()
+    {
+        showCreateModal = true;
+    }
+
+    private Task OnCreateModalVisibilityChanged(bool isVisible)
+    {
+        showCreateModal = isVisible;
+        return Task.CompletedTask;
+    }
+
+    private async Task OnReportCreated()
+    {
+        successMessage = "Report request created successfully! Reports are generated every Monday morning.";
+        await LoadReportRequests();
+        StateHasChanged();
     }
 }
