@@ -21,7 +21,7 @@
             <UsageMetric Label="Reports" Used="@UserAccount.ActiveReports" Limit="@Limits.ReportLimit" />
             <UsageMetric Label="Feed Queries" Used="@UserAccount.FeedQueriesUsed" Limit="@Limits.FeedQueryLimit" />
         </div>
-        @if (UserAccount.Tier == AccountTier.Free)
+        @if (IsOverAnyLimit())
         {
             <UpgradePrompt />
         }
@@ -39,4 +39,15 @@
     [Parameter] public UserAccount? UserAccount { get; set; }
     [Parameter] public AccountLimits? Limits { get; set; }
     [Parameter] public bool IsLoading { get; set; } = false;
+
+    private bool IsOverAnyLimit()
+    {
+        if (UserAccount == null || Limits == null)
+            return false;
+
+        // Check if user is at or over any of their limits
+        return UserAccount.AnalysesUsed >= Limits.AnalysisLimit ||
+               UserAccount.ActiveReports >= Limits.ReportLimit ||
+               UserAccount.FeedQueriesUsed >= Limits.FeedQueryLimit;
+    }
 }

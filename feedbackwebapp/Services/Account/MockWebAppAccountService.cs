@@ -29,11 +29,43 @@ public class MockWebAppAccountService : IWebAppAccountService
         _logger = logger;
     }
 
-    public Task<(UserAccount? account, AccountLimits limits)?> GetUserAccountAndLimitsAsync()
+    public Task<(UserAccount? account, AccountLimits limits)?> GetUserAccountAndLimitsAsync(TierInfo[]? tierInfo = null)
     {
         _logger.LogInformation("Mock: Getting user account and limits for tier {Tier}", _mockUser.Tier);
         
-        var limits = _mockUser.Tier switch
+        AccountLimits limits;
+
+        // If tier info is provided, use it to find limits for the user's tier
+        if (tierInfo != null)
+        {
+            var userTierInfo = tierInfo.FirstOrDefault(t => t.Tier == _mockUser.Tier);
+            if (userTierInfo != null)
+            {
+                limits = new AccountLimits
+                {
+                    AnalysisLimit = userTierInfo.Limits.AnalysisLimit,
+                    ReportLimit = userTierInfo.Limits.ReportLimit,
+                    FeedQueryLimit = userTierInfo.Limits.FeedQueryLimit
+                };
+            }
+            else
+            {
+                _logger.LogWarning("User tier {Tier} not found in provided tier info, using fallback", _mockUser.Tier);
+                limits = GetFallbackLimits(_mockUser.Tier);
+            }
+        }
+        else
+        {
+            // Fallback to static limits if tier info not provided
+            limits = GetFallbackLimits(_mockUser.Tier);
+        }
+
+        return Task.FromResult<(UserAccount? account, AccountLimits limits)?>((account: _mockUser, limits: limits));
+    }
+
+    private static AccountLimits GetFallbackLimits(AccountTier tier)
+    {
+        return tier switch
         {
             AccountTier.Free => new AccountLimits
             {
@@ -60,8 +92,6 @@ public class MockWebAppAccountService : IWebAppAccountService
                 FeedQueryLimit = 20
             }
         };
-
-        return Task.FromResult<(UserAccount? account, AccountLimits limits)?>((account: _mockUser, limits: limits));
     }
 
     public Task<TierInfo[]?> GetTierLimitsAsync()

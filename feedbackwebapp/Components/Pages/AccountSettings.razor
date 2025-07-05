@@ -352,8 +352,19 @@
             tierErrorMessage = "";
             var accountService = AccountServiceProvider.GetService();
             
-            // Load user account and limits
-            var accountResult = await accountService.GetUserAccountAndLimitsAsync();
+            // Load tier information first
+            try
+            {
+                tierInformation = await accountService.GetTierLimitsAsync();
+            }
+            catch (Exception ex)
+            {
+                tierErrorMessage = $"Failed to load tier information: {ex.Message}";
+                tierInformation = null;
+            }
+
+            // Load user account and limits, passing tier info to avoid duplicate API call
+            var accountResult = await accountService.GetUserAccountAndLimitsAsync(tierInformation);
             if (accountResult.HasValue)
             {
                 userAccount = accountResult.Value.account;
@@ -369,17 +380,6 @@
             {
                 userAccount = null;
                 accountLimits = null;
-            }
-
-            // Load tier information
-            try
-            {
-                tierInformation = await accountService.GetTierLimitsAsync();
-            }
-            catch (Exception ex)
-            {
-                tierErrorMessage = $"Failed to load tier information: {ex.Message}";
-                tierInformation = null;
             }
         }
         catch (Exception ex)

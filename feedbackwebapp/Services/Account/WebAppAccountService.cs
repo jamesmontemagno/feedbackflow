@@ -32,7 +32,7 @@ public class WebAppAccountService : IWebAppAccountService
             ?? throw new InvalidOperationException("Functions key not configured");
     }
 
-    public async Task<(UserAccount? account, AccountLimits limits)?> GetUserAccountAndLimitsAsync()
+    public async Task<(UserAccount? account, AccountLimits limits)?> GetUserAccountAndLimitsAsync(TierInfo[]? tierInfo = null)
     {
         try
         {
@@ -60,27 +60,50 @@ public class WebAppAccountService : IWebAppAccountService
                 return null;
             }
 
-            // Get limits for the user's tier
-            var limitsUrl = $"{_baseUrl}/api/GetTierLimits?code={Uri.EscapeDataString(_functionsKey)}&tier={(int)accountResult.Data.Tier}";
-            var limitsRequest = new HttpRequestMessage(HttpMethod.Get, limitsUrl);
-            await _authHeaderService.AddAuthenticationHeadersAsync(limitsRequest);
-
-            var limitsResponse = await _httpClient.SendAsync(limitsRequest);
             AccountLimits limits;
-            
-            if (limitsResponse.IsSuccessStatusCode)
+
+            // If tier info is provided, use it to find limits for the user's tier
+            if (tierInfo != null)
             {
-                var limitsJson = await limitsResponse.Content.ReadAsStringAsync();
-                var limitsResult = JsonSerializer.Deserialize<ApiResponse<AccountLimits>>(limitsJson, new JsonSerializerOptions 
-                { 
-                    PropertyNameCaseInsensitive = true 
-                });
-                limits = limitsResult?.Data ?? GetDefaultLimits();
+                var userTierInfo = tierInfo.FirstOrDefault(t => t.Tier == accountResult.Data.Tier);
+                if (userTierInfo != null)
+                {
+                    limits = new AccountLimits
+                    {
+                        AnalysisLimit = userTierInfo.Limits.AnalysisLimit,
+                        ReportLimit = userTierInfo.Limits.ReportLimit,
+                        FeedQueryLimit = userTierInfo.Limits.FeedQueryLimit
+                    };
+                }
+                else
+                {
+                    _logger.LogWarning("User tier {Tier} not found in provided tier info, using defaults", accountResult.Data.Tier);
+                    limits = GetDefaultLimits();
+                }
             }
             else
             {
-                _logger.LogWarning("Failed to get tier limits: {StatusCode}, using defaults", limitsResponse.StatusCode);
-                limits = GetDefaultLimits();
+                // Fallback to API call if tier info not provided
+                var limitsUrl = $"{_baseUrl}/api/GetTierLimits?code={Uri.EscapeDataString(_functionsKey)}&tier={(int)accountResult.Data.Tier}";
+                var limitsRequest = new HttpRequestMessage(HttpMethod.Get, limitsUrl);
+                await _authHeaderService.AddAuthenticationHeadersAsync(limitsRequest);
+
+                var limitsResponse = await _httpClient.SendAsync(limitsRequest);
+                
+                if (limitsResponse.IsSuccessStatusCode)
+                {
+                    var limitsJson = await limitsResponse.Content.ReadAsStringAsync();
+                    var limitsResult = JsonSerializer.Deserialize<ApiResponse<AccountLimits>>(limitsJson, new JsonSerializerOptions 
+                    { 
+                        PropertyNameCaseInsensitive = true 
+                    });
+                    limits = limitsResult?.Data ?? GetDefaultLimits();
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to get tier limits: {StatusCode}, using defaults", limitsResponse.StatusCode);
+                    limits = GetDefaultLimits();
+                }
             }
 
             return (accountResult.Data, limits);
@@ -108,12 +131,12 @@ public class WebAppAccountService : IWebAppAccountService
             }
 
             var jsonContent = await response.Content.ReadAsStringAsync();
-            var tiers = JsonSerializer.Deserialize<TierInfo[]>(jsonContent, new JsonSerializerOptions 
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse<TierInfo[]>>(jsonContent, new JsonSerializerOptions 
             { 
                 PropertyNameCaseInsensitive = true 
             });
 
-            return tiers;
+            return apiResponse?.Data;
         }
         catch (Exception ex)
         {
