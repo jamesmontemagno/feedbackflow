@@ -6,6 +6,8 @@ using Microsoft.Extensions.Logging;
 using FeedbackFunctions.Services.Authentication;
 using SharedDump.Services.Authentication;
 using SharedDump.Models.Authentication;
+using SharedDump.Services.Account;
+using SharedDump.Models.Account;
 
 namespace FeedbackFunctions;
 
@@ -17,15 +19,24 @@ public class UserManagement
     private readonly ILogger<UserManagement> _logger;
     private readonly AuthenticationMiddleware _authMiddleware;
     private readonly IAuthUserTableService _userService;
+    private readonly IAccountLimitsService _limitsService;
+    private readonly IUserAccountTableService _userAccountService;
+    private readonly IUsageTrackingService _usageService;
 
     public UserManagement(
         ILogger<UserManagement> logger,
         AuthenticationMiddleware authMiddleware,
-        IAuthUserTableService userService)
+        IAuthUserTableService userService,
+        IAccountLimitsService limitsService,
+        IUserAccountTableService userAccountService,
+        IUsageTrackingService usageService)
     {
         _logger = logger;
         _authMiddleware = authMiddleware;
         _userService = userService;
+        _limitsService = limitsService;
+        _userAccountService = userAccountService;
+        _usageService = usageService;
     }
 
     /// <summary>
@@ -53,6 +64,61 @@ public class UserManagement
 
             // User is created by the middleware
             _logger.LogInformation("User registered successfully: {UserId}", authenticatedUser.UserId);
+
+            // Create a new UserAccount record with default Free tier settings
+            try
+            {
+                _logger.LogInformation("Creating UserAccount record for new user {UserId}", authenticatedUser.UserId);
+                
+                // Create new user account with default Free tier
+                var userAccount = new UserAccount
+                {
+                    UserId = authenticatedUser.UserId,
+                    Tier = AccountTier.Free,
+                    AnalysesUsed = 0,
+                    ActiveReports = 0,
+                    FeedQueriesUsed = 0,
+                    CreatedAt = DateTime.UtcNow,
+                    LastResetDate = DateTime.UtcNow,
+                    SubscriptionStart = DateTime.UtcNow,
+                    IsActive = true
+                };
+
+                // Set limits based on the Free tier
+                var limits = _limitsService.GetLimitsForTier(AccountTier.Free);
+                userAccount.AnalysisLimit = limits.AnalysisLimit;
+                userAccount.ReportLimit = limits.ReportLimit;
+                userAccount.FeedQueryLimit = limits.FeedQueryLimit;
+
+                // Convert to entity and save to the database
+                var entity = new UserAccountEntity
+                {
+                    PartitionKey = authenticatedUser.UserId,
+                    RowKey = "account",
+                    Tier = (int)userAccount.Tier,
+                    AnalysesUsed = userAccount.AnalysesUsed,
+                    ActiveReports = userAccount.ActiveReports,
+                    FeedQueriesUsed = userAccount.FeedQueriesUsed,
+                    AnalysisLimit = userAccount.AnalysisLimit,
+                    ReportLimit = userAccount.ReportLimit,
+                    FeedQueryLimit = userAccount.FeedQueryLimit,
+                    CreatedAt = userAccount.CreatedAt,
+                    LastResetDate = userAccount.LastResetDate,
+                    SubscriptionStart = userAccount.SubscriptionStart,
+                    SubscriptionEnd = userAccount.SubscriptionEnd,
+                    IsActive = userAccount.IsActive,
+                    PreferredEmail = userAccount.PreferredEmail
+                };
+
+                await _userAccountService.UpsertUserAccountAsync(entity);
+                
+                _logger.LogInformation("Successfully created UserAccount record for user {UserId} with Free tier", authenticatedUser.UserId);
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't fail the registration - the UserAccount can be created later
+                _logger.LogError(ex, "Failed to create UserAccount record for user {UserId}, but user registration was successful", authenticatedUser.UserId);
+            }
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(new
@@ -242,19 +308,40 @@ public class UserManagement
                 }
             }
 
-            // Update the user's preferred email
-            var updated = await _userService.UpdatePreferredEmailAsync(
-                authenticatedUser.AuthProvider, 
-                authenticatedUser.ProviderUserId, 
-                requestData.PreferredEmail);
-
-            if (!updated)
+            // Update the user's preferred email in UserAccount
+            var userAccount = await _usageService.GetUserAccountAsync();
+            if (userAccount == null)
             {
-                _logger.LogError("Failed to update preferred email for user {UserId}", authenticatedUser.UserId);
-                var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-                await errorResponse.WriteStringAsync("Failed to update preferred email");
+                _logger.LogError("User account not found for user {UserId}", authenticatedUser.UserId);
+                var errorResponse = req.CreateResponse(HttpStatusCode.NotFound);
+                await errorResponse.WriteStringAsync("User account not found");
                 return errorResponse;
             }
+
+            // Update the preferred email
+            userAccount.PreferredEmail = requestData.PreferredEmail ?? string.Empty;
+
+            // Convert to entity and save
+            var entity = new UserAccountEntity
+            {
+                PartitionKey = authenticatedUser.UserId,
+                RowKey = "account",
+                Tier = (int)userAccount.Tier,
+                AnalysesUsed = userAccount.AnalysesUsed,
+                ActiveReports = userAccount.ActiveReports,
+                FeedQueriesUsed = userAccount.FeedQueriesUsed,
+                AnalysisLimit = userAccount.AnalysisLimit,
+                ReportLimit = userAccount.ReportLimit,
+                FeedQueryLimit = userAccount.FeedQueryLimit,
+                CreatedAt = userAccount.CreatedAt,
+                LastResetDate = userAccount.LastResetDate,
+                SubscriptionStart = userAccount.SubscriptionStart,
+                SubscriptionEnd = userAccount.SubscriptionEnd,
+                IsActive = userAccount.IsActive,
+                PreferredEmail = userAccount.PreferredEmail
+            };
+
+            await _userAccountService.UpsertUserAccountAsync(entity);
 
             _logger.LogInformation("Successfully updated preferred email for user {UserId}", authenticatedUser.UserId);
 

@@ -23,6 +23,7 @@ namespace SharedDump.Models.Account
         public int AnalysisLimit { get; set; }
         public int ReportLimit { get; set; }
         public int FeedQueryLimit { get; set; }
+        public string PreferredEmail { get; set; } = string.Empty;
     }
 
     public class UsageRecordEntity : ITableEntity

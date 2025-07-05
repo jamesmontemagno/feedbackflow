@@ -51,7 +51,8 @@ namespace FeedbackFunctions.Services
                     ActiveReports = 0,
                     AnalysisLimit = limits.AnalysisLimit,
                     ReportLimit = limits.ReportLimit,
-                    FeedQueryLimit = limits.FeedQueryLimit
+                    FeedQueryLimit = limits.FeedQueryLimit,
+                    PreferredEmail = string.Empty
                 };
                 await _userAccountTable.UpsertUserAccountAsync(defaultUser);
                 userEntity = defaultUser;
@@ -71,7 +72,8 @@ namespace FeedbackFunctions.Services
                 ActiveReports = userEntity.ActiveReports,
                 AnalysisLimit = userEntity.AnalysisLimit,
                 ReportLimit = userEntity.ReportLimit,
-                FeedQueryLimit = userEntity.FeedQueryLimit
+                FeedQueryLimit = userEntity.FeedQueryLimit,
+                PreferredEmail = userEntity.PreferredEmail
             };
         }
 

@@ -87,7 +87,8 @@ namespace FeedbackFunctions.Account
                         LastResetDate = account.LastResetDate,
                         SubscriptionStart = account.SubscriptionStart,
                         SubscriptionEnd = account.SubscriptionEnd,
-                        IsActive = account.IsActive
+                        IsActive = account.IsActive,
+                        PreferredEmail = account.PreferredEmail
                     };
 
                     await _userAccountService.UpsertUserAccountAsync(entity);
