@@ -59,12 +59,6 @@ public interface ISharedHistoryService
     Task<AnalysisData?> GetSharedAnalysisDataAsync(string id);
     
     /// <summary>
-    /// Refreshes the cached user's saved analyses from the server
-    /// </summary>
-    /// <returns>A task representing the asynchronous operation</returns>
-    Task RefreshUsersSavedAnalysesAsync();
-    
-    /// <summary>
     /// Gets the count of saved analyses for the authenticated user
     /// </summary>
     /// <returns>The number of saved analyses</returns>

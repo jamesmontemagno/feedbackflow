@@ -66,14 +66,6 @@ public class MockSharedHistoryService : ISharedHistoryService
         };
     }
 
-    public async Task RefreshUsersSavedAnalysesAsync()
-    {
-        _logger.LogInformation("Mock: Refreshing saved analyses cache");
-        await Task.Delay(200); // Simulate cache refresh
-        // In a real implementation, this would clear cache and refetch from server
-        // For mock, we don't need to do anything special
-    }
-
     public async Task<int> GetSavedAnalysesCountAsync()
     {
         _logger.LogInformation("Mock: Getting saved analyses count");

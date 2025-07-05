@@ -1,0 +1,610 @@
+@page "/history-local"
+@inject FeedbackWebApp.Services.Interfaces.IHistoryService HistoryService
+@inject FeedbackWebApp.Services.Authentication.IAuthenticationService AuthService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@inject FeedbackWebApp.Services.IToastService ToastService
+@inject FeedbackWebApp.Services.IHistoryHelper HistoryHelper
+@using SharedDump.Models
+@using Markdig
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components
+@using FeedbackWebApp.Components.Shared
+@using SharedDump.Utils
+@using FeedbackWebApp.Utils
+@using FeedbackWebApp.Services
+
+<PageTitle>Local Analysis History</PageTitle>
+
+<ConfirmationDialog 
+    IsVisible="@isConfirmationDialogVisible"
+    Title="@confirmationDialogTitle"
+    Message="@confirmationDialogMessage"
+    ConfirmText="@confirmationDialogConfirmText"
+    ConfirmButtonClass="@confirmationDialogButtonClass"
+    OnConfirm="@HandleConfirmationDialogConfirm"
+    OnCancel="@HandleConfirmationDialogCancel" />
+
+<CopyFailedDialog 
+    IsVisible="@showCopyFailedDialog"
+    Content="@failedCopyContent"
+    ContentType="@failedCopyContentType"
+    OnClose="@CloseCopyFailedDialog" />
+
+<div class="container-lg py-4">    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="feedbackflow-title mb-0">Analysis History</h1>
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">            
+            @if (historyItems?.Any(h => h.IsShared) == true)
+            {
+                <button class="btn btn-info header-action-btn" @onclick="ShowSharedOnly">
+                    <i class="bi bi-share me-2"></i>Shared
+                </button>
+            }
+            @if (historyItems is { Count: > 0 })
+            {
+                <button class="btn btn-danger clear-all-btn header-action-btn" @onclick="ClearHistory">
+                    <i class="bi bi-trash me-2"></i>Clear All
+                </button>
+            }
+        </div>
+    </div>
+      @if (historyItems is { Count: > 0 })
+    {
+        <div class="filter-section card bg-body mb-4 p-3 shadow-sm">
+            <div class="row g-3">
+                <div class="col-12 mb-2">
+                    <label for="searchFilter" class="form-label">Search Analysis Content</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="searchFilter" placeholder="Search through analysis content..." 
+                               @bind="searchTerm" @bind:event="oninput" @bind:after="HandleSearchChangeAsync" />                        @if (!string.IsNullOrWhiteSpace(searchTerm))
+                        {
+                            <button class="btn btn-outline-secondary action-btn" type="button" @onclick="ClearSearch">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        }
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label for="dateFilter" class="form-label">Date Range</label>                    
+                    <select class="form-select" id="dateFilter" @bind="dateFilter" @bind:after="StateHasChanged">
+                        <option value="all">All Time</option>
+                        <option value="today">Today</option>
+                        <option value="week">Last 7 Days</option>
+                        <option value="month">Last 30 Days</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="sourceFilter" class="form-label">Service Type</label>                    
+                    <select class="form-select" id="sourceFilter" @bind="sourceFilter" @bind:after="StateHasChanged">
+                        <option value="all">All Services</option>
+                        <option value="YouTube">YouTube</option>
+                        <option value="GitHub">GitHub</option>
+                        <option value="Reddit">Reddit</option>
+                        <option value="Twitter">Twitter</option>
+                        <option value="HackerNews">HackerNews</option>
+                        <option value="DevBlogs">DevBlogs</option>
+                        <option value="Manual">Manual</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="sharedFilter" class="form-label">Sharing Status</label>                    
+                    <select class="form-select" id="sharedFilter" @bind="sharedFilter" @bind:after="StateHasChanged">
+                        <option value="all">All Items</option>
+                        <option value="shared">Shared Only</option>
+                        <option value="notshared">Not Shared</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (historyItems is null)
+    {
+        <div class="loading-state card bg-body shadow-sm">
+            <div class="card-body">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Loading your analysis history...</p>
+                <small>This will only take a moment</small>
+            </div>
+        </div>
+    }
+    else if (!historyItems.Any())
+    {
+        <div class="empty-state card bg-body shadow-sm">
+            <div class="card-body text-center">
+                <i class="bi bi-clock-history display-4 mb-3"></i>
+                <p class="mb-2">No analysis history found.</p>
+                <small class="text-muted empty-state-hint d-block">Create your first analysis to see it appear here!</small>
+            </div>
+        </div>
+    }    
+    else if (filteredItems is { Count: > 0 })
+    {
+        <div class="mb-3">
+            <small class="text-muted">
+                Showing @filteredItems.Count of @totalItems items
+                @if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    <span> (filtered by search)</span>
+                }
+            </small>
+        </div>
+        
+        <div class="list-group" style="overflow-y: auto;">
+            <Virtualize Items="filteredItems" Context="item" ItemSize="250">
+                <div class="list-group-item @(item.IsShared ? "shared-item" : "")" @key="item.Id">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                            @{
+                                var sourceTypes = item.SourceType.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                                foreach (var sourceType in sourceTypes)
+                                {
+                                    <i class="bi @HistoryHelper.GetServiceIcon(sourceType) service-icon"></i>
+                                }
+                                <span class="source-badge">@item.SourceType</span>
+                            }
+                            <small class="text-muted">@item.Timestamp.ToLocalTime().ToString("g")</small>
+                            @if (item.IsShared)
+                            {
+                                <span class="shared-status">
+                                    <i class="bi bi-cloud-check"></i>
+                                    Shared
+                                </span>
+                            }
+                        </div>                        
+                        <ActionMenu>
+                            <ChildContent>
+                                <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="() => HistoryHelper.CopyToClipboard(item, JSRuntime, ToastService, ShowCopyFailedDialog)">
+                                    <i class="bi bi-clipboard"></i> Copy
+                                </button>
+                                @if (item.IsShared)
+                                {
+                                    <button class="btn btn-sm btn-outline-success action-btn" title="Copy Share Link" @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
+                                        <i class="bi bi-link-45deg"></i> Copy Link
+                                    </button>
+                                }                            
+                                @if(item.SourceType != "Manual")
+                                {
+                                    <a class="btn btn-sm btn-outline-secondary action-btn" title="Open Link" target="_blank" rel="noopener noreferrer" href="@HistoryHelper.GetSourceUrl(item)">
+                                        <i class="bi bi-box-arrow-up-right"></i> Open Link
+                                    </a>
+                                }
+                                <button class="btn btn-sm btn-outline-danger action-btn" title="Delete" @onclick="() => ConfirmDelete(item.Id)">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            </ChildContent>
+                            <SecondaryActions>
+                                <li><button class="dropdown-item" @onclick="() => HistoryHelper.CopyToClipboard(item, JSRuntime, ToastService, ShowCopyFailedDialog)">
+                                    <i class="bi bi-clipboard"></i> Copy Analysis
+                                </button></li>
+                                @if (item.IsShared)
+                                {
+                                    <li><button class="dropdown-item" @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
+                                        <i class="bi bi-link-45deg"></i> Copy Share Link
+                                    </button></li>
+                                }                            
+                                @if(item.SourceType != "Manual")
+                                {
+                                    <li><a class="dropdown-item" target="_blank" rel="noopener noreferrer" href="@HistoryHelper.GetSourceUrl(item)">
+                                        <i class="bi bi-box-arrow-up-right"></i> Open Link
+                                    </a></li>
+                                }
+                                <li><hr class="dropdown-divider"></li>
+                                <li><button class="dropdown-item text-danger" @onclick="() => ConfirmDelete(item.Id)">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button></li>
+                            </SecondaryActions>
+                        </ActionMenu>
+                    </div>
+                                          
+                    @if (!string.IsNullOrWhiteSpace(item.UserInput) && item.SourceType != "Manual")
+                    {
+                        <div class="user-input mb-3">
+                            <strong>Input:</strong>
+                            @{
+                                var urls = item.UserInput.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                                if (urls.All(url => UrlParsing.IsValidUrl(url)))
+                                {
+                                    <div class="url-list">
+                                        @foreach (var url in urls)
+                                        {
+                                            <div class="url-item">                                                
+                                                @{
+                                                    var isYouTube = UrlParsing.IsYouTubeUrl(url);
+                                                    var videoId = UrlParsing.ExtractVideoId(url);
+                                                    if (isYouTube && !string.IsNullOrWhiteSpace(videoId))
+                                                    {
+                                                        <div class="youtube-thumbnail-container">
+                                                            <a href="@url" target="_blank" rel="noopener noreferrer" class="d-block">
+                                                                <img src="@FeedbackWebApp.Utils.UrlHelpers.GetYouTubeThumbnailUrl(videoId)" alt="YouTube Video Thumbnail" class="rounded shadow-sm" />
+                                                            </a>
+                                                        </div>
+                                                    }
+                                                }
+                                                <div class="url-link">
+                                                    <a href="@url" target="_blank" rel="noopener noreferrer">@url</a>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    @item.UserInput
+                                }
+                            }
+                        </div>
+                    }
+
+                    <div class="analysis-content">
+                        <button class="btn btn-sm mb-3 action-btn @(expandedItems.Contains(item.Id) ? "btn-outline-secondary" : "btn-outline-primary")" 
+                                @onclick="() => ToggleExpand(item.Id)">
+                            <i class="bi @(expandedItems.Contains(item.Id) ? "bi-chevron-down" : "bi-chevron-right") me-1"></i>
+                            @(expandedItems.Contains(item.Id) ? "Show Summary" : "Show Full Analysis")
+                        </button>
+                        
+                        <div class="content-wrapper">
+                            @if (expandedItems.Contains(item.Id) && !string.IsNullOrEmpty(item.FullAnalysis))
+                            {
+                                <div class="analysis-badge mb-2">Full Analysis</div>
+                            }
+                            <div class="markdown-content">                                @((MarkupString)HistoryHelper.ConvertMarkdownToHtml(
+                                    expandedItems.Contains(item.Id) && !string.IsNullOrEmpty(item.FullAnalysis) 
+                                        ? item.FullAnalysis 
+                                        : item.Summary))
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Virtualize>
+        </div>
+        
+        @if (hasMoreItems)
+        {
+            <div class="text-center mt-4">
+                <button class="btn btn-outline-primary" @onclick="LoadMoreItemsAsync" disabled="@isLoadingMore">
+                    @if (isLoadingMore)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span>Loading...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-arrow-down-circle me-2"></i>
+                        <span>Load More (@LoadMorePageSize more items)</span>
+                    }
+                </button>
+            </div>
+        }
+    }
+</div>
+
+@code {
+
+    private List<AnalysisHistoryItem>? historyItems;
+    private List<AnalysisHistoryItem>? filteredItems => FilterHistoryItems();
+    private HashSet<string> expandedItems = new();
+    private string dateFilter = "all";
+    private string sourceFilter = "all";
+    private string sharedFilter = "all";
+    private string searchTerm = string.Empty;
+    private bool isAuthenticated = false;
+    
+    // Pagination state
+    private const int InitialPageSize = 5;
+    private const int LoadMorePageSize = 10;
+    private int currentPageSize = InitialPageSize;
+    private int totalItems = 0;
+    private bool hasMoreItems = true;
+    private bool isLoadingMore = false;
+    private string lastSearchTerm = string.Empty;
+
+    // Confirmation dialog state
+    private bool isConfirmationDialogVisible;
+    private string confirmationDialogTitle = "";
+    private string confirmationDialogMessage = "";
+    private string confirmationDialogConfirmText = "";
+    private string confirmationDialogButtonClass = "";
+    private Func<Task>? onConfirmAction;    
+    
+    // Copy failed dialog state
+    private bool showCopyFailedDialog = false;
+    private string failedCopyContent = string.Empty;
+    private string failedCopyContentType = string.Empty;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            await LoadInitialHistoryAsync();
+            StateHasChanged();
+        }
+    }
+    
+    private async Task LoadInitialHistoryAsync()
+    {
+        try
+        {
+            // Load the first page of items
+            historyItems = await HistoryService.GetHistoryPagedAsync(0, currentPageSize, null);
+            totalItems = await HistoryService.GetHistoryCountAsync(null);
+            hasMoreItems = historyItems?.Count >= currentPageSize && (historyItems?.Count < totalItems);
+            
+            // Check for expired shared items
+            if (historyItems?.Any(h => h.IsShared) == true)
+            {
+                var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
+                var expiredItems = historyItems.Where(h => h.IsShared && h.SharedDate <= thirtyDaysAgo).ToList();
+                
+                foreach (var item in expiredItems)
+                {
+                    var updatedItem = item with 
+                    { 
+                        IsShared = false,
+                        SharedId = null,
+                        SharedDate = null
+                    };
+                    await HistoryService.UpdateHistoryItemAsync(updatedItem);
+                }
+                
+                if (expiredItems.Any())
+                {
+                    // Reload the data if we updated any items
+                    historyItems = await HistoryService.GetHistoryPagedAsync(0, currentPageSize, null);
+                    totalItems = await HistoryService.GetHistoryCountAsync(null);
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Fallback to empty list if something goes wrong
+            historyItems = new List<AnalysisHistoryItem>();
+            totalItems = 0;
+            hasMoreItems = false;
+        }
+    }    private async Task DeleteItem(string id)
+    {
+        await HistoryService.DeleteHistoryItemAsync(id);
+        expandedItems.Remove(id);
+        
+        // Remove item from current list and update totals
+        if (historyItems != null)
+        {
+            historyItems.RemoveAll(item => item.Id == id);
+            totalItems = Math.Max(0, totalItems - 1);
+            hasMoreItems = historyItems.Count < totalItems;
+        }
+        
+        StateHasChanged();
+    }    
+
+    private Task ClearHistory()
+    {
+        return ShowConfirmationDialog(
+            "Clear History",
+            "Are you sure you want to clear all history? This action cannot be undone.",
+            "Clear All",
+            "btn-danger",
+            async () =>
+            {
+                await HistoryService.ClearHistoryAsync();
+                historyItems = new();
+                totalItems = 0;
+                hasMoreItems = false;
+                expandedItems.Clear();
+            });
+    }
+
+    private void ToggleExpand(string id)
+    {
+        if (!expandedItems.Add(id))
+        {
+            expandedItems.Remove(id);
+        }
+    }    
+    private List<AnalysisHistoryItem> FilterHistoryItems()
+    {
+        if (historyItems == null)
+            return new List<AnalysisHistoryItem>();
+
+        var items = historyItems.AsEnumerable();
+
+        // Apply source filter
+        if (sourceFilter != "all")
+        {
+            items = items.Where(x => x.SourceType.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                            .Any(s => s.Equals(sourceFilter, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        // Apply shared filter
+        if (sharedFilter != "all")
+        {
+            items = sharedFilter switch
+            {
+                "shared" => items.Where(x => x.IsShared),
+                "notshared" => items.Where(x => !x.IsShared),
+                _ => items // all
+            };
+        }
+
+        // Apply date filter
+        var now = DateTime.Now;
+        items = dateFilter switch
+        {
+            "today" => items.Where(x => x.Timestamp.Date == now.Date),
+            "week" => items.Where(x => (now - x.Timestamp).TotalDays <= 7),
+            "month" => items.Where(x => (now - x.Timestamp).TotalDays <= 30),
+            _ => items // "all" or any other value
+        };
+
+        // Apply search term filter if not empty
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.Trim().ToLowerInvariant();
+            items = items.Where(x => 
+                (x.Summary != null && x.Summary.ToLowerInvariant().Contains(term)) || 
+                (x.FullAnalysis != null && x.FullAnalysis.ToLowerInvariant().Contains(term)) ||
+                (x.UserInput != null && x.UserInput.ToLowerInvariant().Contains(term)));
+        }
+
+        return items.ToList();
+    }
+
+    private void OpenAnalysis(AnalysisHistoryItem item)
+    {
+        // In a real implementation, you might navigate to a details page
+        // or open a modal with the full analysis
+        ToggleExpand(item.Id); // For now, just expand the item
+    }
+
+    private void ResetFilters()
+    {
+        dateFilter = "all";
+        sourceFilter = "all";
+        sharedFilter = "all";
+        searchTerm = string.Empty;
+    }
+
+    private async Task LoadMoreItemsAsync()
+    {
+        if (isLoadingMore || !hasMoreItems || historyItems == null)
+            return;
+
+        isLoadingMore = true;
+        StateHasChanged();
+
+        try
+        {
+            var searchTermToUse = string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm.Trim();
+            var moreItems = await HistoryService.GetHistoryPagedAsync(historyItems.Count, LoadMorePageSize, searchTermToUse);
+            
+            if (moreItems.Any())
+            {
+                historyItems.AddRange(moreItems);
+                hasMoreItems = historyItems.Count < totalItems;
+            }
+            else
+            {
+                hasMoreItems = false;
+            }
+        }
+        catch (Exception)
+        {
+            // If loading more fails, just stop trying
+            hasMoreItems = false;
+        }
+        finally
+        {
+            isLoadingMore = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleSearchChangeAsync()
+    {
+        // If search term changed, reload from beginning
+        if (lastSearchTerm != searchTerm)
+        {
+            lastSearchTerm = searchTerm;
+            await LoadNewSearchResultsAsync();
+        }
+    }
+
+    private async Task LoadNewSearchResultsAsync()
+    {
+        try
+        {
+            var searchTermToUse = string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm.Trim();
+            
+            historyItems = await HistoryService.GetHistoryPagedAsync(0, currentPageSize, searchTermToUse);
+            totalItems = await HistoryService.GetHistoryCountAsync(searchTermToUse);
+            hasMoreItems = historyItems?.Count >= currentPageSize && (historyItems?.Count < totalItems);
+            
+            StateHasChanged();
+        }
+        catch (Exception)
+        {
+            historyItems = new List<AnalysisHistoryItem>();
+            totalItems = 0;
+            hasMoreItems = false;
+        }
+    }
+
+    private async Task ClearSearch()
+    {
+        searchTerm = string.Empty;
+        lastSearchTerm = string.Empty;
+        await LoadNewSearchResultsAsync();
+    }
+
+    private void ShowSharedOnly()
+    {
+        sharedFilter = "shared";
+        StateHasChanged();
+    }    
+    
+    private Task ConfirmDelete(string id)
+    {
+        return ShowConfirmationDialog(
+            "Delete Item",
+            "Are you sure you want to delete this item? This action cannot be undone.",
+            "Delete",
+            "btn-danger",
+            () => DeleteItem(id));
+    }
+
+    private Task ShowConfirmationDialog(string title, string message, string confirmText, string buttonClass, Func<Task> onConfirm)
+    {
+        confirmationDialogTitle = title;
+        confirmationDialogMessage = message;
+        confirmationDialogConfirmText = confirmText;
+        confirmationDialogButtonClass = buttonClass;
+        onConfirmAction = onConfirm;
+        isConfirmationDialogVisible = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void HandleConfirmationDialogCancel()
+    {
+        isConfirmationDialogVisible = false;
+        onConfirmAction = null;
+        StateHasChanged();
+    }
+
+    private async Task HandleConfirmationDialogConfirm()
+    {
+        isConfirmationDialogVisible = false;
+        StateHasChanged();
+        
+        if (onConfirmAction != null)
+        {
+            await onConfirmAction();
+        }
+        onConfirmAction = null;
+    }    
+    
+    private void NavigateToLogin()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+    
+    private void ShowCopyFailedDialog(string content, string contentType)
+    {
+        failedCopyContent = content;
+        failedCopyContentType = contentType;
+        showCopyFailedDialog = true;
+        StateHasChanged();
+    }
+
+    private void CloseCopyFailedDialog()
+    {
+        showCopyFailedDialog = false;
+        failedCopyContent = string.Empty;
+        failedCopyContentType = string.Empty;
+        StateHasChanged();
+    }
+}
