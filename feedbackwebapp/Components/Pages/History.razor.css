@@ -534,6 +534,84 @@
     word-break: break-all;
 }
 
+/* Processing Dialog Modal Styles */
+.modal {
+    z-index: 1060;
+}
+
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1055;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-backdrop.fade.show {
+    opacity: 1;
+}
+
+.modal-dialog {
+    transition: transform 0.3s ease-out;
+}
+
+.modal-content {
+    border: none;
+    border-radius: var(--border-radius-lg);
+    box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.25);
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+}
+
+.modal-header {
+    background: var(--primary-gradient);
+    color: white;
+    border-bottom: none;
+    border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+    padding: 1rem 1.5rem;
+}
+
+.modal-header .btn-close {
+    filter: invert(1) brightness(2);
+    opacity: 0.8;
+}
+
+.modal-header .btn-close:hover {
+    opacity: 1;
+}
+
+.modal-body {
+    padding: 1.5rem;
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border-color);
+    padding: 1rem 1.5rem;
+    background-color: var(--card-bg);
+    border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
+}
+
+/* Dark theme support for modals */
+[data-theme="dark"] .modal-content {
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .modal-body {
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .modal-footer {
+    background-color: var(--card-bg);
+    border-top-color: var(--border-color);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .feedbackflow-title {
