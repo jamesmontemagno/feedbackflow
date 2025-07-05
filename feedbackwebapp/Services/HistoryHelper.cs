@@ -160,8 +160,72 @@ public class HistoryHelper : IHistoryHelper
     }public string GetServiceIcon(string sourceType)
     {
         return ServiceIconHelper.GetServiceIcon(sourceType);
-    }public string ConvertMarkdownToHtml(string? markdown)
+    }    public string ConvertMarkdownToHtml(string? markdown)
     {
-        return Markdown.ToHtml(markdown ?? string.Empty, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build());
+        if (string.IsNullOrEmpty(markdown))
+            return string.Empty;
+            
+        // Increase header levels by 2 for better preview display
+        var adjustedMarkdown = AdjustHeaderLevels(markdown, 2);
+        return Markdown.ToHtml(adjustedMarkdown, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build());
+    }
+    
+    /// <summary>
+    /// Adjusts markdown header levels by adding the specified increment
+    /// </summary>
+    /// <param name="markdown">The markdown content</param>
+    /// <param name="increment">Number of levels to add to headers (e.g., 2 to change # to ###)</param>
+    /// <returns>Markdown with adjusted header levels</returns>
+    private static string AdjustHeaderLevels(string markdown, int increment)
+    {
+        if (increment <= 0) return markdown;
+        
+        var lines = markdown.Split('\n');
+        var adjustedLines = new List<string>();
+        
+        foreach (var line in lines)
+        {
+            var trimmedLine = line.TrimStart();
+            
+            // Check if line starts with markdown header syntax
+            if (trimmedLine.StartsWith('#') && trimmedLine.Length > 0)
+            {
+                // Count existing hash marks
+                int hashCount = 0;
+                foreach (char c in trimmedLine)
+                {
+                    if (c == '#')
+                        hashCount++;
+                    else
+                        break;
+                }
+                
+                // Make sure we found a proper header (has space or end after hashes)
+                if (hashCount > 0 && (hashCount == trimmedLine.Length || trimmedLine[hashCount] == ' '))
+                {
+                    // Ensure we don't exceed 6 header levels (markdown max)
+                    int newHashCount = Math.Min(6, hashCount + increment);
+                    
+                    // Extract the text after the hashes
+                    var headerText = trimmedLine.Substring(hashCount).TrimStart();
+                    
+                    // Reconstruct with new hash count, preserving original indentation
+                    var indentation = line.Substring(0, line.Length - trimmedLine.Length);
+                    var newLine = indentation + new string('#', newHashCount) + " " + headerText;
+                    adjustedLines.Add(newLine);
+                }
+                else
+                {
+                    // Not a proper header, keep as is
+                    adjustedLines.Add(line);
+                }
+            }
+            else
+            {
+                adjustedLines.Add(line);
+            }
+        }
+        
+        return string.Join('\n', adjustedLines);
     }
 }
