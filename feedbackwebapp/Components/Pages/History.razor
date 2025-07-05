@@ -154,16 +154,13 @@
                                 }
                                 <small class="text-muted">@item.Timestamp.ToLocalTime().ToString("g")</small>
                                 @* Visibility indicator *@
-                                <span class="badge @(item.IsPublic ? "bg-success" : "bg-secondary")">
+                                <span class="badge visibility-badge @(item.IsPublic ? "visibility-public" : "visibility-private")">
                                     <i class="bi @(item.IsPublic ? "bi-globe" : "bi-lock") me-1"></i>
                                     @(item.IsPublic ? "Public" : "Private")
                                 </span>
                             </div>                        
                             <ActionMenu>
                                 <ChildContent>
-                                    <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="() => HistoryHelper.CopyToClipboard(item, JSRuntime, ToastService, ShowCopyFailedDialog)">
-                                        <i class="bi bi-clipboard"></i> Copy
-                                    </button>
                                     <button class="btn btn-sm btn-outline-success action-btn" 
                                             title="@(item.IsPublic ? "Copy Share Link" : "Item must be public to share")" 
                                             disabled="@(!item.IsPublic)"
@@ -182,9 +179,6 @@
                                     </button>
                                 </ChildContent>
                                 <SecondaryActions>
-                                    <li><button class="dropdown-item" @onclick="() => HistoryHelper.CopyToClipboard(item, JSRuntime, ToastService, ShowCopyFailedDialog)">
-                                        <i class="bi bi-clipboard"></i> Copy Analysis
-                                    </button></li>
                                     <li><button class="dropdown-item @(item.IsPublic ? "" : "disabled")" 
                                                 disabled="@(!item.IsPublic)"
                                                 @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
@@ -296,8 +290,8 @@
             </div>
             <div class="modal-body">
                 <p>Failed to copy @failedCopyContentType to clipboard. Here's the content you can copy manually:</p>
-                <div class="alert alert-light">
-                    <code style="white-space: pre-wrap; word-break: break-all;">@failedCopyContent</code>
+                <div class="alert copy-content-alert">
+                    <code>@failedCopyContent</code>
                 </div>
             </div>
             <div class="modal-footer">

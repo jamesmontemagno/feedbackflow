@@ -34,6 +34,13 @@ public interface IAuthenticationService
     Task LogoutAsync();
 
     /// <summary>
+    /// Handle post-login user registration for OAuth providers
+    /// This should be called after a user completes an OAuth login flow
+    /// </summary>
+    /// <returns>True if registration was successful, false otherwise</returns>
+    Task<bool> HandlePostLoginRegistrationAsync();
+
+    /// <summary>
     /// Event triggered when authentication state changes
     /// </summary>
     event EventHandler<bool>? AuthenticationStateChanged;

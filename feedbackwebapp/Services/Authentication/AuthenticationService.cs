@@ -157,6 +157,14 @@ public class AuthenticationService : IAuthenticationService
         return "/";
     }
 
+    /// <inheritdoc />
+    public Task<bool> HandlePostLoginRegistrationAsync()
+    {
+        // Password auth handles registration during AuthenticateAsync, not post-login
+        // This is already handled in the AuthenticateAsync method
+        return Task.FromResult(true);
+    }
+
     /// <summary>
     /// Auto-register the current user in the backend system
     /// </summary>

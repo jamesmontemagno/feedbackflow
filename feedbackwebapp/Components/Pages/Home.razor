@@ -9,6 +9,7 @@
 @using FeedbackWebApp.Components.Feedback.Results
 @using FeedbackWebApp.Services.Interfaces
 @using FeedbackWebApp.Services.Feedback
+@using FeedbackWebApp.Services.Authentication
 @using FeedbackWebApp.Components.Shared
 @using SharedDump.Models
 @using SharedDump.Models.BlueSkyFeedback
@@ -24,6 +25,7 @@
 @inject NavigationManager NavigationManager
 @inject UserSettingsService UserSettings
 @inject IHistoryService HistoryService
+@inject IAuthenticationService AuthService
 
 <PageTitle>Feedback Analysis - FeedbackFlow</PageTitle>
 
@@ -153,6 +155,18 @@
 
         if (success)
         {
+            // Handle post-login registration for OAuth providers (GitHub, Google, etc.)
+            // This ensures users are properly registered in the backend after OAuth login
+            try
+            {
+                await AuthService.HandlePostLoginRegistrationAsync();
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail the authentication flow if registration has issues
+                Console.WriteLine($"Post-login registration warning: {ex.Message}");
+            }
+
             await HandleQueryNav();
             await CheckForNewFeatures();
         }

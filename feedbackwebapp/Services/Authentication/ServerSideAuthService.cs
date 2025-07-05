@@ -234,9 +234,6 @@ public class ServerSideAuthService : IAuthenticationService
                 CreatedAt = DateTime.UtcNow,
                 LastLoginAt = DateTime.UtcNow
             };
-
-            // Auto-register user in the backend system (fire and forget)
-            _ = Task.Run(async () => await AutoRegisterUserAsync());
             
             _logger.LogDebug("Successfully authenticated user: {Email}", email);
             return authenticatedUser;
@@ -276,6 +273,52 @@ public class ServerSideAuthService : IAuthenticationService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to auto-register user");
+        }
+    }
+
+    /// <summary>
+    /// Handle post-login user registration for OAuth providers (GitHub, Google, etc.)
+    /// This should only be called after a user completes an OAuth login flow
+    /// </summary>
+    /// <returns>True if registration was successful, false otherwise</returns>
+    public async Task<bool> HandlePostLoginRegistrationAsync()
+    {
+        try
+        {
+            var httpContext = _httpContextAccessor.HttpContext;
+            if (httpContext == null)
+            {
+                _logger.LogWarning("HttpContext not available for post-login registration");
+                return false;
+            }
+
+            // Check if user is authenticated via OAuth providers (not password auth)
+            var user = await GetEasyAuthUserAsync();
+            if (user == null)
+            {
+                _logger.LogDebug("No authenticated user found for post-login registration");
+                return false;
+            }
+
+            // Only auto-register for OAuth providers (GitHub, Google, Microsoft), not for password auth
+            if (user.AuthProvider == "Password" || user.AuthProvider == "Development")
+            {
+                _logger.LogDebug("Skipping auto-registration for {AuthProvider} provider", user.AuthProvider);
+                return true;
+            }
+
+            _logger.LogInformation("Performing post-login registration for user from {AuthProvider} provider", user.AuthProvider);
+
+            // Perform registration and await the result
+            await AutoRegisterUserAsync();
+            
+            _logger.LogInformation("Post-login registration completed successfully for {AuthProvider} user", user.AuthProvider);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during post-login registration");
+            return false;
         }
     }
 
