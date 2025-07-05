@@ -257,15 +257,19 @@ public class AuthenticationMiddleware
     /// Create a development user for auth bypass scenarios
     /// </summary>
     /// <returns>Development authenticated user</returns>
-    private static AuthenticatedUser CreateDevelopmentUser()
+    private AuthenticatedUser CreateDevelopmentUser()
     {
+        var devUserId = _configuration.GetValue<string>("Development:UserId") ?? "dev-user-id";
+        var devEmail = _configuration.GetValue<string>("Development:Email") ?? "dev@example.com";
+        var devName = _configuration.GetValue<string>("Development:Name") ?? "Development User";
+        
         return new AuthenticatedUser
         {
-            UserId = "dev-user-id",
-            Email = "dev@example.com",
-            Name = "Development User",
+            UserId = devUserId,
+            Email = devEmail,
+            Name = devName,
             AuthProvider = "Development",
-            ProviderUserId = "dev-provider-id",
+            ProviderUserId = devUserId,
             CreatedAt = DateTime.UtcNow,
             LastLoginAt = DateTime.UtcNow
         };

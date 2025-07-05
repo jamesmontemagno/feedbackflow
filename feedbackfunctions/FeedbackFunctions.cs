@@ -21,6 +21,7 @@ using SharedDump.Services.Interfaces;
 using FeedbackFunctions.Services.Authentication;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
+using SharedDump.Models.Account;
 
 namespace FeedbackFunctions;
 
@@ -95,6 +96,7 @@ public class FeedbackFunctions
     /// </remarks>
     [Function("GetGitHubFeedback")]
     [Authorize]
+    [UsageValidation(UsageType = SharedDump.Models.Account.UsageType.FeedQuery)]
     public async Task<HttpResponseData> GetGitHubFeedback(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
@@ -258,6 +260,7 @@ public class FeedbackFunctions
     /// </remarks>
     [Function("GetHackerNewsFeedback")]
     [Authorize]
+    [UsageValidation(UsageType = SharedDump.Models.Account.UsageType.FeedQuery)]
     public async Task<HttpResponseData> GetHackerNewsFeedback(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
@@ -307,6 +310,7 @@ public class FeedbackFunctions
 
     [Function("GetYouTubeFeedback")]
     [Authorize]
+    [UsageValidation(UsageType = SharedDump.Models.Account.UsageType.FeedQuery)]
     public async Task<HttpResponseData> GetYouTubeFeedback(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
@@ -378,6 +382,7 @@ public class FeedbackFunctions
 
     [Function("GetRedditFeedback")]
     [Authorize]
+    [UsageValidation(UsageType = SharedDump.Models.Account.UsageType.FeedQuery)]
     public async Task<HttpResponseData> GetRedditFeedback(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
@@ -437,6 +442,7 @@ public class FeedbackFunctions
 
     [Function("GetDevBlogsFeedback")]
     [Authorize]
+    [UsageValidation(UsageType = SharedDump.Models.Account.UsageType.FeedQuery)]
     public async Task<HttpResponseData> GetDevBlogsFeedback(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
@@ -501,6 +507,7 @@ public class FeedbackFunctions
     /// </remarks>
     [Function("AnalyzeComments")]
     [Authorize]
+    [UsageValidation(UsageType = SharedDump.Models.Account.UsageType.Analysis)]
     public async Task<HttpResponseData> AnalyzeComments(
         [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
@@ -545,58 +552,10 @@ public class FeedbackFunctions
         }
     }
 
-    [Function("AnalyzeCommentsBYOK")]
-    public async Task<HttpResponseData> AnalyzeCommentsBYOK(
-        [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
-    {
-        _logger.LogInformation("Processing BYOK comment analysis request");
 
-        try
-        {
-            var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            var request = JsonSerializer.Deserialize(requestBody, FeedbackJsonContext.Default.AnalyzeCommentsBYOKRequest);
-
-            if (string.IsNullOrEmpty(request?.Comments))
-            {
-                var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await badResponse.WriteStringAsync("Comments JSON is required");
-                return badResponse;
-            }
-
-            if (string.IsNullOrEmpty(request.Endpoint) || string.IsNullOrEmpty(request.ApiKey) || string.IsNullOrEmpty(request.Deployment))
-            {
-                var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await badResponse.WriteStringAsync("Azure OpenAI configuration (endpoint, apiKey, deployment) is required");
-                return badResponse;
-            }
-
-            var analyzerService = new FeedbackAnalyzerService(request.Endpoint, request.ApiKey, request.Deployment);
-            
-            var analysisBuilder = new System.Text.StringBuilder();
-            await foreach (var update in analyzerService.GetStreamingAnalysisAsync(
-                request.ServiceType, 
-                request.Comments,
-                request.SystemPrompt))
-            {
-                analysisBuilder.Append(update);
-            }
-
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            await response.WriteStringAsync(analysisBuilder.ToString());
-            return response;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error processing BYOK comment analysis request");
-            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await response.WriteStringAsync("An error occurred processing the request");
-            return response;
-        }
-    }
-
-   
     [Function("GetTwitterFeedback")]
     [Authorize]
+    [UsageValidation(UsageType = SharedDump.Models.Account.UsageType.FeedQuery)]
     public async Task<HttpResponseData> GetTwitterFeedback(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
@@ -640,6 +599,7 @@ public class FeedbackFunctions
 
     [Function("GetBlueSkyFeedback")]
     [Authorize]
+    [UsageValidation(UsageType = SharedDump.Models.Account.UsageType.FeedQuery)]
     public async Task<HttpResponseData> GetBlueSkyFeedback(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
@@ -683,7 +643,6 @@ public class FeedbackFunctions
             return response;
         }
     }
-    
 
 }
 
@@ -697,25 +656,4 @@ public class AnalyzeCommentsRequest
 
     [JsonPropertyName("customPrompt")]
     public string? CustomPrompt { get; set; }
-}
-
-public class AnalyzeCommentsBYOKRequest
-{
-    [JsonPropertyName("comments")]
-    public string Comments { get; set; } = string.Empty;
-    
-    [JsonPropertyName("serviceType")]
-    public string ServiceType { get; set; } = string.Empty;
-
-    [JsonPropertyName("endpoint")]
-    public string Endpoint { get; set; } = string.Empty;
-
-    [JsonPropertyName("apiKey")]
-    public string ApiKey { get; set; } = string.Empty;
-
-    [JsonPropertyName("deployment")]
-    public string Deployment { get; set; } = string.Empty;
-
-    [JsonPropertyName("systemPrompt")]
-    public string? SystemPrompt { get; set; }
 }

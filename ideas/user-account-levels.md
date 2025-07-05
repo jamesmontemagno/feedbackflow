@@ -7,14 +7,14 @@ Implement a tiered user account system with usage limits and tracking to enable 
 
 ### Free Tier
 - **Monthly Analysis Limit**: 10 analyses per month
-- **Report Tracking Limit**: 2 active reports
+- **Report Tracking Limit**: 1 active reports
 - **Feed Query Limit**: 20 feed queries per month
 - **Features**: Basic analysis, no support
 - **Price**: Free
 
 ### Pro Tier
 - **Monthly Analysis Limit**: 75 analyses per month
-- **Report Tracking Limit**: 10 active reports
+- **Report Tracking Limit**: 5 active reports
 - **Feed Query Limit**: 200 feed queries per month
 - **Features**: All Free features + priority processing + basic support
 - **Price**: $9.99/month
@@ -84,26 +84,38 @@ public enum UsageType
 ### 2. Configuration Management
 
 #### Environment Variables
+```json
+{
+  "AccountTiers": {
+    "Free": {
+      "AnalysisLimit": "10",
+      "ReportLimit": "1", 
+      "FeedQueryLimit": "20"
+    },
+    "Pro": {
+      "AnalysisLimit": "75",
+      "ReportLimit": "5",
+      "FeedQueryLimit": "200"
+    },
+    "ProPlus": {
+      "AnalysisLimit": "300",
+      "ReportLimit": "25",
+      "FeedQueryLimit": "1000"
+    }
+  },
+  "Usage": {
+    "ResetPeriodDays": "30",
+    "EnableTracking": "true"
+  },
+  "Development": {
+    "UserId": "dev-user-demo",
+    "Email": "demo@feedbackflow.dev",
+    "Name": "Demo Development User"
+  }
+}
 ```
-# Free Tier Limits
-FREE_TIER_ANALYSIS_LIMIT=10
-FREE_TIER_REPORT_LIMIT=5
-FREE_TIER_FEED_QUERY_LIMIT=20
 
-# Pro Tier Limits
-PRO_TIER_ANALYSIS_LIMIT=100
-PRO_TIER_REPORT_LIMIT=25
-PRO_TIER_FEED_QUERY_LIMIT=200
-
-# Pro+ Tier Limits
-PROPLUS_TIER_ANALYSIS_LIMIT=500
-PROPLUS_TIER_REPORT_LIMIT=100
-PROPLUS_TIER_FEED_QUERY_LIMIT=1000
-
-# System Settings
-USAGE_RESET_PERIOD_DAYS=30
-ENABLE_USAGE_TRACKING=true
-```
+Controlled by the backend and use these as defaults that are pulled.
 
 #### Configuration Service
 ```csharp

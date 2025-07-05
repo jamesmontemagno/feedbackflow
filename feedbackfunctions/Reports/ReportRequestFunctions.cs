@@ -15,6 +15,7 @@ using FeedbackFunctions.Services.Authentication;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
 using SharedDump.Services;
+using SharedDump.Models.Account;
 
 namespace FeedbackFunctions;
 
@@ -105,6 +106,7 @@ public class ReportRequestFunctions
     /// </summary>
     [Function("AddUserReportRequest")]
     [Authorize]
+    [UsageValidation(UsageType = SharedDump.Models.Account.UsageType.ReportCreated)]
     public async Task<HttpResponseData> AddUserReportRequest(
         [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
@@ -344,6 +346,7 @@ public class ReportRequestFunctions
     /// </summary>
     [Function("RemoveUserReportRequest")]
     [Authorize]
+    [UsageValidation(UsageType = SharedDump.Models.Account.UsageType.ReportDeleted)]
     public async Task<HttpResponseData> RemoveUserReportRequest(
         [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "userreportrequest/{id}")] HttpRequestData req,
         string id)

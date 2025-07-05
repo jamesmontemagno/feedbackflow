@@ -1,0 +1,22 @@
+@namespace FeedbackWebApp.Components.Account
+@using FeedbackWebApp.Components.Account
+@using SharedDump.Models.Account
+
+<div class="usage-dashboard">
+    <div class="tier-badge tier-@UserAccount.Tier.ToString().ToLower()">
+        @UserAccount.Tier Tier
+    </div>
+    <div class="usage-metrics">
+        <UsageMetric Label="Analyses" Used="@UserAccount.AnalysesUsed" Limit="@UserAccount.AnalysisLimit" />
+        <UsageMetric Label="Reports" Used="@UserAccount.ActiveReports" Limit="@UserAccount.ReportLimit" />
+        <UsageMetric Label="Feed Queries" Used="@UserAccount.FeedQueriesUsed" Limit="@UserAccount.FeedQueryLimit" />
+    </div>
+    @if (UserAccount.Tier == AccountTier.Free)
+    {
+        <UpgradePrompt />
+    }
+</div>
+
+@code {
+    [Parameter] public UserAccount UserAccount { get; set; } = new();
+}

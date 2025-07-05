@@ -1,0 +1,14 @@
+@namespace FeedbackWebApp.Components.Account
+
+<div class="usage-metric">
+    <span class="label">@Label</span>
+    <span class="used">@Used</span>
+    <span class="divider">/</span>
+    <span class="limit">@Limit</span>
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public int Used { get; set; }
+    [Parameter] public int Limit { get; set; }
+}

@@ -11,6 +11,7 @@ using SharedDump.Services.Interfaces;
 using FeedbackFunctions.Services.Authentication;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
+using SharedDump.Models.Account;
 
 namespace FeedbackFunctions;
 
@@ -70,6 +71,7 @@ public class ContentFeedFunctions
     /// </remarks>
     [Function("GetRecentYouTubeVideos")]
     [Authorize]
+    [UsageValidation(UsageType = SharedDump.Models.Account.UsageType.FeedQuery)]
     public async Task<HttpResponseData> GetRecentYouTubeVideos(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
@@ -119,6 +121,7 @@ public class ContentFeedFunctions
 
     [Function("GetTrendingRedditThreads")]
     [Authorize]
+    [UsageValidation(UsageType = SharedDump.Models.Account.UsageType.FeedQuery)]
     public async Task<HttpResponseData> GetTrendingRedditThreads(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
@@ -172,6 +175,7 @@ public class ContentFeedFunctions
 
     [Function("SearchHackerNewsArticles")]
     [Authorize]
+    [UsageValidation(UsageType = SharedDump.Models.Account.UsageType.FeedQuery)]
     public async Task<HttpResponseData> SearchHackerNewsArticles(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req,
         [BlobInput("hackernews-cache/all.json", Connection = "ProductionStorage")] string? cachedBlob)
