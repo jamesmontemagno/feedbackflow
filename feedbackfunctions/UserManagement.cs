@@ -84,12 +84,7 @@ public class UserManagement
                     IsActive = true
                 };
 
-                // Set limits based on the Free tier
-                var limits = _limitsService.GetLimitsForTier(AccountTier.Free);
-                userAccount.AnalysisLimit = limits.AnalysisLimit;
-                userAccount.ReportLimit = limits.ReportLimit;
-                userAccount.FeedQueryLimit = limits.FeedQueryLimit;
-
+                // Limits are now calculated dynamically based on tier
                 // Convert to entity and save to the database
                 var entity = new UserAccountEntity
                 {
@@ -99,9 +94,6 @@ public class UserManagement
                     AnalysesUsed = userAccount.AnalysesUsed,
                     ActiveReports = userAccount.ActiveReports,
                     FeedQueriesUsed = userAccount.FeedQueriesUsed,
-                    AnalysisLimit = userAccount.AnalysisLimit,
-                    ReportLimit = userAccount.ReportLimit,
-                    FeedQueryLimit = userAccount.FeedQueryLimit,
                     CreatedAt = userAccount.CreatedAt,
                     LastResetDate = userAccount.LastResetDate,
                     SubscriptionStart = userAccount.SubscriptionStart,
@@ -330,9 +322,6 @@ public class UserManagement
                 AnalysesUsed = userAccount.AnalysesUsed,
                 ActiveReports = userAccount.ActiveReports,
                 FeedQueriesUsed = userAccount.FeedQueriesUsed,
-                AnalysisLimit = userAccount.AnalysisLimit,
-                ReportLimit = userAccount.ReportLimit,
-                FeedQueryLimit = userAccount.FeedQueryLimit,
                 CreatedAt = userAccount.CreatedAt,
                 LastResetDate = userAccount.LastResetDate,
                 SubscriptionStart = userAccount.SubscriptionStart,

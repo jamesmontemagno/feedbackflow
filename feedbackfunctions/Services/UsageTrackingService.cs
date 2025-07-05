@@ -35,8 +35,7 @@ namespace FeedbackFunctions.Services
             var userEntity = await _userAccountTable.GetUserAccountAsync(DefaultUserId);
             if (userEntity == null)
             {
-                // Create a default user account
-                var limits = _limitsService.GetLimitsForTier(AccountTier.Free);
+                // Create a default user account without limits (they'll be calculated dynamically)
                 var defaultUser = new UserAccountEntity
                 {
                     PartitionKey = DefaultUserId,
@@ -49,14 +48,14 @@ namespace FeedbackFunctions.Services
                     AnalysesUsed = 0,
                     FeedQueriesUsed = 0,
                     ActiveReports = 0,
-                    AnalysisLimit = limits.AnalysisLimit,
-                    ReportLimit = limits.ReportLimit,
-                    FeedQueryLimit = limits.FeedQueryLimit,
                     PreferredEmail = string.Empty
                 };
                 await _userAccountTable.UpsertUserAccountAsync(defaultUser);
                 userEntity = defaultUser;
             }
+
+            // Get limits dynamically based on tier
+            var limits = _limitsService.GetLimitsForTier((AccountTier)userEntity.Tier);
 
             return new UserAccount
             {
@@ -70,24 +69,22 @@ namespace FeedbackFunctions.Services
                 AnalysesUsed = userEntity.AnalysesUsed,
                 FeedQueriesUsed = userEntity.FeedQueriesUsed,
                 ActiveReports = userEntity.ActiveReports,
-                AnalysisLimit = userEntity.AnalysisLimit,
-                ReportLimit = userEntity.ReportLimit,
-                FeedQueryLimit = userEntity.FeedQueryLimit,
                 PreferredEmail = userEntity.PreferredEmail
             };
         }
 
-        public async Task RefreshUsageLimitsAsync()
+        public async Task<AccountLimits> GetUserLimitsAsync()
         {
             var userEntity = await _userAccountTable.GetUserAccountAsync(DefaultUserId);
-            if (userEntity != null)
-            {
-                var limits = _limitsService.GetLimitsForTier((AccountTier)userEntity.Tier);
-                userEntity.AnalysisLimit = limits.AnalysisLimit;
-                userEntity.ReportLimit = limits.ReportLimit;
-                userEntity.FeedQueryLimit = limits.FeedQueryLimit;
-                await _userAccountTable.UpsertUserAccountAsync(userEntity);
-            }
+            var tier = userEntity != null ? (AccountTier)userEntity.Tier : AccountTier.Free;
+            return _limitsService.GetLimitsForTier(tier);
+        }
+
+        public async Task RefreshUsageLimitsAsync()
+        {
+            // Limits are now calculated dynamically based on tier
+            // No need to update stored limits as they don't exist anymore
+            await Task.CompletedTask;
         }
     }
 }

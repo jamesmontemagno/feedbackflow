@@ -34,10 +34,7 @@ namespace FeedbackFlow.Tests
                 LastResetDate = DateTime.UtcNow,
                 AnalysesUsed = 1,
                 FeedQueriesUsed = 2,
-                ActiveReports = 3,
-                AnalysisLimit = 10,
-                ReportLimit = 5,
-                FeedQueryLimit = 20
+                ActiveReports = 3
             };
             await _service.UpsertUserAccountAsync(entity);
             var retrieved = await _service.GetUserAccountAsync("testuser");

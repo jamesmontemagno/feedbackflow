@@ -77,9 +77,9 @@ namespace SharedDump.Services.Account
             var limits = GetLimitsForTier((AccountTier)user.Tier);
             bool withinLimit = usageType switch
             {
-                UsageType.Analysis => user.AnalysesUsed < user.AnalysisLimit,
-                UsageType.FeedQuery => user.FeedQueriesUsed < user.FeedQueryLimit,
-                UsageType.ReportCreated => user.ActiveReports < user.ReportLimit,
+                UsageType.Analysis => user.AnalysesUsed < limits.AnalysisLimit,
+                UsageType.FeedQuery => user.FeedQueriesUsed < limits.FeedQueryLimit,
+                UsageType.ReportCreated => user.ActiveReports < limits.ReportLimit,
                 _ => true
             };
 
@@ -102,7 +102,6 @@ namespace SharedDump.Services.Account
             if (user == null) 
             {
                 // Create default user if not exists
-                var defaultLimits = GetLimitsForTier(AccountTier.Free);
                 user = new UserAccountEntity
                 {
                     PartitionKey = userId,
@@ -114,10 +113,7 @@ namespace SharedDump.Services.Account
                     LastResetDate = DateTime.UtcNow,
                     AnalysesUsed = 0,
                     FeedQueriesUsed = 0,
-                    ActiveReports = 0,
-                    AnalysisLimit = defaultLimits.AnalysisLimit,
-                    ReportLimit = defaultLimits.ReportLimit,
-                    FeedQueryLimit = defaultLimits.FeedQueryLimit
+                    ActiveReports = 0
                 };
             }
 

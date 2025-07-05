@@ -8,6 +8,7 @@ namespace SharedDump.Services.Account
         Task<bool> CanPerformActionAsync(UsageType usageType);
         Task TrackActionAsync(UsageType usageType, string? resourceId = null);
         Task<UserAccount> GetUserAccountAsync();
+        Task<AccountLimits> GetUserLimitsAsync();
         Task RefreshUsageLimitsAsync();
     }
 }

@@ -20,9 +20,6 @@ namespace SharedDump.Models.Account
         public int AnalysesUsed { get; set; }
         public int FeedQueriesUsed { get; set; }
         public int ActiveReports { get; set; }
-        public int AnalysisLimit { get; set; }
-        public int ReportLimit { get; set; }
-        public int FeedQueryLimit { get; set; }
         public string PreferredEmail { get; set; } = string.Empty;
     }
 

@@ -1,22 +1,45 @@
 @namespace FeedbackWebApp.Components.Account
 @using FeedbackWebApp.Components.Account
 @using SharedDump.Models.Account
+@using SharedDump.Services.Account
+@inject IAccountLimitsService AccountLimitsService
 
 <div class="usage-dashboard">
-    <div class="tier-badge tier-@UserAccount.Tier.ToString().ToLower()">
-        @UserAccount.Tier Tier
+    <div class="tier-badge tier-@userAccount.Tier.ToString().ToLower()">
+        @userAccount.Tier Tier
     </div>
     <div class="usage-metrics">
-        <UsageMetric Label="Analyses" Used="@UserAccount.AnalysesUsed" Limit="@UserAccount.AnalysisLimit" />
-        <UsageMetric Label="Reports" Used="@UserAccount.ActiveReports" Limit="@UserAccount.ReportLimit" />
-        <UsageMetric Label="Feed Queries" Used="@UserAccount.FeedQueriesUsed" Limit="@UserAccount.FeedQueryLimit" />
+        @if (limits != null)
+        {
+            <UsageMetric Label="Analyses" Used="@userAccount.AnalysesUsed" Limit="@limits.AnalysisLimit" />
+            <UsageMetric Label="Reports" Used="@userAccount.ActiveReports" Limit="@limits.ReportLimit" />
+            <UsageMetric Label="Feed Queries" Used="@userAccount.FeedQueriesUsed" Limit="@limits.FeedQueryLimit" />
+        }
+        else
+        {
+            <div class="text-center py-3">
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">Loading limits...</span>
+                </div>
+            </div>
+        }
     </div>
-    @if (UserAccount.Tier == AccountTier.Free)
+    @if (userAccount.Tier == AccountTier.Free)
     {
         <UpgradePrompt />
     }
 </div>
 
 @code {
-    [Parameter] public UserAccount UserAccount { get; set; } = new();
+    [Parameter] public UserAccount userAccount { get; set; } = new();
+    
+    private AccountLimits? limits;
+
+    protected override void OnParametersSet()
+    {
+        if (userAccount != null)
+        {
+            limits = AccountLimitsService.GetLimitsForTier(userAccount.Tier);
+        }
+    }
 }

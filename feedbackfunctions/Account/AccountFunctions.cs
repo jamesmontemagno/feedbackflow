@@ -51,7 +51,7 @@ namespace FeedbackFunctions.Account
                 {
                     _logger.LogInformation("User account not found, creating new account for user {UserId}", user!.UserId);
                     
-                    // Create new user account with default Free tier
+                    // Create new user account with default Free tier (limits calculated dynamically)
                     account = new UserAccount
                     {
                         UserId = user.UserId,
@@ -65,13 +65,7 @@ namespace FeedbackFunctions.Account
                         IsActive = true
                     };
 
-                    // Set limits based on the Free tier
-                    var limits = _limitsService.GetLimitsForTier(AccountTier.Free);
-                    account.AnalysisLimit = limits.AnalysisLimit;
-                    account.ReportLimit = limits.ReportLimit;
-                    account.FeedQueryLimit = limits.FeedQueryLimit;
-
-                    // Convert to entity and save to the database
+                    // Convert to entity and save to the database (no limits stored)
                     var entity = new UserAccountEntity
                     {
                         PartitionKey = user.UserId,
@@ -80,9 +74,6 @@ namespace FeedbackFunctions.Account
                         AnalysesUsed = account.AnalysesUsed,
                         ActiveReports = account.ActiveReports,
                         FeedQueriesUsed = account.FeedQueriesUsed,
-                        AnalysisLimit = account.AnalysisLimit,
-                        ReportLimit = account.ReportLimit,
-                        FeedQueryLimit = account.FeedQueryLimit,
                         CreatedAt = account.CreatedAt,
                         LastResetDate = account.LastResetDate,
                         SubscriptionStart = account.SubscriptionStart,
