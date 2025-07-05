@@ -2,13 +2,17 @@
 @using FeedbackWebApp.Services
 @using FeedbackWebApp.Services.Authentication
 @using FeedbackWebApp.Services.Interfaces
+@using FeedbackWebApp.Components.Account
+@using SharedDump.Services.Account
+@using SharedDump.Models.Account
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Web
 @inject IUserManagementService UserManagementService
 @inject IAuthenticationService AuthService
+@inject IUsageTrackingService UsageTrackingService
 @inject IToastService ToastService
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Navigation
-
-<PageTitle>Account Settings - FeedbackFlow</PageTitle>
 
 <div class="container my-4">
     <div class="row justify-content-center">
@@ -65,6 +69,50 @@
 
                         <hr class="my-4">
 
+                        <!-- Usage Dashboard -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="text-primary mb-3">
+                                    <i class="bi bi-graph-up me-2"></i>
+                                    Current Usage
+                                </h5>
+                                @if (userAccount != null)
+                                {
+                                    <UsageDashboard UserAccount="@userAccount" />
+                                }
+                                else if (isLoadingUsage)
+                                {
+                                    <div class="text-center py-3">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading usage...</span>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-warning">
+                                        <i class="bi bi-exclamation-triangle me-2"></i>
+                                        Unable to load usage information.
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <!-- Tier Comparison -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="text-primary mb-3">
+                                    <i class="bi bi-star me-2"></i>
+                                    Available Plans
+                                </h5>
+                                <TierComparison CurrentTier="@(userAccount?.Tier ?? AccountTier.Free)" OnUpgradeRequest="@HandleUpgradeRequest" />
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
                         <!-- Email Preferences -->
                         <div class="row mb-4">
                             <div class="col-md-4">
@@ -82,7 +130,7 @@
                                                id="preferredEmail"
                                                @bind="preferredEmailInput" 
                                                @bind:event="oninput"
-                                               placeholder="@userInfo.Email (your account email)"
+                                               placeholder="@(userInfo?.Email ?? "") (your account email)"
                                                disabled="@isUpdatingEmail" />
                                         <button class="btn btn-outline-primary" 
                                                 type="button" 
@@ -109,7 +157,7 @@
                                     }
                                     <div class="form-text">
                                         <small class="text-muted">
-                                            <strong>Current:</strong> @(string.IsNullOrEmpty(userInfo.PreferredEmail) ? $"{userInfo.Email} (account email)" : userInfo.PreferredEmail)
+                                            <strong>Current:</strong> @(string.IsNullOrEmpty(userInfo?.PreferredEmail) ? $"{userInfo?.Email ?? ""} (account email)" : userInfo.PreferredEmail)
                                         </small>
                                     </div>
                                 </div>
@@ -173,7 +221,9 @@
 
 @code {
     private UserInfo? userInfo;
+    private UserAccount? userAccount;
     private bool isLoading = true;
+    private bool isLoadingUsage = true;
     private bool isDeleting = false;
     private string errorMessage = "";
     
@@ -187,6 +237,7 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadUserInfoAsync();
+        await LoadUserAccountAsync();
     }
 
     private async Task LoadUserInfoAsync()
@@ -270,6 +321,31 @@
             isLoading = false;
             StateHasChanged();
         }
+    }
+
+    private async Task LoadUserAccountAsync()
+    {
+        try
+        {
+            isLoadingUsage = true;
+            userAccount = await UsageTrackingService.GetUserAccountAsync();
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't show to user - usage dashboard will show error state
+            Console.WriteLine($"Error loading user account: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingUsage = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleUpgradeRequest(AccountTier tier)
+    {
+        await ToastService.ShowToastAsync($"Upgrade to {tier} tier coming soon!", ToastType.Info);
+        // TODO: Implement actual upgrade logic when payment system is integrated
     }
 
     private async Task ShowDeleteConfirmation()

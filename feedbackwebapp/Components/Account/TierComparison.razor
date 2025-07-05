@@ -1,0 +1,156 @@
+@namespace FeedbackWebApp.Components.Account
+@using SharedDump.Models.Account
+@using FeedbackWebApp.Services.Feedback
+@inject FeedbackServiceProvider FeedbackService
+
+<div class="tier-comparison">
+    @if (isLoading)
+    {
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading tiers...</span>
+            </div>
+        </div>
+    }
+    else if (tiers != null && tiers.Any())
+    {
+        <div class="tier-grid">
+            @foreach (var tier in tiers)
+            {
+                <div class="tier-card @(tier.Tier == CurrentTier ? "current-tier" : "")">
+                    <div class="tier-header">
+                        <h5 class="tier-name">@tier.Name</h5>
+                        <div class="tier-price">@tier.Price</div>
+                        @if (tier.Tier == CurrentTier)
+                        {
+                            <div class="current-badge">Current Plan</div>
+                        }
+                    </div>
+                    
+                    <p class="tier-description">@tier.Description</p>
+                    
+                    <div class="tier-limits">
+                        <h6>Usage Limits</h6>
+                        <ul class="limits-list">
+                            <li>
+                                <i class="bi bi-graph-up"></i>
+                                <strong>@tier.Limits.AnalysisLimit</strong> analyses per month
+                            </li>
+                            <li>
+                                <i class="bi bi-file-earmark-text"></i>
+                                <strong>@tier.Limits.ReportLimit</strong> active reports
+                            </li>
+                            <li>
+                                <i class="bi bi-search"></i>
+                                <strong>@tier.Limits.FeedQueryLimit</strong> feed queries per month
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="tier-features">
+                        <h6>Features</h6>
+                        <ul class="features-list">
+                            @foreach (var feature in tier.Features)
+                            {
+                                <li>
+                                    <i class="bi bi-check-circle text-success"></i>
+                                    @feature
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                    
+                    <div class="tier-action">
+                        @if (tier.Tier == CurrentTier)
+                        {
+                            <button class="btn btn-outline-primary" disabled>Current Plan</button>
+                        }
+                        else if (tier.Tier > CurrentTier)
+                        {
+                            <button class="btn btn-primary" @onclick="() => UpgradeToTier(tier.Tier)">
+                                Upgrade to @tier.Name
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-outline-secondary" disabled>
+                                Downgrade (Contact Support)
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            @errorMessage
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public AccountTier CurrentTier { get; set; } = AccountTier.Free;
+    [Parameter] public EventCallback<AccountTier> OnUpgradeRequest { get; set; }
+
+    private bool isLoading = true;
+    private string errorMessage = "";
+    private TierInfo[]? tiers;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTierInformationAsync();
+    }
+
+    private async Task LoadTierInformationAsync()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = "";
+
+            var response = await FeedbackService.GetTierLimitsAsync();
+            if (response?.IsSuccessStatusCode == true && response.Content != null)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                tiers = System.Text.Json.JsonSerializer.Deserialize<TierInfo[]>(content, new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+                });
+            }
+            else
+            {
+                errorMessage = "Failed to load tier information. Please try again later.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading tier information: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task UpgradeToTier(AccountTier tier)
+    {
+        if (OnUpgradeRequest.HasDelegate)
+        {
+            await OnUpgradeRequest.InvokeAsync(tier);
+        }
+    }
+
+    public class TierInfo
+    {
+        public AccountTier Tier { get; set; }
+        public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string Price { get; set; } = "";
+        public string[] Features { get; set; } = Array.Empty<string>();
+        public AccountLimits Limits { get; set; } = new();
+    }
+}

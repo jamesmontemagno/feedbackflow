@@ -109,6 +109,55 @@ namespace FeedbackFunctions.Account
                 throw;
             }
         }
+
+        [Function("GetTierLimits")]
+        public async Task<HttpResponseData> GetTierLimits(
+            [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+        {
+            _logger.LogInformation("Getting tier limits");
+
+            try
+            {
+                var tiers = new[]
+                {
+                    new { 
+                        Tier = AccountTier.Free,
+                        Name = "Free",
+                        Description = "Basic analysis, limited usage, no support",
+                        Price = "$0/month",
+                        Features = new[] { "Basic analysis", "Limited usage", "Community support" },
+                        Limits = _limitsService.GetLimitsForTier(AccountTier.Free)
+                    },
+                    new { 
+                        Tier = AccountTier.Pro,
+                        Name = "Pro",
+                        Description = "Priority processing, increased limits, basic support",
+                        Price = "$9.99/month",
+                        Features = new[] { "Priority processing", "Increased limits", "Email support", "Advanced features" },
+                        Limits = _limitsService.GetLimitsForTier(AccountTier.Pro)
+                    },
+                    new { 
+                        Tier = AccountTier.ProPlus,
+                        Name = "Pro+",
+                        Description = "Advanced analytics, email notifications, highest limits",
+                        Price = "$29.99/month",
+                        Features = new[] { "Advanced analytics", "Email notifications", "Highest limits", "Priority support", "Custom integrations" },
+                        Limits = _limitsService.GetLimitsForTier(AccountTier.ProPlus)
+                    }
+                };
+
+                var response = req.CreateResponse(HttpStatusCode.OK);
+                await response.WriteAsJsonAsync(tiers);
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting tier limits");
+                var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+                await errorResponse.WriteStringAsync("Error retrieving tier information");
+                return errorResponse;
+            }
+        }
     }
 
     public class TrackUsageRequest

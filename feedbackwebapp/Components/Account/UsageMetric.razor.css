@@ -1,82 +1,153 @@
 .usage-metric {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--background-color);
+    background: var(--card-background);
     border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-sm);
-    padding: 0.75rem 1rem;
-    transition: color 0.3s ease, background-color 0.3s ease, transform 0.2s ease;
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    box-shadow: var(--card-shadow);
+    transition: all 0.3s ease;
     position: relative;
+    overflow: hidden;
 }
 
 .usage-metric:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--card-shadow);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.15);
 }
 
-.usage-metric .label {
-    font-weight: 500;
+.usage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.usage-label {
+    font-weight: 600;
     color: var(--text-color);
-    flex: 1;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
-.usage-metric .used {
+.usage-values {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
     font-weight: 700;
     font-size: 1.1rem;
+}
+
+.usage-used {
     color: var(--primary-color);
-    margin-left: auto;
 }
 
-.usage-metric .divider {
+.usage-divider {
     color: var(--text-muted);
-    margin: 0 0.25rem;
+    margin: 0 0.2rem;
 }
 
-.usage-metric .limit {
-    font-weight: 500;
+.usage-limit {
     color: var(--text-muted);
 }
 
-.usage-metric .usage-warning {
+.usage-progress {
+    width: 100%;
+    height: 8px;
+    background: rgba(var(--border-color-rgb), 0.3);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.75rem;
+    position: relative;
+}
+
+.usage-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--success-color), var(--primary-color));
+    border-radius: 4px;
+    transition: width 0.6s ease-in-out;
+    position: relative;
+}
+
+.usage-progress-bar::after {
+    content: '';
     position: absolute;
-    bottom: 0.25rem;
-    right: 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--warning-color);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shimmer 2s infinite;
 }
 
-/* High usage warning */
-.usage-metric[data-usage-percent="high"] .used {
-    color: var(--warning-color);
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
 }
 
-.usage-metric[data-usage-percent="critical"] .used {
-    color: var(--danger-color);
+.usage-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
 }
 
-.usage-metric[data-usage-percent="critical"] {
-    border-color: rgba(var(--danger-color-rgb), 0.3);
-    background-color: rgba(var(--danger-color-rgb), 0.05);
+.usage-status i {
+    font-size: 1rem;
+}
+
+/* Progress bar color variations based on usage */
+.usage-metric:has(.text-warning) .usage-progress-bar {
+    background: linear-gradient(90deg, var(--warning-color), var(--danger-color));
+}
+
+.usage-metric:has(.text-danger) .usage-progress-bar {
+    background: var(--danger-color);
+}
+
+/* Light/Dark theme adjustments */
+[data-theme="dark"] .usage-metric {
+    background: rgba(var(--card-background-rgb), 0.8);
+    backdrop-filter: blur(10px);
+}
+
+[data-theme="dark"] .usage-progress {
+    background: rgba(var(--text-color-rgb), 0.1);
 }
 
 /* Responsive adjustments */
-@media (max-width: 480px) {
+@media (max-width: 768px) {
     .usage-metric {
-        padding: 0.5rem 0.75rem;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.25rem;
+        padding: 0.75rem;
     }
     
-    .usage-metric .used {
-        margin-left: 0;
+    .usage-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .usage-values {
         font-size: 1rem;
     }
     
-    .usage-metric .usage-warning {
-        position: static;
-        margin-top: 0.25rem;
+    .usage-label {
+        font-size: 0.8rem;
+    }
+    
+    .usage-status {
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .usage-metric {
+        padding: 0.5rem;
+    }
+    
+    .usage-progress {
+        height: 6px;
+        margin-bottom: 0.5rem;
     }
 }

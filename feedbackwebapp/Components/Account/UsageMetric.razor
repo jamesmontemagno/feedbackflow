@@ -1,14 +1,42 @@
 @namespace FeedbackWebApp.Components.Account
 
 <div class="usage-metric">
-    <span class="label">@Label</span>
-    <span class="used">@Used</span>
-    <span class="divider">/</span>
-    <span class="limit">@Limit</span>
+    <div class="usage-header">
+        <span class="usage-label">@Label</span>
+        <span class="usage-values">
+            <span class="usage-used">@Used</span>
+            <span class="usage-divider">/</span>
+            <span class="usage-limit">@Limit</span>
+        </span>
+    </div>
+    <div class="usage-progress">
+        <div class="usage-progress-bar" style="width: @ProgressPercentage%"></div>
+    </div>
+    <div class="usage-status">
+        @if (IsNearLimit)
+        {
+            <i class="bi bi-exclamation-triangle text-warning"></i>
+            <span class="text-warning">Near limit</span>
+        }
+        else if (IsAtLimit)
+        {
+            <i class="bi bi-x-circle text-danger"></i>
+            <span class="text-danger">Limit reached</span>
+        }
+        else
+        {
+            <i class="bi bi-check-circle text-success"></i>
+            <span class="text-success">Available</span>
+        }
+    </div>
 </div>
 
 @code {
     [Parameter] public string Label { get; set; } = string.Empty;
     [Parameter] public int Used { get; set; }
     [Parameter] public int Limit { get; set; }
+
+    private double ProgressPercentage => Limit > 0 ? Math.Min((double)Used / Limit * 100, 100) : 0;
+    private bool IsAtLimit => Used >= Limit;
+    private bool IsNearLimit => !IsAtLimit && ProgressPercentage >= 80;
 }
