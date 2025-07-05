@@ -14,7 +14,7 @@
                 </h5>
                 <button type="button" 
                         class="btn-close" 
-                        @onclick="OnCancel" 
+                        @onclick="HandleCancelClick" 
                         aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -51,12 +51,12 @@
             <div class="modal-footer">
                 <button type="button" 
                         class="btn btn-secondary" 
-                        @onclick="OnCancel">
+                        @onclick="HandleCancelClick">
                     Keep Private
                 </button>
                 <button type="button" 
                         class="btn btn-warning" 
-                        @onclick="OnConfirm"
+                        @onclick="HandleConfirmClick"
                         disabled="@(!ConfirmUnderstanding || IsProcessing)">
                     @if (IsProcessing)
                     {
@@ -81,6 +81,12 @@
     /// </summary>
     [Parameter]
     public bool IsVisible { get; set; } = false;
+
+    /// <summary>
+    /// Callback for two-way binding of IsVisible
+    /// </summary>
+    [Parameter]
+    public EventCallback<bool> IsVisibleChanged { get; set; }
 
     /// <summary>
     /// Whether a processing operation is in progress
@@ -112,6 +118,28 @@
 
     private async Task HandleBackdropClick()
     {
+        await SetVisibilityAsync(false);
         await OnCancel.InvokeAsync();
+    }
+
+    private async Task HandleCancelClick()
+    {
+        await SetVisibilityAsync(false);
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task HandleConfirmClick()
+    {
+        await OnConfirm.InvokeAsync();
+        // Note: Don't set visibility to false here - let the parent handle it
+    }
+
+    private async Task SetVisibilityAsync(bool visible)
+    {
+        if (IsVisible != visible)
+        {
+            IsVisible = visible;
+            await IsVisibleChanged.InvokeAsync(visible);
+        }
     }
 }
