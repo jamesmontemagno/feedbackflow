@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using FeedbackWebApp.Services.Authentication;
 using FeedbackWebApp.Services.Interfaces;
 using FeedbackWebApp.Services.Mock;
 using Microsoft.Extensions.Caching.Memory;
@@ -26,6 +27,7 @@ public class SharedHistoryServiceProvider : ISharedHistoryServiceProvider
     private readonly IMemoryCache _memoryCache;
     private readonly ILogger<SharedHistoryService> _logger;
     private readonly ILogger<MockSharedHistoryService> _mockLogger;
+    private readonly IAuthenticationHeaderService _authHeaderService;
     private readonly bool _useMockService;
 
     public SharedHistoryServiceProvider(
@@ -33,13 +35,15 @@ public class SharedHistoryServiceProvider : ISharedHistoryServiceProvider
         IConfiguration configuration,
         IMemoryCache memoryCache,
         ILogger<SharedHistoryService> logger,
-        ILogger<MockSharedHistoryService> mockLogger)
+        ILogger<MockSharedHistoryService> mockLogger,
+        IAuthenticationHeaderService authHeaderService)
     {
         _httpClientFactory = httpClientFactory;
         _configuration = configuration;
         _memoryCache = memoryCache;
         _logger = logger;
         _mockLogger = mockLogger;
+        _authHeaderService = authHeaderService;
         _useMockService = configuration.GetValue<bool>("FeedbackApi:UseMocks", false);
     }
 
@@ -48,7 +52,7 @@ public class SharedHistoryServiceProvider : ISharedHistoryServiceProvider
         if (_useMockService)
             return new MockSharedHistoryService(_mockLogger);
 
-        return new SharedHistoryService(_httpClientFactory, _logger, _configuration, _memoryCache);
+        return new SharedHistoryService(_httpClientFactory, _logger, _configuration, _memoryCache, _authHeaderService);
     }
 }
 
@@ -65,6 +69,7 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
     private readonly HttpClient _httpClient;
     private readonly ILogger<SharedHistoryService> _logger;
     private readonly IMemoryCache _memoryCache;
+    private readonly IAuthenticationHeaderService _authHeaderService;
     protected readonly string BaseUrl;
     protected readonly IConfiguration Configuration;
 
@@ -78,16 +83,41 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
         IHttpClientFactory httpClientFactory,
         ILogger<SharedHistoryService> logger,
         IConfiguration configuration,
-        IMemoryCache memoryCache)
+        IMemoryCache memoryCache,
+        IAuthenticationHeaderService authHeaderService)
     {
         _httpClient = httpClientFactory.CreateClient("DefaultClient");
         _logger = logger;
         _memoryCache = memoryCache;
+        _authHeaderService = authHeaderService;
 
         // Get base URLs from configuration
         Configuration = configuration;
         BaseUrl = Configuration?["FeedbackApi:BaseUrl"] 
             ?? throw new InvalidOperationException("API base URL not configured");
+    }
+
+    /// <summary>
+    /// Create an HTTP request message with authentication headers
+    /// </summary>
+    private async Task<HttpRequestMessage> CreateAuthenticatedRequestAsync(HttpMethod method, string url)
+    {
+        var request = new HttpRequestMessage(method, url);
+        await _authHeaderService.AddAuthenticationHeadersAsync(request);
+        return request;
+    }
+
+    /// <summary>
+    /// Create an HTTP request message with authentication headers and content
+    /// </summary>
+    private async Task<HttpRequestMessage> CreateAuthenticatedRequestAsync(HttpMethod method, string url, HttpContent content)
+    {
+        var request = new HttpRequestMessage(method, url)
+        {
+            Content = content
+        };
+        await _authHeaderService.AddAuthenticationHeadersAsync(request);
+        return request;
     }
 
     public async Task<List<SharedAnalysisEntity>> GetUsersSavedAnalysesAsync()
@@ -107,7 +137,9 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
                 ?? throw new InvalidOperationException("FunctionsKey not configured");
 
             var url = $"{BaseUrl}/api/GetUsersSavedAnalysis?code={Uri.EscapeDataString(functionsKey)}";
-            var response = await _httpClient.GetAsync(url);
+            
+            var request = await CreateAuthenticatedRequestAsync(HttpMethod.Get, url);
+            var response = await _httpClient.SendAsync(request);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -153,7 +185,9 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
                 ?? throw new InvalidOperationException("FunctionsKey not configured");
 
             var url = $"{BaseUrl}/api/DeleteSharedAnalysis/{id}?code={Uri.EscapeDataString(functionsKey)}";
-            var response = await _httpClient.DeleteAsync(url);
+            
+            var request = await CreateAuthenticatedRequestAsync(HttpMethod.Delete, url);
+            var response = await _httpClient.SendAsync(request);
 
             if (response.IsSuccessStatusCode)
             {
@@ -204,7 +238,9 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
                     ?? throw new InvalidOperationException("GetSharedAnalysisCode API code not configured");
 
                 var getSharedPath = $"{BaseUrl}/api/GetSharedAnalysis/{id}?code={Uri.EscapeDataString(getSharedAnalysisCode)}";
-                var response = await _httpClient.GetAsync(getSharedPath);
+                
+                var request = await CreateAuthenticatedRequestAsync(HttpMethod.Get, getSharedPath);
+                var response = await _httpClient.SendAsync(request);
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -303,7 +339,8 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
 
             var saveSharedAnalysisUrl = $"{BaseUrl}/api/SaveSharedAnalysis?code={Uri.EscapeDataString(saveSharedAnalysisCode)}";
 
-            var response = await _httpClient.PostAsync(saveSharedAnalysisUrl, content);
+            var request = await CreateAuthenticatedRequestAsync(HttpMethod.Post, saveSharedAnalysisUrl, content);
+            var response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             
             var responseContent = await response.Content.ReadAsStringAsync();
@@ -352,7 +389,9 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
                 ?? throw new InvalidOperationException("FunctionsKey not configured");
 
             var url = $"{BaseUrl}/api/UpdateAnalysisVisibility/{analysisId}?code={Uri.EscapeDataString(functionsKey)}";
-            var response = await _httpClient.PatchAsync(url, content);
+            
+            var request = await CreateAuthenticatedRequestAsync(HttpMethod.Patch, url, content);
+            var response = await _httpClient.SendAsync(request);
 
             if (response.IsSuccessStatusCode)
             {
