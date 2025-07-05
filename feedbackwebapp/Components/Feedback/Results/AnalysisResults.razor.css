@@ -42,6 +42,52 @@
     border-radius: var(--border-radius-sm);
 }
 
+/* Visibility toggle styling in action bar */
+.card-header .d-flex.gap-2 {
+    align-items: center;
+}
+
+.card-header .d-flex.gap-2 .btn {
+    white-space: nowrap;
+}
+
+/* Make sure the toggle doesn't get too cramped on mobile */
+@media (max-width: 576px) {
+    .card-header .d-flex.gap-2 {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem !important;
+    }
+    
+    .card-header .d-flex.gap-2 .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Action button improvements */
+.action-btn {
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.action-btn:disabled {
+    transform: none;
+    box-shadow: none;
+    opacity: 0.6;
+}
+
+.action-btn .spinner-border-sm {
+    width: 0.875rem;
+    height: 0.875rem;
+}
+
 /* Markdown specific styles */
 .markdown-body h1,
 .markdown-body h2,

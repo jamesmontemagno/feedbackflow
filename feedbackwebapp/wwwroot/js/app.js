@@ -125,6 +125,77 @@ function downloadFile(dataUrl, fileName) {
 
 window.downloadFile = downloadFile;
 
+// Easy Auth utility function - simplified for server-side authentication
+async function fetchAuthMe() {
+    try {
+        console.log('fetchAuthMe: Starting request to /.auth/me');
+        
+        const response = await fetch('/.auth/me', {
+            method: 'GET',
+            credentials: 'include', // Include cookies for authentication
+            headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            }
+        });
+        
+        console.log('fetchAuthMe: Response status:', response.status);
+        
+        if (!response.ok) {
+            console.warn('fetchAuthMe: Auth check failed with status:', response.status);
+            return null;
+        }
+        
+        const text = await response.text();
+        console.log('fetchAuthMe: Response text:', text);
+        return text;
+    } catch (error) {
+        console.error('fetchAuthMe: Error fetching auth info:', error);
+        return null;
+    }
+}
+
+window.fetchAuthMe = fetchAuthMe;
+
+// Enhanced debug function for detailed auth info
+async function fetchAuthMeDetailed() {
+    try {
+        const startTime = performance.now();
+        
+        const response = await fetch('/.auth/me', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            }
+        });
+        
+        const endTime = performance.now();
+        const text = await response.text();
+        
+        return {
+            success: true,
+            status: response.status,
+            statusText: response.statusText,
+            headers: Object.fromEntries(response.headers.entries()),
+            body: text,
+            timing: endTime - startTime,
+            cookies: document.cookie,
+            url: response.url
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message,
+            stack: error.stack,
+            cookies: document.cookie
+        };
+    }
+}
+
+window.fetchAuthMeDetailed = fetchAuthMeDetailed;
+
 document.addEventListener('DOMContentLoaded', async () => {
     // Add the toast container to the DOM if it doesn't exist
     if (!document.getElementById('toast-container')) {

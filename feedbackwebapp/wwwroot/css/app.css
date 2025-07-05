@@ -1,11 +1,13 @@
 :root {
     /* Light theme (default) - Darker Pastel Purple Theme */
     --bg-primary: #f7f4ff;
-    --bg-secondary: #ffffff;    --bg-secondary-rgb: 255, 255, 255;
+    --bg-secondary: #ffffff;
+    --bg-secondary-rgb: 255, 255, 255;
     --text-primary: #2d2649;
     --text-secondary: #5d5777;
     --text-secondary-rgb: 93, 87, 119;
     --border-color: #d5cbe9;
+    --border-color-rgb: 213, 203, 233;
     --dark-border-color: #b3a5d4;
     --hover-bg: rgba(142, 115, 200, 0.08);
     --card-shadow: 0 0.25rem 1rem rgba(121, 91, 170, 0.12);
@@ -23,6 +25,7 @@
     --info-color: #a2c1f3;
     --info-color-rgb: 162, 193, 243;
     --code-bg: rgba(142, 115, 200, 0.12);
+    --code-color: #6c4a7d;
     --bs-secondary: #5d5777;
     --border-radius: 16px;
     --border-radius-sm: 12px;
@@ -31,15 +34,26 @@
     --platform-pill-bg: var(--bg-secondary);
     --platform-pill-border: var(--border-color);
     --platform-pill-text: var(--text-secondary);
+    
+    /* Additional variables for components */
+    --card-bg: var(--bg-secondary);
+    --card-bg-rgb: var(--bg-secondary-rgb);
+    --secondary-bg: #f1ebff;
+    --secondary-bg-rgb: 241, 235, 255;
+    --input-bg: var(--bg-secondary);
+    --link-color: var(--primary-color);
+    --link-hover-color: var(--primary-hover);
 }
 
 [data-theme="dark"] {
     --bg-primary: #16121f;
     --bg-secondary: #201729;
-    --bg-secondary-rgb: 32, 23, 41;    --text-primary: #f5f3ff;
+    --bg-secondary-rgb: 32, 23, 41;
+    --text-primary: #f5f3ff;
     --text-secondary: #c8c0e7;
     --text-secondary-rgb: 200, 192, 231;
     --border-color: #3e3363;
+    --border-color-rgb: 62, 51, 99;
     --dark-border-color: #4d3f77;
     --hover-bg: rgba(167, 140, 218, 0.12);
     --card-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.25);
@@ -57,10 +71,20 @@
     --info-color: #85a5e7;
     --info-color-rgb: 133, 165, 231;
     --code-bg: rgba(165, 139, 216, 0.15);
+    --code-color: #c8b5e8;
     --bs-secondary: #c8c0e7;
     --platform-pill-bg: var(--bg-secondary);
     --platform-pill-border: var(--border-color);
     --platform-pill-text: var(--text-secondary);
+    
+    /* Additional variables for components */
+    --card-bg: var(--bg-secondary);
+    --card-bg-rgb: var(--bg-secondary-rgb);
+    --secondary-bg: #2a1e35;
+    --secondary-bg-rgb: 42, 30, 53;
+    --input-bg: var(--bg-secondary);
+    --link-color: var(--primary-color);
+    --link-hover-color: var(--primary-hover);
 }
 
 /* Base styles */

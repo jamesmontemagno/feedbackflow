@@ -12,7 +12,7 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 - **Restore dependencies**: `dotnet restore FeedbackFlow.slnx`
 
 ### Development Workflow
-- **Run full application** (recommended): `cd FeedbackFlow.AppHost && dotnet run`
+- **Run full application with the aspire CLI** (recommended): `aspire run`
 - **Build functions only**: Available as VS Code task "build (functions)"
 - **Run functions standalone**: Available as VS Code task with func host
 - **Clean build**: Available as VS Code task "clean (functions)"

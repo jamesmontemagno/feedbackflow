@@ -2,6 +2,7 @@ using SharedDump.Models.Reddit;
 using System.Text.Json;
 using SharedDump.Utils;
 using FeedbackWebApp.Services.Interfaces;
+using FeedbackWebApp.Services.Authentication;
 
 namespace FeedbackWebApp.Services.Feedback;
 
@@ -14,8 +15,9 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
         IHttpClientFactory http,
         IConfiguration configuration,
         UserSettingsService userSettings,
+        IAuthenticationHeaderService authHeaderService,
         FeedbackStatusUpdate? onStatusUpdate = null)
-        : base(http, configuration, userSettings, onStatusUpdate)
+        : base(http, configuration, userSettings, authHeaderService, onStatusUpdate)
     {
         _threadId = threadId;
     }
@@ -44,7 +46,7 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
 
         // Get comments from the Reddit API
         var getFeedbackUrl = $"{BaseUrl}/api/GetRedditFeedback?code={Uri.EscapeDataString(redditCode)}&threads={Uri.EscapeDataString(processedId)}&maxComments={maxComments}";
-        var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
+        var feedbackResponse = await SendAuthenticatedRequestAsync(HttpMethod.Get, getFeedbackUrl);
         feedbackResponse.EnsureSuccessStatusCode();
         
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();

@@ -14,9 +14,11 @@ using SharedDump.Models.YouTube;
 using SharedDump.Services;
 using SharedDump.Services.Interfaces;
 using SharedDump.Services.Mock;
+using SharedDump.Services.Authentication;
 using System.Configuration;
 using Azure.Storage.Blobs;
 using FeedbackFunctions.Services;
+using FeedbackFunctions.Services.Authentication;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
@@ -39,12 +41,16 @@ throwIfNullOrEmpty = true;
 // Register HTTP client factory
 builder.Services.AddHttpClient();
 
+// Register authentication services
+builder.Services.AddScoped<IAuthUserTableService, AuthUserTableService>();
+builder.Services.AddScoped<AuthenticationMiddleware>();
+
 // Register blob storage and cache services
 builder.Services.AddSingleton<IReportCacheService>(serviceProvider =>
 {
     var configuration = GetConfig(serviceProvider);
     var logger = serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ReportCacheService>>();
-    var storageConnection = configuration["AzureWebJobsStorage"] ?? throw new InvalidOperationException("Storage connection string not configured");
+    var storageConnection = configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
     var serviceClient = new BlobServiceClient(storageConnection);
     var containerClient = serviceClient.GetBlobContainerClient("reports");
     containerClient.CreateIfNotExists();

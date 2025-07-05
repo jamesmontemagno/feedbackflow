@@ -12,6 +12,8 @@
     <PackageReference Include="CsvHelper" />
     <PackageReference Include="Microsoft.Extensions.AI" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Markdig"/>
     <PackageReference Include="QuestPDF" />
   </ItemGroup>

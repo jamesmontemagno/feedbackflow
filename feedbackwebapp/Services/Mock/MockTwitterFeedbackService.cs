@@ -1,5 +1,6 @@
 using FeedbackWebApp.Services.Feedback;
 using FeedbackWebApp.Services.Interfaces;
+using FeedbackWebApp.Services.Authentication;
 using SharedDump.Models.TwitterFeedback;
 using SharedDump.Services.Mock;
 
@@ -11,8 +12,9 @@ public class MockTwitterFeedbackService : FeedbackService, ITwitterFeedbackServi
         IHttpClientFactory http,
         IConfiguration configuration,
         UserSettingsService userSettings,
+        IAuthenticationHeaderService authenticationHeaderService,
         FeedbackStatusUpdate? onStatusUpdate = null)
-        : base(http, configuration, userSettings, onStatusUpdate)
+        : base(http, configuration, userSettings, authenticationHeaderService, onStatusUpdate)
     {
     }
 

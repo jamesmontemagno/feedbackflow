@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SharedDump.Models.TwitterFeedback;
 using FeedbackWebApp.Services.Interfaces;
+using FeedbackWebApp.Services.Authentication;
 
 namespace FeedbackWebApp.Services.Feedback;
 
@@ -12,9 +13,10 @@ public class TwitterFeedbackService : FeedbackService, ITwitterFeedbackService
         IHttpClientFactory http,
         IConfiguration configuration,
         UserSettingsService userSettings,
+        IAuthenticationHeaderService authHeaderService,
         string tweetUrlOrId,
         FeedbackStatusUpdate? onStatusUpdate = null)
-        : base(http, configuration, userSettings, onStatusUpdate)
+        : base(http, configuration, userSettings, authHeaderService, onStatusUpdate)
     {
         _tweetUrlOrId = tweetUrlOrId;
     }
@@ -31,7 +33,7 @@ public class TwitterFeedbackService : FeedbackService, ITwitterFeedbackService
 
         var maxComments = await GetMaxCommentsToAnalyze();
         var getFeedbackUrl = $"{BaseUrl}/api/GetTwitterFeedback?code={Uri.EscapeDataString(twitterCode)}&tweet={Uri.EscapeDataString(_tweetUrlOrId)}&maxComments={maxComments}";
-        var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
+        var feedbackResponse = await SendAuthenticatedRequestAsync(HttpMethod.Get, getFeedbackUrl);
         feedbackResponse.EnsureSuccessStatusCode();
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
         var feedback = JsonSerializer.Deserialize<TwitterFeedbackResponse>(responseContent);

@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using FeedbackWebApp.Services.Interfaces;
+using FeedbackWebApp.Services.Authentication;
 
 namespace FeedbackWebApp.Services.Feedback;
 
@@ -17,7 +18,9 @@ public abstract class FeedbackService : IFeedbackService
 {
     private readonly UserSettingsService _userSettings;
     protected readonly HttpClient Http;
+    protected readonly IHttpClientFactory HttpFactory;
     protected readonly IConfiguration Configuration;
+    protected readonly IAuthenticationHeaderService AuthHeaderService;
     protected readonly string BaseUrl;
     protected readonly FeedbackStatusUpdate? OnStatusUpdate;
 
@@ -25,10 +28,13 @@ public abstract class FeedbackService : IFeedbackService
         IHttpClientFactory http, 
         IConfiguration configuration, 
         UserSettingsService userSettings,
+        IAuthenticationHeaderService authHeaderService,
         FeedbackStatusUpdate? onStatusUpdate = null)
     {
         Http = http.CreateClient();
+        HttpFactory = http;
         Configuration = configuration;
+        AuthHeaderService = authHeaderService;
         _userSettings = userSettings;
         OnStatusUpdate = onStatusUpdate;
 
@@ -121,7 +127,7 @@ public abstract class FeedbackService : IFeedbackService
             "application/json");
 
         var getAnalysisUrl = $"{BaseUrl}/api/AnalyzeComments?code={Uri.EscapeDataString(analyzeCode)}";
-        var analyzeResponse = await Http.PostAsync(getAnalysisUrl, analyzeContent);
+        var analyzeResponse = await SendAuthenticatedRequestAsync(HttpMethod.Post, getAnalysisUrl, analyzeContent);
         analyzeResponse.EnsureSuccessStatusCode();
 
         UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed");
@@ -167,7 +173,7 @@ public abstract class FeedbackService : IFeedbackService
             "application/json");
 
         var getAnalysisUrl = $"{BaseUrl}/api/AnalyzeComments?code={Uri.EscapeDataString(analyzeCode)}";
-        var analyzeResponse = await Http.PostAsync(getAnalysisUrl, analyzeContent);
+        var analyzeResponse = await SendAuthenticatedRequestAsync(HttpMethod.Post, getAnalysisUrl, analyzeContent);
         analyzeResponse.EnsureSuccessStatusCode();
 
         // Note: This method doesn't call UpdateStatus to avoid multiple completion status updates
@@ -178,5 +184,37 @@ public abstract class FeedbackService : IFeedbackService
     {
         var settings = await _userSettings.GetSettingsAsync();
         return settings.MaxCommentsToAnalyze;
+    }
+
+    /// <summary>
+    /// Creates an authenticated HTTP request message with proper headers
+    /// </summary>
+    /// <param name="method">HTTP method</param>
+    /// <param name="requestUri">Request URI</param>
+    /// <param name="content">Optional content</param>
+    /// <returns>Configured HttpRequestMessage</returns>
+    protected async Task<HttpRequestMessage> CreateAuthenticatedRequestAsync(HttpMethod method, string requestUri, HttpContent? content = null)
+    {
+        var request = new HttpRequestMessage(method, requestUri);
+        if (content != null)
+        {
+            request.Content = content;
+        }
+        
+        await AuthHeaderService.AddAuthenticationHeadersAsync(request);
+        return request;
+    }
+
+    /// <summary>
+    /// Sends an authenticated HTTP request
+    /// </summary>
+    /// <param name="method">HTTP method</param>
+    /// <param name="requestUri">Request URI</param>
+    /// <param name="content">Optional content</param>
+    /// <returns>HTTP response message</returns>
+    protected async Task<HttpResponseMessage> SendAuthenticatedRequestAsync(HttpMethod method, string requestUri, HttpContent? content = null)
+    {
+        var request = await CreateAuthenticatedRequestAsync(method, requestUri, content);
+        return await Http.SendAsync(request);
     }
 }

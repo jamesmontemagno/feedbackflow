@@ -1,4 +1,5 @@
 using FeedbackWebApp.Services.Interfaces;
+using FeedbackWebApp.Services.Authentication;
 using SharedDump.Models.HackerNews;
 using SharedDump.Utils;
 using System.Text.Json;
@@ -15,9 +16,10 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
         IHttpClientFactory http, 
         IConfiguration configuration,
         UserSettingsService userSettings,
+        IAuthenticationHeaderService authHeaderService,
         string storyId,
         FeedbackStatusUpdate? onStatusUpdate = null) 
-        : base(http, configuration, userSettings, onStatusUpdate)
+        : base(http, configuration, userSettings, authHeaderService, onStatusUpdate)
     {
         _storyId = storyId;
     }
@@ -40,7 +42,7 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
 
         // Get comments from the Hacker News API
         var getFeedbackUrl = $"{BaseUrl}/api/GetHackerNewsFeedback?code={Uri.EscapeDataString(hnCode)}&ids={Uri.EscapeDataString(processedId)}&maxComments={maxComments}";
-        var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
+        var feedbackResponse = await SendAuthenticatedRequestAsync(HttpMethod.Get, getFeedbackUrl);
         feedbackResponse.EnsureSuccessStatusCode();
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
 

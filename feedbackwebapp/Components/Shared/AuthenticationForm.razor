@@ -1,19 +1,131 @@
-@using FeedbackWebApp.Services.Authentication
 @inject IConfiguration Configuration
-@inject AuthenticationService AuthService
+@inject IAuthenticationService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
 
 @if (!useMockMode && !isAuthenticated && !isLoading)
 {
     <div class="card shadow-sm">
         <div class="card-body">
             <h5 class="card-title">Authentication Required</h5>
-            <div class="form-floating mb-3">
-                <input type="password" class="form-control" id="password" @bind="password" @onkeyup="HandleKeyPress" placeholder="Enter password" />
-                <label for="password">Password</label>
+            
+            @* Password Authentication (if OAuth providers are not enabled) *@
+            @if (!enabledProviders.Any())
+            {
+                <div class="form-floating mb-3">
+                    <input type="password" class="form-control" id="password" @bind="password" @onkeyup="HandleKeyPress" placeholder="Enter password" />
+                    <label for="password">Password</label>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary" @onclick="AuthenticateHandler" disabled="@isAuthenticating">
+                        @if (isAuthenticating)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            <span>Authenticating...</span>
+                        }
+                        else
+                        {
+                            <span>Login</span>
+                        }
+                    </button>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted mb-3">Please log in to access this feature</p>
+                <div class="d-flex flex-column gap-2">
+
+                @if (enabledProviders.Contains("Microsoft"))
+                {
+                    <button class="btn btn-primary d-flex align-items-center justify-content-center gap-2" 
+                            @onclick="@(async () => await LoginWithProvider("Microsoft"))">
+                        <i class="bi bi-microsoft"></i>
+                            Login with Microsoft
+                    </button>
+                }
+                
+                @if (enabledProviders.Contains("Google"))
+                {
+                    <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
+                            @onclick="@(async () => await LoginWithProvider("Google"))">
+                        <i class="bi bi-google"></i>
+                        Login with Google
+                    </button>
+                }
+                
+                @if (enabledProviders.Contains("GitHub"))
+                {
+                    <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
+                            @onclick="@(async () => await LoginWithProvider("GitHub"))">
+                        <i class="bi bi-github"></i>
+                        Login with GitHub
+                    </button>
+                }
+                </div>
+            }
+            
+            <!-- Account Creation Notice -->
+            <div class="alert alert-info mt-3" role="alert">
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-info-circle-fill me-2 mt-1 flex-shrink-0"></i>
+                    <div>
+                        <h6 class="alert-heading mb-1">Account Creation Notice</h6>
+                        <p class="mb-1">
+                            <strong>First-time users:</strong> An account will be automatically created for you when you log in.
+                        </p>
+                        <small class="text-muted">
+                            Your account information will be securely stored and you can manage or delete it anytime in Account Settings.
+                        </small>
+                    </div>
+                </div>
             </div>
-            <div class="d-flex gap-2">
-                <button class="btn btn-primary" @onclick="AuthenticateHandler">Login</button>
+
+            <!-- Feature Showcase -->
+            <div class="feature-showcase mt-4">
+                <h6 class="feature-showcase-title mb-3">
+                    <i class="bi bi-star-fill me-2"></i>
+                    What you can do with FeedbackFlow
+                </h6>
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="bi bi-robot"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h6>Social AI Analysis</h6>
+                            <p>Powerful AI-driven insights from social platforms with easy export options</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="bi bi-bookmark-heart"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h6>Save & Share Analysis</h6>
+                            <p>Store your insights and share reports with your team or community</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="bi bi-file-earmark-text"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h6>Custom Reports</h6>
+                            <p>Generate tailored reports that fit your specific analysis needs</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <i class="bi bi-search"></i>
+                        </div>
+                        <div class="feature-content">
+                            <h6>Search Social Feeds</h6>
+                            <p>Effortlessly discover and analyze content across multiple platforms</p>
+                        </div>
+                    </div>
+                </div>
             </div>
+            
             @if (!string.IsNullOrEmpty(authError))
             {
                 <div class="alert alert-danger mt-3" role="alert">
@@ -39,10 +151,11 @@ else
     private bool useMockMode;
     private bool isAuthenticated;
     private bool isLoading = true;
+    private bool isAuthenticating = false;
+    private List<string> enabledProviders = new();
 
     [Parameter]
     public EventCallback<bool> OnAuthenticated { get; set; }
-
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -50,9 +163,25 @@ else
             return;
         try
         {
-
-
             useMockMode = Configuration.GetValue<bool>("FeedbackApi:UseMocks");
+            
+            // Load enabled providers
+            enabledProviders.Clear();
+            if(Configuration.GetValue<bool>("Authentication:Providers:Microsoft:Enabled", false))
+            {
+                enabledProviders.Add("Microsoft");
+            }
+            
+            // Add other providers based on configuration if needed
+            if(Configuration.GetValue<bool>("Authentication:Providers:Google:Enabled", false))
+            {
+                enabledProviders.Add("Google");
+            }
+            if(Configuration.GetValue<bool>("Authentication:Providers:GitHub:Enabled", false))
+            {
+                enabledProviders.Add("GitHub");
+            }
+
             if (useMockMode)
             {
                 await HandleAuthenticated(true);
@@ -66,12 +195,6 @@ else
                 await HandleAuthenticated(true);
                 return;
             }
-
-            var configuredPassword = Configuration["FeedbackApp:AccessPassword"];
-            if (string.IsNullOrEmpty(configuredPassword))
-            {
-                authError = "System error: Password not configured";
-            }
         }
         catch (Exception ex)
         {
@@ -84,11 +207,24 @@ else
         }
     }
 
-    private async Task HandleKeyPress(KeyboardEventArgs e)
+    private async Task LoginWithProvider(string provider)
     {
-        if (e.Key == "Enter")
+        try
         {
-            await AuthenticateHandler();
+            // Store current URL for redirect after authentication
+            var currentUrl = Navigation.Uri;
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "feedbackflow_redirect_after_auth", currentUrl);
+            
+            // Clear any existing auth data to ensure fresh login
+            await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "feedbackflow_easyauth_user");
+            
+            var loginUrl = AuthService.GetLoginUrl(provider, currentUrl);
+            Navigation.NavigateTo(loginUrl, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            authError = $"Error initiating login: {ex.Message}";
+            StateHasChanged();
         }
     }
 
@@ -98,25 +234,46 @@ else
         await OnAuthenticated.InvokeAsync(success);
     }
 
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await AuthenticateHandler();
+        }
+    }
+
     private async Task AuthenticateHandler()
     {
-        var configuredPassword = Configuration["FeedbackApp:AccessPassword"];
-        if (string.IsNullOrEmpty(configuredPassword))
-        {
-            authError = "System error: Password not configured";
-            return;
-        }
+        if (isAuthenticating) return;
 
-        var isAuthenticated = await AuthService.AuthenticateAsync(password);
-        if (isAuthenticated)
+        try
         {
+            isAuthenticating = true;
             authError = "";
-            await HandleAuthenticated(true);
+            StateHasChanged();
+
+            var isAuthenticated = await ((AuthenticationService)AuthService).AuthenticateAsync(password);
+            if (isAuthenticated)
+            {
+                await HandleAuthenticated(true);
+            }
+            else
+            {
+                // Check if there's a specific error message
+                var errorMsg = ((AuthenticationService)AuthService).LastAuthenticationError;
+                authError = errorMsg ?? "Authentication failed";
+                password = "";
+            }
         }
-        else
+        catch (Exception ex)
         {
-            authError = "Invalid password";
+            authError = $"System error: {ex.Message}";
             password = "";
+        }
+        finally
+        {
+            isAuthenticating = false;
+            StateHasChanged();
         }
     }
 }

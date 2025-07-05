@@ -19,7 +19,7 @@
 
     @if (isLoading)
     {
-        <div class="loading-state card bg-body dark-theme-card shadow-sm">
+        <div class="loading-state card bg-body shadow-sm">
             <div class="card-body">
                 <div class="spinner-border" role="status">
                     <span class="visually-hidden">Loading...</span>
@@ -31,7 +31,7 @@
     }
     else if (loadError)
     {
-        <div class="card bg-body dark-theme-card shadow-sm">
+        <div class="card bg-body shadow-sm">
             <div class="card-body">
                 <div class="alert alert-danger" role="alert">
                     <i class="bi bi-exclamation-triangle-fill me-2"></i>
@@ -43,7 +43,7 @@
     else
     {
         <div class="whats-new-content">            
-            <div class="card bg-body dark-theme-card">
+            <div class="card bg-body">
                 <div class="card-body">
                     <div class="markdown-content">
                         @((MarkupString)markdownHtml)

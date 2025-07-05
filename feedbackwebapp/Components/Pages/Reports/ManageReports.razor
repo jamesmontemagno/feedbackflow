@@ -1,9 +1,9 @@
 @page "/reports/manage"
 @using FeedbackWebApp.Services
 @using FeedbackWebApp.Services.Authentication
+@using SharedDump.Models.Reports
 @inject NavigationManager NavigationManager
-@inject AuthenticationService AuthService
-@inject IJSRuntime JSRuntime
+@inject IAuthenticationService AuthService
 @inject IReportRequestService ReportRequestService
 
 <PageTitle>Manage Report Requests - FeedbackFlow</PageTitle>
@@ -29,9 +29,9 @@
                         <h1 class="feedbackflow-title mb-2">Manage Report Requests</h1>
                         <p class="text-muted mb-0">View and manage your report requests</p>
                     </div>
-                    <a href="/reports/create" class="btn btn-primary">
+                    <button type="button" class="btn btn-primary" @onclick="OpenCreateModal">
                         <i class="bi bi-plus-lg me-2"></i>Create Report
-                    </a>
+                    </button>
                 </div>
 
                 @if (isLoading)
@@ -57,9 +57,9 @@
                             <i class="bi bi-inbox display-4 text-muted mb-3"></i>
                             <h5 class="card-title">No Report Requests</h5>
                             <p class="card-text text-muted">You haven't created any report requests yet.</p>
-                            <a href="/reports/create" class="btn btn-primary">
+                            <button type="button" class="btn btn-primary" @onclick="OpenCreateModal">
                                 <i class="bi bi-plus-lg me-2"></i>Create Your First Request
-                            </a>
+                            </button>
                         </div>
                     </div>
                 }
@@ -138,9 +138,9 @@
                             </div>
                             <div class="card-body">
                                 <ul class="mb-0">
-                                    <li>Report requests are stored locally in your browser and synchronized with our backend</li>
+                                    <li>Report requests are stored securely in our backend with your user account</li>
                                     <li>Reports are generated automatically every Monday morning at 4 AM Pacific</li>
-                                    <li>Deleting a request will remove it from both your local storage and our backend</li>
+                                    <li>Deleting a request will remove it from our backend completely</li>
                                     <li>You can view generated reports on the <a href="/reports">Reports page</a></li>
                                 </ul>
                             </div>
@@ -152,23 +152,18 @@
     }
 </div>
 
+<CreateReportModal IsVisible="showCreateModal" 
+                   IsVisibleChanged="OnCreateModalVisibilityChanged" 
+                   OnReportCreated="OnReportCreated" />
+
 @code {
     private bool isAuthenticated = false;
     private bool isLoading = true;
     private string errorMessage = string.Empty;
     private string successMessage = string.Empty;
-    private IEnumerable<ReportRequestModel>? reportRequests;
+    private IEnumerable<UserReportRequestModel>? reportRequests;
     private readonly HashSet<string> deletingRequests = new();
-
-    public class ReportRequestModel
-    {
-        public string Id { get; set; } = string.Empty;
-        public string Type { get; set; } = string.Empty;
-        public string? Subreddit { get; set; }
-        public string? Owner { get; set; }
-        public string? Repo { get; set; }
-        public DateTimeOffset CreatedAt { get; set; }
-    }
+    private bool showCreateModal = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -194,13 +189,13 @@
             isLoading = true;
             errorMessage = string.Empty;
 
-            var requests = await JSRuntime.InvokeAsync<ReportRequestModel[]>("window.indexedDbModule.getAllReportRequests");
-            reportRequests = requests?.OrderByDescending(r => r.CreatedAt) ?? Enumerable.Empty<ReportRequestModel>();
+            var requests = await ReportRequestService.GetUserReportRequestsAsync();
+            reportRequests = requests?.OrderByDescending(r => r.CreatedAt) ?? Enumerable.Empty<UserReportRequestModel>();
         }
         catch (Exception ex)
         {
             errorMessage = $"Failed to load report requests: {ex.Message}";
-            reportRequests = Enumerable.Empty<ReportRequestModel>();
+            reportRequests = Enumerable.Empty<UserReportRequestModel>();
         }
         finally
         {
@@ -219,45 +214,18 @@
             errorMessage = string.Empty;
             successMessage = string.Empty;
 
-            // First, try to remove from backend
+            // Remove from backend
             var result = await ReportRequestService.RemoveReportRequestAsync(id);
             
             if (result.Success)
             {
-                // If backend removal was successful, remove from local storage
-                await JSRuntime.InvokeVoidAsync("window.indexedDbModule.deleteReportRequest", id);
-                
-                // Reload the list
+                // Reload the list to reflect changes
                 await LoadReportRequests();
-                
                 successMessage = "Report request deleted successfully.";
             }
             else
             {
-                // Handle different error types
-                if (result.IsNotFound)
-                {
-                    // Request not found on backend, remove from local storage
-                    await JSRuntime.InvokeVoidAsync("window.indexedDbModule.deleteReportRequest", id);
-                    await LoadReportRequests();
-                    successMessage = "Report request removed locally (was not found on server).";
-                }
-                else if (result.IsServerError)
-                {
-                    // Server error - keep local copy but warn user
-                    errorMessage = $"Server error while deleting: {result.ErrorMessage ?? "Unknown server error"}. The request will remain locally and may still be processed.";
-                }
-                else
-                {
-                    // Other errors (bad request, network, etc.)
-                    var errorMsg = result.ErrorMessage ?? "Failed to delete report request from server";
-                    
-                    // Still allow local deletion for user convenience
-                    await JSRuntime.InvokeVoidAsync("window.indexedDbModule.deleteReportRequest", id);
-                    await LoadReportRequests();
-                    
-                    successMessage = $"Report request removed locally. Server error: {errorMsg}";
-                }
+                errorMessage = $"Failed to delete request: {result.ErrorMessage ?? "Unknown error occurred"}";
             }
         }
         catch (Exception ex)
@@ -293,5 +261,23 @@
         }
 
         return date.ToString("MMM d, yyyy");
+    }
+
+    private void OpenCreateModal()
+    {
+        showCreateModal = true;
+    }
+
+    private Task OnCreateModalVisibilityChanged(bool isVisible)
+    {
+        showCreateModal = isVisible;
+        return Task.CompletedTask;
+    }
+
+    private async Task OnReportCreated()
+    {
+        successMessage = "Report request created successfully! Reports are generated every Monday morning.";
+        await LoadReportRequests();
+        StateHasChanged();
     }
 }

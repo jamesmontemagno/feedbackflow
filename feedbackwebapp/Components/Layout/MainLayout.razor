@@ -41,7 +41,7 @@
                         </li>
                         <li class="dropdown-item-wrapper" style="--delay: 0.25s">
                             <a class="dropdown-item @(IsActive("/history") ? "active" : "")" href="/history">
-                                <i class="bi bi-clock-history me-2"></i>
+                                <i class="bi bi-cloud-upload me-2"></i>
                                 <span>Saved</span>
                             </a>
                         </li>
@@ -93,7 +93,7 @@
 
                     <li class="nav-item">
                         <a class="nav-link @(IsActive("/history") ? "active" : "")" href="/history">
-                            <i class="bi bi-clock-history me-1"></i>
+                            <i class="bi bi-cloud-upload me-1"></i>
                             <span>Saved</span>
                         </a>
                     </li>
@@ -108,7 +108,10 @@
                         <i class="bi bi-gear"></i>
                     </a>
                 </div>
-                <ThemeToggle />
+                <div class="me-3">
+                    <ThemeToggle />
+                </div>
+                <UserNavigation />
             </div>
         </div>
     </nav>    

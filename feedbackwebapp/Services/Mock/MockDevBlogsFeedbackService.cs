@@ -1,5 +1,6 @@
 using FeedbackWebApp.Services.Feedback;
 using FeedbackWebApp.Services.Interfaces;
+using FeedbackWebApp.Services.Authentication;
 using SharedDump.Models.DevBlogs;
 using SharedDump.Services.Mock;
 
@@ -9,8 +10,13 @@ public class MockDevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackSer
 {
     public string ArticleUrl { get; set; } = string.Empty;
 
-    public MockDevBlogsFeedbackService(IHttpClientFactory http, IConfiguration configuration, UserSettingsService userSettings, FeedbackStatusUpdate? onStatusUpdate = null)
-        : base(http, configuration, userSettings, onStatusUpdate)
+    public MockDevBlogsFeedbackService(
+        IHttpClientFactory http, 
+        IConfiguration configuration, 
+        UserSettingsService userSettings, 
+        IAuthenticationHeaderService authenticationHeaderService,
+        FeedbackStatusUpdate? onStatusUpdate = null)
+        : base(http, configuration, userSettings, authenticationHeaderService, onStatusUpdate)
     {
     }
 

@@ -18,6 +18,9 @@ using SharedDump.Models.BlueSkyFeedback;
 using SharedDump.Json;
 using SharedDump.Services;
 using SharedDump.Services.Interfaces;
+using FeedbackFunctions.Services.Authentication;
+using FeedbackFunctions.Extensions;
+using FeedbackFunctions.Attributes;
 
 namespace FeedbackFunctions;
 
@@ -39,6 +42,7 @@ public class FeedbackFunctions
     private readonly IFeedbackAnalyzerService _analyzerService;
     private readonly ITwitterService _twitterService;
     private readonly IBlueSkyService _blueSkyService;
+    private readonly AuthenticationMiddleware _authMiddleware;
 
     /// <summary>
     /// Initializes a new instance of the FeedbackFunctions class
@@ -61,7 +65,8 @@ public class FeedbackFunctions
         IDevBlogsService devBlogsService, 
         IFeedbackAnalyzerService analyzerService,
         ITwitterService twitterService,
-        IBlueSkyService blueSkyService)
+        IBlueSkyService blueSkyService,
+        AuthenticationMiddleware authMiddleware)
     {
         _logger = logger;
         _githubService = githubService;
@@ -72,6 +77,7 @@ public class FeedbackFunctions
         _analyzerService = analyzerService;
         _twitterService = twitterService;
         _blueSkyService = blueSkyService;
+        _authMiddleware = authMiddleware;
     }
 
     /// <summary>
@@ -88,10 +94,16 @@ public class FeedbackFunctions
     /// GET /api/GetGitHubFeedback?url=https://github.com/dotnet/maui/issues/123&maxComments=50
     /// </remarks>
     [Function("GetGitHubFeedback")]
+    [Authorize]
     public async Task<HttpResponseData> GetGitHubFeedback(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
         _logger.LogInformation("Processing GitHub feedback request");
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
 
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var url = queryParams["url"];
@@ -245,10 +257,16 @@ public class FeedbackFunctions
     /// GET /api/GetHackerNewsFeedback?ids=123456,789012
     /// </remarks>
     [Function("GetHackerNewsFeedback")]
+    [Authorize]
     public async Task<HttpResponseData> GetHackerNewsFeedback(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
         _logger.LogInformation("Processing HackerNews feedback request");
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
 
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var idsParam = queryParams["ids"];
@@ -288,10 +306,16 @@ public class FeedbackFunctions
     }
 
     [Function("GetYouTubeFeedback")]
+    [Authorize]
     public async Task<HttpResponseData> GetYouTubeFeedback(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
         _logger.LogInformation("Processing YouTube feedback request");
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
 
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var videoIds = queryParams["videos"]?.Split(',', StringSplitOptions.RemoveEmptyEntries);
@@ -353,10 +377,16 @@ public class FeedbackFunctions
     }
 
     [Function("GetRedditFeedback")]
+    [Authorize]
     public async Task<HttpResponseData> GetRedditFeedback(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
         _logger.LogInformation("Processing Reddit feedback request");
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
 
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var threadIds = queryParams["threads"]?.Split(',', StringSplitOptions.RemoveEmptyEntries);
@@ -406,10 +436,17 @@ public class FeedbackFunctions
     }
 
     [Function("GetDevBlogsFeedback")]
+    [Authorize]
     public async Task<HttpResponseData> GetDevBlogsFeedback(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
         _logger.LogInformation("Processing DevBlogs feedback request");
+        
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
+            
         try
         {
             var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
@@ -463,10 +500,16 @@ public class FeedbackFunctions
     /// ```
     /// </remarks>
     [Function("AnalyzeComments")]
+    [Authorize]
     public async Task<HttpResponseData> AnalyzeComments(
         [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
         _logger.LogInformation("Processing comment analysis request");
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
 
         try
         {
@@ -553,10 +596,17 @@ public class FeedbackFunctions
 
    
     [Function("GetTwitterFeedback")]
+    [Authorize]
     public async Task<HttpResponseData> GetTwitterFeedback(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
         _logger.LogInformation("Processing Twitter/X feedback request");
+        
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
+            
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var tweetUrlOrId = queryParams["tweet"];
         if (string.IsNullOrWhiteSpace(tweetUrlOrId))
@@ -589,10 +639,17 @@ public class FeedbackFunctions
     }
 
     [Function("GetBlueSkyFeedback")]
+    [Authorize]
     public async Task<HttpResponseData> GetBlueSkyFeedback(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
         _logger.LogInformation("Processing BlueSky feedback request");
+        
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
+            
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var postUrlOrId = queryParams["post"];
         
