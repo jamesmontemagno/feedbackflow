@@ -331,34 +331,6 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
         }
     }
 
-    public async Task<string?> GetPublicShareLinkAsync(string analysisId)
-    {
-        if (string.IsNullOrWhiteSpace(analysisId))
-        {
-            return null;
-        }
-
-        try
-        {
-            // Get the analysis entity to check if it's public
-            var analyses = await GetUsersSavedAnalysesAsync();
-            var analysis = analyses.FirstOrDefault(a => a.Id == analysisId);
-            
-            if (analysis == null || !analysis.IsPublic)
-            {
-                return null;
-            }
-
-            // Return the public share URL
-            return $"{BaseUrl.Replace("/api", "")}/analysis/{analysisId}";
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting public share link for analysis {Id}", analysisId);
-            return null;
-        }
-    }
-
     public async Task<List<AnalysisHistoryItem>> GetSharedAnalysisHistoryAsync()
     {
         // Get shared analyses from cloud backend

@@ -103,9 +103,8 @@ public async Task<HttpResponseData> UpdateAnalysisVisibility(
 #### Shared History Page Updates
 - Add visibility indicator (lock icon for private, globe for public)
 - Add quick action to change visibility directly in the history list
-- Show public share link for public analyses with copy-to-clipboard
 - Add filter options (show all, private only, public only)
-- Integrate privacy controls and share link management into existing UI
+- Integrate privacy controls into existing UI
 
 ### 2. Service Layer Updates
 
@@ -114,13 +113,11 @@ public async Task<HttpResponseData> UpdateAnalysisVisibility(
 // Add new methods
 Task<string> ShareAnalysisAsync(AnalysisData analysis, bool isPublic = false);
 Task<bool> UpdateAnalysisVisibilityAsync(string analysisId, bool isPublic);
-Task<string?> GetPublicShareLinkAsync(string analysisId);
 ```
 
 #### SharedHistoryService Implementation
 - Update `ShareAnalysisAsync` to accept `isPublic` parameter
 - Add methods for visibility management
-- Handle public link generation
 - Update caching strategy (separate cache for public vs private)
 
 #### MockSharedHistoryService
@@ -157,9 +154,8 @@ Task<string?> GetPublicShareLinkAsync(string analysisId);
 
 ### Phase 2: Enhanced Sharing
 1. Add UpdateAnalysisVisibility function
-2. Implement public share link generation
-3. Add share link management UI to SharedHistory page
-4. Implement confirmation dialogs and warnings
+2. Add share link management UI to SharedHistory page
+3. Implement confirmation dialogs and warnings
 
 
 ## Security & Privacy Considerations

@@ -150,18 +150,12 @@
                                         <i class="bi bi-clipboard"></i> Copy
                                     </button>
                                     <button class="btn btn-sm btn-outline-success action-btn" title="Copy Share Link" @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
-                                        <i class="bi bi-link-45deg"></i> Copy Link
+                                        <i class="bi bi-link-45deg"></i> Copy Share Link
                                     </button>
                                     <VisibilityToggle IsPublic="item.IsPublic" 
                                                     IsPublicChanged="(isPublic) => ToggleVisibility(item.Id, isPublic)" 
                                                     IsDisabled="@isUpdatingVisibility" 
                                                     ShowDescription="false" />
-                                    @if(item.SourceType != "Manual")
-                                    {
-                                        <a class="btn btn-sm btn-outline-secondary action-btn" title="Open Link" target="_blank" rel="noopener noreferrer" href="@HistoryHelper.GetSourceUrl(item)">
-                                            <i class="bi bi-box-arrow-up-right"></i> Open Link
-                                        </a>
-                                    }
                                     <button class="btn btn-sm btn-outline-danger action-btn" title="Delete" @onclick="() => ConfirmDelete(item.Id)">
                                         <i class="bi bi-trash"></i> Delete
                                     </button>
@@ -180,12 +174,6 @@
                                                         IsDisabled="@isUpdatingVisibility" 
                                                         ShowDescription="true" />
                                     </li>
-                                    @if(item.SourceType != "Manual")
-                                    {
-                                        <li><a class="dropdown-item" target="_blank" rel="noopener noreferrer" href="@HistoryHelper.GetSourceUrl(item)">
-                                            <i class="bi bi-box-arrow-up-right"></i> Open Link
-                                        </a></li>
-                                    }
                                     <li><hr class="dropdown-divider"></li>
                                     <li><button class="dropdown-item text-danger" @onclick="() => ConfirmDelete(item.Id)">
                                         <i class="bi bi-trash"></i> Delete

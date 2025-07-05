@@ -126,20 +126,6 @@ public class MockSharedHistoryService : ISharedHistoryService
         return false;
     }
 
-    public async Task<string?> GetPublicShareLinkAsync(string analysisId)
-    {
-        _logger.LogInformation("Mock: Getting public share link for analysis {Id}", analysisId);
-        await Task.Delay(100);
-
-        var analysis = _mockSavedAnalyses.FirstOrDefault(a => a.Id == analysisId);
-        if (analysis != null && analysis.IsPublic)
-        {
-            return $"https://feedbackflow.example.com/analysis/{analysisId}";
-        }
-
-        return null;
-    }
-
     public async Task<AnalysisData?> GetSharedAnalysisAsync(string id)
     {
         // This is the same as GetSharedAnalysisDataAsync
