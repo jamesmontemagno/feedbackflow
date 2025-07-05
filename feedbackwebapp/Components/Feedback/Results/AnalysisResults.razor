@@ -249,7 +249,7 @@
                 _isSaved = true;
                 _savedItemId = savedId;
                 sharedId = savedId; // The shared ID is the same as the analysis ID
-                shareLink = $"{NavigationManager.BaseUri.TrimEnd('/')}/shared/{sharedId}";
+                shareLink = $"{NavigationManager.BaseUri.TrimEnd('/')}/analysis/{sharedId}";
                 
                 await ToastService.ShowSuccessAsync("Analysis saved to cloud history", 3000);
             }
@@ -418,11 +418,11 @@
             // Determine the correct share link based on visibility
             if (isPublicShare)
             {
-                shareLink = $"{NavigationManager.BaseUri.TrimEnd('/')}/shared/{sharedId}"; // Public URL
+                shareLink = $"{NavigationManager.BaseUri.TrimEnd('/')}/analysis/{sharedId}"; // Public URL
             }
             else
             {
-                shareLink = $"{NavigationManager.BaseUri.TrimEnd('/')}/shared-analysis/{sharedId}"; // Private URL (requires auth)
+                shareLink = $"{NavigationManager.BaseUri.TrimEnd('/')}/analysis/{sharedId}"; // Private URL (same as public now)
             }
             
             // Copy share link to clipboard

@@ -1,9 +1,9 @@
-@page "/shared-analysis/{Id}"
+@page "/analysis/{Id}"
 @inject FeedbackWebApp.Services.ISharedHistoryServiceProvider SharedHistoryServiceProvider
 @inject FeedbackWebApp.Services.IToastService ToastService
 @inject SharedDump.Services.Interfaces.IExportService ExportService
 @inject IJSRuntime JSRuntime
-@inject ILogger<PrivateAnalysisViewer> Logger
+@inject ILogger<Analysis> Logger
 @using SharedDump.Models
 @using Markdig
 @using Microsoft.JSInterop
@@ -13,14 +13,15 @@
 @using FeedbackWebApp.Utils
 @using FeedbackWebApp.Services
 @using FeedbackWebApp.Components.Shared
+@namespace FeedbackWebApp.Components.Pages
 
-<PageTitle>My Analysis</PageTitle>
+<PageTitle>Analysis</PageTitle>
 
 <div class="container-lg py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="feedbackflow-title mb-0">
-            <i class="bi bi-lock me-2" aria-hidden="true"></i>
-            My Analysis
+            <i class="bi bi-file-text me-2" aria-hidden="true"></i>
+            Analysis
         </h1>        
     </div>
 
@@ -30,7 +31,7 @@
             <div class="spinner-border" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
-            <p class="mt-2">Loading your analysis...</p>
+            <p class="mt-2">Loading shared analysis...</p>
         </div>
     }
     else if (loadError)
@@ -38,15 +39,15 @@
         <div class="error-state">
             <i class="bi bi-exclamation-circle"></i>
             <p>@errorMessage</p>
-            <a href="/shared-history" class="btn btn-primary">Return to My Analyses</a>
+            <a href="/" class="btn btn-primary">Return to Home</a>
         </div>
     }
     else if (analysis == null)
     {
         <div class="empty-state">
             <i class="bi bi-search"></i>
-            <p>The requested analysis could not be found or you don't have access to it.</p>
-            <a href="/shared-history" class="btn btn-primary">Return to My Analyses</a>
+            <p>The requested analysis could not be found.</p>
+            <a href="/" class="btn btn-primary">Return to Home</a>
         </div>
     }
     else
@@ -166,7 +167,7 @@
             {
                 loadError = true;
                 errorMessage = "No analysis ID provided.";
-                Logger.LogWarning("Attempted to load private analysis with empty ID");
+                Logger.LogWarning("Attempted to load shared analysis with empty ID");
                 return;
             }
 
@@ -175,19 +176,19 @@
             if (analysis == null)
             {
                 loadError = true;
-                errorMessage = "The requested analysis could not be found, has been removed, or you don't have access to it.";
+                errorMessage = "The requested analysis could not be found or has been removed.";
                 Logger.LogWarning("No analysis found for ID: {Id}", Id);
             }
             else
             {
-                Logger.LogInformation("Successfully loaded private analysis {Id}", Id);
+                Logger.LogInformation("Successfully loaded analysis {Id}", Id);
             }
         }
         catch (Exception ex)
         {
             loadError = true;
-            errorMessage = "An error occurred while loading the analysis. Please ensure you are logged in and have access to this analysis.";
-            Logger.LogError(ex, "Error loading private analysis {Id}", Id);
+            errorMessage = "An error occurred while loading the analysis.";
+            Logger.LogError(ex, "Error loading shared analysis {Id}", Id);
         }
         finally
         {
@@ -243,4 +244,6 @@
             await ToastService.ShowErrorAsync($"Failed to copy to clipboard: {ex.Message}");
         }
     }
+    
+    // IsValidUrl and GetYouTubeThumbnailUrl methods have been moved to UrlParsing class
 }

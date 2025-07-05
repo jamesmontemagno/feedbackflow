@@ -41,7 +41,7 @@ The `PublicAccessToken` adds complexity without meaningful security benefits:
 **Why It's Not Worth It:**
 - **Security Theater**: If it's public, the token doesn't add real security
 - **Complexity**: Two-tier public system (public + token) confuses users
-- **URL Ugliness**: `/shared/abc123?token=xyz789` vs clean `/shared/abc123`
+- **URL Ugliness**: `/analysis/abc123?token=xyz789` vs clean `/analysis/abc123`
 - **Caching Issues**: Tokens complicate CDN and browser caching
 - **Enumeration**: If someone wants to scrape, they'll find other ways
 
@@ -130,11 +130,11 @@ Task<string?> GetPublicShareLinkAsync(string analysisId);
 ### 3. URL Structure Changes
 
 #### New Routes Needed
-- `/shared/{id}` - Public analysis viewer (anonymous access)
+- `/analysis/{id}` - Analysis viewer (handles both public and private analyses)
 
 #### Existing Route Updates
-- `/shared-analysis/{id}` - Keep for private analyses (requires auth)
-- Update navigation to handle both public and private access patterns
+- Remove old `/shared/{id}` and `/shared-analysis/{id}` routes
+- Update navigation to use single `/analysis/{id}` route
 
 ### 4. User Experience Enhancements
 

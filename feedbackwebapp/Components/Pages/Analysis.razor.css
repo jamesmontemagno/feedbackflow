@@ -1,4 +1,4 @@
-/* SharedAnalysisViewer styles */
+/* Analysis styles */
 
 /* Note: Shared styles for state elements, service icons,
    action buttons, and user input have been moved to app.css */
@@ -114,7 +114,7 @@
 
 /* Note: URL list and YouTube thumbnail styles have been moved to app.css */
 
-/* Consistent action button styling for SharedAnalysisViewer page */
+/* Consistent action button styling for Analysis page */
 .card-body .action-btn {
     min-width: 36px;
     height: 32px;

@@ -134,7 +134,7 @@ public class MockSharedHistoryService : ISharedHistoryService
         var analysis = _mockSavedAnalyses.FirstOrDefault(a => a.Id == analysisId);
         if (analysis != null && analysis.IsPublic)
         {
-            return $"https://feedbackflow.example.com/shared/{analysisId}";
+            return $"https://feedbackflow.example.com/analysis/{analysisId}";
         }
 
         return null;

@@ -350,7 +350,7 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
             }
 
             // Return the public share URL
-            return $"{BaseUrl.Replace("/api", "")}/shared/{analysisId}";
+            return $"{BaseUrl.Replace("/api", "")}/analysis/{analysisId}";
         }
         catch (Exception ex)
         {

@@ -28,7 +28,7 @@ public class HistoryHelper : IHistoryHelper
         if (item.IsShared && !string.IsNullOrEmpty(item.SharedId))
         {
             var baseUrl = baseUri.TrimEnd('/');
-            var shareLink = $"{baseUrl}/shared/{item.SharedId}";
+            var shareLink = $"{baseUrl}/analysis/{item.SharedId}";
             
             try
             {
