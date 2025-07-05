@@ -8,6 +8,7 @@ using SharedDump.Models.Reports;
 using System.Text;
 using System.Text.Json;
 using Azure;
+using FeedbackFunctions.Services.Reports;
 
 namespace FeedbackFlow.Tests;
 

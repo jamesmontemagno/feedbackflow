@@ -12,9 +12,12 @@ using SharedDump.AI;
 using FeedbackFunctions.Utils;
 using FeedbackFunctions.Services;
 using FeedbackFunctions.Services.Authentication;
+using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
 using SharedDump.Services;
+using SharedDump.Models.Account;
+using FeedbackFunctions.Services.Reports;
 
 namespace FeedbackFunctions;
 
@@ -35,7 +38,7 @@ public class ReportRequestFunctions
     private readonly IReportCacheService _cacheService;
     private readonly IRedditService _redditService;
     private readonly IGitHubService _githubService;
-    private readonly AuthenticationMiddleware _authMiddleware;
+    private readonly FeedbackFunctions.Middleware.AuthenticationMiddleware _authMiddleware;
 
     public ReportRequestFunctions(
         ILogger<ReportRequestFunctions> logger,
@@ -44,7 +47,7 @@ public class ReportRequestFunctions
         IGitHubService githubService,
         IFeedbackAnalyzerService analyzerService,
         IReportCacheService cacheService,
-        AuthenticationMiddleware authMiddleware)
+        FeedbackFunctions.Middleware.AuthenticationMiddleware authMiddleware)
     {
 #if DEBUG
         _configuration = new ConfigurationBuilder()
@@ -105,6 +108,7 @@ public class ReportRequestFunctions
     /// </summary>
     [Function("AddUserReportRequest")]
     [Authorize]
+    [UsageValidation(UsageType = SharedDump.Models.Account.UsageType.ReportCreated)]
     public async Task<HttpResponseData> AddUserReportRequest(
         [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
@@ -344,6 +348,7 @@ public class ReportRequestFunctions
     /// </summary>
     [Function("RemoveUserReportRequest")]
     [Authorize]
+    [UsageValidation(UsageType = SharedDump.Models.Account.UsageType.ReportDeleted)]
     public async Task<HttpResponseData> RemoveUserReportRequest(
         [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "userreportrequest/{id}")] HttpRequestData req,
         string id)

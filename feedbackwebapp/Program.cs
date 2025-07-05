@@ -1,4 +1,5 @@
 using FeedbackWebApp.Services;
+using FeedbackWebApp.Services.Account;
 using FeedbackWebApp.Services.Authentication;
 using FeedbackWebApp.Services.ContentFeed;
 using FeedbackWebApp.Services.Feedback;
@@ -58,9 +59,14 @@ else
 // Register user management service
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 
-// Keep the old AuthenticationService for backward compatibility
-//builder.Services.AddScoped<AuthenticationService>();
+// Register the proper frontend account service that calls backend APIs
+var useMocks = builder.Configuration.GetValue<bool>("UseMocks", false);
+#if DEBUG
+    useMocks = builder.Configuration.GetValue<bool>("UseMocks", true); // Default to mocks in debug
+#endif
 
+// Account Services using provider pattern
+builder.Services.AddScoped<IAccountServiceProvider, AccountServiceProvider>();
 builder.Services.AddScoped<UserSettingsService>();
 builder.Services.AddScoped<IReportServiceProvider, ReportServiceProvider>();
 builder.Services.AddScoped<IReportRequestService, ReportRequestService>();

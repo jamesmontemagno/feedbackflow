@@ -4,6 +4,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using FeedbackFunctions.Services;
+using FeedbackFunctions.Services.Reports;
 
 namespace FeedbackFunctions;
 

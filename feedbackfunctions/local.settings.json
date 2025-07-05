@@ -5,23 +5,65 @@
     "ProductionStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
     "AzureWebJobsSecretStorageType": "files",
-    "YouTube:ApiKey": "",
-    "Reddit:ClientId": "",
-    "Reddit:ClientSecret": "",
-    "GitHub:AccessToken": "",
-    "Azure:OpenAI:Endpoint": "",
-    "Azure:OpenAI:ApiKey": "",
-    "Azure:OpenAI:Deployment": "",
-    "Twitter:BearerToken": "",
-    "BlueSky:Username": "",
-    "BlueSky:AppPassword": "",
-    "Mastodon:AccessToken": "",
-    "Mastodon:ClientKey": "",
-    "Mastodon:ClientSecret": "",
+    "YouTube": {
+      "ApiKey": ""
+    },
+    "Reddit": {
+      "ClientId": "",
+      "ClientSecret": ""
+    },
+    "GitHub": {
+      "AccessToken": ""
+    },
+    "Twitter": {
+      "BearerToken": ""
+    },
+    "BlueSky": {
+      "Username": "",
+      "AppPassword": ""
+    },
+    "Mastodon": {
+      "AccessToken": "",
+      "ClientKey": "",
+      "ClientSecret": ""
+    },
+    "Azure": {
+      "OpenAI": {
+        "Endpoint": "",
+        "ApiKey": "",
+        "Deployment": ""
+      }
+    },
     "UseMocks": false,
     "Authentication": {
       "UseEasyAuth": false,
       "BypassInDevelopment": true
+    },
+    "AccountTiers": {
+      "Free": {
+        "AnalysisLimit": "10",
+        "ReportLimit": "1",
+        "FeedQueryLimit": "20"
+      },
+      "Pro": {
+        "AnalysisLimit": "75",
+        "ReportLimit": "5",
+        "FeedQueryLimit": "200"
+      },
+      "ProPlus": {
+        "AnalysisLimit": "300",
+        "ReportLimit": "25",
+        "FeedQueryLimit": "1000"
+      }
+    },
+    "Usage": {
+      "ResetPeriodDays": "30",
+      "EnableTracking": "true"
+    },
+    "Development": {
+      "UserId": "dev-user-demo",
+      "Email": "demo@feedbackflow.dev",
+      "Name": "Demo Development User"
     }
   }
 }

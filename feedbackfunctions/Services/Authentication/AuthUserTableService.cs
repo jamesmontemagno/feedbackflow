@@ -3,7 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SharedDump.Models.Authentication;
 
-namespace SharedDump.Services.Authentication;
+namespace FeedbackFunctions.Services.Authentication;
 
 /// <summary>
 /// Implementation of the auth user table service using Azure Table Storage

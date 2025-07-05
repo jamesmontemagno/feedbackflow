@@ -9,6 +9,7 @@ using SharedDump.Models.Reports;
 using SharedDump.Services.Interfaces;
 using SharedDump.Utils;
 using FeedbackFunctions.Services;
+using FeedbackFunctions.Services.Reports;
 
 namespace FeedbackFunctions.Utils;
 

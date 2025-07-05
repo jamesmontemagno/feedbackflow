@@ -1,3 +1,15 @@
+
+# Project Root Namespaces
+
+Each project in this solution uses the following RootNamespace (from the .csproj):
+
+- **feedbackwebapp**: `FeedbackWebApp`
+- **feedbackfunctions**: `FeedbackFunctions`
+- **shareddump**: `SharedDump`
+- **FeedbackFlow.AppHost**: `FeedbackFlow.AppHost`
+- **FeedbackFlow.ServiceDefaults**: `FeedbackFlow.ServiceDefaults`
+- **feedbackflow.tests**: `FeedbackFlow.Tests`
+
 # Copilot Instructions
 
 The github repo is jamesmontemagno/feedbackflow and the primary branch that I work off of is main
