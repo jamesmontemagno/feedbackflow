@@ -14,7 +14,7 @@
                            value="@Urls[index]"
                            disabled="@IsDisabled"
                            @onchange="@(async (ChangeEventArgs e) => await HandleUrlChange(index, e.Value?.ToString() ?? ""))" />
-                    <label for="url-@index">Enter URL (YouTube, Reddit, GitHub, etc.)</label>
+                    <label for="url-@index">Enter URL</label>
                 </div>
                 <button class="btn btn-outline-danger" 
                         @onclick="@(() => RemoveUrl(index))" 

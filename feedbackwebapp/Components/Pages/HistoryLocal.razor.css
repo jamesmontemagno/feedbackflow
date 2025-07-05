@@ -1,54 +1,54 @@
-/* Searchbox (input) dark mode fix */
-[data-theme='dark'] .filter-section .form-control,
-[data-theme='dark'] .filter-section .form-select,
-[data-theme='dark'] .filter-section .form-control:focus,
-[data-theme='dark'] .filter-section .form-select:focus {
+/* Searchbox (input) dark mode fix - scoped to HistoryLocal only */
+[data-theme='dark'] .history-local-page .filter-section .form-control,
+[data-theme='dark'] .history-local-page .filter-section .form-select,
+[data-theme='dark'] .history-local-page .filter-section .form-control:focus,
+[data-theme='dark'] .history-local-page .filter-section .form-select:focus {
     background-color: var(--bg-primary) !important;
     color: #fff !important;
     border-color: var(--border-color) !important;
 }
 
-[data-theme='dark'] .filter-section .form-control::placeholder {
+[data-theme='dark'] .history-local-page .filter-section .form-control::placeholder {
     color: rgba(255, 255, 255, 0.6) !important;
 }
 
-/* Explicit dark mode card overrides */
-[data-theme='dark'] .card,
-[data-theme='dark'] .card.bg-body,
-[data-theme='dark'] .loading-state.card,
-[data-theme='dark'] .empty-state.card {
+/* Explicit dark mode card overrides - scoped to HistoryLocal only */
+[data-theme='dark'] .history-local-page .card,
+[data-theme='dark'] .history-local-page .card.bg-body,
+[data-theme='dark'] .history-local-page .loading-state.card,
+[data-theme='dark'] .history-local-page .empty-state.card {
     background-color: #212529 !important; /* Nearly black to match other cards */
     color: var(--bs-light) !important;
     border-color: #495057 !important; /* Darker border */
 }
 
-[data-theme='dark'] .list-group-item {
+[data-theme='dark'] .history-local-page .list-group-item {
     background-color: #212529 !important; /* Nearly black to match other cards */
     border-color: #495057 !important; /* Darker border */
 }
 
-/* Dark theme card specific styles */
-.dark-theme-card {
+/* Dark theme card specific styles - scoped to HistoryLocal only */
+.history-local-page .dark-theme-card {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
-[data-theme='dark'] .dark-theme-card {
+[data-theme='dark'] .history-local-page .dark-theme-card {
     background-color: #212529 !important; /* Nearly black to match other cards */
     color: var(--bs-light) !important;
     border-color: #495057 !important; /* Darker border */
 }
 
-[data-theme='dark'] .dark-theme-card .card-body {
+[data-theme='dark'] .history-local-page .dark-theme-card .card-body {
     color: var(--bs-light) !important;
 }
 
-[data-theme='dark'] .dark-theme-card .text-muted {
+[data-theme='dark'] .history-local-page .dark-theme-card .text-muted {
     color: #adb5bd !important; /* Lighter gray for better readability */
     opacity: 1;
 }
 
-/* Empty state specific styling for dark mode */
-[data-theme='dark'] .empty-state small.text-muted {
+/* Empty state specific styling for dark mode - scoped to HistoryLocal only */
+[data-theme='dark'] .history-local-page .empty-state small.text-muted {
     color: #adb5bd !important; /* Even lighter for this specific text */
     font-weight: 400;
 }
@@ -195,7 +195,7 @@
     vertical-align: middle;
 }
 
-[data-theme='dark'] .shared-badge {
+[data-theme='dark'] .history-local-page .shared-badge {
     background-color: #3ea854;
 }
 
@@ -280,7 +280,7 @@
     font-size: 0.95rem;
 }
 
-[data-theme='dark'] .empty-state-hint {
+[data-theme='dark'] .history-local-page .empty-state-hint {
     color: #ced4da !important; /* Even lighter color for this specific message */
     font-weight: 400;
 }

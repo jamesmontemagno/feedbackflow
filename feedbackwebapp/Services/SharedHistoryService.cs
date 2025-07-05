@@ -312,7 +312,7 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
             
             var request = await CreateAuthenticatedRequestAsync(HttpMethod.Patch, url, content);
             var response = await _httpClient.SendAsync(request);
-
+            await Task.Delay(500);
             if (response.IsSuccessStatusCode)
             {
                 _logger.LogInformation("Successfully updated analysis {Id} visibility to {IsPublic}", analysisId, isPublic);
