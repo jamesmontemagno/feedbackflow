@@ -178,18 +178,18 @@ public class SharingFunctions
         [BlobInput($"{ContainerName}/{{id}}.json", Connection = "ProductionStorage")] string? analysisJson)
     {
         _logger.LogInformation("Retrieving shared analysis with ID: {Id}", id);
-        _logger.LogInformation("Blob input analysisJson is {IsNull}", analysisJson == null ? "null" : "not null");
+        _logger.LogDebug("Blob input analysisJson is {IsNull}", analysisJson == null ? "null" : "not null");
 
         // First, check if the analysis exists in table storage to get privacy settings
         SharedAnalysisEntity? analysisEntity = null;
         try
         {
-            _logger.LogInformation("Querying table storage for analysis with RowKey: {Id}", id);
+            _logger.LogDebug("Querying table storage for analysis with RowKey: {Id}", id);
             // Try to find the entity by scanning all partitions (since we don't know the user ID)
             await foreach (var entity in _tableClient.QueryAsync<SharedAnalysisEntity>(
                 filter: $"RowKey eq '{id}'"))
             {
-                _logger.LogInformation("Found entity in table storage: UserId={UserId}, IsPublic={IsPublic}",
+                _logger.LogDebug("Found entity in table storage: UserId={UserId}, IsPublic={IsPublic}",
                     entity.UserId, entity.IsPublic);
                 analysisEntity = entity;
                 break; // Found the entity
@@ -213,7 +213,7 @@ public class SharingFunctions
             return notFoundResponse;
         }
 
-        _logger.LogInformation("Analysis entity found - UserId: {UserId}, IsPublic: {IsPublic}, CreatedDate: {CreatedDate}",
+        _logger.LogDebug("Analysis entity found - UserId: {UserId}, IsPublic: {IsPublic}, CreatedDate: {CreatedDate}",
             analysisEntity.UserId, analysisEntity.IsPublic, analysisEntity.CreatedDate);
 
         // Check access permissions
@@ -229,12 +229,12 @@ public class SharingFunctions
                 {
                     authenticatedUserId = user.UserId;
                     userOwnsAnalysis = user.UserId == analysisEntity.UserId;
-                    _logger.LogInformation("User authenticated - UserId: {UserId}, OwnsAnalysis: {OwnsAnalysis}",
+                    _logger.LogDebug("User authenticated - UserId: {UserId}, OwnsAnalysis: {OwnsAnalysis}",
                         user.UserId, userOwnsAnalysis);
                 }
                 else
                 {
-                    _logger.LogInformation("Authentication succeeded but user is null");
+                    _logger.LogDebug("Authentication succeeded but user is null");
                 }
             }
             catch (Exception ex)
@@ -257,40 +257,31 @@ public class SharingFunctions
             return unauthorizedResponse;
         }
 
-        _logger.LogInformation("Access granted for analysis {Id}", id);
+        _logger.LogDebug("Access granted for analysis {Id}", id);
 
         // Check in-memory cache first
         if (_sharedAnalysisCache.TryGetValue(id, out var cachedJson))
         {
-            _logger.LogInformation("Analysis {Id} found in cache, returning cached content", id);
             var cachedResponse = req.CreateResponse(HttpStatusCode.OK);
             cachedResponse.Headers.Add("Content-Type", "application/json");
             await cachedResponse.WriteStringAsync(cachedJson);
             return cachedResponse;
         }
 
-        _logger.LogInformation("Analysis {Id} not found in cache, checking blob storage", id);
-
         if (string.IsNullOrEmpty(analysisJson))
         {
-            _logger.LogError("Blob storage returned null or empty content for analysis {Id}", id);
             var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
             await notFoundResponse.WriteStringAsync("Shared analysis content not found");
             return notFoundResponse;
         }
 
-        _logger.LogInformation("Analysis {Id} content retrieved from blob storage, length: {Length} characters",
-            id, analysisJson.Length);
-
         // Add to cache for future requests
         _sharedAnalysisCache[id] = analysisJson;
-        _logger.LogInformation("Analysis {Id} added to cache", id);
 
         var response = req.CreateResponse(HttpStatusCode.OK);
         response.Headers.Add("Content-Type", "application/json");
         await response.WriteStringAsync(analysisJson);
 
-        _logger.LogInformation("Successfully returned shared analysis {Id} to client", id);
         return response;
     }
 
