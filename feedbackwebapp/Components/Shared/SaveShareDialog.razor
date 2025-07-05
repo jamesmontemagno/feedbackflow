@@ -1,15 +1,16 @@
 @namespace FeedbackWebApp.Components.Shared
 @using Microsoft.JSInterop
+@using FeedbackWebApp.Services
 @inject IJSRuntime JSRuntime
-@inject FeedbackWebApp.Services.IToastService ToastService
+@inject IToastService ToastService
 @inject Microsoft.Extensions.Logging.ILogger<SaveShareDialog> Logger
 
 <div class="modal fade @(IsVisible ? "show" : "")" 
-     style="display: @(IsVisible ? "block" : "none")" 
+     style="display: @(IsVisible ? "block" : "none"); z-index: 1055;" 
      tabindex="-1" 
      aria-hidden="@(!IsVisible)"
      @onclick="HandleBackdropClick">
-    <div class="modal-dialog modal-dialog-centered" @onclick:stopPropagation="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" @onclick:stopPropagation="true">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
@@ -29,9 +30,26 @@
                     
                     <div class="card border-light bg-light">
                         <div class="card-body">
-                            <VisibilityToggle @bind-IsPublic="@IsPublic" 
-                                              ShowDescription="true" 
-                                              IsDisabled="false" />
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="visibility-toggle" 
+                                       @bind="IsPublic" />
+                                <label class="form-check-label" for="visibility-toggle">
+                                    <i class="bi @(IsPublic ? "bi-globe" : "bi-lock") me-1" aria-hidden="true"></i>
+                                    @(IsPublic ? "Public" : "Private")
+                                </label>
+                            </div>
+                            <small class="text-muted mt-1 d-block">
+                                @if (IsPublic)
+                                {
+                                    <span>Anyone with the link can view this analysis</span>
+                                }
+                                else
+                                {
+                                    <span>Only you can view this analysis</span>
+                                }
+                            </small>
                         </div>
                     </div>
                     
@@ -120,7 +138,7 @@
 
 @if (IsVisible)
 {
-    <div class="modal-backdrop fade show"></div>
+    <div class="modal-backdrop fade show" style="z-index: 1050;"></div>
 }
 
 @code {

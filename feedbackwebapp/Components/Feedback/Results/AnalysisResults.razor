@@ -229,7 +229,7 @@
                 FullAnalysis = MarkdownResult ?? string.Empty,
                 SourceType = SourceType,
                 UserInput = UserInput,
-                CreatedDate = DateTime.UtcNow
+                CreatedDate = DateTime.UtcNow,
             };
 
             var savedId = await SharedHistoryServiceProvider.GetService().ShareAnalysisAsync(analysisData, isPublic);

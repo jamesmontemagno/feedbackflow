@@ -36,6 +36,20 @@
     ContentType="@failedCopyContentType"
     OnClose="@CloseCopyFailedDialog" />
 
+<!-- Processing Dialog -->
+<div class="modal fade @(isUpdatingVisibility ? "show d-block" : "")" tabindex="-1" style="background-color: rgba(0, 0, 0, 0.5);">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Processing...</span>
+                </div>
+                <p class="mb-0">Updating visibility settings...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="container-lg py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="feedbackflow-title mb-0">Saved Analysis</h1>
@@ -139,9 +153,10 @@
                                     <span class="source-badge">@item.SourceType</span>
                                 }
                                 <small class="text-muted">@item.Timestamp.ToLocalTime().ToString("g")</small>
-                                <span class="shared-status">
-                                    <i class="bi bi-cloud-check"></i>
-                                    Shared
+                                @* Visibility indicator *@
+                                <span class="badge @(item.IsPublic ? "bg-success" : "bg-secondary")">
+                                    <i class="bi @(item.IsPublic ? "bi-globe" : "bi-lock") me-1"></i>
+                                    @(item.IsPublic ? "Public" : "Private")
                                 </span>
                             </div>                        
                             <ActionMenu>
@@ -149,13 +164,19 @@
                                     <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="() => HistoryHelper.CopyToClipboard(item, JSRuntime, ToastService, ShowCopyFailedDialog)">
                                         <i class="bi bi-clipboard"></i> Copy
                                     </button>
-                                    <button class="btn btn-sm btn-outline-success action-btn" title="Copy Share Link" @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
+                                    <button class="btn btn-sm btn-outline-success action-btn" 
+                                            title="@(item.IsPublic ? "Copy Share Link" : "Item must be public to share")" 
+                                            disabled="@(!item.IsPublic)"
+                                            @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
                                         <i class="bi bi-link-45deg"></i> Copy Share Link
                                     </button>
-                                    <VisibilityToggle IsPublic="item.IsPublic" 
-                                                    IsPublicChanged="(isPublic) => ToggleVisibility(item.Id, isPublic)" 
-                                                    IsDisabled="@isUpdatingVisibility" 
-                                                    ShowDescription="false" />
+                                    <button class="btn btn-sm @(item.IsPublic ? "btn-outline-warning" : "btn-outline-info") action-btn" 
+                                            title="@(item.IsPublic ? "Make Private" : "Make Public")"
+                                            disabled="@isUpdatingVisibility"
+                                            @onclick="() => ToggleVisibility(item.Id, !item.IsPublic)">
+                                        <i class="bi @(item.IsPublic ? "bi-lock" : "bi-globe") me-1"></i>
+                                        @(item.IsPublic ? "Make Private" : "Make Public")
+                                    </button>
                                     <button class="btn btn-sm btn-outline-danger action-btn" title="Delete" @onclick="() => ConfirmDelete(item.Id)">
                                         <i class="bi bi-trash"></i> Delete
                                     </button>
@@ -164,16 +185,17 @@
                                     <li><button class="dropdown-item" @onclick="() => HistoryHelper.CopyToClipboard(item, JSRuntime, ToastService, ShowCopyFailedDialog)">
                                         <i class="bi bi-clipboard"></i> Copy Analysis
                                     </button></li>
-                                    <li><button class="dropdown-item" @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
-                                        <i class="bi bi-link-45deg"></i> Copy Share Link
+                                    <li><button class="dropdown-item @(item.IsPublic ? "" : "disabled")" 
+                                                disabled="@(!item.IsPublic)"
+                                                @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
+                                        <i class="bi bi-link-45deg"></i> Copy Share Link @(item.IsPublic ? "" : "(Private)")
                                     </button></li>
                                     <li><hr class="dropdown-divider"></li>
-                                    <li class="px-3 py-1">
-                                        <VisibilityToggle IsPublic="item.IsPublic" 
-                                                        IsPublicChanged="(isPublic) => ToggleVisibility(item.Id, isPublic)" 
-                                                        IsDisabled="@isUpdatingVisibility" 
-                                                        ShowDescription="true" />
-                                    </li>
+                                    <li><button class="dropdown-item @(item.IsPublic ? "text-warning" : "text-info")" 
+                                                disabled="@isUpdatingVisibility"
+                                                @onclick="() => ToggleVisibility(item.Id, !item.IsPublic)">
+                                        <i class="bi @(item.IsPublic ? "bi-lock" : "bi-globe")"></i> @(item.IsPublic ? "Make Private" : "Make Public")
+                                    </button></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><button class="dropdown-item text-danger" @onclick="() => ConfirmDelete(item.Id)">
                                         <i class="bi bi-trash"></i> Delete
@@ -264,11 +286,6 @@
     }
 </div>
 
-<!-- Share Confirmation Dialog -->
-<ShareConfirmationDialog @bind-IsVisible="isShareConfirmationVisible"
-                        OnConfirm="ConfirmPublicShare"
-                        IsProcessing="@isUpdatingVisibility" />
-
 <!-- Copy Failed Dialog -->
 <div class="modal fade @(showCopyFailedDialog ? "show d-block" : "")" tabindex="-1" style="background-color: rgba(0, 0, 0, 0.5);">
     <div class="modal-dialog">
@@ -320,8 +337,6 @@
 
     // Visibility management state
     private bool isUpdatingVisibility = false;
-    private bool isShareConfirmationVisible = false;
-    private string? pendingVisibilityItemId = null;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -639,28 +654,8 @@
 
     private async Task ToggleVisibility(string itemId, bool isPublic)
     {
-        if (isPublic)
-        {
-            // Show confirmation dialog for making public
-            pendingVisibilityItemId = itemId;
-            isShareConfirmationVisible = true;
-        }
-        else
-        {
-            // Make private directly
-            await UpdateAnalysisVisibility(itemId, false);
-        }
-    }
-
-    private async Task ConfirmPublicShare()
-    {
-        isShareConfirmationVisible = false;
-        
-        if (!string.IsNullOrEmpty(pendingVisibilityItemId))
-        {
-            await UpdateAnalysisVisibility(pendingVisibilityItemId, true);
-            pendingVisibilityItemId = null;
-        }
+        // Direct action - no confirmation dialog needed
+        await UpdateAnalysisVisibility(itemId, isPublic);
     }
 
     private async Task UpdateAnalysisVisibility(string itemId, bool isPublic)
