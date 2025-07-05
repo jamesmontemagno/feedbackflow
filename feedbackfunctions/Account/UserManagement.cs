@@ -8,6 +8,7 @@ using FeedbackFunctions.Middleware;
 using SharedDump.Models.Authentication;
 using FeedbackFunctions.Services.Account;
 using SharedDump.Models.Account;
+using FeedbackFunctions.Attributes;
 
 namespace FeedbackFunctions.Account;
 
@@ -45,6 +46,7 @@ public class UserManagement
     /// <param name="req">HTTP request</param>
     /// <returns>HTTP response with user information</returns>
     [Function("RegisterUser")]
+    [Authorize]
     public async Task<HttpResponseData> RegisterUserAsync(
         [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
@@ -69,7 +71,7 @@ public class UserManagement
             try
             {
                 _logger.LogInformation("Creating UserAccount record for new user {UserId}", authenticatedUser.UserId);
-                
+
                 // Create new user account with default Free tier
                 var userAccount = new UserAccount
                 {
@@ -104,7 +106,7 @@ public class UserManagement
                 };
 
                 await _userAccountService.UpsertUserAccountAsync(entity);
-                
+
                 _logger.LogInformation("Successfully created UserAccount record for user {UserId} with Free tier", authenticatedUser.UserId);
             }
             catch (Exception ex)
@@ -130,7 +132,7 @@ public class UserManagement
                     providerUserId = authenticatedUser.ProviderUserId
                 }
             });
-            
+
             return response;
         }
         catch (Exception ex)
@@ -148,6 +150,7 @@ public class UserManagement
     /// <param name="req">HTTP request</param>
     /// <returns>HTTP response confirming deletion</returns>
     [Function("DeleteUser")]
+    [Authorize]
     public async Task<HttpResponseData> DeleteUserAsync(
         [HttpTrigger(AuthorizationLevel.Function, "delete")] HttpRequestData req)
     {
@@ -167,7 +170,7 @@ public class UserManagement
 
             // Deactivate the user instead of hard deletion for data integrity
             var success = await _userService.DeactivateUserAsync(authenticatedUser.UserId);
-            
+
             if (!success)
             {
                 _logger.LogWarning("User {UserId} not found for deactivation", authenticatedUser.UserId);
@@ -201,6 +204,8 @@ public class UserManagement
     /// <param name="req">HTTP request</param>
     /// <returns>HTTP response with user information</returns>
     [Function("GetCurrentUser")]
+    [Authorize]
+
     public async Task<HttpResponseData> GetCurrentUserAsync(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
@@ -251,6 +256,8 @@ public class UserManagement
     /// <param name="req">HTTP request</param>
     /// <returns>HTTP response with success status</returns>
     [Function("UpdatePreferredEmail")]
+    [Authorize]
+
     public async Task<HttpResponseData> UpdatePreferredEmailAsync(
         [HttpTrigger(AuthorizationLevel.Function, "put")] HttpRequestData req)
     {
