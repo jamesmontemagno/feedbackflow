@@ -311,6 +311,7 @@
     private string searchTerm = string.Empty;
     private bool isAuthenticated = false;
     private bool hasLocalHistoryItems = false;
+    private bool isLoadingData = false;
     
     // Pagination state
     private int totalItems = 0;
@@ -344,7 +345,7 @@
             // Check if user has local history items
             await CheckForLocalHistoryItems();
             
-            if (isAuthenticated)
+            if (isAuthenticated && !isLoadingData)
             {
                 await LoadSharedHistoryAsync();
             }
@@ -356,10 +357,10 @@
     private void HandleAuthenticated(bool success)
     {
         isAuthenticated = success;
-        if (success)
+        if (success && !isLoadingData)
         {
             // Load shared history when successfully authenticated
-            _ = Task.Run(async () =>
+            _ = InvokeAsync(async () =>
             {
                 await LoadSharedHistoryAsync();
                 StateHasChanged();
@@ -383,14 +384,16 @@
 
     private async Task LoadSharedHistoryAsync()
     {
-        if (sharedHistoryService == null) return;
+        if (sharedHistoryService == null || isLoadingData) return;
+        
+        isLoadingData = true;
         
         try
         {
             var sharedItems = await sharedHistoryService.GetUsersSavedAnalysesAsync();
             
             // Convert SharedAnalysisEntity to AnalysisHistoryItem
-            historyItems = new List<AnalysisHistoryItem>();
+            var newHistoryItems = new List<AnalysisHistoryItem>();
             
             foreach (var sharedItem in sharedItems)
             {
@@ -402,6 +405,7 @@
                     Id = sharedItem.Id,
                     Timestamp = sharedItem.CreatedDate,
                     FullAnalysis = analysisData?.FullAnalysis ?? sharedItem.Summary,
+
                     SourceType = sharedItem.SourceType,
                     UserInput = sharedItem.UserInput,
                     IsShared = true,
@@ -410,11 +414,15 @@
                     IsPublic = sharedItem.IsPublic
                 };
                 
-                historyItems.Add(historyItem);
+                newHistoryItems.Add(historyItem);
             }
             
-            // Sort by most recent first
-            historyItems = historyItems.OrderByDescending(h => h.Timestamp).ToList();
+            // Remove duplicates by Id and sort by most recent first
+            historyItems = newHistoryItems
+                .GroupBy(h => h.Id)
+                .Select(g => g.First())
+                .OrderByDescending(h => h.Timestamp)
+                .ToList();
             totalItems = historyItems.Count;
         }
         catch (Exception)
@@ -422,6 +430,10 @@
             // Fallback to empty list if something goes wrong
             historyItems = new List<AnalysisHistoryItem>();
             totalItems = 0;
+        }
+        finally
+        {
+            isLoadingData = false;
         }
     }
 
@@ -518,7 +530,9 @@
 
     private async Task LoadFilteredSearchResultsAsync()
     {
-        if (sharedHistoryService == null) return;
+        if (sharedHistoryService == null || isLoadingData) return;
+        
+        isLoadingData = true;
         
         try
         {
@@ -526,7 +540,7 @@
             var sharedItems = await sharedHistoryService.SearchUsersSavedAnalysesAsync(searchTermToUse);
             
             // Convert SharedAnalysisEntity to AnalysisHistoryItem
-            historyItems = new List<AnalysisHistoryItem>();
+            var newHistoryItems = new List<AnalysisHistoryItem>();
             
             foreach (var sharedItem in sharedItems)
             {
@@ -538,6 +552,7 @@
                     Id = sharedItem.Id,
                     Timestamp = sharedItem.CreatedDate,
                     FullAnalysis = analysisData?.FullAnalysis ?? sharedItem.Summary,
+
                     SourceType = sharedItem.SourceType,
                     UserInput = sharedItem.UserInput,
                     IsShared = true,
@@ -546,11 +561,15 @@
                     IsPublic = sharedItem.IsPublic
                 };
                 
-                historyItems.Add(historyItem);
+                newHistoryItems.Add(historyItem);
             }
             
-            // Sort by most recent first
-            historyItems = historyItems.OrderByDescending(h => h.Timestamp).ToList();
+            // Remove duplicates by Id and sort by most recent first
+            historyItems = newHistoryItems
+                .GroupBy(h => h.Id)
+                .Select(g => g.First())
+                .OrderByDescending(h => h.Timestamp)
+                .ToList();
             totalItems = historyItems.Count;
             
             StateHasChanged();
@@ -559,6 +578,10 @@
         {
             historyItems = new List<AnalysisHistoryItem>();
             totalItems = 0;
+        }
+        finally
+        {
+            isLoadingData = false;
         }
     }
 
