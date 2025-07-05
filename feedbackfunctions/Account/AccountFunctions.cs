@@ -42,10 +42,70 @@ namespace FeedbackFunctions.Account
             if (authErrorResponse != null)
                 return authErrorResponse;
 
-            var account = await _usageService.GetUserAccountAsync();
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            await response.WriteAsJsonAsync(account);
-            return response;
+            try
+            {
+                var account = await _usageService.GetUserAccountAsync();
+                
+                // If account doesn't exist, create a new one for this user
+                if (account == null)
+                {
+                    _logger.LogInformation("User account not found, creating new account for user {UserId}", user!.UserId);
+                    
+                    // Create new user account with default Free tier
+                    account = new UserAccount
+                    {
+                        UserId = user.UserId,
+                        Tier = AccountTier.Free,
+                        AnalysesUsed = 0,
+                        ActiveReports = 0,
+                        FeedQueriesUsed = 0,
+                        CreatedAt = DateTime.UtcNow,
+                        LastResetDate = DateTime.UtcNow,
+                        SubscriptionStart = DateTime.UtcNow,
+                        IsActive = true
+                    };
+
+                    // Set limits based on the Free tier
+                    var limits = _limitsService.GetLimitsForTier(AccountTier.Free);
+                    account.AnalysisLimit = limits.AnalysisLimit;
+                    account.ReportLimit = limits.ReportLimit;
+                    account.FeedQueryLimit = limits.FeedQueryLimit;
+
+                    // Convert to entity and save to the database
+                    var entity = new UserAccountEntity
+                    {
+                        PartitionKey = user.UserId,
+                        RowKey = "account",
+                        Tier = (int)account.Tier,
+                        AnalysesUsed = account.AnalysesUsed,
+                        ActiveReports = account.ActiveReports,
+                        FeedQueriesUsed = account.FeedQueriesUsed,
+                        AnalysisLimit = account.AnalysisLimit,
+                        ReportLimit = account.ReportLimit,
+                        FeedQueryLimit = account.FeedQueryLimit,
+                        CreatedAt = account.CreatedAt,
+                        LastResetDate = account.LastResetDate,
+                        SubscriptionStart = account.SubscriptionStart,
+                        SubscriptionEnd = account.SubscriptionEnd,
+                        IsActive = account.IsActive
+                    };
+
+                    await _userAccountService.UpsertUserAccountAsync(entity);
+                    
+                    _logger.LogInformation("Created new user account for user {UserId} with Free tier", user.UserId);
+                }
+
+                var response = req.CreateResponse(HttpStatusCode.OK);
+                await response.WriteAsJsonAsync(account);
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting or creating user account for user {UserId}", user?.UserId);
+                var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+                await errorResponse.WriteStringAsync("Error retrieving user account");
+                return errorResponse;
+            }
         }
 
         [Function("ValidateUsage")]

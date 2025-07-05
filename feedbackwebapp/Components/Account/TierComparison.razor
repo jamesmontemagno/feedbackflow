@@ -35,14 +35,26 @@
                             <li>
                                 <i class="bi bi-graph-up"></i>
                                 <strong>@tier.Limits.AnalysisLimit</strong> analyses per month
+                                @if (tier.Tier == CurrentTier && UserAccount != null)
+                                {
+                                    <span class="current-usage">(@UserAccount.AnalysesUsed used)</span>
+                                }
                             </li>
                             <li>
                                 <i class="bi bi-file-earmark-text"></i>
                                 <strong>@tier.Limits.ReportLimit</strong> active reports
+                                @if (tier.Tier == CurrentTier && UserAccount != null)
+                                {
+                                    <span class="current-usage">(@UserAccount.ActiveReports active)</span>
+                                }
                             </li>
                             <li>
                                 <i class="bi bi-search"></i>
                                 <strong>@tier.Limits.FeedQueryLimit</strong> feed queries per month
+                                @if (tier.Tier == CurrentTier && UserAccount != null)
+                                {
+                                    <span class="current-usage">(@UserAccount.FeedQueriesUsed used)</span>
+                                }
                             </li>
                         </ul>
                     </div>
@@ -93,6 +105,7 @@
 
 @code {
     [Parameter] public AccountTier CurrentTier { get; set; } = AccountTier.Free;
+    [Parameter] public UserAccount? UserAccount { get; set; }
     [Parameter] public EventCallback<AccountTier> OnUpgradeRequest { get; set; }
 
     private bool isLoading = true;
