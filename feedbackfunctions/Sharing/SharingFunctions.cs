@@ -171,7 +171,6 @@ public class SharingFunctions
     }
 
     [Function("GetSharedAnalysis")]
-    [Authorize]
     public async Task<HttpResponseData> GetSharedAnalysis(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "GetSharedAnalysis/{id}")] HttpRequestData req,
         string id,
@@ -219,9 +218,9 @@ public class SharingFunctions
         // Check access permissions
         bool userOwnsAnalysis = false;
         string? authenticatedUserId = null;
-        if (req.Headers.Contains("Authorization"))
+        if (req.Headers.Contains("X-MS-CLIENT-PRINCIPAL"))
         {
-            _logger.LogInformation("Authorization header found, attempting to authenticate user");
+            _logger.LogInformation("X-MS-CLIENT-PRINCIPAL header found, attempting to authenticate user");
             try
             {
                 var (user, _) = await req.AuthenticateAsync(_authMiddleware);
@@ -244,7 +243,7 @@ public class SharingFunctions
         }
         else
         {
-            _logger.LogInformation("No Authorization header found in request");
+            _logger.LogInformation("No X-MS-CLIENT-PRINCIPAL header found in request");
         }
 
         // If analysis is private and user doesn't own it, deny access
