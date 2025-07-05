@@ -7,21 +7,21 @@ Implement a tiered user account system with usage limits and tracking to enable 
 
 ### Free Tier
 - **Monthly Analysis Limit**: 10 analyses per month
-- **Report Tracking Limit**: 5 active reports
+- **Report Tracking Limit**: 2 active reports
 - **Feed Query Limit**: 20 feed queries per month
-- **Features**: Basic analysis, standard support
+- **Features**: Basic analysis, no support
 - **Price**: Free
 
 ### Pro Tier
-- **Monthly Analysis Limit**: 100 analyses per month
-- **Report Tracking Limit**: 25 active reports
+- **Monthly Analysis Limit**: 75 analyses per month
+- **Report Tracking Limit**: 10 active reports
 - **Feed Query Limit**: 200 feed queries per month
-- **Features**: All Free features + priority processing
+- **Features**: All Free features + priority processing + basic support
 - **Price**: $9.99/month
 
 ### Pro+ Tier
-- **Monthly Analysis Limit**: 500 analyses per month
-- **Report Tracking Limit**: 100 active reports
+- **Monthly Analysis Limit**: 300 analyses per month
+- **Report Tracking Limit**: 25 active reports
 - **Feed Query Limit**: 1000 feed queries per month
 - **Features**: All Pro features + email notifications, advanced analytics
 - **Price**: $29.99/month
