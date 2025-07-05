@@ -3,6 +3,7 @@ using System.Text.Json;
 using FeedbackWebApp.Services.Authentication;
 using FeedbackWebApp.Services.Interfaces;
 using FeedbackWebApp.Services.Mock;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.JSInterop;
 using SharedDump.Models;
 
@@ -26,6 +27,7 @@ public class SharedHistoryServiceProvider : ISharedHistoryServiceProvider
     private readonly ILogger<SharedHistoryService> _logger;
     private readonly ILogger<MockSharedHistoryService> _mockLogger;
     private readonly IAuthenticationHeaderService _authHeaderService;
+    private readonly IMemoryCache _memoryCache;
     private readonly bool _useMockService;
 
     public SharedHistoryServiceProvider(
@@ -33,7 +35,8 @@ public class SharedHistoryServiceProvider : ISharedHistoryServiceProvider
         IConfiguration configuration,
         ILogger<SharedHistoryService> logger,
         ILogger<MockSharedHistoryService> mockLogger,
-        IAuthenticationHeaderService authHeaderService)
+        IAuthenticationHeaderService authHeaderService,
+        IMemoryCache memoryCache)
     {
         _httpClientFactory = httpClientFactory;
         _configuration = configuration;
@@ -41,6 +44,8 @@ public class SharedHistoryServiceProvider : ISharedHistoryServiceProvider
         _mockLogger = mockLogger;
         _authHeaderService = authHeaderService;
         _useMockService = configuration.GetValue<bool>("FeedbackApi:UseMocks", false);
+        _memoryCache = memoryCache;
+        _memoryCache = memoryCache;
     }
 
     public ISharedHistoryService GetService()
@@ -48,7 +53,7 @@ public class SharedHistoryServiceProvider : ISharedHistoryServiceProvider
         if (_useMockService)
             return new MockSharedHistoryService(_mockLogger);
 
-        return new SharedHistoryService(_httpClientFactory, _logger, _configuration, _authHeaderService);
+        return new SharedHistoryService(_httpClientFactory, _logger, _configuration, _authHeaderService, _memoryCache);
     }
 }
 
@@ -57,9 +62,14 @@ public class SharedHistoryServiceProvider : ISharedHistoryServiceProvider
 /// </summary>
 public class SharedHistoryService : ISharedHistoryService, IDisposable
 {
+    private const string UserAnalysesCacheKey = "user_saved_analyses";
+    private const string SharedAnalysisCacheKeyPrefix = "shared_analysis_";
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(4); // Cache for 4 hours since analyses don't change frequently
+
     private readonly HttpClient _httpClient;
     private readonly ILogger<SharedHistoryService> _logger;
     private readonly IAuthenticationHeaderService _authHeaderService;
+    private readonly IMemoryCache _memoryCache;
     protected readonly string BaseUrl;
     protected readonly IConfiguration Configuration;
 
@@ -73,11 +83,13 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
         IHttpClientFactory httpClientFactory,
         ILogger<SharedHistoryService> logger,
         IConfiguration configuration,
-        IAuthenticationHeaderService authHeaderService)
+        IAuthenticationHeaderService authHeaderService,
+        IMemoryCache memoryCache)
     {
         _httpClient = httpClientFactory.CreateClient("DefaultClient");
         _logger = logger;
         _authHeaderService = authHeaderService;
+        _memoryCache = memoryCache;
 
         // Get base URLs from configuration
         Configuration = configuration;
@@ -110,6 +122,13 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
 
     public async Task<List<SharedAnalysisEntity>> GetUsersSavedAnalysesAsync()
     {
+        // Check cache first
+        if (_memoryCache.TryGetValue(UserAnalysesCacheKey, out List<SharedAnalysisEntity>? cachedAnalyses) && cachedAnalyses != null)
+        {
+            _logger.LogInformation("Retrieved user's saved analyses from cache");
+            return cachedAnalyses;
+        }
+
         try
         {
             _logger.LogInformation("Fetching user's saved analyses from server");
@@ -131,7 +150,16 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
             var responseContent = await response.Content.ReadAsStringAsync();
             var analyses = JsonSerializer.Deserialize<List<SharedAnalysisEntity>>(responseContent, _jsonOptions);
 
-            return analyses ?? new List<SharedAnalysisEntity>();
+            var result = analyses ?? new List<SharedAnalysisEntity>();
+
+            // Cache the result
+            var cacheOptions = new MemoryCacheEntryOptions()
+                .SetAbsoluteExpiration(CacheDuration)
+                .SetPriority(CacheItemPriority.Normal);
+            _memoryCache.Set(UserAnalysesCacheKey, result, cacheOptions);
+            _logger.LogInformation("Cached {Count} user analyses for {Duration}", result.Count, CacheDuration);
+
+            return result;
         }
         catch (Exception ex)
         {
@@ -163,6 +191,13 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
             if (response.IsSuccessStatusCode)
             {
                 _logger.LogInformation("Successfully deleted shared analysis {Id}", id);
+                
+                // Invalidate caches
+                _memoryCache.Remove(UserAnalysesCacheKey);
+                var analysisCacheKey = $"{SharedAnalysisCacheKeyPrefix}{id}";
+                _memoryCache.Remove(analysisCacheKey);
+                _logger.LogDebug("Invalidated caches after deleting analysis {Id}", id);
+                
                 return true;
             }
             else
@@ -185,6 +220,16 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
 
     public async Task<AnalysisData?> GetSharedAnalysisAsync(string id)
     {
+        // Create cache key
+        var cacheKey = $"{SharedAnalysisCacheKeyPrefix}{id}";
+
+        // Check cache first
+        if (_memoryCache.TryGetValue(cacheKey, out AnalysisData? cachedAnalysis) && cachedAnalysis != null)
+        {
+            _logger.LogInformation("Retrieved shared analysis {Id} from cache", id);
+            return cachedAnalysis;
+        }
+
         try
         {
             _logger.LogInformation("Getting shared analysis with ID: {Id}", id);
@@ -205,6 +250,16 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
 
             var responseContent = await response.Content.ReadAsStringAsync();
             var analysisData = JsonSerializer.Deserialize<AnalysisData>(responseContent, _jsonOptions);
+
+            // Cache the result if it's not null
+            if (analysisData != null)
+            {
+                var cacheOptions = new MemoryCacheEntryOptions()
+                    .SetAbsoluteExpiration(CacheDuration)
+                    .SetPriority(CacheItemPriority.Normal);
+                _memoryCache.Set(cacheKey, analysisData, cacheOptions);
+                _logger.LogInformation("Cached shared analysis {Id} for {Duration}", id, CacheDuration);
+            }
 
             return analysisData;
         }
@@ -274,6 +329,10 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
                 throw new InvalidOperationException("Invalid response from sharing service");
             }
 
+            // Invalidate the user analyses cache since a new analysis was shared
+            _memoryCache.Remove(UserAnalysesCacheKey);
+            _logger.LogDebug("Invalidated user analyses cache after sharing new analysis");
+
             return result.Id;
         }
         catch (Exception ex)
@@ -316,6 +375,13 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
             if (response.IsSuccessStatusCode)
             {
                 _logger.LogInformation("Successfully updated analysis {Id} visibility to {IsPublic}", analysisId, isPublic);
+                
+                // Invalidate caches since visibility changed
+                _memoryCache.Remove(UserAnalysesCacheKey);
+                var analysisCacheKey = $"{SharedAnalysisCacheKeyPrefix}{analysisId}";
+                _memoryCache.Remove(analysisCacheKey);
+                _logger.LogDebug("Invalidated caches after updating analysis {Id} visibility", analysisId);
+                
                 return true;
             }
             else
