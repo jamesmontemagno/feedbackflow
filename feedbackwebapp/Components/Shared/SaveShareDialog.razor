@@ -10,7 +10,7 @@
      tabindex="-1" 
      aria-hidden="@(!IsVisible)"
      @onclick="HandleBackdropClick">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" @onclick:stopPropagation="true">
+    <div class="modal-dialog modal-dialog-scrollable" @onclick:stopPropagation="true">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
@@ -202,32 +202,6 @@
         if (IsVisible && !IsProcessing && !IsSaved)
         {
             // Keep current IsPublic value
-        }
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (IsVisible)
-        {
-            try
-            {
-                await JSRuntime.InvokeVoidAsync("showModal", null);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning(ex, "Failed to call showModal JavaScript function");
-            }
-        }
-        else
-        {
-            try
-            {
-                await JSRuntime.InvokeVoidAsync("hideModal", null);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning(ex, "Failed to call hideModal JavaScript function");
-            }
         }
     }
 

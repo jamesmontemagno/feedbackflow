@@ -17,14 +17,15 @@
 
 .modal-dialog {
     max-width: 500px;
-    margin: 1.75rem auto;
+    margin: 3rem auto 1.75rem auto;
     display: flex;
-    align-items: center;
-    min-height: calc(100vh - 3.5rem);
+    align-items: flex-start;
+    min-height: calc(100vh - 4.75rem);
     transition: transform 0.3s ease-out;
     transform: translateY(-50px);
     position: relative;
     z-index: 1061;
+    padding-top: 2rem;
 }
 
 .modal.show .modal-dialog {
@@ -251,9 +252,10 @@
 /* Responsive design */
 @media (max-width: 576px) {
     .modal-dialog {
-        margin: 0.5rem;
+        margin: 1rem 0.5rem 0.5rem 0.5rem;
         max-width: calc(100vw - 1rem);
-        min-height: calc(100vh - 1rem);
+        min-height: calc(100vh - 1.5rem);
+        padding-top: 1rem;
     }
     
     .modal-body {
