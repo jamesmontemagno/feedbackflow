@@ -43,25 +43,13 @@
 
     @if (!isAuthenticated)
     {
-        <div class="alert alert-warning">
-            <div class="d-flex align-items-center">
-                <i class="bi bi-exclamation-triangle me-2"></i>
-                <div>
-                    <h6 class="mb-1">Authentication Required</h6>
-                    <p class="mb-2">You need to sign in to view your shared analysis history.</p>
-                    <button class="btn btn-sm btn-primary" @onclick="NavigateToLogin">
-                        <i class="bi bi-box-arrow-in-right me-1"></i>
-                        Sign In
-                    </button>
-                </div>
-            </div>
-        </div>
+        <AuthenticationForm OnAuthenticated="HandleAuthenticated" />
     }
     else
     {
         @if (historyItems is { Count: > 0 })
         {
-            <div class="filter-section card bg-body dark-theme-card mb-4 p-3 shadow-sm">
+            <div class="filter-section card bg-body mb-4 p-3 shadow-sm">
                 <div class="row g-3">
                     <div class="col-12 mb-2">
                         <label for="searchFilter" class="form-label">Search Analysis Content</label>
@@ -105,7 +93,7 @@
 
         @if (historyItems is null)
         {
-            <div class="loading-state card bg-body dark-theme-card shadow-sm">
+            <div class="loading-state card bg-body shadow-sm">
                 <div class="card-body">
                     <div class="spinner-border" role="status">
                         <span class="visually-hidden">Loading...</span>
@@ -117,7 +105,7 @@
         }
         else if (!historyItems.Any())
         {
-            <div class="empty-state card bg-body dark-theme-card shadow-sm">
+            <div class="empty-state card bg-body shadow-sm">
                 <div class="card-body text-center">
                     <i class="bi bi-cloud-upload display-4 mb-3"></i>
                     <p class="mb-2">No shared analysis history found.</p>
@@ -271,7 +259,7 @@
     @if (hasLocalHistoryItems)
     {
         <div class="local-archive-section mt-5 pt-4 border-top">
-            <div class="card bg-body dark-theme-card shadow-sm">
+            <div class="card bg-body shadow-sm">
                 <div class="card-body text-center">
                     <i class="bi bi-archive display-6 mb-3 text-muted"></i>
                     <h5 class="card-title">Local Analysis Archive</h5>
@@ -363,6 +351,21 @@
             
             StateHasChanged();
         }
+    }
+    
+    private void HandleAuthenticated(bool success)
+    {
+        isAuthenticated = success;
+        if (success)
+        {
+            // Load shared history when successfully authenticated
+            _ = Task.Run(async () =>
+            {
+                await LoadSharedHistoryAsync();
+                StateHasChanged();
+            });
+        }
+        StateHasChanged();
     }
     
     private async Task CheckForLocalHistoryItems()
@@ -606,11 +609,6 @@
         }
         onConfirmAction = null;
     }    
-    
-    private void NavigateToLogin()
-    {
-        NavigationManager.NavigateTo("/");
-    }
     
     private void ShowCopyFailedDialog(string content, string contentType)
     {
