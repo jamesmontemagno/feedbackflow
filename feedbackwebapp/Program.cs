@@ -1,4 +1,5 @@
 using FeedbackWebApp.Services;
+using FeedbackWebApp.Services.Account;
 using FeedbackWebApp.Services.Authentication;
 using FeedbackWebApp.Services.ContentFeed;
 using FeedbackWebApp.Services.Feedback;
@@ -58,44 +59,14 @@ else
 // Register user management service
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 
-// Register account services for usage tracking and limits
-var functionsBaseUrl = builder.Configuration.GetConnectionString("functions") ?? "http://localhost:7071";
+// Register the proper frontend account service that calls backend APIs
+var useMocks = builder.Configuration.GetValue<bool>("UseMocks", false);
+#if DEBUG
+    useMocks = builder.Configuration.GetValue<bool>("UseMocks", true); // Default to mocks in debug
+#endif
 
-builder.Services.AddHttpClient("AccountServices", client =>
-{
-    client.BaseAddress = new Uri(functionsBaseUrl);
-    client.Timeout = TimeSpan.FromMinutes(2);
-});
-
-// Note: For now, we'll use a simple HTTP-based service for the web app
-// In a full implementation, these would connect to the same storage as Functions
-builder.Services.AddScoped<SharedDump.Services.Account.IAccountLimitsService>(sp =>
-{
-    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
-    var config = sp.GetRequiredService<IConfiguration>();
-    var storage = config["AzureWebJobsStorage"] ?? "UseDevelopmentStorage=true";
-    
-    // Create table services for web app
-    var userTable = new SharedDump.Services.Account.UserAccountTableService(storage);
-    var usageTable = new SharedDump.Services.Account.UsageRecordTableService(storage);
-    
-    return new SharedDump.Services.Account.AccountLimitsService(userTable, usageTable, config);
-});
-
-builder.Services.AddScoped<SharedDump.Services.Account.IUsageTrackingService>(sp =>
-{
-    var limitsService = sp.GetRequiredService<SharedDump.Services.Account.IAccountLimitsService>();
-    var config = sp.GetRequiredService<IConfiguration>();
-    var storage = config["AzureWebJobsStorage"] ?? "UseDevelopmentStorage=true";
-    var userTable = new SharedDump.Services.Account.UserAccountTableService(storage);
-    
-    // Create a simple usage tracking service for web app
-    return new SharedDump.Services.Account.WebAppUsageTrackingService(limitsService, userTable);
-});
-
-// Keep the old AuthenticationService for backward compatibility
-//builder.Services.AddScoped<AuthenticationService>();
-
+// Account Services using provider pattern
+builder.Services.AddScoped<IAccountServiceProvider, AccountServiceProvider>();
 builder.Services.AddScoped<UserSettingsService>();
 builder.Services.AddScoped<IReportServiceProvider, ReportServiceProvider>();
 builder.Services.AddScoped<IReportRequestService, ReportRequestService>();

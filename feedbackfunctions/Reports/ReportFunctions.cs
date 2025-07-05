@@ -9,12 +9,15 @@ using SharedDump.Models.Reddit;
 using SharedDump.Models.GitHub;
 using SharedDump.Models.Reports;
 using SharedDump.AI;
+using SharedDump.Services;
 using SharedDump.Services.Interfaces;
 using SharedDump.Utils;
 using Azure.Storage.Blobs;
 using FeedbackFunctions.Utils;
 using FeedbackFunctions.Services;
+using FeedbackFunctions.Services.Reports;
 using FeedbackFunctions.Services.Authentication;
+using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
 
@@ -36,7 +39,7 @@ public class ReportingFunctions
     private readonly IFeedbackAnalyzerService _analyzerService;
     private readonly IConfiguration _configuration;
     private readonly IReportCacheService _cacheService;
-    private readonly AuthenticationMiddleware _authMiddleware;
+    private readonly FeedbackFunctions.Middleware.AuthenticationMiddleware _authMiddleware;
     private const string ContainerName = "reports";
     private readonly BlobContainerClient _containerClient;
     private readonly ReportGenerator _reportGenerator;
@@ -59,7 +62,7 @@ public class ReportingFunctions
         IGitHubService githubService,
         IFeedbackAnalyzerService analyzerService,
         IReportCacheService cacheService,
-        AuthenticationMiddleware authMiddleware)
+        FeedbackFunctions.Middleware.AuthenticationMiddleware authMiddleware)
     {
 
 #if DEBUG

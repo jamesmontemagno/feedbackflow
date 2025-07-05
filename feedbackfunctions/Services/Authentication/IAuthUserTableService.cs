@@ -1,6 +1,6 @@
 using SharedDump.Models.Authentication;
 
-namespace SharedDump.Services.Authentication;
+namespace FeedbackFunctions.Services.Authentication;
 
 /// <summary>
 /// Service for managing authenticated users in Azure Table Storage

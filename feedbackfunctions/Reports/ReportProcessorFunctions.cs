@@ -11,6 +11,7 @@ using SharedDump.Services.Interfaces;
 using SharedDump.AI;
 using FeedbackFunctions.Utils;
 using FeedbackFunctions.Services;
+using FeedbackFunctions.Services.Reports;
 
 namespace FeedbackFunctions;
 

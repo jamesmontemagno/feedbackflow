@@ -4,10 +4,10 @@ using System.Text.Json;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
-using SharedDump.Services.Account;
+using FeedbackFunctions.Services.Account;
 using SharedDump.Models.Account;
 using System.Web;
-using FeedbackFunctions.Services.Authentication;
+using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
 
@@ -62,7 +62,8 @@ namespace FeedbackFunctions.Account
                         CreatedAt = DateTime.UtcNow,
                         LastResetDate = DateTime.UtcNow,
                         SubscriptionStart = DateTime.UtcNow,
-                        IsActive = true
+                        IsActive = true,
+                        PreferredEmail = user.Email ?? string.Empty
                     };
 
                     // Convert to entity and save to the database (no limits stored)
@@ -88,7 +89,12 @@ namespace FeedbackFunctions.Account
                 }
 
                 var response = req.CreateResponse(HttpStatusCode.OK);
-                await response.WriteAsJsonAsync(account);
+                await response.WriteAsJsonAsync(new
+                {
+                    Data = account,
+                    Success = true,
+                    Message = "User account retrieved successfully"
+                });
                 return response;
             }
             catch (Exception ex)
@@ -98,51 +104,6 @@ namespace FeedbackFunctions.Account
                 await errorResponse.WriteStringAsync("Error retrieving user account");
                 return errorResponse;
             }
-        }
-
-        [Function("ValidateUsage")]
-        [Authorize]
-        public async Task<HttpResponseData> ValidateUsage(
-            [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
-        {
-            _logger.LogInformation("Validating usage");
-
-            // Authenticate the request
-            var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
-            if (authErrorResponse != null)
-                return authErrorResponse;
-
-            var queryParams = HttpUtility.ParseQueryString(req.Url.Query);
-            var usageTypeStr = queryParams["usageType"];
-            if (!Enum.TryParse<UsageType>(usageTypeStr, out var usageType))
-                usageType = UsageType.Analysis;
-
-            var result = await _limitsService.ValidateUsageAsync(user!.UserId, usageType);
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            await response.WriteAsJsonAsync(result);
-            return response;
-        }
-
-        [Function("TrackUsage")]
-        [Authorize]
-        public async Task<HttpResponseData> TrackUsage(
-            [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
-        {
-            _logger.LogInformation("Tracking usage");
-
-            // Authenticate the request
-            var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
-            if (authErrorResponse != null)
-                return authErrorResponse;
-
-            var requestBody = await req.ReadAsStringAsync();
-            var trackingRequest = JsonSerializer.Deserialize<TrackUsageRequest>(requestBody ?? "{}");
-            
-            await _limitsService.TrackUsageAsync(user!.UserId, trackingRequest?.UsageType ?? UsageType.Analysis, trackingRequest?.ResourceId);
-            
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            await response.WriteStringAsync("Usage tracked");
-            return response;
         }
 
         [Function("ResetMonthlyUsage")]
@@ -170,6 +131,26 @@ namespace FeedbackFunctions.Account
 
             try
             {
+                var queryParams = HttpUtility.ParseQueryString(req.Url.Query);
+                var tierStr = queryParams["tier"];
+                
+                // If a specific tier is requested, return just that tier's limits
+                if (!string.IsNullOrEmpty(tierStr) && int.TryParse(tierStr, out var tierInt) && Enum.IsDefined(typeof(AccountTier), tierInt))
+                {
+                    var requestedTier = (AccountTier)tierInt;
+                    var limits = _limitsService.GetLimitsForTier(requestedTier);
+                    
+                    var response = req.CreateResponse(HttpStatusCode.OK);
+                    await response.WriteAsJsonAsync(new
+                    {
+                        Data = limits,
+                        Success = true,
+                        Message = $"Limits for {requestedTier} tier retrieved successfully"
+                    });
+                    return response;
+                }
+
+                // Otherwise, return all tier information
                 var tiers = new[]
                 {
                     new { 
@@ -198,9 +179,14 @@ namespace FeedbackFunctions.Account
                     }
                 };
 
-                var response = req.CreateResponse(HttpStatusCode.OK);
-                await response.WriteAsJsonAsync(tiers);
-                return response;
+                var allTiersResponse = req.CreateResponse(HttpStatusCode.OK);
+                await allTiersResponse.WriteAsJsonAsync(new
+                {
+                    Data = tiers,
+                    Success = true,
+                    Message = "All tier information retrieved successfully"
+                });
+                return allTiersResponse;
             }
             catch (Exception ex)
             {
@@ -210,11 +196,5 @@ namespace FeedbackFunctions.Account
                 return errorResponse;
             }
         }
-    }
-
-    public class TrackUsageRequest
-    {
-        public UsageType UsageType { get; set; }
-        public string? ResourceId { get; set; }
     }
 }

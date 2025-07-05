@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharedDump.Models.Account;
-using SharedDump.Services.Account;
+using FeedbackFunctions.Services.Account;
 
 namespace FeedbackFlow.Tests
 {

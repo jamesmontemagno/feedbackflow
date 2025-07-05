@@ -1,45 +1,42 @@
 @namespace FeedbackWebApp.Components.Account
 @using FeedbackWebApp.Components.Account
 @using SharedDump.Models.Account
-@using SharedDump.Services.Account
-@inject IAccountLimitsService AccountLimitsService
 
 <div class="usage-dashboard">
-    <div class="tier-badge tier-@userAccount.Tier.ToString().ToLower()">
-        @userAccount.Tier Tier
-    </div>
-    <div class="usage-metrics">
-        @if (limits != null)
-        {
-            <UsageMetric Label="Analyses" Used="@userAccount.AnalysesUsed" Limit="@limits.AnalysisLimit" />
-            <UsageMetric Label="Reports" Used="@userAccount.ActiveReports" Limit="@limits.ReportLimit" />
-            <UsageMetric Label="Feed Queries" Used="@userAccount.FeedQueriesUsed" Limit="@limits.FeedQueryLimit" />
-        }
-        else
-        {
-            <div class="text-center py-3">
-                <div class="spinner-border spinner-border-sm text-primary" role="status">
-                    <span class="visually-hidden">Loading limits...</span>
-                </div>
-            </div>
-        }
-    </div>
-    @if (userAccount.Tier == AccountTier.Free)
+    @if (IsLoading)
     {
-        <UpgradePrompt />
+        <div class="text-center py-3">
+            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Loading account information...</span>
+            </div>
+        </div>
+    }
+    else if (UserAccount != null && Limits != null)
+    {
+        <div class="tier-badge tier-@UserAccount.Tier.ToString().ToLower()">
+            @UserAccount.Tier Tier
+        </div>
+        <div class="usage-metrics">
+            <UsageMetric Label="Analyses" Used="@UserAccount.AnalysesUsed" Limit="@Limits.AnalysisLimit" />
+            <UsageMetric Label="Reports" Used="@UserAccount.ActiveReports" Limit="@Limits.ReportLimit" />
+            <UsageMetric Label="Feed Queries" Used="@UserAccount.FeedQueriesUsed" Limit="@Limits.FeedQueryLimit" />
+        </div>
+        @if (UserAccount.Tier == AccountTier.Free)
+        {
+            <UpgradePrompt />
+        }
+    }
+    else
+    {
+        <div class="text-center py-3 text-muted">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            Unable to load account information
+        </div>
     }
 </div>
 
 @code {
-    [Parameter] public UserAccount userAccount { get; set; } = new();
-    
-    private AccountLimits? limits;
-
-    protected override void OnParametersSet()
-    {
-        if (userAccount != null)
-        {
-            limits = AccountLimitsService.GetLimitsForTier(userAccount.Tier);
-        }
-    }
+    [Parameter] public UserAccount? UserAccount { get; set; }
+    [Parameter] public AccountLimits? Limits { get; set; }
+    [Parameter] public bool IsLoading { get; set; } = false;
 }

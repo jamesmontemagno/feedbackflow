@@ -3,13 +3,13 @@
 @using FeedbackWebApp.Services.Authentication
 @using FeedbackWebApp.Services.Interfaces
 @using FeedbackWebApp.Components.Account
-@using SharedDump.Services.Account
+@using FeedbackWebApp.Services.Account
 @using SharedDump.Models.Account
 @using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Components.Web
 @inject IUserManagementService UserManagementService
 @inject IAuthenticationService AuthService
-@inject IUsageTrackingService UsageTrackingService
+@inject IAccountServiceProvider AccountServiceProvider
 @inject IToastService ToastService
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Navigation
@@ -133,17 +133,9 @@
                                         <i class="bi bi-graph-up me-2"></i>
                                         Current Usage
                                     </h5>
-                                    @if (userAccount != null)
-                                    {
-                                        <UsageDashboard userAccount="@userAccount" />
-                                    }
-                                    else
-                                    {
-                                        <div class="alert alert-warning">
-                                            <i class="bi bi-exclamation-triangle me-2"></i>
-                                            Unable to load usage information.
-                                        </div>
-                                    }
+                                    <UsageDashboard UserAccount="@userAccount" 
+                                                    Limits="@accountLimits" 
+                                                    IsLoading="@false" />
                                 </div>
                             </div>
 
@@ -158,6 +150,9 @@
                                     </h5>
                                     <TierComparison CurrentTier="@(userAccount?.Tier ?? AccountTier.Free)" 
                                                     UserAccount="@userAccount" 
+                                                    Tiers="@tierInformation"
+                                                    IsLoading="@false"
+                                                    ErrorMessage="@tierErrorMessage"
                                                     OnUpgradeRequest="@HandleUpgradeRequest" />
                                 </div>
                             </div>
@@ -173,12 +168,21 @@
                                         <i class="bi bi-graph-up me-2"></i>
                                         Usage & Plans
                                     </h5>
-                                    <div class="text-center py-4">
-                                        <div class="spinner-border text-primary" role="status">
-                                            <span class="visually-hidden">Loading usage and plan information...</span>
-                                        </div>
-                                        <p class="mt-2 text-muted">Loading your account details...</p>
-                                    </div>
+                                    
+                                    <!-- Usage Dashboard Loading -->
+                                    <UsageDashboard UserAccount="@null" 
+                                                    Limits="@null" 
+                                                    IsLoading="@true" />
+                                    
+                                    <hr class="my-3">
+                                    
+                                    <!-- Tier Comparison Loading -->
+                                    <TierComparison CurrentTier="@AccountTier.Free" 
+                                                    UserAccount="@null" 
+                                                    Tiers="@null"
+                                                    IsLoading="@true"
+                                                    ErrorMessage=""
+                                                    OnUpgradeRequest="@HandleUpgradeRequest" />
                                 </div>
                             </div>
 
@@ -241,6 +245,9 @@
 @code {
     private UserInfo? userInfo;
     private UserAccount? userAccount;
+    private AccountLimits? accountLimits;
+    private TierInfo[]? tierInformation;
+    private string tierErrorMessage = "";
     private bool isLoading = true;
     private bool isLoadingUsage = true;
     private bool isDeleting = false;
@@ -342,18 +349,47 @@
         try
         {
             isLoadingUsage = true;
-            userAccount = await UsageTrackingService.GetUserAccountAsync();
+            tierErrorMessage = "";
+            var accountService = AccountServiceProvider.GetService();
             
-            // Update preferred email input to use UserAccount data
-            if (userAccount != null)
+            // Load user account and limits
+            var accountResult = await accountService.GetUserAccountAndLimitsAsync();
+            if (accountResult.HasValue)
             {
-                preferredEmailInput = userAccount.PreferredEmail ?? userInfo?.Email ?? "";
+                userAccount = accountResult.Value.account;
+                accountLimits = accountResult.Value.limits;
+                
+                // Update preferred email input to use UserAccount data
+                if (userAccount != null)
+                {
+                    preferredEmailInput = userAccount.PreferredEmail ?? userInfo?.Email ?? "";
+                }
+            }
+            else
+            {
+                userAccount = null;
+                accountLimits = null;
+            }
+
+            // Load tier information
+            try
+            {
+                tierInformation = await accountService.GetTierLimitsAsync();
+            }
+            catch (Exception ex)
+            {
+                tierErrorMessage = $"Failed to load tier information: {ex.Message}";
+                tierInformation = null;
             }
         }
         catch (Exception ex)
         {
             // Log error but don't show to user - usage dashboard will show error state
             Console.WriteLine($"Error loading user account: {ex.Message}");
+            userAccount = null;
+            accountLimits = null;
+            tierInformation = null;
+            tierErrorMessage = "Failed to load account data. Please refresh the page.";
         }
         finally
         {

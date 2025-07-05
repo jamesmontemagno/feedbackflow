@@ -18,12 +18,12 @@ using SharedDump.Models.BlueSkyFeedback;
 using SharedDump.Json;
 using SharedDump.Services;
 using SharedDump.Services.Interfaces;
-using FeedbackFunctions.Services.Authentication;
+using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
 using SharedDump.Models.Account;
 
-namespace FeedbackFunctions;
+namespace FeedbackFunctions.FeedbackAnalysis;
 
 /// <summary>
 /// Azure Functions for retrieving and analyzing feedback from various platforms
@@ -643,17 +643,4 @@ public class FeedbackFunctions
             return response;
         }
     }
-
-}
-
-public class AnalyzeCommentsRequest
-{
-    [JsonPropertyName("comments")]
-    public string Comments { get; set; } = string.Empty;
-    
-    [JsonPropertyName("serviceType")]
-    public string ServiceType { get; set; } = string.Empty;
-
-    [JsonPropertyName("customPrompt")]
-    public string? CustomPrompt { get; set; }
 }

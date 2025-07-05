@@ -4,12 +4,12 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using FeedbackFunctions.Services.Authentication;
-using SharedDump.Services.Authentication;
+using FeedbackFunctions.Middleware;
 using SharedDump.Models.Authentication;
-using SharedDump.Services.Account;
+using FeedbackFunctions.Services.Account;
 using SharedDump.Models.Account;
 
-namespace FeedbackFunctions;
+namespace FeedbackFunctions.Account;
 
 /// <summary>
 /// Azure Functions for user management operations
@@ -17,7 +17,7 @@ namespace FeedbackFunctions;
 public class UserManagement
 {
     private readonly ILogger<UserManagement> _logger;
-    private readonly AuthenticationMiddleware _authMiddleware;
+    private readonly FeedbackFunctions.Middleware.AuthenticationMiddleware _authMiddleware;
     private readonly IAuthUserTableService _userService;
     private readonly IAccountLimitsService _limitsService;
     private readonly IUserAccountTableService _userAccountService;
@@ -25,7 +25,7 @@ public class UserManagement
 
     public UserManagement(
         ILogger<UserManagement> logger,
-        AuthenticationMiddleware authMiddleware,
+        FeedbackFunctions.Middleware.AuthenticationMiddleware authMiddleware,
         IAuthUserTableService userService,
         IAccountLimitsService limitsService,
         IUserAccountTableService userAccountService,
@@ -81,7 +81,8 @@ public class UserManagement
                     CreatedAt = DateTime.UtcNow,
                     LastResetDate = DateTime.UtcNow,
                     SubscriptionStart = DateTime.UtcNow,
-                    IsActive = true
+                    IsActive = true,
+                    PreferredEmail = authenticatedUser.Email ?? string.Empty
                 };
 
                 // Limits are now calculated dynamically based on tier

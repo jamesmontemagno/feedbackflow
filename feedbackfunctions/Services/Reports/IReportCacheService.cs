@@ -1,6 +1,6 @@
 using SharedDump.Models.Reports;
 
-namespace FeedbackFunctions.Services;
+namespace FeedbackFunctions.Services.Reports;
 
 /// <summary>
 /// Interface for caching report data in memory

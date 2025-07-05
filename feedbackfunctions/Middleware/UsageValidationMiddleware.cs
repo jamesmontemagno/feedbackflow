@@ -4,7 +4,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Middleware;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using SharedDump.Services.Account;
+using FeedbackFunctions.Services.Account;
 using SharedDump.Models.Account;
 
 namespace FeedbackFunctions.Middleware

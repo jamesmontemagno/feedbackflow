@@ -14,12 +14,23 @@ using SharedDump.Models.YouTube;
 using SharedDump.Services;
 using SharedDump.Services.Interfaces;
 using SharedDump.Services.Mock;
-using SharedDump.Services.Authentication;
+using FeedbackFunctions.Services.Authentication;
+using FeedbackFunctions.Middleware;
+using FeedbackFunctions.Services.Account;
 using System.Configuration;
 using Azure.Storage.Blobs;
 using FeedbackFunctions.Services;
-using FeedbackFunctions.Services.Authentication;
-using FeedbackFunctions.Middleware;
+
+// Account service aliases for cleaner registration
+using IAccountLimitsService = FeedbackFunctions.Services.Account.IAccountLimitsService;
+using IUsageTrackingService = FeedbackFunctions.Services.Account.IUsageTrackingService;
+using IUserAccountTableService = FeedbackFunctions.Services.Account.IUserAccountTableService;
+using IUsageRecordTableService = FeedbackFunctions.Services.Account.IUsageRecordTableService;
+using AccountLimitsService = FeedbackFunctions.Services.Account.AccountLimitsService;
+using UsageTrackingService = FeedbackFunctions.Services.Account.UsageTrackingService;
+using UserAccountTableService = FeedbackFunctions.Services.Account.UserAccountTableService;
+using UsageRecordTableService = FeedbackFunctions.Services.Account.UsageRecordTableService;
+using FeedbackFunctions.Services.Reports;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
@@ -45,7 +56,7 @@ builder.Services.AddHttpClient();
 
 // Register authentication services
 builder.Services.AddScoped<IAuthUserTableService, AuthUserTableService>();
-builder.Services.AddScoped<AuthenticationMiddleware>();
+builder.Services.AddScoped<FeedbackFunctions.Middleware.AuthenticationMiddleware>();
 builder.Services.AddScoped<UsageValidationMiddleware>();
 
 // Register blob storage and cache services
@@ -72,27 +83,9 @@ if (useMocks)
     builder.Services.AddScoped<IFeedbackAnalyzerService, MockFeedbackAnalyzerService>();
     builder.Services.AddScoped<ITwitterService, MockTwitterService>();
     builder.Services.AddScoped<IBlueSkyService, MockBlueSkyService>();
-    // Register account/usage services (mock or real as needed)
-    builder.Services.AddScoped<SharedDump.Services.Account.IAccountLimitsService>(sp =>
-    {
-        var userTable = sp.GetRequiredService<SharedDump.Services.Account.IUserAccountTableService>();
-        var usageTable = sp.GetRequiredService<SharedDump.Services.Account.IUsageRecordTableService>();
-        var config = GetConfig(sp);
-        return new SharedDump.Services.Account.AccountLimitsService(userTable, usageTable, config);
-    });
-    builder.Services.AddScoped<SharedDump.Services.Account.IUsageTrackingService, FeedbackFunctions.Services.UsageTrackingService>();
-    builder.Services.AddSingleton<SharedDump.Services.Account.IUserAccountTableService>(sp =>
-    {
-        var config = GetConfig(sp);
-        var storage = config["ProductionStorage"] ?? "UseDevelopmentStorage=true";
-        return new SharedDump.Services.Account.UserAccountTableService(storage);
-    });
-    builder.Services.AddSingleton<SharedDump.Services.Account.IUsageRecordTableService>(sp =>
-    {
-        var config = GetConfig(sp);
-        var storage = config["ProductionStorage"] ?? "UseDevelopmentStorage=true";
-        return new SharedDump.Services.Account.UsageRecordTableService(storage);
-    });
+    
+    // Register account/usage services
+    RegisterAccountServices(builder.Services);
 }
 else
 {
@@ -212,26 +205,7 @@ else
     });
 
     // Register account/usage services
-    builder.Services.AddScoped<SharedDump.Services.Account.IAccountLimitsService>(sp =>
-    {
-        var userTable = sp.GetRequiredService<SharedDump.Services.Account.IUserAccountTableService>();
-        var usageTable = sp.GetRequiredService<SharedDump.Services.Account.IUsageRecordTableService>();
-        var config = GetConfig(sp);
-        return new SharedDump.Services.Account.AccountLimitsService(userTable, usageTable, config);
-    });
-    builder.Services.AddScoped<SharedDump.Services.Account.IUsageTrackingService, FeedbackFunctions.Services.UsageTrackingService>();
-    builder.Services.AddSingleton<SharedDump.Services.Account.IUserAccountTableService>(sp =>
-    {
-        var config = GetConfig(sp);
-        var storage = config["ProductionStorage"] ?? "UseDevelopmentStorage=true";
-        return new SharedDump.Services.Account.UserAccountTableService(storage);
-    });
-    builder.Services.AddSingleton<SharedDump.Services.Account.IUsageRecordTableService>(sp =>
-    {
-        var config = GetConfig(sp);
-        var storage = config["ProductionStorage"] ?? "UseDevelopmentStorage=true";
-        return new SharedDump.Services.Account.UsageRecordTableService(storage);
-    });
+    RegisterAccountServices(builder.Services);
 }
 
 IConfiguration GetConfig(IServiceProvider? serviceProvider = null)
@@ -241,6 +215,24 @@ IConfiguration GetConfig(IServiceProvider? serviceProvider = null)
 #else
     return serviceProvider?.GetRequiredService<IConfiguration>() ?? throw new InvalidOperationException("Configuration service not available.");
 #endif
+}
+
+void RegisterAccountServices(IServiceCollection services)
+{
+    services.AddScoped<IAccountLimitsService, AccountLimitsService>();
+    services.AddScoped<IUsageTrackingService, UsageTrackingService>();
+    services.AddSingleton<IUserAccountTableService>(sp =>
+    {
+        var config = GetConfig(sp);
+        var storage = config["ProductionStorage"] ?? "UseDevelopmentStorage=true";
+        return new UserAccountTableService(storage);
+    });
+    services.AddSingleton<IUsageRecordTableService>(sp =>
+    {
+        var config = GetConfig(sp);
+        var storage = config["ProductionStorage"] ?? "UseDevelopmentStorage=true";
+        return new UsageRecordTableService(storage);
+    });
 }
 
 // Application Insights isn't enabled by default. See https://aka.ms/AAt8mw4.
@@ -253,8 +245,8 @@ var app = builder.Build();
 // Ensure tables exist on startup
 using (var scope = app.Services.CreateScope())
 {
-    var userTable = scope.ServiceProvider.GetRequiredService<SharedDump.Services.Account.IUserAccountTableService>();
-    var usageTable = scope.ServiceProvider.GetRequiredService<SharedDump.Services.Account.IUsageRecordTableService>();
+    var userTable = scope.ServiceProvider.GetRequiredService<IUserAccountTableService>();
+    var usageTable = scope.ServiceProvider.GetRequiredService<IUsageRecordTableService>();
     await userTable.CreateTableIfNotExistsAsync();
     await usageTable.CreateTableIfNotExistsAsync();
 }

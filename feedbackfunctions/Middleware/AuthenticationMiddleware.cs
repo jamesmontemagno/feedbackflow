@@ -4,9 +4,9 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SharedDump.Models.Authentication;
-using SharedDump.Services.Authentication;
+using FeedbackFunctions.Services.Authentication;
 
-namespace FeedbackFunctions.Services.Authentication;
+namespace FeedbackFunctions.Middleware;
 
 /// <summary>
 /// Authentication middleware for processing Azure Easy Auth headers
