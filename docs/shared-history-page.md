@@ -2,7 +2,7 @@
 
 ## Overview
 
-The SharedHistory page (`/shared-history`) is a new component that displays the user's shared analysis history stored in Azure Table Storage and Blob Storage. It replaces the traditional local IndexedDB-based history page in the navigation while providing a link to access older local analyses.
+The SharedHistory page (`/history`) is a new component that displays the user's shared analysis history stored in Azure Table Storage and Blob Storage. It replaces the traditional local IndexedDB-based history page in the navigation while providing a link to access older local analyses.
 
 ## Key Features
 
@@ -68,14 +68,14 @@ The page uses the SharedHistoryService which:
 
 ## Navigation Changes
 
-The main navigation now points to `/shared-history` instead of `/history`:
+The main navigation now points to `/history`.
 - **Mobile Menu**: Updated dropdown with cloud upload icon
 - **Desktop Menu**: Updated navigation link with cloud upload icon
 - **Icon Change**: Changed from `bi-clock-history` to `bi-cloud-upload` to indicate cloud storage
 
 ## Backward Compatibility
 
-- Old `/history` route remains functional for accessing local IndexedDB data
+- Old `/history` route remains functional for accessing local IndexedDB data and is moved to `/local-history`
 - "Local Analysis Archive" section appears when user has local data
 - Smooth transition path for users migrating from local to shared storage
 - Existing HistoryHelper methods work with both local and shared data

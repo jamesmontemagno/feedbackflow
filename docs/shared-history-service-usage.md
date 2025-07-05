@@ -17,7 +17,7 @@ builder.Services.AddScoped<ISharedHistoryServiceProvider, SharedHistoryServicePr
 ### Basic Usage
 
 ```csharp
-@page "/shared-history"
+@page "/history"
 @using FeedbackWebApp.Services.Interfaces
 @inject ISharedHistoryServiceProvider SharedHistoryServiceProvider
 @inject ILogger<SharedHistoryPage> Logger

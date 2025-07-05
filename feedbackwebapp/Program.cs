@@ -28,7 +28,9 @@ builder.Services.AddHttpContextAccessor();
 
 // Add Data Protection services for secure authentication
 builder.Services.AddDataProtection();
-    
+
+builder.Services.AddMemoryCache();
+
 // Register ToastService and other services
 builder.Services.AddScoped<IToastService, ToastService>();
 builder.Services.AddScoped<IHistoryHelper, HistoryHelper>();
