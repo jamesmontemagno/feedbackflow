@@ -66,6 +66,16 @@ public class SharedAnalysisEntity : ITableEntity
     public string UserId { get; set; } = string.Empty;
 
     /// <summary>
+    /// Whether this analysis is publicly accessible
+    /// </summary>
+    public bool IsPublic { get; set; } = false;
+
+    /// <summary>
+    /// When this analysis was made public (if applicable)
+    /// </summary>
+    public DateTime? PublicSharedDate { get; set; }
+
+    /// <summary>
     /// Default constructor for Table Storage
     /// </summary>
     public SharedAnalysisEntity() { }
@@ -76,7 +86,8 @@ public class SharedAnalysisEntity : ITableEntity
     /// <param name="userId">User ID of the owner</param>
     /// <param name="analysisId">Unique analysis ID</param>
     /// <param name="analysisData">Analysis data to extract metadata from</param>
-    public SharedAnalysisEntity(string userId, string analysisId, AnalysisData analysisData)
+    /// <param name="isPublic">Whether the analysis should be public</param>
+    public SharedAnalysisEntity(string userId, string analysisId, AnalysisData analysisData, bool isPublic = false)
     {
         PartitionKey = userId;
         RowKey = analysisId;
@@ -87,5 +98,7 @@ public class SharedAnalysisEntity : ITableEntity
         SourceType = analysisData.SourceType;
         UserInput = analysisData.UserInput;
         CreatedDate = analysisData.CreatedDate;
+        IsPublic = isPublic;
+        PublicSharedDate = isPublic ? DateTime.UtcNow : null;
     }
 }

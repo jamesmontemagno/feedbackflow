@@ -280,14 +280,20 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
         ).ToList();
     }
 
-    public async Task<string> ShareAnalysisAsync(AnalysisData analysis)
+    public async Task<string> ShareAnalysisAsync(AnalysisData analysis, bool isPublic = false)
     {
         try
         {
-            _logger.LogInformation("Sharing analysis");
+            _logger.LogInformation("Sharing analysis (Public: {IsPublic})", isPublic);
+            
+            var requestData = new
+            {
+                Analysis = analysis,
+                IsPublic = isPublic
+            };
             
             var content = new StringContent(
-                JsonSerializer.Serialize(analysis, _jsonOptions),
+                JsonSerializer.Serialize(requestData, _jsonOptions),
                 Encoding.UTF8,
                 "application/json");
 
@@ -317,6 +323,84 @@ public class SharedHistoryService : ISharedHistoryService, IDisposable
         {
             _logger.LogError(ex, "Error sharing analysis");
             throw;
+        }
+    }
+
+    public async Task<bool> UpdateAnalysisVisibilityAsync(string analysisId, bool isPublic)
+    {
+        if (string.IsNullOrWhiteSpace(analysisId))
+        {
+            _logger.LogWarning("Cannot update analysis visibility: ID is null or empty");
+            return false;
+        }
+
+        try
+        {
+            _logger.LogInformation("Updating analysis {Id} visibility to {IsPublic}", analysisId, isPublic);
+
+            var requestData = new
+            {
+                IsPublic = isPublic
+            };
+            
+            var content = new StringContent(
+                JsonSerializer.Serialize(requestData, _jsonOptions),
+                Encoding.UTF8,
+                "application/json");
+
+            var functionsKey = Configuration["FeedbackApi:FunctionsKey"]
+                ?? throw new InvalidOperationException("FunctionsKey not configured");
+
+            var url = $"{BaseUrl}/api/UpdateAnalysisVisibility/{analysisId}?code={Uri.EscapeDataString(functionsKey)}";
+            var response = await _httpClient.PatchAsync(url, content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("Successfully updated analysis {Id} visibility to {IsPublic}", analysisId, isPublic);
+                
+                // Invalidate cache to force refresh on next request
+                _memoryCache.Remove(CacheKey);
+                
+                return true;
+            }
+            else
+            {
+                _logger.LogWarning("Failed to update analysis {Id} visibility: {StatusCode}", analysisId, response.StatusCode);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating analysis {Id} visibility", analysisId);
+            return false;
+        }
+    }
+
+    public async Task<string?> GetPublicShareLinkAsync(string analysisId)
+    {
+        if (string.IsNullOrWhiteSpace(analysisId))
+        {
+            return null;
+        }
+
+        try
+        {
+            // Get the analysis entity to check if it's public
+            var analyses = await GetUsersSavedAnalysesAsync();
+            var analysis = analyses.FirstOrDefault(a => a.Id == analysisId);
+            
+            if (analysis == null || !analysis.IsPublic)
+            {
+                return null;
+            }
+
+            // Return the public share URL
+            return $"{BaseUrl.Replace("/api", "")}/shared/{analysisId}";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting public share link for analysis {Id}", analysisId);
+            return null;
         }
     }
 

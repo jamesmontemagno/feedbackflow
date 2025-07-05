@@ -83,8 +83,24 @@ public interface ISharedHistoryService
     /// Shares an analysis result and returns a unique identifier for the shared analysis
     /// </summary>
     /// <param name="analysis">The analysis data to share</param>
+    /// <param name="isPublic">Whether the analysis should be publicly accessible</param>
     /// <returns>A unique identifier for the shared analysis</returns>
-    Task<string> ShareAnalysisAsync(AnalysisData analysis);
+    Task<string> ShareAnalysisAsync(AnalysisData analysis, bool isPublic = false);
+    
+    /// <summary>
+    /// Updates the visibility (public/private) of a shared analysis
+    /// </summary>
+    /// <param name="analysisId">The ID of the analysis to update</param>
+    /// <param name="isPublic">Whether the analysis should be publicly accessible</param>
+    /// <returns>True if updated successfully, false otherwise</returns>
+    Task<bool> UpdateAnalysisVisibilityAsync(string analysisId, bool isPublic);
+    
+    /// <summary>
+    /// Gets the public share link for an analysis (only if it's public)
+    /// </summary>
+    /// <param name="analysisId">The ID of the analysis</param>
+    /// <returns>The public share URL, or null if analysis is not public</returns>
+    Task<string?> GetPublicShareLinkAsync(string analysisId);
     
     /// <summary>
     /// Retrieves a shared analysis by its identifier (alias for GetSharedAnalysisDataAsync)

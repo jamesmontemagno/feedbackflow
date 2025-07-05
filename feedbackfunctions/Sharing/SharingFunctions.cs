@@ -15,6 +15,33 @@ using FeedbackFunctions.Attributes;
 namespace FeedbackFunctions;
 
 /// <summary>
+/// Request model for saving shared analysis with privacy settings
+/// </summary>
+public class SaveAnalysisRequest
+{
+    /// <summary>
+    /// The analysis data to save
+    /// </summary>
+    public AnalysisData Analysis { get; set; } = new();
+
+    /// <summary>
+    /// Whether the analysis should be publicly accessible
+    /// </summary>
+    public bool IsPublic { get; set; } = false;
+}
+
+/// <summary>
+/// Request model for updating analysis visibility
+/// </summary>
+public class UpdateVisibilityRequest
+{
+    /// <summary>
+    /// Whether the analysis should be publicly accessible
+    /// </summary>
+    public bool IsPublic { get; set; } = false;
+}
+
+/// <summary>
 /// Azure Functions for sharing and retrieving analysis results
 /// </summary>
 /// <remarks>
@@ -91,15 +118,20 @@ public class SharingFunctions
         }
         
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-        var analysisData = JsonSerializer.Deserialize<AnalysisData>(requestBody, 
+        
+        // Parse request to get both analysis data and public flag
+        var requestData = JsonSerializer.Deserialize<SaveAnalysisRequest>(requestBody, 
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-        if (analysisData == null)
+        if (requestData?.Analysis == null)
         {
             var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
             await badResponse.WriteStringAsync("Invalid analysis data");
             return badResponse;
         }
+
+        var analysisData = requestData.Analysis;
+        var isPublic = requestData.IsPublic;
         
         // Generate unique ID
         string id = Guid.NewGuid().ToString();
@@ -108,17 +140,20 @@ public class SharingFunctions
         {
             // Save to blob storage with the ID as the blob name
             var blobClient = containerClient.GetBlobClient($"{id}.json");
-            using var ms = new MemoryStream(Encoding.UTF8.GetBytes(requestBody));
+            
+            // Store the original analysis data (not the request wrapper)
+            var analysisJson = JsonSerializer.Serialize(analysisData, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            using var ms = new MemoryStream(Encoding.UTF8.GetBytes(analysisJson));
             await blobClient.UploadAsync(ms, overwrite: true);
 
-            // Save metadata to table storage
-            var sharedAnalysisEntity = new SharedAnalysisEntity(user.UserId, id, analysisData);
+            // Save metadata to table storage with public flag
+            var sharedAnalysisEntity = new SharedAnalysisEntity(user.UserId, id, analysisData, isPublic);
             await _tableClient.UpsertEntityAsync(sharedAnalysisEntity);
 
             // Add to in-memory cache
-            _sharedAnalysisCache[id] = requestBody;
+            _sharedAnalysisCache[id] = analysisJson;
 
-            _logger.LogInformation("Successfully saved shared analysis {Id} for user {UserId}", id, user.UserId);
+            _logger.LogInformation("Successfully saved shared analysis {Id} for user {UserId} (Public: {IsPublic})", id, user.UserId, isPublic);
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "application/json");
@@ -143,6 +178,53 @@ public class SharingFunctions
     {
         _logger.LogInformation($"Retrieving shared analysis with ID: {id}");
 
+        // First, check if the analysis exists in table storage to get privacy settings
+        SharedAnalysisEntity? analysisEntity = null;
+        try
+        {
+            // Try to find the entity by scanning all partitions (since we don't know the user ID)
+            await foreach (var entity in _tableClient.QueryAsync<SharedAnalysisEntity>(
+                filter: $"RowKey eq '{id}'"))
+            {
+                analysisEntity = entity;
+                break; // Found the entity
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error querying table storage for analysis {Id}", id);
+        }
+
+        if (analysisEntity == null)
+        {
+            var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+            await notFoundResponse.WriteStringAsync("Shared analysis not found");
+            return notFoundResponse;
+        }
+
+        // Check access permissions
+        bool userOwnsAnalysis = false;
+        if (req.Headers.Contains("Authorization"))
+        {
+            try
+            {
+                var (user, _) = await req.AuthenticateAsync(_authMiddleware);
+                userOwnsAnalysis = user?.UserId == analysisEntity.UserId;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Authentication failed for analysis access");
+            }
+        }
+
+        // If analysis is private and user doesn't own it, deny access
+        if (!analysisEntity.IsPublic && !userOwnsAnalysis)
+        {
+            var unauthorizedResponse = req.CreateResponse(HttpStatusCode.Unauthorized);
+            await unauthorizedResponse.WriteStringAsync("This analysis is private and you don't have permission to access it");
+            return unauthorizedResponse;
+        }
+
         // Check in-memory cache first
         if (_sharedAnalysisCache.TryGetValue(id, out var cachedJson))
         {
@@ -155,7 +237,7 @@ public class SharingFunctions
         if (string.IsNullOrEmpty(analysisJson))
         {
             var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
-            await notFoundResponse.WriteStringAsync("Shared analysis not found");
+            await notFoundResponse.WriteStringAsync("Shared analysis content not found");
             return notFoundResponse;
         }
 
@@ -167,6 +249,97 @@ public class SharingFunctions
         await response.WriteStringAsync(analysisJson);
         
         return response;
+    }
+
+    /// <summary>
+    /// Updates the visibility (public/private) of a shared analysis
+    /// </summary>
+    /// <param name="req">HTTP request containing the new visibility setting</param>
+    /// <param name="id">The ID of the analysis to update</param>
+    /// <returns>HTTP response indicating success or failure</returns>
+    [Function("UpdateAnalysisVisibility")]
+    [Authorize]
+    public async Task<HttpResponseData> UpdateAnalysisVisibility(
+        [HttpTrigger(AuthorizationLevel.Function, "patch", Route = "UpdateAnalysisVisibility/{id}")] HttpRequestData req,
+        string id)
+    {
+        _logger.LogInformation("Processing request to update analysis visibility for {Id}", id);
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
+
+        if (user == null)
+        {
+            var unauthorizedResponse = req.CreateResponse(HttpStatusCode.Unauthorized);
+            await unauthorizedResponse.WriteStringAsync("User authentication failed");
+            return unauthorizedResponse;
+        }
+
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await badRequestResponse.WriteStringAsync("Analysis ID is required");
+            return badRequestResponse;
+        }
+
+        try
+        {
+            // Parse request body to get new visibility setting
+            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            var visibilityRequest = JsonSerializer.Deserialize<UpdateVisibilityRequest>(requestBody, 
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            if (visibilityRequest == null)
+            {
+                var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await badRequestResponse.WriteStringAsync("Invalid request body");
+                return badRequestResponse;
+            }
+
+            // Check if the analysis exists and belongs to the user
+            var existingEntity = await _tableClient.GetEntityIfExistsAsync<SharedAnalysisEntity>(user.UserId, id);
+            
+            if (!existingEntity.HasValue)
+            {
+                var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+                await notFoundResponse.WriteStringAsync("Analysis not found or you don't have permission to modify it");
+                return notFoundResponse;
+            }
+
+            var entity = existingEntity.Value;
+            if (entity == null)
+            {
+                var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+                await notFoundResponse.WriteStringAsync("Analysis entity is null");
+                return notFoundResponse;
+            }
+
+            var isPublic = visibilityRequest.IsPublic;
+            
+            // Update visibility settings
+            entity.IsPublic = isPublic;
+            entity.PublicSharedDate = isPublic ? DateTime.UtcNow : null;
+
+            // Save updated entity
+            await _tableClient.UpsertEntityAsync(entity);
+
+            _logger.LogInformation("Successfully updated analysis {Id} visibility to {IsPublic} for user {UserId}", 
+                id, isPublic, user.UserId);
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            await response.WriteStringAsync("Analysis visibility updated successfully");
+            
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating analysis visibility for {Id} and user {UserId}", id, user.UserId);
+            var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await errorResponse.WriteStringAsync("Error updating analysis visibility");
+            return errorResponse;
+        }
     }
 
     /// <summary>

@@ -164,6 +164,10 @@
                                     <button class="btn btn-sm btn-outline-success action-btn" title="Copy Share Link" @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
                                         <i class="bi bi-link-45deg"></i> Copy Link
                                     </button>
+                                    <VisibilityToggle IsPublic="item.IsPublic" 
+                                                    OnPublicToggle="(isPublic) => ToggleVisibility(item.Id, isPublic)" 
+                                                    IsDisabled="@isUpdatingVisibility" 
+                                                    Size="VisibilityToggle.ButtonSize.Small" />
                                     @if(item.SourceType != "Manual")
                                     {
                                         <a class="btn btn-sm btn-outline-secondary action-btn" title="Open Link" target="_blank" rel="noopener noreferrer" href="@HistoryHelper.GetSourceUrl(item)">
@@ -181,6 +185,13 @@
                                     <li><button class="dropdown-item" @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
                                         <i class="bi bi-link-45deg"></i> Copy Share Link
                                     </button></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li class="px-3 py-1">
+                                        <VisibilityToggle IsPublic="item.IsPublic" 
+                                                        OnPublicToggle="(isPublic) => ToggleVisibility(item.Id, isPublic)" 
+                                                        IsDisabled="@isUpdatingVisibility" 
+                                                        Size="VisibilityToggle.ButtonSize.Small" />
+                                    </li>
                                     @if(item.SourceType != "Manual")
                                     {
                                         <li><a class="dropdown-item" target="_blank" rel="noopener noreferrer" href="@HistoryHelper.GetSourceUrl(item)">
@@ -277,6 +288,32 @@
     }
 </div>
 
+<!-- Share Confirmation Dialog -->
+<ShareConfirmationDialog @bind-IsVisible="isShareConfirmationVisible"
+                        OnConfirm="ConfirmPublicShare"
+                        IsProcessing="@isUpdatingVisibility" />
+
+<!-- Copy Failed Dialog -->
+<div class="modal fade @(showCopyFailedDialog ? "show d-block" : "")" tabindex="-1" style="background-color: rgba(0, 0, 0, 0.5);">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Copy Failed</h5>
+                <button type="button" class="btn-close" @onclick="() => showCopyFailedDialog = false"></button>
+            </div>
+            <div class="modal-body">
+                <p>Failed to copy @failedCopyContentType to clipboard. Here's the content you can copy manually:</p>
+                <div class="alert alert-light">
+                    <code style="white-space: pre-wrap; word-break: break-all;">@failedCopyContent</code>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="() => showCopyFailedDialog = false">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @code {
     private ISharedHistoryService? sharedHistoryService;
     private List<AnalysisHistoryItem>? historyItems;
@@ -303,6 +340,11 @@
     private bool showCopyFailedDialog = false;
     private string failedCopyContent = string.Empty;
     private string failedCopyContentType = string.Empty;
+
+    // Visibility management state
+    private bool isUpdatingVisibility = false;
+    private bool isShareConfirmationVisible = false;
+    private string? pendingVisibilityItemId = null;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -361,7 +403,8 @@
                     UserInput = sharedItem.UserInput,
                     IsShared = true,
                     SharedId = sharedItem.Id,
-                    SharedDate = sharedItem.CreatedDate
+                    SharedDate = sharedItem.CreatedDate,
+                    IsPublic = sharedItem.IsPublic
                 };
                 
                 historyItems.Add(historyItem);
@@ -496,7 +539,8 @@
                     UserInput = sharedItem.UserInput,
                     IsShared = true,
                     SharedId = sharedItem.Id,
-                    SharedDate = sharedItem.CreatedDate
+                    SharedDate = sharedItem.CreatedDate,
+                    IsPublic = sharedItem.IsPublic
                 };
                 
                 historyItems.Add(historyItem);
@@ -582,5 +626,64 @@
         failedCopyContent = string.Empty;
         failedCopyContentType = string.Empty;
         StateHasChanged();
+    }
+
+    private async Task ToggleVisibility(string itemId, bool isPublic)
+    {
+        if (isPublic)
+        {
+            // Show confirmation dialog for making public
+            pendingVisibilityItemId = itemId;
+            isShareConfirmationVisible = true;
+        }
+        else
+        {
+            // Make private directly
+            await UpdateAnalysisVisibility(itemId, false);
+        }
+    }
+
+    private async Task ConfirmPublicShare()
+    {
+        isShareConfirmationVisible = false;
+        
+        if (!string.IsNullOrEmpty(pendingVisibilityItemId))
+        {
+            await UpdateAnalysisVisibility(pendingVisibilityItemId, true);
+            pendingVisibilityItemId = null;
+        }
+    }
+
+    private async Task UpdateAnalysisVisibility(string itemId, bool isPublic)
+    {
+        if (sharedHistoryService == null) return;
+
+        isUpdatingVisibility = true;
+        StateHasChanged();
+
+        try
+        {
+            await sharedHistoryService.UpdateAnalysisVisibilityAsync(itemId, isPublic);
+            
+            // Update the local item
+            var item = historyItems?.FirstOrDefault(h => h.Id == itemId);
+            if (item != null)
+            {
+                item.IsPublic = isPublic;
+                StateHasChanged();
+            }
+
+            var visibilityText = isPublic ? "public" : "private";
+            await ToastService.ShowSuccessAsync($"Analysis has been made {visibilityText}");
+        }
+        catch (Exception ex)
+        {
+            await ToastService.ShowErrorAsync($"Failed to update analysis visibility: {ex.Message}");
+        }
+        finally
+        {
+            isUpdatingVisibility = false;
+            StateHasChanged();
+        }
     }
 }

@@ -1,0 +1,117 @@
+@namespace FeedbackWebApp.Components.Shared
+
+<div class="modal fade @(IsVisible ? "show" : "")" 
+     style="display: @(IsVisible ? "block" : "none")" 
+     tabindex="-1" 
+     aria-hidden="@(!IsVisible)"
+     @onclick="HandleBackdropClick">
+    <div class="modal-dialog modal-dialog-centered" @onclick:stopPropagation="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-globe me-2 text-warning" aria-hidden="true"></i>
+                    Make Analysis Public?
+                </h5>
+                <button type="button" 
+                        class="btn-close" 
+                        @onclick="OnCancel" 
+                        aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>
+                    <strong>Public analyses can be viewed by anyone with the link.</strong>
+                </div>
+                
+                <p class="mb-3">
+                    By making this analysis public, you're allowing anyone with the share link to:
+                </p>
+                
+                <ul class="mb-3">
+                    <li>View the complete analysis results</li>
+                    <li>Access the analysis without authentication</li>
+                    <li>Share the link with others</li>
+                </ul>
+                
+                <div class="alert alert-info" role="alert">
+                    <i class="bi bi-info-circle-fill me-2" aria-hidden="true"></i>
+                    <strong>Privacy reminder:</strong> Please ensure your analysis doesn't contain sensitive or personal information.
+                </div>
+                
+                <div class="form-check mt-3">
+                    <input class="form-check-input" 
+                           type="checkbox" 
+                           id="confirm-public" 
+                           @bind="ConfirmUnderstanding" />
+                    <label class="form-check-label" for="confirm-public">
+                        I understand that this analysis will be publicly accessible
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" 
+                        class="btn btn-secondary" 
+                        @onclick="OnCancel">
+                    Keep Private
+                </button>
+                <button type="button" 
+                        class="btn btn-warning" 
+                        @onclick="OnConfirm"
+                        disabled="@(!ConfirmUnderstanding || IsProcessing)">
+                    @if (IsProcessing)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                    }
+                    <i class="bi bi-globe me-1" aria-hidden="true"></i>
+                    Make Public
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (IsVisible)
+{
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    /// <summary>
+    /// Whether the dialog is visible
+    /// </summary>
+    [Parameter]
+    public bool IsVisible { get; set; } = false;
+
+    /// <summary>
+    /// Whether a processing operation is in progress
+    /// </summary>
+    [Parameter]
+    public bool IsProcessing { get; set; } = false;
+
+    /// <summary>
+    /// Callback when user confirms making the analysis public
+    /// </summary>
+    [Parameter]
+    public EventCallback OnConfirm { get; set; }
+
+    /// <summary>
+    /// Callback when user cancels or closes the dialog
+    /// </summary>
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private bool ConfirmUnderstanding = false;
+
+    protected override void OnParametersSet()
+    {
+        if (!IsVisible)
+        {
+            ConfirmUnderstanding = false;
+        }
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        await OnCancel.InvokeAsync();
+    }
+}

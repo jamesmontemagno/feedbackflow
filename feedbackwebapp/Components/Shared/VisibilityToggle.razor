@@ -1,0 +1,80 @@
+@namespace FeedbackWebApp.Components.Shared
+
+<div class="visibility-toggle-container">
+    <div class="form-check form-switch">
+        <input class="form-check-input" 
+               type="checkbox" 
+               id="visibility-toggle-@Id" 
+               @bind="IsPublic"
+               disabled="@IsDisabled" />
+        <label class="form-check-label" for="visibility-toggle-@Id">
+            <i class="bi @(IsPublic ? "bi-globe" : "bi-lock") me-1" aria-hidden="true"></i>
+            @(IsPublic ? "Public" : "Private")
+        </label>
+    </div>
+    @if (ShowDescription)
+    {
+        <small class="text-muted mt-1 d-block">
+            @if (IsPublic)
+            {
+                <span>Anyone with the link can view this analysis</span>
+            }
+            else
+            {
+                <span>Only you can view this analysis</span>
+            }
+        </small>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Unique identifier for the toggle (for accessibility)
+    /// </summary>
+    [Parameter]
+    public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
+
+    /// <summary>
+    /// Whether the analysis is public
+    /// </summary>
+    [Parameter]
+    public bool IsPublic { get; set; } = false;
+
+    /// <summary>
+    /// Callback when visibility changes
+    /// </summary>
+    [Parameter]
+    public EventCallback<bool> IsPublicChanged { get; set; }
+
+    /// <summary>
+    /// Whether the toggle is disabled
+    /// </summary>
+    [Parameter]
+    public bool IsDisabled { get; set; } = false;
+
+    /// <summary>
+    /// Whether to show the description text
+    /// </summary>
+    [Parameter]
+    public bool ShowDescription { get; set; } = true;
+
+    /// <summary>
+    /// Callback when visibility changes (provides more detailed event)
+    /// </summary>
+    [Parameter]
+    public EventCallback<VisibilityChangedEventArgs> OnVisibilityChange { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        // Component state handling
+    }
+
+    /// <summary>
+    /// Event arguments for visibility changes
+    /// </summary>
+    public class VisibilityChangedEventArgs
+    {
+        public bool IsPublic { get; set; }
+        public bool PreviousValue { get; set; }
+    }
+}

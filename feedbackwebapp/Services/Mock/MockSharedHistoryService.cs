@@ -100,20 +100,52 @@ public class MockSharedHistoryService : ISharedHistoryService
         ).ToList();
     }
 
-    public async Task<string> ShareAnalysisAsync(AnalysisData analysis)
+    public async Task<string> ShareAnalysisAsync(AnalysisData analysis, bool isPublic = false)
     {
-        _logger.LogInformation("Mock: Sharing analysis '{Title}'", analysis.Title);
+        _logger.LogInformation("Mock: Sharing analysis '{Title}' (Public: {IsPublic})", analysis.Title, isPublic);
         await Task.Delay(800); // Simulate network delay for sharing
 
         // Generate a mock shared ID
         var sharedId = Guid.NewGuid().ToString();
         
         // Add to mock saved analyses
-        var newAnalysis = new SharedAnalysisEntity("mock-user-123", sharedId, analysis);
+        var newAnalysis = new SharedAnalysisEntity("mock-user-123", sharedId, analysis, isPublic);
         _mockSavedAnalyses.Add(newAnalysis);
         
         _logger.LogInformation("Mock: Successfully shared analysis with ID {SharedId}", sharedId);
         return sharedId;
+    }
+
+    public async Task<bool> UpdateAnalysisVisibilityAsync(string analysisId, bool isPublic)
+    {
+        _logger.LogInformation("Mock: Updating analysis {Id} visibility to {IsPublic}", analysisId, isPublic);
+        await Task.Delay(300);
+
+        var analysis = _mockSavedAnalyses.FirstOrDefault(a => a.Id == analysisId);
+        if (analysis != null)
+        {
+            analysis.IsPublic = isPublic;
+            analysis.PublicSharedDate = isPublic ? DateTime.UtcNow : null;
+            _logger.LogInformation("Mock: Successfully updated analysis {Id} visibility", analysisId);
+            return true;
+        }
+
+        _logger.LogWarning("Mock: Analysis {Id} not found for visibility update", analysisId);
+        return false;
+    }
+
+    public async Task<string?> GetPublicShareLinkAsync(string analysisId)
+    {
+        _logger.LogInformation("Mock: Getting public share link for analysis {Id}", analysisId);
+        await Task.Delay(100);
+
+        var analysis = _mockSavedAnalyses.FirstOrDefault(a => a.Id == analysisId);
+        if (analysis != null && analysis.IsPublic)
+        {
+            return $"https://feedbackflow.example.com/shared/{analysisId}";
+        }
+
+        return null;
     }
 
     public async Task<AnalysisData?> GetSharedAnalysisAsync(string id)
@@ -153,7 +185,7 @@ public class MockSharedHistoryService : ISharedHistoryService
                 SourceType = "GitHub",
                 UserInput = "Analyze feedback from dotnet/core repository issues",
                 CreatedDate = DateTime.UtcNow.AddDays(-5)
-            }),
+            }, isPublic: true), // This one is public
             
             new SharedAnalysisEntity(userId, "analysis-2", new AnalysisData
             {
@@ -162,7 +194,7 @@ public class MockSharedHistoryService : ISharedHistoryService
                 SourceType = "YouTube",
                 UserInput = "Please analyze comments from my latest .NET tutorial video",
                 CreatedDate = DateTime.UtcNow.AddDays(-3)
-            }),
+            }, isPublic: false), // Private
             
             new SharedAnalysisEntity(userId, "analysis-3", new AnalysisData
             {
@@ -171,7 +203,7 @@ public class MockSharedHistoryService : ISharedHistoryService
                 SourceType = "Reddit",
                 UserInput = null,
                 CreatedDate = DateTime.UtcNow.AddDays(-2)
-            }),
+            }, isPublic: true), // This one is public
             
             new SharedAnalysisEntity(userId, "analysis-4", new AnalysisData
             {
@@ -180,7 +212,7 @@ public class MockSharedHistoryService : ISharedHistoryService
                 SourceType = "HackerNews",
                 UserInput = "Analyze the feedback from my Show HN post",
                 CreatedDate = DateTime.UtcNow.AddDays(-1)
-            }),
+            }, isPublic: false), // Private
             
             new SharedAnalysisEntity(userId, "analysis-5", new AnalysisData
             {
@@ -189,7 +221,7 @@ public class MockSharedHistoryService : ISharedHistoryService
                 SourceType = "Manual",
                 UserInput = "Analyze survey responses about productivity tools in our team",
                 CreatedDate = DateTime.UtcNow.AddHours(-6)
-            })
+            }, isPublic: false) // Private
         };
     }
 
