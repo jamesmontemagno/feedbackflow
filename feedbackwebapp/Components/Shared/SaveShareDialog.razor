@@ -1,0 +1,244 @@
+@namespace FeedbackWebApp.Components.Shared
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+@inject FeedbackWebApp.Services.IToastService ToastService
+@inject Microsoft.Extensions.Logging.ILogger<SaveShareDialog> Logger
+
+<div class="modal fade @(IsVisible ? "show" : "")" 
+     style="display: @(IsVisible ? "block" : "none")" 
+     tabindex="-1" 
+     aria-hidden="@(!IsVisible)"
+     @onclick="HandleBackdropClick">
+    <div class="modal-dialog modal-dialog-centered" @onclick:stopPropagation="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-cloud-upload me-2 text-primary" aria-hidden="true"></i>
+                    Save & Share Analysis
+                </h5>
+                <button type="button" 
+                        class="btn-close" 
+                        @onclick="HandleCloseClick" 
+                        aria-label="Close"
+                        disabled="@IsProcessing"></button>
+            </div>
+            <div class="modal-body">
+                @if (!IsProcessing && !IsSaved)
+                {
+                    <p class="mb-3">Save your analysis to the cloud and optionally share it with others.</p>
+                    
+                    <div class="card border-light bg-light">
+                        <div class="card-body">
+                            <VisibilityToggle @bind-IsPublic="@IsPublic" 
+                                              ShowDescription="true" 
+                                              IsDisabled="false" />
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info mt-3" role="alert">
+                        <i class="bi bi-info-circle-fill me-2" aria-hidden="true"></i>
+                        <strong>Note:</strong> Saved analyses are accessible for 30 days and can be managed from your history page.
+                    </div>
+                }
+                else if (IsProcessing)
+                {
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Saving...</span>
+                        </div>
+                        <p class="mb-0">Saving your analysis...</p>
+                    </div>
+                }
+                else if (IsSaved)
+                {
+                    <div class="alert alert-success" role="alert">
+                        <i class="bi bi-check-circle-fill me-2" aria-hidden="true"></i>
+                        <strong>Analysis saved successfully!</strong>
+                    </div>
+                    
+                    @if (IsPublic && !string.IsNullOrEmpty(ShareUrl))
+                    {
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Public Share URL:</label>
+                            <div class="input-group">
+                                <input type="text" 
+                                       class="form-control" 
+                                       value="@ShareUrl" 
+                                       readonly />
+                                <button class="btn btn-outline-primary" 
+                                        type="button" 
+                                        @onclick="CopyShareUrl">
+                                    <i class="bi bi-clipboard me-1" aria-hidden="true"></i>
+                                    Copy
+                                </button>
+                            </div>
+                            <small class="text-muted">Anyone with this link can view your analysis</small>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="mb-3">
+                            <i class="bi bi-lock me-1 text-muted" aria-hidden="true"></i>
+                            Your analysis has been saved privately. You can view it in your history.
+                        </p>
+                    }
+                    
+                    <div class="alert alert-info" role="alert">
+                        <i class="bi bi-gear me-2" aria-hidden="true"></i>
+                        You can modify the visibility settings later from your saved analyses page.
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                @if (!IsProcessing && !IsSaved)
+                {
+                    <button type="button" 
+                            class="btn btn-secondary" 
+                            @onclick="HandleCloseClick">
+                        Cancel
+                    </button>
+                    <button type="button" 
+                            class="btn btn-primary" 
+                            @onclick="HandleSaveClick">
+                        <i class="bi bi-cloud-upload me-1" aria-hidden="true"></i>
+                        Save Analysis
+                    </button>
+                }
+                else if (IsSaved)
+                {
+                    <button type="button" 
+                            class="btn btn-primary" 
+                            @onclick="HandleCloseClick">
+                        <i class="bi bi-check me-1" aria-hidden="true"></i>
+                        Done
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (IsVisible)
+{
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    /// <summary>
+    /// Whether the dialog is visible
+    /// </summary>
+    [Parameter]
+    public bool IsVisible { get; set; } = false;
+
+    /// <summary>
+    /// Callback for two-way binding of IsVisible
+    /// </summary>
+    [Parameter]
+    public EventCallback<bool> IsVisibleChanged { get; set; }
+
+    /// <summary>
+    /// Whether a processing operation is in progress
+    /// </summary>
+    [Parameter]
+    public bool IsProcessing { get; set; } = false;
+
+    /// <summary>
+    /// Whether the analysis has been saved
+    /// </summary>
+    [Parameter]
+    public bool IsSaved { get; set; } = false;
+
+    /// <summary>
+    /// The share URL if the analysis is public
+    /// </summary>
+    [Parameter]
+    public string? ShareUrl { get; set; }
+
+    /// <summary>
+    /// Whether the analysis should be public
+    /// </summary>
+    [Parameter]
+    public bool IsPublic { get; set; } = false;
+
+    /// <summary>
+    /// Callback when IsPublic changes
+    /// </summary>
+    [Parameter]
+    public EventCallback<bool> IsPublicChanged { get; set; }
+
+    /// <summary>
+    /// Callback when user clicks Save
+    /// </summary>
+    [Parameter]
+    public EventCallback<bool> OnSave { get; set; }
+
+    /// <summary>
+    /// Callback when user closes the dialog
+    /// </summary>
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        // Reset state when dialog becomes visible
+        if (IsVisible && !IsProcessing && !IsSaved)
+        {
+            // Keep current IsPublic value
+        }
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        if (!IsProcessing)
+        {
+            await HandleCloseClick();
+        }
+    }
+
+    private async Task HandleCloseClick()
+    {
+        if (!IsProcessing)
+        {
+            await SetVisibilityAsync(false);
+            await OnClose.InvokeAsync();
+        }
+    }
+
+    private async Task HandleSaveClick()
+    {
+        await OnSave.InvokeAsync(IsPublic);
+    }
+
+    private async Task CopyShareUrl()
+    {
+        if (!string.IsNullOrEmpty(ShareUrl))
+        {
+            try
+            {
+                var success = await JSRuntime.InvokeAsync<bool>("copyToClipboard", ShareUrl);
+                if (success)
+                {
+                    await ToastService.ShowSuccessAsync("Share URL copied to clipboard!", 3000);
+                }
+                else
+                {
+                    await ToastService.ShowErrorAsync("Failed to copy URL. Please manually copy the link.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to copy share URL to clipboard");
+                await ToastService.ShowErrorAsync("Failed to copy URL. Please manually copy the link.");
+            }
+        }
+    }
+
+    private async Task SetVisibilityAsync(bool visible)
+    {
+        if (IsVisible != visible)
+        {
+            IsVisible = visible;
+            await IsVisibleChanged.InvokeAsync(visible);
+        }
+    }
+}

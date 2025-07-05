@@ -173,6 +173,43 @@
     transform: scale(1.1);
 }
 
+/* Compact VisibilityToggle in action menus */
+.action-btn + .visibility-toggle-container,
+.action-btn ~ .visibility-toggle-container {
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+}
+
+.action-btn + .visibility-toggle-container .form-check,
+.action-btn ~ .visibility-toggle-container .form-check {
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+.action-btn + .visibility-toggle-container .form-check-label,
+.action-btn ~ .visibility-toggle-container .form-check-label {
+    font-size: 0.875rem;
+    margin: 0;
+    padding-left: 0.5rem;
+}
+
+/* For dropdown menu items */
+.dropdown-item .visibility-toggle-container {
+    margin: 0;
+    padding: 0;
+}
+
+.dropdown-item .visibility-toggle-container .form-check {
+    margin: 0;
+}
+
+.dropdown-item .visibility-toggle-container .form-check-label {
+    font-size: 0.875rem;
+    margin: 0;
+}
+
 /* User Input Section */
 .user-input {
     background: rgba(var(--secondary-bg-rgb), 0.5);

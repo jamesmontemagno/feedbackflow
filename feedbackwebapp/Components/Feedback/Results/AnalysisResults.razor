@@ -21,11 +21,14 @@
     ContentType="@failedCopyContentType"
     OnClose="@CloseCopyFailedDialog" />
 
-<ShareConfirmationDialog 
-    IsVisible="@showPublicConfirmDialog"
-    IsProcessing="@isProcessingShare"
-    OnConfirm="@ConfirmMakePublic"
-    OnCancel="@CancelMakePublic" />
+<SaveShareDialog 
+    @bind-IsVisible="@showSaveShareDialog"
+    IsProcessing="@isProcessingSave"
+    IsSaved="@dialogSaved"
+    ShareUrl="@shareUrl"
+    @bind-IsPublic="@dialogIsPublic"
+    OnSave="@HandleSaveFromDialog"
+    OnClose="@HandleSaveDialogClose" />
 
 
 
@@ -55,31 +58,12 @@
                         <ExportButton Items="@(new[] { CreateHistoryItemForExport() })" ButtonVariant="light" Size="sm" Mini="false" />
                     }
                     <button class="btn btn-sm btn-outline-light me-2 action-btn" 
-                            @onclick="SaveToHistory"
+                            @onclick="ShowSaveShareDialog"
                             disabled="@_isSaved"
-                            aria-label="Save to history">
-                        <i class="bi bi-clock-history me-1" aria-hidden="false"></i>
-                        @(_isSaved ? "Saved" : "Save")
+                            aria-label="@(_isSaved ? "Already saved" : "Save and share analysis")">
+                        <i class="bi @(_isSaved ? "bi-check-circle" : "bi-cloud-upload") me-1" aria-hidden="false"></i>
+                        @(_isSaved ? "Saved" : "Save & Share")
                     </button>
-                    <div class="d-flex align-items-center gap-2">
-                        <VisibilityToggle @bind-IsPublic="@isPublicShare" 
-                                          ShowDescription="false" 
-                                          IsDisabled="@(isProcessingShare || _isSaved)" />
-                        <button class="btn btn-sm btn-outline-light action-btn" 
-                                @onclick="@(sharedId == null ? ShareAnalysis : CopyShareLink)"
-                                disabled="@isProcessingShare"
-                                aria-label="@(sharedId == null ? "Share analysis" : "Copy share link")">
-                            @if (isProcessingShare)
-                            {
-                                <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
-                            }
-                            else
-                            {
-                                <i class="bi @(sharedId == null ? "bi-share" : "bi-link-45deg") me-1" aria-hidden="false"></i>
-                            }
-                            @(sharedId == null ? "Share" : "Copy Link")
-                        </button>
-                    </div>
                     <button class="btn btn-sm btn-outline-light me-2 action-btn @(_isSpeaking ? "btn-speak-active" : "")" 
                             @onclick="SpeakAnalysis"
                             aria-label="@(_isSpeaking ? "Stop speaking" : "Speak analysis")"
@@ -95,20 +79,11 @@
                     </button>
                 </ChildContent>
                 <SecondaryActions>
-                    <li><button class="dropdown-item" @onclick="SaveToHistory" disabled="@_isSaved">
-                        <i class="bi bi-clock-history"></i> @(_isSaved ? "Saved" : "Save to History")
+                    <li><button class="dropdown-item" @onclick="ShowSaveShareDialog" disabled="@_isSaved">
+                        <i class="bi @(_isSaved ? "bi-check-circle" : "bi-cloud-upload")"></i> 
+                        @(_isSaved ? "Already Saved" : "Save & Share Analysis")
                     </button></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li class="px-3 py-2">
-                        <VisibilityToggle @bind-IsPublic="@isPublicShare" 
-                                          ShowDescription="true" 
-                                          IsDisabled="@(isProcessingShare || _isSaved)" />
-                    </li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><button class="dropdown-item" @onclick="@(sharedId == null ? ShareAnalysis : CopyShareLink)" disabled="@isProcessingShare">
-                        <i class="bi @(sharedId == null ? "bi-share" : "bi-link-45deg")"></i> 
-                        @(sharedId == null ? "Share Analysis" : "Copy Share Link")
-                    </button></li>
                     <li><button class="dropdown-item" @onclick="SpeakAnalysis">
                         <i class="bi @(_isSpeaking ? "bi-pause-fill" : "bi-volume-up-fill")"></i> 
                         @(_isSpeaking ? "Stop Speaking" : "Speak Analysis")
@@ -145,13 +120,15 @@
     
     private string? _previousMarkdown;
     private bool _isSpeaking = false;
-    private string? sharedId;
-    private string? shareLink;
-    private bool isProcessingShare = false;
     private bool _isSaved = false;
     private string? _savedItemId;
-    private bool isPublicShare = false;
-    private bool showPublicConfirmDialog = false;
+    
+    // Save & Share dialog state
+    private bool showSaveShareDialog = false;
+    private bool isProcessingSave = false;
+    private bool dialogSaved = false;
+    private bool dialogIsPublic = false;
+    private string? shareUrl;
     
     // Copy failed dialog state
     private bool showCopyFailedDialog = false;
@@ -172,13 +149,14 @@
             if(_previousMarkdown != MarkdownResult)
             {               
                 await TriggerConfetti();
-                sharedId = null;
-                shareLink = null;
-                isProcessingShare = false;
+                // Reset all state for new analysis
                 _isSaved = false;
                 _savedItemId = null;
-                isPublicShare = false;
-                showPublicConfirmDialog = false;
+                showSaveShareDialog = false;
+                isProcessingSave = false;
+                dialogSaved = false;
+                dialogIsPublic = false;
+                shareUrl = null;
                 _previousMarkdown = MarkdownResult;
             }
         }
@@ -219,45 +197,83 @@
             }
         }
     }    
-    private async Task SaveToHistory()
+    private void ShowSaveShareDialog()
     {
-        if (!string.IsNullOrEmpty(MarkdownResult))
-        {            
-            try
-            {
-                var analysisData = new SharedDump.Models.AnalysisData
-                {
-                    Id = _savedItemId ?? Guid.NewGuid().ToString(),
-                    Title = $"{SourceType} Analysis",
-                    Summary = !string.IsNullOrEmpty(MarkdownResult) && MarkdownResult.Length > 500 
-                        ? MarkdownResult.Substring(0, 500) + "..." 
-                        : MarkdownResult ?? string.Empty,
-                    FullAnalysis = MarkdownResult ?? string.Empty,
-                    SourceType = SourceType,
-                    UserInput = UserInput,
-                    CreatedDate = DateTime.UtcNow
-                };
+        if (!string.IsNullOrEmpty(MarkdownResult) && !_isSaved)
+        {
+            dialogIsPublic = false; // Default to private
+            dialogSaved = false;
+            isProcessingSave = false;
+            shareUrl = null;
+            showSaveShareDialog = true;
+        }
+    }
 
-                var savedId = await SharedHistoryServiceProvider.GetService().ShareAnalysisAsync(analysisData, false); // Always save as private initially
-                
-                if (string.IsNullOrEmpty(savedId))
-                {
-                    await ToastService.ShowErrorAsync("Failed to save analysis. Please try again.");
-                    return;
-                }
-                
-                _isSaved = true;
-                _savedItemId = savedId;
-                sharedId = savedId; // The shared ID is the same as the analysis ID
-                shareLink = $"{NavigationManager.BaseUri.TrimEnd('/')}/analysis/{sharedId}";
-                
-                await ToastService.ShowSuccessAsync("Analysis saved to cloud history", 3000);
-            }
-            catch (Exception ex)
+    private async Task HandleSaveFromDialog(bool isPublic)
+    {
+        if (string.IsNullOrEmpty(MarkdownResult))
+            return;
+
+        isProcessingSave = true;
+        StateHasChanged();
+
+        try
+        {
+            var analysisData = new SharedDump.Models.AnalysisData
             {
-                Logger.LogError(ex, "Failed to save analysis to cloud history");
+                Id = _savedItemId ?? Guid.NewGuid().ToString(),
+                Title = $"{SourceType} Analysis",
+                Summary = !string.IsNullOrEmpty(MarkdownResult) && MarkdownResult.Length > 500 
+                    ? MarkdownResult.Substring(0, 500) + "..." 
+                    : MarkdownResult ?? string.Empty,
+                FullAnalysis = MarkdownResult ?? string.Empty,
+                SourceType = SourceType,
+                UserInput = UserInput,
+                CreatedDate = DateTime.UtcNow
+            };
+
+            var savedId = await SharedHistoryServiceProvider.GetService().ShareAnalysisAsync(analysisData, isPublic);
+            
+            if (string.IsNullOrEmpty(savedId))
+            {
                 await ToastService.ShowErrorAsync("Failed to save analysis. Please try again.");
+                return;
             }
+            
+            // Update component state
+            _isSaved = true;
+            _savedItemId = savedId;
+            dialogSaved = true;
+            
+            if (isPublic)
+            {
+                shareUrl = $"{NavigationManager.BaseUri.TrimEnd('/')}/analysis/{savedId}";
+            }
+            
+            await ToastService.ShowSuccessAsync("Analysis saved successfully!", 3000);
+            await TriggerConfetti();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to save analysis");
+            await ToastService.ShowErrorAsync("Failed to save analysis. Please try again.");
+        }
+        finally
+        {
+            isProcessingSave = false;
+            StateHasChanged();
+        }
+    }
+
+    private void HandleSaveDialogClose()
+    {
+        showSaveShareDialog = false;
+        // Reset dialog state
+        if (!_isSaved)
+        {
+            dialogSaved = false;
+            dialogIsPublic = false;
+            shareUrl = null;
         }
     }
 
@@ -332,142 +348,8 @@
         }
     }
 
-    private async Task CopyShareLink()
-    {
-        if (!string.IsNullOrEmpty(shareLink))
-        {
-            try
-            {
-                var success = await JSRuntime.InvokeAsync<bool>("copyToClipboard", shareLink);
-                if (success)
-                {
-                    await ToastService.ShowSuccessAsync("Share link copied to clipboard!", 3000);
-                }
-                else
-                {
-                    // Show dialog instead of error toast
-                    ShowCopyFailedDialog(shareLink, "Share Link");
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Failed to copy share link to clipboard");
-                // Show dialog instead of error toast
-                ShowCopyFailedDialog(shareLink, "Share Link");
-            }
-        }
-    }    
+
     
-    private async Task ShareAnalysis()
-    {
-        if(isProcessingShare || string.IsNullOrEmpty(MarkdownResult))
-            return;
-
-        // If user wants to make it public and analysis isn't saved yet, show confirmation
-        if (isPublicShare && !_isSaved)
-        {
-            showPublicConfirmDialog = true;
-            StateHasChanged();
-            return;
-        }
-
-        await ProcessShareAnalysis();
-    }
-
-    private async Task ProcessShareAnalysis()
-    {
-        isProcessingShare = true;
-        await ToastService.ShowInfoAsync("Creating share link...", 5000);
-
-        try
-        {
-            // If already saved, just copy the existing share link
-            if (_isSaved && !string.IsNullOrEmpty(sharedId) && !string.IsNullOrEmpty(shareLink))
-            {
-                await CopyShareLink();
-                return;
-            }
-
-            // Create new analysis in cloud
-            var analysisData = new SharedDump.Models.AnalysisData
-            {
-                Id = _savedItemId ?? Guid.NewGuid().ToString(),
-                Title = $"{SourceType} Analysis",
-                Summary = !string.IsNullOrEmpty(MarkdownResult) && MarkdownResult.Length > 500 
-                    ? MarkdownResult.Substring(0, 500) + "..." 
-                    : MarkdownResult ?? string.Empty,
-                FullAnalysis = MarkdownResult ?? string.Empty,
-                SourceType = SourceType,
-                UserInput = UserInput,
-                CreatedDate = DateTime.UtcNow
-            };
-
-            var savedId = await SharedHistoryServiceProvider.GetService().ShareAnalysisAsync(analysisData, isPublicShare);
-
-            if (string.IsNullOrEmpty(savedId))
-            {
-                await ToastService.ShowErrorAsync("Unable to create share link.");
-                return;
-            }
-            
-            // Update component state
-            _isSaved = true;
-            _savedItemId = savedId;
-            sharedId = savedId;
-            
-            // Determine the correct share link based on visibility
-            if (isPublicShare)
-            {
-                shareLink = $"{NavigationManager.BaseUri.TrimEnd('/')}/analysis/{sharedId}"; // Public URL
-            }
-            else
-            {
-                shareLink = $"{NavigationManager.BaseUri.TrimEnd('/')}/analysis/{sharedId}"; // Private URL (same as public now)
-            }
-            
-            // Copy share link to clipboard
-            var copySuccess = await JSRuntime.InvokeAsync<bool>("copyToClipboard", shareLink);
-            
-            if (copySuccess)
-            {
-                // Trigger confetti and show success message
-                var visibilityMessage = isPublicShare ? "Public share link" : "Private share link";
-                await ToastService.ShowSuccessAsync($"{visibilityMessage} copied to clipboard! The link will be valid for 30 days.", 5000);
-                await TriggerConfetti();
-            }
-            else
-            {
-                // Show dialog instead of generic message
-                ShowCopyFailedDialog(shareLink, "Share Link");
-                var visibilityMessage = isPublicShare ? "Public share link" : "Private share link";
-                await ToastService.ShowSuccessAsync($"{visibilityMessage} created! The link will be valid for 30 days.", 5000);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Unable to create share link");
-            await ToastService.ShowErrorAsync($"Unable to create share link: {ex.Message}");
-        }
-        finally
-        {
-            isProcessingShare = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task ConfirmMakePublic()
-    {
-        showPublicConfirmDialog = false;
-        await ProcessShareAnalysis();
-    }
-
-    private void CancelMakePublic()
-    {
-        showPublicConfirmDialog = false;
-        isPublicShare = false; // Reset to private
-        StateHasChanged();
-    }
-      
     private void ShowCopyFailedDialog(string content, string contentType)
     {
         failedCopyContent = content;

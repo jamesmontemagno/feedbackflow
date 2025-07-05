@@ -38,7 +38,7 @@
 
 <div class="container-lg py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="feedbackflow-title mb-0">Shared Analysis History</h1>
+        <h1 class="feedbackflow-title mb-0">Saved Analysis</h1>
     </div>
 
     @if (!isAuthenticated)
@@ -153,9 +153,9 @@
                                         <i class="bi bi-link-45deg"></i> Copy Link
                                     </button>
                                     <VisibilityToggle IsPublic="item.IsPublic" 
-                                                    OnPublicToggle="(isPublic) => ToggleVisibility(item.Id, isPublic)" 
+                                                    IsPublicChanged="(isPublic) => ToggleVisibility(item.Id, isPublic)" 
                                                     IsDisabled="@isUpdatingVisibility" 
-                                                    Size="VisibilityToggle.ButtonSize.Small" />
+                                                    ShowDescription="false" />
                                     @if(item.SourceType != "Manual")
                                     {
                                         <a class="btn btn-sm btn-outline-secondary action-btn" title="Open Link" target="_blank" rel="noopener noreferrer" href="@HistoryHelper.GetSourceUrl(item)">
@@ -176,9 +176,9 @@
                                     <li><hr class="dropdown-divider"></li>
                                     <li class="px-3 py-1">
                                         <VisibilityToggle IsPublic="item.IsPublic" 
-                                                        OnPublicToggle="(isPublic) => ToggleVisibility(item.Id, isPublic)" 
+                                                        IsPublicChanged="(isPublic) => ToggleVisibility(item.Id, isPublic)" 
                                                         IsDisabled="@isUpdatingVisibility" 
-                                                        Size="VisibilityToggle.ButtonSize.Small" />
+                                                        ShowDescription="true" />
                                     </li>
                                     @if(item.SourceType != "Manual")
                                     {

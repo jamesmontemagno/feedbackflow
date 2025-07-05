@@ -1,0 +1,61 @@
+.modal-content {
+    border: none;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--card-shadow);
+}
+
+.modal-header {
+    background: var(--primary-gradient);
+    color: white;
+    border-bottom: none;
+    border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+}
+
+.modal-header .btn-close {
+    filter: invert(1);
+    opacity: 0.8;
+}
+
+.modal-header .btn-close:hover {
+    opacity: 1;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border-color);
+    padding: 1rem 1.5rem;
+}
+
+.input-group .form-control[readonly] {
+    background-color: var(--background-color-secondary);
+    border-color: var(--border-color);
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Dark theme support */
+[data-theme="dark"] .modal-content {
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .modal-footer {
+    border-top-color: var(--border-color-dark);
+}
+
+[data-theme="dark"] .input-group .form-control[readonly] {
+    background-color: var(--background-color-secondary);
+    color: var(--text-color);
+    border-color: var(--border-color-dark);
+}
+
+[data-theme="dark"] .card.border-light {
+    border-color: var(--border-color-dark) !important;
+    background-color: var(--background-color-secondary) !important;
+}
