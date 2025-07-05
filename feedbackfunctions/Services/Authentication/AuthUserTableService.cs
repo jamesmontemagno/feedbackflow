@@ -12,10 +12,8 @@ public class AuthUserTableService : IAuthUserTableService
 {
     private readonly TableServiceClient _tableServiceClient;
     private readonly TableClient _userTableClient;
-    private readonly TableClient _emailIndexTableClient;
     private readonly ILogger<AuthUserTableService> _logger;
     private const string AUTH_USERS_TABLE = "AuthUsers";
-    private const string USER_EMAIL_INDEX_TABLE = "UserEmailIndex";
 
     /// <summary>
     /// Constructor for the auth user table service
@@ -30,14 +28,12 @@ public class AuthUserTableService : IAuthUserTableService
 
         _tableServiceClient = new TableServiceClient(connectionString);
         _userTableClient = _tableServiceClient.GetTableClient(AUTH_USERS_TABLE);
-        _emailIndexTableClient = _tableServiceClient.GetTableClient(USER_EMAIL_INDEX_TABLE);
         _logger = logger;
 
         // Ensure tables exist
         _ = Task.Run(async () =>
         {
             await _userTableClient.CreateIfNotExistsAsync();
-            await _emailIndexTableClient.CreateIfNotExistsAsync();
         });
     }
 
@@ -61,18 +57,12 @@ public class AuthUserTableService : IAuthUserTableService
     {
         try
         {
-            // First lookup in email index
-            var emailKey = email?.ToLower() ?? string.Empty;
-            var partitionKey = emailKey.Length > 0 ? emailKey[0].ToString().ToUpper() : "A";
-            
-            var indexResponse = await _emailIndexTableClient.GetEntityIfExistsAsync<UserEmailIndexEntity>(partitionKey, emailKey);
-            if (!indexResponse.HasValue)
-                return null;
-
-            var indexEntity = indexResponse.Value;
-            if (indexEntity != null)
-                return await GetUserByProviderAsync(indexEntity.AuthProvider, indexEntity.ProviderUserId);
-            
+            // Direct query across all partitions - this is more expensive but simpler
+            var query = _userTableClient.QueryAsync<AuthUserEntity>(filter: $"Email eq '{email?.ToLower()}'");
+            await foreach (var user in query)
+            {
+                return user;
+            }
             return null;
         }
         catch (Exception ex)
@@ -156,22 +146,6 @@ public class AuthUserTableService : IAuthUserTableService
             _logger.LogError(ex, "Error getting active users");
         }
         return activeUsers;
-    }
-
-    /// <inheritdoc />
-    public async Task UpdateEmailIndexAsync(string email, string userId, string provider, string providerUserId)
-    {
-        try
-        {
-            var indexEntity = new UserEmailIndexEntity(email, userId, provider, providerUserId);
-            await _emailIndexTableClient.UpsertEntityAsync(indexEntity);
-            _logger.LogDebug("Email index updated for {Email}", email);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating email index for {Email}", email);
-            throw;
-        }
     }
 
     /// <inheritdoc />

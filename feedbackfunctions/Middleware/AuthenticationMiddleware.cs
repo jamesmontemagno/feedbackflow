@@ -218,12 +218,6 @@ public class AuthenticationMiddleware
                 ProfileImageUrl = profileImageUrl
             };
             await _userService.CreateOrUpdateUserAsync(user);
-            
-            // Only update email index if email is available
-            if (!string.IsNullOrEmpty(email))
-            {
-                await _userService.UpdateEmailIndexAsync(email, user.UserId, provider, providerUserId);
-            }
 
             return new AuthenticatedUser(user);
         }

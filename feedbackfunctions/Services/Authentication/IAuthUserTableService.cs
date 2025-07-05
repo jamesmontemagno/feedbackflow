@@ -50,16 +50,6 @@ public interface IAuthUserTableService
     Task<IEnumerable<AuthUserEntity>> GetActiveUsersAsync();
 
     /// <summary>
-    /// Update the email index for a user
-    /// </summary>
-    /// <param name="email">User's email address</param>
-    /// <param name="userId">Internal user ID</param>
-    /// <param name="provider">Authentication provider</param>
-    /// <param name="providerUserId">Provider-specific user ID</param>
-    /// <returns>Task representing the operation</returns>
-    Task UpdateEmailIndexAsync(string email, string userId, string provider, string providerUserId);
-
-    /// <summary>
     /// Update the user's preferred email address
     /// </summary>
     /// <param name="provider">Authentication provider name</param>
