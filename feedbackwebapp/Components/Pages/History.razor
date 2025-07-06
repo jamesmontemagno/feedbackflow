@@ -36,9 +36,9 @@
     OnClose="@CloseCopyFailedDialog" />
 
 <!-- Processing Dialog -->
-<div class="modal fade @(isUpdatingVisibility ? "show d-block" : "")" tabindex="-1">
-    <div class="modal-backdrop fade show"></div>
-    <div class="modal-dialog modal-dialog-centered">
+<div class="modal fade @(isUpdatingVisibility ? "show d-block" : "")" tabindex="-1" style="z-index: 1055;">
+    <div class="modal-backdrop fade show" style="z-index: 1050;"></div>
+    <div class="modal-dialog modal-dialog-centered" style="z-index: 1060;">
         <div class="modal-content">
             <div class="modal-body text-center py-4">
                 <div class="spinner-border text-primary mb-3" role="status">
@@ -140,10 +140,11 @@
             </div>
             
             <div class="list-group">
-                <Virtualize Items="filteredItems" Context="item" ItemSize="200">
+                @foreach (var item in filteredItems)
+                {
                     <div class="list-group-item shared-item" @key="item.Id">
-                        <!-- Header with metadata and actions -->
-                        <div class="item-header d-flex justify-content-between align-items-start mb-3">
+                        <!-- Header with metadata -->
+                        <div class="item-header d-flex justify-content-between align-items-start mb-2">
                             <div class="item-meta d-flex align-items-center gap-2 flex-wrap">
                                 @{
                                     var sourceTypes = item.SourceType.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -159,28 +160,30 @@
                                     @(item.IsPublic ? "Public" : "Private")
                                 </span>
                             </div>
-                            
-                            <div class="item-actions d-flex align-items-center gap-2">
-                                @if (item.IsPublic)
-                                {
-                                    <button class="btn btn-sm btn-outline-success action-btn" 
-                                            title="Copy Share Link"
-                                            @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
-                                        <i class="bi bi-link-45deg"></i>
-                                    </button>
-                                }
-                                <button class="btn btn-sm @(item.IsPublic ? "btn-outline-secondary" : "btn-outline-info") action-btn" 
-                                        title="@(item.IsPublic ? "Make Private" : "Make Public")"
-                                        disabled="@isUpdatingVisibility"
-                                        @onclick="() => ToggleVisibility(item.Id, !item.IsPublic)">
-                                    <i class="bi @(item.IsPublic ? "bi-lock" : "bi-globe")"></i>
+                        </div>
+                        
+                        <!-- Action buttons on secondary line -->
+                        <div class="analysis-actions d-flex flex-wrap align-items-center justify-content-end gap-2 mb-3">
+                            @if (item.IsPublic)
+                            {
+                                <button class="btn btn-sm btn-outline-success action-btn" 
+                                        title="Copy Share Link"
+                                        @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
+                                    <i class="bi bi-link-45deg me-1"></i>Copy Link
                                 </button>
-                                <button class="btn btn-sm btn-outline-danger action-btn" 
-                                        title="Delete" 
-                                        @onclick="() => ConfirmDelete(item.Id)">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </div>
+                            }
+                            <button class="btn btn-sm @(item.IsPublic ? "btn-outline-secondary" : "btn-outline-info") action-btn" 
+                                    title="@(item.IsPublic ? "Make Private" : "Make Public")"
+                                    disabled="@isUpdatingVisibility"
+                                    @onclick="() => ToggleVisibility(item.Id, !item.IsPublic)">
+                                <i class="bi @(item.IsPublic ? "bi-lock" : "bi-globe") me-1"></i>
+                                @(item.IsPublic ? "Make Private" : "Make Public")
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger action-btn" 
+                                    title="Delete" 
+                                    @onclick="() => ConfirmDelete(item.Id)">
+                                <i class="bi bi-trash me-1"></i>Delete
+                            </button>
                         </div>
                                               
                         @if (!string.IsNullOrWhiteSpace(item.UserInput) && item.SourceType != "Manual")
@@ -226,7 +229,7 @@
                             </div>
                         </div>
                     </div>
-                </Virtualize>
+                }
             </div>
         }
     }
@@ -266,7 +269,6 @@
     
     // Pagination state
     private int totalItems = 0;
-    private string lastSearchTerm = string.Empty;
 
     // Confirmation dialog state
     private bool isConfirmationDialogVisible;
@@ -459,86 +461,23 @@
         return items.ToList();
     }
 
-    private async Task HandleSearchChangeAsync()
+    private Task HandleSearchChangeAsync()
     {
-        // If search term changed, reload from beginning
-        if (lastSearchTerm != searchTerm)
-        {
-            lastSearchTerm = searchTerm;
-            
-            if (sharedHistoryService != null && !string.IsNullOrWhiteSpace(searchTerm))
-            {
-                await LoadFilteredSearchResultsAsync();
-            }
-            else
-            {
-                await LoadSharedHistoryAsync();
-            }
-        }
+        // No need to call backend - filtering is handled locally by FilterHistoryItems()
+        // Just trigger a state change to update the UI
+        StateHasChanged();
+        
+        return Task.CompletedTask;
     }
 
-    private async Task LoadFilteredSearchResultsAsync()
-    {
-        if (sharedHistoryService == null || isLoadingData) return;
-        
-        isLoadingData = true;
-        
-        try
-        {
-            var searchTermToUse = searchTerm.Trim();
-            var sharedItems = await sharedHistoryService.SearchUsersSavedAnalysesAsync(searchTermToUse);
-            
-            // Convert SharedAnalysisEntity to AnalysisHistoryItem
-            var newHistoryItems = new List<AnalysisHistoryItem>();
-            
-            foreach (var sharedItem in sharedItems)
-            {
-                // Get full analysis data to construct proper AnalysisHistoryItem
-                var analysisData = await sharedHistoryService.GetSharedAnalysisDataAsync(sharedItem.Id);
-                
-                var historyItem = new AnalysisHistoryItem
-                {
-                    Id = sharedItem.Id,
-                    Timestamp = sharedItem.CreatedDate,
-                    FullAnalysis = analysisData?.FullAnalysis ?? sharedItem.Summary,
-
-                    SourceType = sharedItem.SourceType,
-                    UserInput = sharedItem.UserInput,
-                    IsShared = true,
-                    SharedId = sharedItem.Id,
-                    SharedDate = sharedItem.CreatedDate,
-                    IsPublic = sharedItem.IsPublic
-                };
-                
-                newHistoryItems.Add(historyItem);
-            }
-            
-            // Remove duplicates by Id and sort by most recent first
-            historyItems = newHistoryItems
-                .GroupBy(h => h.Id)
-                .Select(g => g.First())
-                .OrderByDescending(h => h.Timestamp)
-                .ToList();
-            totalItems = historyItems.Count;
-            
-            StateHasChanged();
-        }
-        catch (Exception)
-        {
-            historyItems = new List<AnalysisHistoryItem>();
-            totalItems = 0;
-        }
-        finally
-        {
-            isLoadingData = false;
-        }
-    }
-
-    private async Task ClearSearch()
+    private Task ClearSearch()
     {
         searchTerm = string.Empty;
-        lastSearchTerm = string.Empty;
-        await LoadSharedHistoryAsync();
+        
+        // No need to reload from backend - local filtering will handle this
+        StateHasChanged();
+        
+        return Task.CompletedTask;
     }
     
     private Task ConfirmDelete(string id)

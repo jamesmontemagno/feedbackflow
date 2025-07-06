@@ -211,16 +211,64 @@
 }
 
 /* Action Buttons */
+.analysis-actions {
+    padding: 0.75rem;
+    background: rgba(var(--secondary-bg-rgb), 0.2);
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(var(--border-color-rgb), 0.1);
+    margin-top: 0.5rem;
+}
+
 .action-btn {
     border-radius: var(--border-radius);
     font-weight: 500;
-    transition: color 0.2s ease, background-color 0.2s ease;
+    transition: all 0.2s ease;
     white-space: nowrap;
+    border: 1px solid currentColor;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .action-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    transform: none;
+}
+
+.action-btn i {
+    font-size: 0.875rem;
+}
+
+/* Specific button variants */
+.btn-outline-success.action-btn:hover {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+    color: white;
+}
+
+.btn-outline-info.action-btn:hover {
+    background-color: var(--info-color);
+    border-color: var(--info-color);
+    color: white;
+}
+
+.btn-outline-secondary.action-btn:hover {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+    color: white;
+}
+
+.btn-outline-danger.action-btn:hover {
+    background-color: var(--danger-color);
+    border-color: var(--danger-color);
+    color: white;
 }
 
 /* User Input Section */
@@ -463,14 +511,14 @@
 
 /* Processing Dialog Modal Styles */
 .modal {
-    z-index: 1060;
+    z-index: 1070 !important;
 }
 
 .modal-backdrop {
     position: fixed;
     top: 0;
     left: 0;
-    z-index: 1055;
+    z-index: 1060 !important;
     width: 100vw;
     height: 100vh;
     background-color: rgba(0, 0, 0, 0.5);
@@ -482,6 +530,8 @@
 
 .modal-dialog {
     transition: transform 0.3s ease-out;
+    z-index: 1080 !important;
+    position: relative;
 }
 
 .modal-content {
@@ -490,6 +540,8 @@
     box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.25);
     background-color: var(--card-bg);
     color: var(--text-primary);
+    position: relative;
+    z-index: 1090;
 }
 
 .modal-header {
@@ -574,8 +626,10 @@
         width: 100%;
     }
     
-    .item-actions {
-        align-self: flex-end;
+    .analysis-actions {
+        justify-content: flex-start !important;
+        flex-wrap: wrap;
+        gap: 0.5rem;
     }
     
     .url-link-item {
@@ -639,13 +693,19 @@
         padding: 0.2rem 0.5rem;
     }
     
-    .item-actions .action-btn {
-        padding: 0.3rem 0.4rem;
-        min-width: 2rem;
+    .analysis-actions {
+        padding: 0.5rem;
+        flex-direction: column;
+        align-items: stretch;
     }
     
-    .item-actions .action-btn i {
-        font-size: 0.75rem;
+    .analysis-actions .action-btn {
+        justify-content: center;
+        margin-bottom: 0.25rem;
+    }
+    
+    .analysis-actions .action-btn:last-child {
+        margin-bottom: 0;
     }
 }
 
