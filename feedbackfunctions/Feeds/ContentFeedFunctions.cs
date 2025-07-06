@@ -8,9 +8,11 @@ using SharedDump.Models.HackerNews;
 using SharedDump.Models.YouTube;
 using SharedDump.Models.Reddit;
 using SharedDump.Services.Interfaces;
-using FeedbackFunctions.Services.Authentication;
+using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
+using FeedbackFunctions.Services.Account;
+using SharedDump.Models.Account;
 
 namespace FeedbackFunctions;
 
@@ -29,6 +31,7 @@ public class ContentFeedFunctions
     private readonly IYouTubeService _ytService;
     private readonly IRedditService _redditService;
     private readonly AuthenticationMiddleware _authMiddleware;
+    private readonly IUserAccountService _userAccountService;
     private static readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(10);
 
     /// <summary>
@@ -44,13 +47,15 @@ public class ContentFeedFunctions
         IHackerNewsService hackerNewsService,
         IYouTubeService youtubeService,
         IRedditService redditService,
-        AuthenticationMiddleware authMiddleware)
+        AuthenticationMiddleware authMiddleware,
+        IUserAccountService userAccountService)
     {
         _logger = logger;
         _hnService = hackerNewsService;
         _ytService = youtubeService;
         _redditService = redditService;
         _authMiddleware = authMiddleware;
+        _userAccountService = userAccountService;
     }
 
     /// <summary>
@@ -80,6 +85,11 @@ public class ContentFeedFunctions
         if (authErrorResponse != null)
             return authErrorResponse;
 
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.FeedQuery, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
+
         try
         {
             var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
@@ -106,6 +116,10 @@ public class ContentFeedFunctions
             
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(videos);
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, $"Topic: {topic ?? tag}, Videos: {videos.Count}");
+            
             return response;
         }
         catch (Exception ex)
@@ -128,6 +142,11 @@ public class ContentFeedFunctions
         var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
         if (authErrorResponse != null)
             return authErrorResponse;
+
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.FeedQuery, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
 
         try
         {
@@ -159,6 +178,10 @@ public class ContentFeedFunctions
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(threads);
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, $"Subreddit: {subreddit}, Threads: {threads.Count}");
+            
             return response;
         }
         catch (Exception ex)
@@ -183,6 +206,11 @@ public class ContentFeedFunctions
         if (authErrorResponse != null)
             return authErrorResponse;
 
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.FeedQuery, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
+
         try
         {
             List<HackerNewsItemBasicInfo> matchingItems;
@@ -201,6 +229,10 @@ public class ContentFeedFunctions
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(matchingItems);
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, $"Articles: {matchingItems.Count}");
+            
             return response;
         }
         catch (Exception ex)

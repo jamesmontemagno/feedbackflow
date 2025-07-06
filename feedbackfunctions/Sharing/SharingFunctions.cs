@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 using SharedDump.Models;
 using System.Text;
 using System.Text.Json;
-using FeedbackFunctions.Services.Authentication;
+using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
 

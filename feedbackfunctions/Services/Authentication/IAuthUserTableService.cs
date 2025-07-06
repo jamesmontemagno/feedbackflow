@@ -1,6 +1,9 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using SharedDump.Models.Authentication;
 
-namespace SharedDump.Services.Authentication;
+namespace FeedbackFunctions.Services.Authentication;
 
 /// <summary>
 /// Service for managing authenticated users in Azure Table Storage
@@ -48,23 +51,4 @@ public interface IAuthUserTableService
     /// </summary>
     /// <returns>Collection of active users</returns>
     Task<IEnumerable<AuthUserEntity>> GetActiveUsersAsync();
-
-    /// <summary>
-    /// Update the email index for a user
-    /// </summary>
-    /// <param name="email">User's email address</param>
-    /// <param name="userId">Internal user ID</param>
-    /// <param name="provider">Authentication provider</param>
-    /// <param name="providerUserId">Provider-specific user ID</param>
-    /// <returns>Task representing the operation</returns>
-    Task UpdateEmailIndexAsync(string email, string userId, string provider, string providerUserId);
-
-    /// <summary>
-    /// Update the user's preferred email address
-    /// </summary>
-    /// <param name="provider">Authentication provider name</param>
-    /// <param name="providerUserId">Provider-specific user ID</param>
-    /// <param name="preferredEmail">New preferred email address (can be null to clear)</param>
-    /// <returns>True if successful, false if user not found</returns>
-    Task<bool> UpdatePreferredEmailAsync(string provider, string providerUserId, string? preferredEmail);
 }
