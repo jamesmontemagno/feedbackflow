@@ -485,12 +485,6 @@
 
                 // Update UI
                 StateHasChanged();
-
-                // Show a success message if voices were loaded
-                if (availableVoices != null && availableVoices.Length > 0)
-                {
-                    await ToastService.ShowSuccessAsync("Text-to-speech voices loaded successfully!");
-                }
             }
             catch (OperationCanceledException)
             {

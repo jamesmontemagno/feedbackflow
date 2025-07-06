@@ -5,42 +5,34 @@
 
 .feature-section {
     padding: 1rem;
-    border: 1px solid var(--bs-border-color);
-    border-radius: var(--bs-border-radius);
-    background: var(--bs-body-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background: var(--card-bg);
+    color: var(--text-primary);
     transition: all 0.3s ease;
 }
 
 .feature-section:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    border-color: var(--bs-primary);
+    box-shadow: var(--card-shadow);
+    border-color: var(--primary-color);
 }
 
 .feature-title {
-    color: var(--bs-body-color);
+    color: var(--text-primary);
     margin-bottom: 0.5rem;
     font-weight: 600;
     font-size: 0.95rem;
 }
 
 .feature-description {
-    color: var(--bs-secondary-color);
+    color: var(--text-secondary);
     margin-bottom: 0;
     font-size: 0.9rem;
     line-height: 1.5;
 }
 
-/* Dark theme support */
-[data-theme="dark"] .feature-section {
-    background: var(--bs-dark);
-    border-color: var(--bs-border-color);
-}
-
-[data-theme="dark"] .feature-section:hover {
-    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
-    border-color: var(--bs-primary);
-}
+/* Remove hardcoded dark theme - use global variables */
 
 /* Modal customizations */
 .modal-header.bg-primary {
@@ -52,11 +44,13 @@
     border: none;
     border-radius: var(--border-radius);
     box-shadow: var(--card-shadow);
+    background: var(--card-bg);
+    color: var(--text-primary);
 }
 
 .modal-footer {
-    border-top: 1px solid var(--bs-border-color);
-    background: var(--bs-body-bg);
+    border-top: 1px solid var(--border-color);
+    background: var(--card-bg);
 }
 
 /* Animation improvements */
