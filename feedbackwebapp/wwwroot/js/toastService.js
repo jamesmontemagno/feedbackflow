@@ -54,11 +54,13 @@ export function showToast(message, type = 'success', duration = 3000, position =
     const icon = iconMap[type] || iconMap.primary;
     
     toastElement.innerHTML = `
+        <div class="toast-header ${bgClass}">
+            <i class="bi ${icon} me-2"></i>
+            <strong class="me-auto">FeedbackFlow</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
         <div class="toast-body ${bgClass}">
-            <div class="d-flex align-items-center">
-                <i class="bi ${icon} me-2"></i>
-                <span>${message}</span>
-            </div>
+            <span>${message}</span>
         </div>
     `;
 

@@ -25,6 +25,7 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 
 ### Development Workflow
 - **Run full application with the aspire CLI** (recommended): `aspire run`
+- **Run web app only**: `dotnet run --project feedbackwebapp/WebApp.csproj`
 - **Build functions only**: Available as VS Code task "build (functions)"
 - **Run functions standalone**: Available as VS Code task with func host
 - **Clean build**: Available as VS Code task "clean (functions)"
