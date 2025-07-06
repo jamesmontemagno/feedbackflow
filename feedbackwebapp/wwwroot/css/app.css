@@ -447,6 +447,76 @@ h1:focus {
 
 /* 
 =================================
+BLAZOR RECONNECTION UI DARK MODE
+=================================
+Override Blazor's built-in reconnection UI for dark mode support
+*/
+
+/* Blazor reconnection modal overlay */
+#components-reconnect-modal {
+    background: rgba(0, 0, 0, 0.8) !important;
+    backdrop-filter: blur(4px);
+}
+
+/* Blazor reconnection modal content */
+#components-reconnect-modal .components-reconnect-modal {
+    background: var(--card-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--border-radius) !important;
+    box-shadow: var(--card-shadow) !important;
+    color: var(--text-primary) !important;
+    padding: 1.5rem !important;
+    max-width: 400px !important;
+    margin: 0 auto !important;
+}
+
+/* Blazor reconnection modal text */
+#components-reconnect-modal .components-reconnect-modal h5,
+#components-reconnect-modal .components-reconnect-modal p {
+    color: var(--text-primary) !important;
+    margin-bottom: 1rem !important;
+}
+
+/* Blazor reconnection modal buttons */
+#components-reconnect-modal .components-reconnect-modal button {
+    background: var(--primary-gradient) !important;
+    border: none !important;
+    border-radius: var(--border-radius-sm) !important;
+    color: white !important;
+    padding: 0.5rem 1rem !important;
+    margin: 0.25rem !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+#components-reconnect-modal .components-reconnect-modal button:hover {
+    filter: brightness(1.1) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Blazor reconnection modal failed state */
+#components-reconnect-modal .components-reconnect-modal.components-reconnect-failed {
+    border-color: var(--danger-color) !important;
+}
+
+#components-reconnect-modal .components-reconnect-modal.components-reconnect-failed h5 {
+    color: var(--danger-color) !important;
+}
+
+/* Dark theme specific overrides */
+[data-theme="dark"] #components-reconnect-modal .components-reconnect-modal {
+    background: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] #components-reconnect-modal .components-reconnect-modal h5,
+[data-theme="dark"] #components-reconnect-modal .components-reconnect-modal p {
+    color: var(--text-primary) !important;
+}
+
+/* 
+=================================
 SHARED COMPONENT STYLES 
 =================================
 These styles are shared across multiple components
