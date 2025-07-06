@@ -15,6 +15,7 @@ using FeedbackFunctions.Services.Authentication;
 using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
+using FeedbackFunctions.Services.Account;
 using SharedDump.Services;
 using SharedDump.Models.Account;
 using FeedbackFunctions.Services.Reports;
@@ -39,6 +40,7 @@ public class ReportRequestFunctions
     private readonly IRedditService _redditService;
     private readonly IGitHubService _githubService;
     private readonly FeedbackFunctions.Middleware.AuthenticationMiddleware _authMiddleware;
+    private readonly IUserAccountService _userAccountService;
 
     public ReportRequestFunctions(
         ILogger<ReportRequestFunctions> logger,
@@ -47,7 +49,8 @@ public class ReportRequestFunctions
         IGitHubService githubService,
         IFeedbackAnalyzerService analyzerService,
         IReportCacheService cacheService,
-        FeedbackFunctions.Middleware.AuthenticationMiddleware authMiddleware)
+        FeedbackFunctions.Middleware.AuthenticationMiddleware authMiddleware,
+        IUserAccountService userAccountService)
     {
 #if DEBUG
         _configuration = new ConfigurationBuilder()
@@ -62,6 +65,7 @@ public class ReportRequestFunctions
         _redditService = redditService;
         _githubService = githubService;
         _authMiddleware = authMiddleware;
+        _userAccountService = userAccountService;
         
         // Initialize table client
         var storageConnection = _configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
@@ -108,7 +112,6 @@ public class ReportRequestFunctions
     /// </summary>
     [Function("AddUserReportRequest")]
     [Authorize]
-    [UsageValidation(UsageType = SharedDump.Models.Account.UsageType.ReportCreated)]
     public async Task<HttpResponseData> AddUserReportRequest(
         [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
@@ -118,6 +121,11 @@ public class ReportRequestFunctions
         var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
         if (authErrorResponse != null)
             return authErrorResponse;
+
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.ReportCreated, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
 
         if (user == null)
         {
@@ -332,6 +340,10 @@ public class ReportRequestFunctions
                 id = request.Id, 
                 message = "User request added successfully"
             }));
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.ReportCreated, _userAccountService, _logger, request.Type);
+            
             return response;
         }
         catch (Exception ex)
@@ -348,7 +360,6 @@ public class ReportRequestFunctions
     /// </summary>
     [Function("RemoveUserReportRequest")]
     [Authorize]
-    [UsageValidation(UsageType = SharedDump.Models.Account.UsageType.ReportDeleted)]
     public async Task<HttpResponseData> RemoveUserReportRequest(
         [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "userreportrequest/{id}")] HttpRequestData req,
         string id)
@@ -359,6 +370,11 @@ public class ReportRequestFunctions
         var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
         if (authErrorResponse != null)
             return authErrorResponse;
+
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.ReportDeleted, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
 
         if (user == null)
         {
@@ -443,6 +459,10 @@ public class ReportRequestFunctions
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteStringAsync("User request removed successfully");
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.ReportDeleted, _userAccountService, _logger, id);
+            
             return response;
         }
         catch (Exception ex)

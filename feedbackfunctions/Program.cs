@@ -46,7 +46,6 @@ builder.Services.AddHttpClient();
 // Register authentication services
 builder.Services.AddScoped<IAuthUserTableService, AuthUserTableService>();
 builder.Services.AddScoped<FeedbackFunctions.Middleware.AuthenticationMiddleware>();
-builder.Services.AddScoped<UsageValidationMiddleware>();
 
 // Register unified account service
 RegisterAccountServices(builder.Services);
