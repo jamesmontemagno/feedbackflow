@@ -1,7 +1,6 @@
 @namespace FeedbackWebApp.Components.Feedback.Results
 @using System.Text.RegularExpressions
 @using SharedDump.Utils
-@using FeedbackWebApp.Components.Shared
 @using Microsoft.Extensions.Logging
 @using SharedDump.Services
 @using FeedbackWebApp.Services.Feedback
@@ -21,16 +20,6 @@
     ContentType="@failedCopyContentType"
     OnClose="@CloseCopyFailedDialog" />
 
-<SaveShareDialog 
-    @bind-IsVisible="@showSaveShareDialog"
-    IsProcessing="@isProcessingSave"
-    IsSaved="@dialogSaved"
-    ShareUrl="@shareUrl"
-    @bind-IsPublic="@dialogIsPublic"
-    OnSave="@HandleSaveFromDialog"
-    OnClose="@HandleSaveDialogClose" />
-
-
 
 @if (!string.IsNullOrEmpty(Error))
 {
@@ -43,56 +32,97 @@
 @if (!string.IsNullOrEmpty(MarkdownResult))
 {
     <div class="card mt-4 shadow-sm">        
-        <header class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h2 class="card-title mb-0 h5">Analysis Summary</h2>
-            <ActionMenu>
-                <PrimaryAction>
-                    @if (!string.IsNullOrEmpty(MarkdownResult))
-                    {
-                        <ExportButton Items="@(new[] { CreateHistoryItemForExport() })" ButtonVariant="light" Size="sm" Mini="true" />
-                    }
-                </PrimaryAction>                  
-                <ChildContent>
-                    @if (!string.IsNullOrEmpty(MarkdownResult))
-                    {
-                        <ExportButton Items="@(new[] { CreateHistoryItemForExport() })" ButtonVariant="light" Size="sm" Mini="false" />
-                    }
-                    <button class="btn btn-sm btn-outline-light me-2 action-btn" 
-                            @onclick="ShowSaveShareDialog"
-                            disabled="@_isSaved"
-                            aria-label="@(_isSaved ? "Already saved" : "Save and share analysis")">
-                        <i class="bi @(_isSaved ? "bi-check-circle" : "bi-cloud-upload") me-1" aria-hidden="false"></i>
-                        @(_isSaved ? "Saved" : "Save & Share")
+        <header class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h2 class="card-title mb-0 h5">Analysis Summary</h2>
+            </div>
+            
+            <!-- Action buttons on secondary line -->
+            <div class="analysis-actions d-flex flex-wrap align-items-center gap-2">
+                @if (!string.IsNullOrEmpty(MarkdownResult))
+                {
+                    <ExportButton Items="@(new[] { CreateHistoryItemForExport() })" ButtonVariant="light" Size="sm" Mini="false" />
+                }
+                
+                <!-- Save & Share Dropdown -->
+                <div class="dropdown d-inline-block">
+                    <button class="btn btn-sm btn-outline-light dropdown-toggle action-btn @(_isSaved ? "btn-saved" : "")" 
+                            type="button" 
+                            id="saveShareDropdown" 
+                            data-bs-toggle="dropdown" 
+                            aria-expanded="false"
+                            disabled="@isProcessingSave"
+                            title="@(_isSaved ? "Saved" : "Save and share analysis")"
+                            aria-label="@(_isSaved ? "Analysis saved" : "Save and share analysis")">
+                        @if (isProcessingSave)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                            @:Saving...
+                        }
+                        else
+                        {
+                            <i class="bi @(_isSaved ? "bi-check-circle" : "bi-cloud-upload") me-1" aria-hidden="true"></i>
+                            @(_isSaved ? "Saved" : "Save & Share")
+                        }
                     </button>
-                    <button class="btn btn-sm btn-outline-light me-2 action-btn @(_isSpeaking ? "btn-speak-active" : "")" 
-                            @onclick="SpeakAnalysis"
-                            aria-label="@(_isSpeaking ? "Stop speaking" : "Speak analysis")"
-                            aria-pressed="@_isSpeaking.ToString().ToLower()">
-                        <i class="bi @(_isSpeaking ? "bi-pause-fill" : "bi-volume-up-fill") me-1" aria-hidden="false"></i>
-                        @(_isSpeaking ? "Stop" : "Speak")
-                    </button>
-                    <button class="btn btn-sm btn-outline-light action-btn" 
-                            @onclick="CopyToClipboard"
-                            aria-label="Copy to clipboard">
-                        <i class="bi bi-clipboard me-1" aria-hidden="false"></i>
-                        Copy
-                    </button>
-                </ChildContent>
-                <SecondaryActions>
-                    <li><button class="dropdown-item" @onclick="ShowSaveShareDialog" disabled="@_isSaved">
-                        <i class="bi @(_isSaved ? "bi-check-circle" : "bi-cloud-upload")"></i> 
-                        @(_isSaved ? "Already Saved" : "Save & Share Analysis")
-                    </button></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><button class="dropdown-item" @onclick="SpeakAnalysis">
-                        <i class="bi @(_isSpeaking ? "bi-pause-fill" : "bi-volume-up-fill")"></i> 
-                        @(_isSpeaking ? "Stop Speaking" : "Speak Analysis")
-                    </button></li>
-                    <li><button class="dropdown-item" @onclick="CopyToClipboard">
-                        <i class="bi bi-clipboard"></i> Copy Analysis
-                    </button></li>                
-                </SecondaryActions>
-            </ActionMenu>
+                    <ul class="dropdown-menu save-share-menu" aria-labelledby="saveShareDropdown">
+                        @if (!_isSaved && !isProcessingSave)
+                        {
+                            <li><h6 class="dropdown-header">Save Analysis</h6></li>
+                            <li>
+                                <button class="dropdown-item" @onclick="() => HandleSaveClick(false)" disabled="@isProcessingSave">
+                                    <i class="bi bi-lock me-2" aria-hidden="true"></i>Save Privately
+                                    <small class="text-muted d-block">Only you can view this analysis</small>
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item" @onclick="() => HandleSaveClick(true)" disabled="@isProcessingSave">
+                                    <i class="bi bi-globe me-2" aria-hidden="true"></i>Save & Share Publicly
+                                    <small class="text-muted d-block">Anyone with the link can view</small>
+                                </button>
+                            </li>
+                        }
+                        else if (_isSaved)
+                        {
+                            <li><h6 class="dropdown-header">Analysis Saved</h6></li>
+                            @if (!string.IsNullOrEmpty(shareUrl))
+                            {
+                                <li>
+                                    <button class="dropdown-item" @onclick="CopyShareUrl">
+                                        <i class="bi bi-link-45deg me-2" aria-hidden="true"></i>Copy Share Link
+                                    </button>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                            }
+                            <li>
+                                <a class="dropdown-item" href="/history" target="_blank">
+                                    <i class="bi bi-folder-open me-2" aria-hidden="true"></i>View in History
+                                </a>
+                            </li>
+                        }
+                        else if (isProcessingSave)
+                        {
+                            <li><h6 class="dropdown-header">Saving...</h6></li>
+                            <li><span class="dropdown-item-text text-muted">Please wait while we save your analysis</span></li>
+                        }
+                    </ul>
+                </div>
+                
+                <button class="btn btn-sm btn-outline-light action-btn @(_isSpeaking ? "btn-speak-active" : "")" 
+                        @onclick="SpeakAnalysis"
+                        aria-label="@(_isSpeaking ? "Stop speaking" : "Speak analysis")"
+                        aria-pressed="@_isSpeaking.ToString().ToLower()">
+                    <i class="bi @(_isSpeaking ? "bi-pause-fill" : "bi-volume-up-fill") me-1" aria-hidden="false"></i>
+                    @(_isSpeaking ? "Stop" : "Speak")
+                </button>
+                
+                <button class="btn btn-sm btn-outline-light action-btn" 
+                        @onclick="CopyToClipboard"
+                        aria-label="Copy to clipboard">
+                    <i class="bi bi-clipboard me-1" aria-hidden="false"></i>
+                    Copy
+                </button>
+            </div>
         </header>
         <div class="card-body">
             <div class="markdown-body" tabindex="0">
@@ -123,11 +153,8 @@
     private bool _isSaved = false;
     private string? _savedItemId;
     
-    // Save & Share dialog state
-    private bool showSaveShareDialog = false;
+    // Save & Share state
     private bool isProcessingSave = false;
-    private bool dialogSaved = false;
-    private bool dialogIsPublic = false;
     private string? shareUrl;
     
     // Copy failed dialog state
@@ -152,10 +179,7 @@
                 // Reset all state for new analysis
                 _isSaved = false;
                 _savedItemId = null;
-                showSaveShareDialog = false;
                 isProcessingSave = false;
-                dialogSaved = false;
-                dialogIsPublic = false;
                 shareUrl = null;
                 _previousMarkdown = MarkdownResult;
             }
@@ -198,21 +222,10 @@
         }
         
     }    
-    private void ShowSaveShareDialog()
+    
+    private async Task HandleSaveClick(bool isPublic)
     {
-        if (!string.IsNullOrEmpty(MarkdownResult) && !_isSaved)
-        {
-            dialogIsPublic = false; // Default to private
-            dialogSaved = false;
-            isProcessingSave = false;
-            shareUrl = null;
-            showSaveShareDialog = true;
-        }
-    }
-
-    private async Task HandleSaveFromDialog(bool isPublic)
-    {
-        if (string.IsNullOrEmpty(MarkdownResult))
+        if (string.IsNullOrEmpty(MarkdownResult) || _isSaved)
             return;
 
         isProcessingSave = true;
@@ -244,7 +257,6 @@
             // Update component state
             _isSaved = true;
             _savedItemId = savedId;
-            dialogSaved = true;
             
             if (isPublic)
             {
@@ -266,15 +278,27 @@
         }
     }
 
-    private void HandleSaveDialogClose()
+    private async Task CopyShareUrl()
     {
-        showSaveShareDialog = false;
-        // Reset dialog state
-        if (!_isSaved)
+        if (!string.IsNullOrEmpty(shareUrl))
         {
-            dialogSaved = false;
-            dialogIsPublic = false;
-            shareUrl = null;
+            try
+            {
+                var success = await JSRuntime.InvokeAsync<bool>("copyToClipboard", shareUrl);
+                if (success)
+                {
+                    await ToastService.ShowSuccessAsync("Share URL copied to clipboard!", 3000);
+                }
+                else
+                {
+                    ShowCopyFailedDialog(shareUrl, "Share URL");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to copy share URL to clipboard");
+                ShowCopyFailedDialog(shareUrl, "Share URL");
+            }
         }
     }
 
