@@ -7,6 +7,7 @@
 @using SharedDump.Models.YouTube
 @using SharedDump.Models.Reddit
 @using SharedDump.Models.HackerNews
+@using SharedDump.Models.Account
 @using FeedbackWebApp.Components.Feedback
 @using FeedbackWebApp.Components.Feedback.Forms
 @using FeedbackWebApp.Components.ContentFeed.Forms
@@ -129,6 +130,11 @@
     }
 </div>
 
+<UsageLimitDialog 
+    UsageError="@usageLimitError" 
+    IsVisible="@showUsageLimitDialog" 
+    OnClose="@CloseUsageLimitDialog" />
+
 @code {
     private bool isAuthenticated;
     private bool isLoading;
@@ -140,6 +146,8 @@
     private HackerNewsFeedForm? hackerNewsFeedForm;    private List<YouTubeOutputVideo>? youtubeVideos;
     private List<RedditThreadModel>? redditThreads;
     private List<HackerNewsItem>? hackerNewsItems;
+    private bool showUsageLimitDialog = false;
+    private UsageLimitError? usageLimitError;
     
     private record SourceOption(string Name, string IconClass, string Value, string Description);
 
@@ -241,11 +249,46 @@
         }
         catch (Exception ex)
         {
-            error = $"Error fetching content: {ex.Message}";
+            // Check if this is a usage limit error
+            if (TryParseUsageLimitError(ex.Message, out var limitError))
+            {
+                usageLimitError = limitError;
+                showUsageLimitDialog = true;
+            }
+            else
+            {
+                error = $"Error fetching content: {ex.Message}";
+            }
         }
         finally
         {
             isLoading = false;
         }
+    }
+
+    private void CloseUsageLimitDialog()
+    {
+        showUsageLimitDialog = false;
+        usageLimitError = null;
+        StateHasChanged();
+    }
+
+    private bool TryParseUsageLimitError(string errorMessage, out UsageLimitError? limitError)
+    {
+        limitError = null;
+        try
+        {
+            // Try to parse the error message as JSON
+            if (errorMessage.Contains("USAGE_LIMIT_EXCEEDED") || errorMessage.Contains("ErrorCode"))
+            {
+                limitError = System.Text.Json.JsonSerializer.Deserialize<UsageLimitError>(errorMessage);
+                return limitError != null && limitError.ErrorCode == "USAGE_LIMIT_EXCEEDED";
+            }
+        }
+        catch
+        {
+            // Not a JSON error, continue with normal error handling
+        }
+        return false;
     }
 }

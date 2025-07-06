@@ -86,6 +86,8 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 - Test all components in both light and dark themes before committing
 - Use rgba(var(--primary-color-rgb), opacity) for transparent colors
 - Apply color transitions with `transition: color 0.3s ease, background-color 0.3s ease`
+- **Bootstrap Override Classes**: When using Bootstrap alert/button classes, override with CSS variables for dark theme support (e.g., .alert-warning, .btn-secondary)
+- **Modal Close Buttons**: Ensure .btn-close works in dark theme by applying appropriate filter properties
 
 ### Icons & UI Elements
 - Use Bootstrap Icons (bi bi-*) with consistent sizing and spacing
@@ -145,6 +147,7 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 - Implement proper error boundaries
 - Display user-friendly error messages
 - Log errors appropriately
+- **Usage Limit Errors**: Check for JSON error responses with "USAGE_LIMIT_EXCEEDED" ErrorCode and display UsageLimitDialog instead of raw error messages
 
 ## Performance
 - Implement proper component lifecycle methods
@@ -236,6 +239,27 @@ catch (Exception ex)
 }
 ```
 
+### Usage Limit Error Pattern
+```csharp
+private bool TryParseUsageLimitError(string errorMessage, out UsageLimitError? limitError)
+{
+    limitError = null;
+    try
+    {
+        if (errorMessage.Contains("USAGE_LIMIT_EXCEEDED") || errorMessage.Contains("ErrorCode"))
+        {
+            limitError = System.Text.Json.JsonSerializer.Deserialize<UsageLimitError>(errorMessage);
+            return limitError != null && limitError.ErrorCode == "USAGE_LIMIT_EXCEEDED";
+        }
+    }
+    catch
+    {
+        // Not a JSON error, continue with normal error handling
+    }
+    return false;
+}
+```
+
 ### Service Registration Pattern
 Services are registered conditionally based on `UseMocks` configuration:
 ```csharp
@@ -259,6 +283,7 @@ else
 - **Shared Components**: In `Components/Shared/`, reusable across pages
 - **Form Components**: In `Components/Feedback/Forms/`, handle user input and validation
 - **Result Components**: In `Components/Feedback/Results/`, display analysis results
+- **Error Dialogs**: Use `UsageLimitDialog` for usage limit exceeded errors, ensure dark theme compatibility
 
 ### JSON Serialization Context
 Uses source-generated JSON serialization contexts for better performance:

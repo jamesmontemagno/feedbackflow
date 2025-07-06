@@ -12,6 +12,7 @@
 @using FeedbackWebApp.Services.Authentication
 @using FeedbackWebApp.Components.Shared
 @using SharedDump.Models
+@using SharedDump.Models.Account
 @using SharedDump.Models.BlueSkyFeedback
 @using SharedDump.Models.DevBlogs
 @using SharedDump.Models.GitHub
@@ -34,6 +35,11 @@
     OnClose="@CloseNewFeaturesDialog"
     OnGotIt="@MarkNewFeaturesAsSeen" 
     OnRemindLater="@CloseNewFeaturesDialog" />
+
+<UsageLimitDialog 
+    UsageError="@usageLimitError" 
+    IsVisible="@showUsageLimitDialog" 
+    OnClose="@CloseUsageLimitDialog" />
 
 <div class="container">
     @if (!isAuthenticated)
@@ -141,6 +147,8 @@
     private bool isLoading = false;
     private bool isAuthenticated = false;
     private bool showNewFeaturesDialog = false;
+    private bool showUsageLimitDialog = false;
+    private UsageLimitError? usageLimitError;
     private List<FeedbackSourceData>? feedbackSources;
     private object? currentAdditionalData;
     private FeedbackProcessStatus currentStatus;
@@ -209,6 +217,32 @@
     {
         await UserSettings.MarkFeatureAnnouncementShownAsync();
         CloseNewFeaturesDialog();
+    }
+
+    private void CloseUsageLimitDialog()
+    {
+        showUsageLimitDialog = false;
+        usageLimitError = null;
+        StateHasChanged();
+    }
+
+    private bool TryParseUsageLimitError(string errorMessage, out UsageLimitError? limitError)
+    {
+        limitError = null;
+        try
+        {
+            // Try to parse the error message as JSON
+            if (errorMessage.Contains("USAGE_LIMIT_EXCEEDED") || errorMessage.Contains("ErrorCode"))
+            {
+                limitError = System.Text.Json.JsonSerializer.Deserialize<UsageLimitError>(errorMessage);
+                return limitError != null && limitError.ErrorCode == "USAGE_LIMIT_EXCEEDED";
+            }
+        }
+        catch
+        {
+            // Not a JSON error, continue with normal error handling
+        }
+        return false;
     }
 
     private void HandleStatusUpdate(FeedbackProcessStatus status, string message)
@@ -330,7 +364,16 @@
         }
         catch (Exception ex)
         {
-            error = $"An error occurred: {ex.Message}";
+            // Check if this is a usage limit error
+            if (TryParseUsageLimitError(ex.Message, out var limitError))
+            {
+                usageLimitError = limitError;
+                showUsageLimitDialog = true;
+            }
+            else
+            {
+                error = $"An error occurred: {ex.Message}";
+            }
             StateHasChanged();
         }
         finally
