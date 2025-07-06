@@ -42,11 +42,30 @@
                         <div class="row mb-4">
                             <div class="col-md-4">
                                 <h5 class="text-primary">Account Information</h5>
+                                @if (userAccount?.Tier == AccountTier.SuperUser)
+                                {
+                                    <div class="mt-2">
+                                        <span class="badge bg-warning text-dark fs-6">
+                                            <i class="bi bi-star-fill me-1"></i>
+                                            Super User
+                                        </span>
+                                        <p class="text-muted small mt-1 mb-0">Administrative Account</p>
+                                    </div>
+                                }
                             </div>
                             <div class="col-md-8">
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Name</label>
-                                    <p class="form-control-plaintext">@userInfo.Name</p>
+                                    <p class="form-control-plaintext">
+                                        @userInfo.Name
+                                        @if (userAccount?.Tier == AccountTier.SuperUser)
+                                        {
+                                            <span class="badge bg-warning text-dark ms-2">
+                                                <i class="bi bi-star-fill me-1"></i>
+                                                Super User
+                                            </span>
+                                        }
+                                    </p>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Email</label>

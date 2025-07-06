@@ -103,6 +103,12 @@ public class UserAccountService : IUserAccountService
                 ReportLimit = GetConfigValue("AccountTiers:ProPlus:ReportLimit", 25),
                 FeedQueryLimit = GetConfigValue("AccountTiers:ProPlus:FeedQueryLimit", 1000)
             },
+            AccountTier.SuperUser => new AccountLimits 
+            { 
+                AnalysisLimit = 10000,
+                ReportLimit = 10000,
+                FeedQueryLimit = 10000
+            },
             _ => new AccountLimits { AnalysisLimit = 0, ReportLimit = 0, FeedQueryLimit = 0 }
         };
     }

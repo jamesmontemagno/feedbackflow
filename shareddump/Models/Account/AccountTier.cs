@@ -4,5 +4,6 @@ public enum AccountTier
 {
     Free = 0,
     Pro = 1,
-    ProPlus = 2
+    ProPlus = 2,
+    SuperUser = 100
 }
