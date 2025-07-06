@@ -3,7 +3,6 @@
 
 @inject FeedbackWebApp.Services.ISharedHistoryServiceProvider SharedHistoryServiceProvider
 @inject FeedbackWebApp.Services.IToastService ToastService
-@inject SharedDump.Services.Interfaces.IExportService ExportService
 @inject IJSRuntime JSRuntime
 @inject ILogger<Analysis> Logger
 @using SharedDump.Models
@@ -19,9 +18,15 @@
 
 <PageTitle>Analysis</PageTitle>
 
-<div class="container-lg py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="feedbackflow-title mb-0">
+<CopyFailedDialog 
+    IsVisible="@showCopyFailedDialog"
+    Content="@failedCopyContent"
+    ContentType="@failedCopyContentType"
+    OnClose="@CloseCopyFailedDialog" />
+
+<div class="container-lg px-2 px-md-3 py-2 py-md-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 mb-md-4">
+        <h1 class="feedbackflow-title mb-0 fs-4 fs-md-3">
             <i class="bi bi-file-text me-2" aria-hidden="true"></i>
             Analysis
         </h1>        
@@ -56,35 +61,24 @@
     {
         <div class="card shadow-sm mb-4">
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div class="d-flex align-items-center gap-2">
-                        @{
-                            var sourceTypes = analysis.SourceType.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                            foreach (var sourceType in sourceTypes)
-                            {
-                                <i class="bi @GetServiceIcon(sourceType) service-icon"></i>
+                <div class="analysis-header mb-3">
+                    <div class="header-info">
+                        <div class="service-icons-group">
+                            @{
+                                var sourceTypes = analysis.SourceType.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                                foreach (var sourceType in sourceTypes)
+                                {
+                                    <i class="bi @GetServiceIcon(sourceType) service-icon"></i>
+                                }
                             }
                             <span class="source-badge">@analysis.SourceType</span>
-                        }
-                        <small class="text-muted">@analysis.CreatedDate.ToLocalTime().ToString("g")</small>
-                    </div>                      
-                    <ActionMenu>
-                        <PrimaryAction>
-                            <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="CopyToClipboard">
-                                <i class="bi bi-clipboard"></i> Copy Analysis
-                            </button>
-                        </PrimaryAction>                        
-                        <ChildContent>
-                            <button class="btn btn-sm btn-outline-primary action-btn" title="Copy Analysis" @onclick="CopyToClipboard">
-                                <i class="bi bi-clipboard"></i> Copy Analysis
-                            </button>
-                        </ChildContent>
-                        <SecondaryActions>
-                            <li><button class="dropdown-item" @onclick="CopyToClipboard">
-                                <i class="bi bi-clipboard"></i> Copy Analysis
-                            </button></li>
-                        </SecondaryActions>
-                    </ActionMenu>
+                        </div>
+                        <small class="text-muted created-date">@analysis.CreatedDate.ToLocalTime().ToString("g")</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary copy-btn" title="Copy Analysis" @onclick="CopyToClipboard">
+                        <i class="bi bi-clipboard"></i>
+                        <span class="btn-text">Copy</span>
+                    </button>
                 </div>
                               
                 @if (!string.IsNullOrWhiteSpace(analysis.UserInput))
@@ -149,6 +143,11 @@
     private bool isLoading = true;
     private bool loadError = false;
     private string errorMessage = "An error occurred while loading the analysis.";
+    
+    // Copy failed dialog state
+    private bool showCopyFailedDialog = false;
+    private string failedCopyContent = string.Empty;
+    private string failedCopyContentType = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -210,41 +209,53 @@
 
     private async Task CopyToClipboard()
     {
-        if (analysis == null) 
-            return;
+        string textToCopy = "";
         
+        if (!string.IsNullOrEmpty(analysis.FullAnalysis))
+        {
+            textToCopy = analysis.FullAnalysis;
+        }
+        else
+        {
+            await ToastService.ShowErrorAsync("Nothing to copy - no analysis or summary available.");
+            return;
+        }
+
         try
         {
-            string textToCopy = "";
-            
-            if (!string.IsNullOrEmpty(analysis.FullAnalysis))
-            {
-                textToCopy = analysis.FullAnalysis;
-            }
-            else if (!string.IsNullOrEmpty(analysis.Summary))
-            {
-                textToCopy = analysis.Summary;
-            }
-            else
-            {
-                await ToastService.ShowErrorAsync("Nothing to copy - no analysis or summary available.");
-                return;
-            }
-            
             var success = await JSRuntime.InvokeAsync<bool>("copyToClipboard", textToCopy);
             if (success)
             {
-                await ToastService.ShowSuccessAsync("Analysis copied to clipboard");
+                await ToastService.ShowSuccessAsync("Analysis copied to clipboard", 3000);
             }
             else
             {
-                await ToastService.ShowErrorAsync("Failed to copy to clipboard. Please try again.");
+                // Show dialog instead of error toast
+                ShowCopyFailedDialog(textToCopy, "Analysis");
             }
         }
         catch (Exception ex)
         {
-            await ToastService.ShowErrorAsync($"Failed to copy to clipboard: {ex.Message}");
+            Logger.LogError(ex, "Failed to copy analysis to clipboard");
+            // Show dialog instead of error toast
+            ShowCopyFailedDialog(textToCopy, "Analysis");
         }
+    }
+    
+    private void ShowCopyFailedDialog(string content, string contentType)
+    {
+        failedCopyContent = content;
+        failedCopyContentType = contentType;
+        showCopyFailedDialog = true;
+        StateHasChanged();
+    }
+
+    private void CloseCopyFailedDialog()
+    {
+        showCopyFailedDialog = false;
+        failedCopyContent = string.Empty;
+        failedCopyContentType = string.Empty;
+        StateHasChanged();
     }
     
     // IsValidUrl and GetYouTubeThumbnailUrl methods have been moved to UrlParsing class

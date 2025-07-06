@@ -15,6 +15,9 @@ blobs.AddBlobContainer("shared-analyses");
 blobs.AddBlobContainer("reports");
 blobs.AddBlobContainer("hackernews-cache");
 
+var tables = storage.AddTables("ff-tables");
+
+
 var feedbackFunctionsProject = builder.AddAzureFunctionsProject<Projects.Functions>("feedback-functions")
         .WithHostStorage(storage)
         .WithEnvironment(context =>

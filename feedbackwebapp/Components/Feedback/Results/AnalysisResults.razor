@@ -174,28 +174,29 @@
 
     private async Task CopyToClipboard()
     {
-        if (!string.IsNullOrEmpty(MarkdownResult))
+        if (string.IsNullOrEmpty(MarkdownResult))
+            return;
+        
+        try
         {
-            try
+            var success = await JSRuntime.InvokeAsync<bool>("copyToClipboard", MarkdownResult);
+            if (success)
             {
-                var success = await JSRuntime.InvokeAsync<bool>("copyToClipboard", MarkdownResult);
-                if (success)
-                {
-                    await ToastService.ShowSuccessAsync("Analysis copied to clipboard", 3000);
-                }
-                else
-                {
-                    // Show dialog instead of error toast
-                    ShowCopyFailedDialog(MarkdownResult, "Analysis");
-                }
+                await ToastService.ShowSuccessAsync("Analysis copied to clipboard", 3000);
             }
-            catch (Exception ex)
+            else
             {
-                Logger.LogError(ex, "Failed to copy analysis to clipboard");
                 // Show dialog instead of error toast
                 ShowCopyFailedDialog(MarkdownResult, "Analysis");
             }
         }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to copy analysis to clipboard");
+            // Show dialog instead of error toast
+            ShowCopyFailedDialog(MarkdownResult, "Analysis");
+        }
+        
     }    
     private void ShowSaveShareDialog()
     {
