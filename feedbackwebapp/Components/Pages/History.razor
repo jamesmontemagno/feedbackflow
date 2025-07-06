@@ -252,30 +252,6 @@
     }
 </div>
 
-<!-- Copy Failed Dialog -->
-<div class="modal fade @(showCopyFailedDialog ? "show d-block" : "")" tabindex="-1">
-    @if (showCopyFailedDialog)
-    {
-        <div class="modal-backdrop fade show"></div>
-    }
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Copy Failed</h5>
-                <button type="button" class="btn-close" @onclick="() => showCopyFailedDialog = false"></button>
-            </div>
-            <div class="modal-body">
-                <p>Failed to copy @failedCopyContentType to clipboard. Here's the content you can copy manually:</p>
-                <div class="alert copy-content-alert">
-                    <code>@failedCopyContent</code>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" @onclick="() => showCopyFailedDialog = false">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
 
 @code {
     private ISharedHistoryService? sharedHistoryService;

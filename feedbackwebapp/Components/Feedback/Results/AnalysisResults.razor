@@ -38,7 +38,7 @@
             </div>
             
             <!-- Action buttons on secondary line -->
-            <div class="analysis-actions d-flex flex-wrap align-items-center gap-2">
+            <div class="analysis-actions d-flex flex-wrap align-items-center justify-content-end gap-2">
                 @if (!string.IsNullOrEmpty(MarkdownResult))
                 {
                     <ExportButton Items="@(new[] { CreateHistoryItemForExport() })" ButtonVariant="light" Size="sm" Mini="false" />

@@ -30,3 +30,35 @@
     font-size: 0.875rem;
     font-weight: 500;
 }
+
+/* Mobile responsive - hide text, show only icons */
+@media (max-width: 768px) {
+    .platform-pill {
+        padding: 0.5rem;
+        min-width: 2.5rem;
+        justify-content: center;
+    }
+    
+    .platform-name {
+        display: none;
+    }
+    
+    .platform-icon {
+        font-size: 1.1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .platform-pills-container {
+        margin-bottom: 1.5rem;
+    }
+    
+    .platform-pill {
+        padding: 0.375rem;
+        min-width: 2.25rem;
+    }
+    
+    .platform-icon {
+        font-size: 1rem;
+    }
+}
