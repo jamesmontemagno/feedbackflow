@@ -128,6 +128,23 @@ window.downloadFile = downloadFile;
 // Easy Auth utility function - simplified for server-side authentication
 async function fetchAuthMe() {
     try {
+        console.log('fetchAuthMe: Starting token refresh and auth check');
+        
+        // First, attempt to refresh tokens to ensure we have valid access tokens
+        try {
+            const refreshResponse = await fetch('/.auth/refresh', {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            });
+            console.log('fetchAuthMe: Token refresh response status:', refreshResponse.status);
+        } catch (refreshError) {
+            console.warn('fetchAuthMe: Token refresh failed, continuing with auth check:', refreshError);
+        }
+        
+        // Now fetch the auth information
         console.log('fetchAuthMe: Starting request to /.auth/me');
         
         const response = await fetch('/.auth/me', {
@@ -162,6 +179,32 @@ async function fetchAuthMeDetailed() {
     try {
         const startTime = performance.now();
         
+        // First, attempt to refresh tokens
+        let refreshInfo = null;
+        try {
+            const refreshStartTime = performance.now();
+            const refreshResponse = await fetch('/.auth/refresh', {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            });
+            const refreshEndTime = performance.now();
+            
+            refreshInfo = {
+                status: refreshResponse.status,
+                statusText: refreshResponse.statusText,
+                timing: refreshEndTime - refreshStartTime,
+                headers: Object.fromEntries(refreshResponse.headers.entries())
+            };
+        } catch (refreshError) {
+            refreshInfo = {
+                error: refreshError.message,
+                stack: refreshError.stack
+            };
+        }
+        
         const response = await fetch('/.auth/me', {
             method: 'GET',
             credentials: 'include',
@@ -182,7 +225,8 @@ async function fetchAuthMeDetailed() {
             body: text,
             timing: endTime - startTime,
             cookies: document.cookie,
-            url: response.url
+            url: response.url,
+            refreshInfo: refreshInfo
         };
     } catch (error) {
         return {

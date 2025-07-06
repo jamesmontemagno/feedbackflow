@@ -99,16 +99,32 @@ public class ServerSideAuthService : IAuthenticationService
 
         var loginUrl = $"{baseUrl}/.auth/login/{providerPath}";
         
+        // Build query parameters
+        var queryParams = new List<string>();
+        
+        // Add redirect URL parameter
         if (!string.IsNullOrEmpty(redirectUrl))
         {
             var encodedRedirect = Uri.EscapeDataString(redirectUrl);
-            loginUrl += $"?post_login_redirect_url={encodedRedirect}";
+            queryParams.Add($"post_login_redirect_url={encodedRedirect}");
         }
         else
         {
             // Default redirect to home page
             var defaultRedirect = Uri.EscapeDataString($"{baseUrl}/");
-            loginUrl += $"?post_login_redirect_url={defaultRedirect}";
+            queryParams.Add($"post_login_redirect_url={defaultRedirect}");
+        }
+        
+        // Add Google-specific parameter for refresh tokens
+        if (provider.ToLower() == "google")
+        {
+            queryParams.Add("access_type=offline");
+        }
+        
+        // Append query parameters
+        if (queryParams.Count > 0)
+        {
+            loginUrl += "?" + string.Join("&", queryParams);
         }
 
         return loginUrl;
@@ -124,9 +140,10 @@ public class ServerSideAuthService : IAuthenticationService
         // Trigger authentication state change
         AuthenticationStateChanged?.Invoke(this, false);
         
-        // Redirect to logout endpoint - Azure Easy Auth will handle cookie cleanup
+        // Redirect to logout endpoint with post-logout redirect to home page
         var baseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}";
-        var logoutUrl = $"{baseUrl}/.auth/logout";
+        var homeRedirect = Uri.EscapeDataString($"{baseUrl}/");
+        var logoutUrl = $"{baseUrl}/.auth/logout?post_logout_redirect_uri={homeRedirect}";
         
         httpContext.Response.Redirect(logoutUrl);
         await Task.CompletedTask;
