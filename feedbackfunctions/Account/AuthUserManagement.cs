@@ -15,29 +15,23 @@ namespace FeedbackFunctions.Account;
 /// <summary>
 /// Azure Functions for user management operations
 /// </summary>
-public class UserManagement
+public class AuthUserManagement
 {
-    private readonly ILogger<UserManagement> _logger;
+    private readonly ILogger<AuthUserManagement> _logger;
     private readonly FeedbackFunctions.Middleware.AuthenticationMiddleware _authMiddleware;
     private readonly IAuthUserTableService _userService;
-    private readonly IAccountLimitsService _limitsService;
-    private readonly IUserAccountTableService _userAccountService;
-    private readonly IUsageTrackingService _usageService;
+    private readonly IUserAccountService _userAccountService;
 
-    public UserManagement(
-        ILogger<UserManagement> logger,
+    public AuthUserManagement(
+        ILogger<AuthUserManagement> logger,
         FeedbackFunctions.Middleware.AuthenticationMiddleware authMiddleware,
         IAuthUserTableService userService,
-        IAccountLimitsService limitsService,
-        IUserAccountTableService userAccountService,
-        IUsageTrackingService usageService)
+        IUserAccountService userAccountService)
     {
         _logger = logger;
         _authMiddleware = authMiddleware;
         _userService = userService;
-        _limitsService = limitsService;
         _userAccountService = userAccountService;
-        _usageService = usageService;
     }
 
     /// <summary>
@@ -73,39 +67,9 @@ public class UserManagement
                 _logger.LogInformation("Creating UserAccount record for new user {UserId}", authenticatedUser.UserId);
 
                 // Create new user account with default Free tier
-                var userAccount = new UserAccount
-                {
-                    UserId = authenticatedUser.UserId,
-                    Tier = AccountTier.Free,
-                    AnalysesUsed = 0,
-                    ActiveReports = 0,
-                    FeedQueriesUsed = 0,
-                    CreatedAt = DateTime.UtcNow,
-                    LastResetDate = DateTime.UtcNow,
-                    SubscriptionStart = DateTime.UtcNow,
-                    IsActive = true,
-                    PreferredEmail = authenticatedUser.Email ?? string.Empty
-                };
-
-                // Limits are now calculated dynamically based on tier
-                // Convert to entity and save to the database
-                var entity = new UserAccountEntity
-                {
-                    PartitionKey = authenticatedUser.UserId,
-                    RowKey = "account",
-                    Tier = (int)userAccount.Tier,
-                    AnalysesUsed = userAccount.AnalysesUsed,
-                    ActiveReports = userAccount.ActiveReports,
-                    FeedQueriesUsed = userAccount.FeedQueriesUsed,
-                    CreatedAt = userAccount.CreatedAt,
-                    LastResetDate = userAccount.LastResetDate,
-                    SubscriptionStart = userAccount.SubscriptionStart,
-                    SubscriptionEnd = userAccount.SubscriptionEnd,
-                    IsActive = userAccount.IsActive,
-                    PreferredEmail = userAccount.PreferredEmail
-                };
-
-                await _userAccountService.UpsertUserAccountAsync(entity);
+                var userAccount = await _userAccountService.CreateOrGetUserAccountAsync(authenticatedUser.UserId);
+                userAccount.PreferredEmail = authenticatedUser.Email ?? string.Empty;
+                await _userAccountService.UpsertUserAccountAsync(userAccount);
 
                 _logger.LogInformation("Successfully created UserAccount record for user {UserId} with Free tier", authenticatedUser.UserId);
             }
@@ -309,7 +273,7 @@ public class UserManagement
             }
 
             // Update the user's preferred email in UserAccount
-            var userAccount = await _usageService.GetUserAccountAsync();
+            var userAccount = await _userAccountService.GetUserAccountAsync(authenticatedUser.UserId);
             if (userAccount == null)
             {
                 _logger.LogError("User account not found for user {UserId}", authenticatedUser.UserId);
@@ -320,25 +284,7 @@ public class UserManagement
 
             // Update the preferred email
             userAccount.PreferredEmail = requestData.PreferredEmail ?? string.Empty;
-
-            // Convert to entity and save
-            var entity = new UserAccountEntity
-            {
-                PartitionKey = authenticatedUser.UserId,
-                RowKey = "account",
-                Tier = (int)userAccount.Tier,
-                AnalysesUsed = userAccount.AnalysesUsed,
-                ActiveReports = userAccount.ActiveReports,
-                FeedQueriesUsed = userAccount.FeedQueriesUsed,
-                CreatedAt = userAccount.CreatedAt,
-                LastResetDate = userAccount.LastResetDate,
-                SubscriptionStart = userAccount.SubscriptionStart,
-                SubscriptionEnd = userAccount.SubscriptionEnd,
-                IsActive = userAccount.IsActive,
-                PreferredEmail = userAccount.PreferredEmail
-            };
-
-            await _userAccountService.UpsertUserAccountAsync(entity);
+            await _userAccountService.UpsertUserAccountAsync(userAccount);
 
             _logger.LogInformation("Successfully updated preferred email for user {UserId}", authenticatedUser.UserId);
 

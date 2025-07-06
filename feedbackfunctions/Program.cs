@@ -19,17 +19,6 @@ using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Services.Account;
 using System.Configuration;
 using Azure.Storage.Blobs;
-using FeedbackFunctions.Services;
-
-// Account service aliases for cleaner registration
-using IAccountLimitsService = FeedbackFunctions.Services.Account.IAccountLimitsService;
-using IUsageTrackingService = FeedbackFunctions.Services.Account.IUsageTrackingService;
-using IUserAccountTableService = FeedbackFunctions.Services.Account.IUserAccountTableService;
-using IUsageRecordTableService = FeedbackFunctions.Services.Account.IUsageRecordTableService;
-using AccountLimitsService = FeedbackFunctions.Services.Account.AccountLimitsService;
-using UsageTrackingService = FeedbackFunctions.Services.Account.UsageTrackingService;
-using UserAccountTableService = FeedbackFunctions.Services.Account.UserAccountTableService;
-using UsageRecordTableService = FeedbackFunctions.Services.Account.UsageRecordTableService;
 using FeedbackFunctions.Services.Reports;
 
 var builder = FunctionsApplication.CreateBuilder(args);
@@ -59,6 +48,9 @@ builder.Services.AddScoped<IAuthUserTableService, AuthUserTableService>();
 builder.Services.AddScoped<FeedbackFunctions.Middleware.AuthenticationMiddleware>();
 builder.Services.AddScoped<UsageValidationMiddleware>();
 
+// Register unified account service
+RegisterAccountServices(builder.Services);
+
 // Register blob storage and cache services
 builder.Services.AddSingleton<IReportCacheService>(serviceProvider =>
 {
@@ -84,7 +76,7 @@ if (useMocks)
     builder.Services.AddScoped<ITwitterService, MockTwitterService>();
     builder.Services.AddScoped<IBlueSkyService, MockBlueSkyService>();
     
-    // Register account/usage services
+    // Register unified account service
     RegisterAccountServices(builder.Services);
 }
 else
@@ -203,8 +195,7 @@ else
         blueSkyFetcher.SetCredentials(blueSkyUsername, blueSkyAppPassword);
         return new BlueSkyServiceAdapter(blueSkyFetcher);
     });
-
-    // Register account/usage services
+    // Register unified account service
     RegisterAccountServices(builder.Services);
 }
 
@@ -219,19 +210,13 @@ IConfiguration GetConfig(IServiceProvider? serviceProvider = null)
 
 void RegisterAccountServices(IServiceCollection services)
 {
-    services.AddScoped<IAccountLimitsService, AccountLimitsService>();
-    services.AddScoped<IUsageTrackingService, UsageTrackingService>();
-    services.AddSingleton<IUserAccountTableService>(sp =>
+    // Register the unified user account service
+    services.AddSingleton<IUserAccountService>(sp =>
     {
         var config = GetConfig(sp);
+        var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<UserAccountService>>();
         var storage = config["ProductionStorage"] ?? "UseDevelopmentStorage=true";
-        return new UserAccountTableService(storage);
-    });
-    services.AddSingleton<IUsageRecordTableService>(sp =>
-    {
-        var config = GetConfig(sp);
-        var storage = config["ProductionStorage"] ?? "UseDevelopmentStorage=true";
-        return new UsageRecordTableService(storage);
+        return new UserAccountService(storage, config, logger);
     });
 }
 
@@ -245,10 +230,8 @@ var app = builder.Build();
 // Ensure tables exist on startup
 using (var scope = app.Services.CreateScope())
 {
-    var userTable = scope.ServiceProvider.GetRequiredService<IUserAccountTableService>();
-    var usageTable = scope.ServiceProvider.GetRequiredService<IUsageRecordTableService>();
-    await userTable.CreateTableIfNotExistsAsync();
-    await usageTable.CreateTableIfNotExistsAsync();
+    var userAccountService = scope.ServiceProvider.GetRequiredService<IUserAccountService>();
+    await userAccountService.InitializeTablesAsync();
 }
 
 app.Run();

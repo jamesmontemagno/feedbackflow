@@ -29,11 +29,11 @@
                     <p class="tier-description">@tier.Description</p>
                     
                     <div class="tier-limits">
-                        <h6>Usage Limits</h6>
+                        <h6>Limits</h6>
                         <ul class="limits-list">
                             <li>
                                 <i class="bi bi-graph-up"></i>
-                                <strong>@tier.Limits.AnalysisLimit</strong> analyses per month
+                                <strong>@tier.Limits.AnalysisLimit</strong> analyses/month
                                 @if (tier.Tier == CurrentTier && UserAccount != null)
                                 {
                                     <span class="current-usage">(@UserAccount.AnalysesUsed used)</span>
@@ -49,7 +49,7 @@
                             </li>
                             <li>
                                 <i class="bi bi-search"></i>
-                                <strong>@tier.Limits.FeedQueryLimit</strong> feed queries per month
+                                <strong>@tier.Limits.FeedQueryLimit</strong> queries/month
                                 @if (tier.Tier == CurrentTier && UserAccount != null)
                                 {
                                     <span class="current-usage">(@UserAccount.FeedQueriesUsed used)</span>
@@ -58,18 +58,25 @@
                         </ul>
                     </div>
                     
-                    <div class="tier-features">
+                    @*                    <div class="tier-features">
                         <h6>Features</h6>
                         <ul class="features-list">
-                            @foreach (var feature in tier.Features)
+                            @foreach (var feature in tier.Features.Take(4))
                             {
                                 <li>
                                     <i class="bi bi-check-circle text-success"></i>
                                     @feature
                                 </li>
                             }
+                            @if (tier.Features.Length > 4)
+                            {
+                                <li>
+                                    <i class="bi bi-plus-circle text-muted"></i>
+                                    @(tier.Features.Length - 4) more...
+                                </li>
+                            }
                         </ul>
-                    </div>
+                    </div>*@
                     
                     <div class="tier-action">
                         @if (tier.Tier == CurrentTier)

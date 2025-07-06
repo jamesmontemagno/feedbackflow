@@ -1,11 +1,11 @@
 .tier-comparison {
-    margin: 2rem 0;
+    margin: 1rem 0;
 }
 
 .tier-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
     align-items: start;
 }
 
@@ -13,7 +13,7 @@
     background: var(--card-background);
     border: 2px solid var(--border-color);
     border-radius: var(--border-radius);
-    padding: 1.5rem;
+    padding: 1rem;
     box-shadow: var(--card-shadow);
     transition: all 0.3s ease;
     position: relative;
@@ -21,8 +21,8 @@
 }
 
 .tier-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(var(--primary-color-rgb), 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(var(--primary-color-rgb), 0.12);
 }
 
 .tier-card.current-tier {
@@ -34,31 +34,31 @@
 
 .tier-header {
     text-align: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     position: relative;
 }
 
 .tier-name {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: var(--primary-color);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
 }
 
 .tier-price {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     font-weight: 600;
     color: var(--text-color);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
 }
 
 .current-badge {
     display: inline-block;
     background: var(--primary-gradient);
     color: var(--white);
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 15px;
+    font-size: 0.7rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -66,22 +66,23 @@
 
 .tier-description {
     color: var(--text-muted);
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     text-align: center;
-    line-height: 1.5;
+    line-height: 1.4;
+    font-size: 0.9rem;
 }
 
 .tier-limits,
 .tier-features {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .tier-limits h6,
 .tier-features h6 {
     font-weight: 600;
     color: var(--text-color);
-    margin-bottom: 0.75rem;
-    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
@@ -97,15 +98,16 @@
 .features-list li {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0;
-    font-size: 0.9rem;
+    gap: 0.4rem;
+    padding: 0.3rem 0;
+    font-size: 0.85rem;
     color: var(--text-color);
+    line-height: 1.3;
 }
 
 .limits-list i,
 .features-list i {
-    font-size: 1rem;
+    font-size: 0.9rem;
     flex-shrink: 0;
 }
 
@@ -125,10 +127,11 @@
 
 .tier-action .btn {
     width: 100%;
-    padding: 0.75rem;
+    padding: 0.6rem;
     font-weight: 600;
     border-radius: var(--border-radius);
     transition: all 0.3s ease;
+    font-size: 0.9rem;
 }
 
 .tier-action .btn-primary {
@@ -138,7 +141,7 @@
 }
 
 .tier-action .btn-primary:hover {
-    transform: translateY(-2px);
+    transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.3);
 }
 
@@ -151,14 +154,14 @@
 .tier-card:nth-child(2)::before {
     content: 'Most Popular';
     position: absolute;
-    top: -12px;
+    top: -10px;
     left: 50%;
     transform: translateX(-50%);
     background: var(--success-color);
     color: var(--white);
-    padding: 0.25rem 1rem;
-    border-radius: 20px;
-    font-size: 0.75rem;
+    padding: 0.2rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.7rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -176,11 +179,49 @@
     background-clip: text;
 }
 
+.current-usage {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: normal;
+    display: block;
+    margin-top: 0.1rem;
+}
+
 /* Responsive adjustments */
+@media (max-width: 992px) {
+    .tier-grid {
+        gap: 0.75rem;
+    }
+    
+    .tier-card {
+        padding: 0.75rem;
+    }
+    
+    .tier-name {
+        font-size: 1.1rem;
+    }
+    
+    .tier-price {
+        font-size: 1rem;
+    }
+    
+    .tier-description {
+        font-size: 0.85rem;
+    }
+    
+    .limits-list li,
+    .features-list li {
+        font-size: 0.8rem;
+        padding: 0.25rem 0;
+    }
+}
+
 @media (max-width: 768px) {
     .tier-grid {
         grid-template-columns: 1fr;
         gap: 1rem;
+        max-width: 400px;
+        margin: 0 auto;
     }
     
     .tier-card {
@@ -195,17 +236,15 @@
         font-size: 1.1rem;
     }
     
+    .tier-description {
+        font-size: 0.9rem;
+    }
+    
     .limits-list li,
     .features-list li {
         font-size: 0.85rem;
-        padding: 0.35rem 0;
+        padding: 0.3rem 0;
     }
-}
-
-.current-usage {
-    color: var(--text-muted);
-    font-size: 0.85rem;
-    font-weight: normal;
 }
 
 @media (max-width: 480px) {
@@ -214,11 +253,15 @@
     }
     
     .tier-header {
-        margin-bottom: 1rem;
+        margin-bottom: 0.75rem;
     }
     
     .tier-limits,
     .tier-features {
-        margin-bottom: 1rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .current-usage {
+        font-size: 0.7rem;
     }
 }

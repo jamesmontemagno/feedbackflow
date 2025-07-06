@@ -42,15 +42,10 @@ namespace FeedbackFunctions.Middleware
             if (usageTypeMap.TryGetValue(context.FunctionDefinition.Name, out var usageType))
             {
                 var logger = context.InstanceServices.GetService<ILogger<UsageValidationMiddleware>>();
-                var usageService = context.InstanceServices.GetService<IAccountLimitsService>();
-                var userId = context.BindingContext.BindingData["userId"]?.ToString();
-                if (string.IsNullOrEmpty(userId))
-                {
-                    logger?.LogWarning("No userId found for usage validation.");
-                    await next(context);
-                    return;
-                }
-                var result = await usageService!.ValidateUsageAsync(userId, usageType);
+                var userAccountService = context.InstanceServices.GetService<IUserAccountService>();
+                var userId = context.BindingContext.BindingData["userId"]?.ToString() ?? "demo-user"; // Fallback to demo user
+                
+                var result = await userAccountService!.ValidateUsageAsync(userId, usageType);
                 if (!result.IsWithinLimit)
                 {
                     logger?.LogWarning($"Usage limit exceeded for user {userId} and type {usageType}");

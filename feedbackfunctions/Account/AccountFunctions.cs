@@ -16,18 +16,14 @@ namespace FeedbackFunctions.Account
     public class AccountFunctions
     {
         private readonly ILogger<AccountFunctions> _logger;
-        private readonly IAccountLimitsService _limitsService;
-        private readonly IUsageTrackingService _usageService;
+        private readonly IUserAccountService _userAccountService;
         private readonly AuthenticationMiddleware _authMiddleware;
-        private readonly IUserAccountTableService _userAccountService;
 
-        public AccountFunctions(ILogger<AccountFunctions> logger, IAccountLimitsService limitsService, IUsageTrackingService usageService, AuthenticationMiddleware authMiddleware, IUserAccountTableService userAccountService)
+        public AccountFunctions(ILogger<AccountFunctions> logger, IUserAccountService userAccountService, AuthenticationMiddleware authMiddleware)
         {
             _logger = logger;
-            _limitsService = limitsService;
-            _usageService = usageService;
-            _authMiddleware = authMiddleware;
             _userAccountService = userAccountService;
+            _authMiddleware = authMiddleware;
         }
 
         [Function("GetUserAccount")]
@@ -44,46 +40,16 @@ namespace FeedbackFunctions.Account
 
             try
             {
-                var account = await _usageService.GetUserAccountAsync();
+                var account = await _userAccountService.GetUserAccountAsync(user!.UserId);
                 
                 // If account doesn't exist, create a new one for this user
                 if (account == null)
                 {
                     _logger.LogInformation("User account not found, creating new account for user {UserId}", user!.UserId);
                     
-                    // Create new user account with default Free tier (limits calculated dynamically)
-                    account = new UserAccount
-                    {
-                        UserId = user.UserId,
-                        Tier = AccountTier.Free,
-                        AnalysesUsed = 0,
-                        ActiveReports = 0,
-                        FeedQueriesUsed = 0,
-                        CreatedAt = DateTime.UtcNow,
-                        LastResetDate = DateTime.UtcNow,
-                        SubscriptionStart = DateTime.UtcNow,
-                        IsActive = true,
-                        PreferredEmail = user.Email ?? string.Empty
-                    };
-
-                    // Convert to entity and save to the database (no limits stored)
-                    var entity = new UserAccountEntity
-                    {
-                        PartitionKey = user.UserId,
-                        RowKey = "account",
-                        Tier = (int)account.Tier,
-                        AnalysesUsed = account.AnalysesUsed,
-                        ActiveReports = account.ActiveReports,
-                        FeedQueriesUsed = account.FeedQueriesUsed,
-                        CreatedAt = account.CreatedAt,
-                        LastResetDate = account.LastResetDate,
-                        SubscriptionStart = account.SubscriptionStart,
-                        SubscriptionEnd = account.SubscriptionEnd,
-                        IsActive = account.IsActive,
-                        PreferredEmail = account.PreferredEmail
-                    };
-
-                    await _userAccountService.UpsertUserAccountAsync(entity);
+                    account = await _userAccountService.CreateOrGetUserAccountAsync(user.UserId);
+                    account.PreferredEmail = user.Email ?? string.Empty;
+                    await _userAccountService.UpsertUserAccountAsync(account);
                     
                     _logger.LogInformation("Created new user account for user {UserId} with Free tier", user.UserId);
                 }
@@ -138,7 +104,7 @@ namespace FeedbackFunctions.Account
                 if (!string.IsNullOrEmpty(tierStr) && int.TryParse(tierStr, out var tierInt) && Enum.IsDefined(typeof(AccountTier), tierInt))
                 {
                     var requestedTier = (AccountTier)tierInt;
-                    var limits = _limitsService.GetLimitsForTier(requestedTier);
+                    var limits = _userAccountService.GetLimitsForTier(requestedTier);
                     
                     var response = req.CreateResponse(HttpStatusCode.OK);
                     await response.WriteAsJsonAsync(new
@@ -159,7 +125,7 @@ namespace FeedbackFunctions.Account
                         Description = "Basic analysis, limited usage, no support",
                         Price = "$0/month",
                         Features = new[] { "Basic analysis", "Limited usage", "Community support" },
-                        Limits = _limitsService.GetLimitsForTier(AccountTier.Free)
+                        Limits = _userAccountService.GetLimitsForTier(AccountTier.Free)
                     },
                     new { 
                         Tier = AccountTier.Pro,
@@ -167,7 +133,7 @@ namespace FeedbackFunctions.Account
                         Description = "Priority processing, increased limits, basic support",
                         Price = "$9.99/month",
                         Features = new[] { "Priority processing", "Increased limits", "Email support", "Advanced features" },
-                        Limits = _limitsService.GetLimitsForTier(AccountTier.Pro)
+                        Limits = _userAccountService.GetLimitsForTier(AccountTier.Pro)
                     },
                     new { 
                         Tier = AccountTier.ProPlus,
@@ -175,7 +141,7 @@ namespace FeedbackFunctions.Account
                         Description = "Advanced analytics, email notifications, highest limits",
                         Price = "$29.99/month",
                         Features = new[] { "Advanced analytics", "Email notifications", "Highest limits", "Priority support", "Custom integrations" },
-                        Limits = _limitsService.GetLimitsForTier(AccountTier.ProPlus)
+                        Limits = _userAccountService.GetLimitsForTier(AccountTier.ProPlus)
                     }
                 };
 
