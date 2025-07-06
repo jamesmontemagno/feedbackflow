@@ -1,7 +1,7 @@
 using System.Net;
 using Microsoft.Azure.Functions.Worker.Http;
 using SharedDump.Models.Authentication;
-using FeedbackFunctions.Services.Authentication;
+using FeedbackFunctions.Middleware;
 
 namespace FeedbackFunctions.Extensions;
 

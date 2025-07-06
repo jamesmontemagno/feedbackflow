@@ -56,7 +56,7 @@ The following components now use the `ProductionStorage` connection string:
 
 ### Storage Containers/Tables Used
 - **Blob Containers**: `shared-analyses`, `reports`, `hackernews-cache`, `weekly-summaries`
-- **Tables**: `reportrequests`, `AuthUsers`, `UserEmailIndex`
+- **Tables**: `reportrequests`, `AuthUsers`
 
 ## Connection String Priority
 

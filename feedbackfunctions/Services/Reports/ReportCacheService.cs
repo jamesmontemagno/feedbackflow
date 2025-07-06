@@ -4,7 +4,7 @@ using Azure.Storage.Blobs;
 using Microsoft.Extensions.Logging;
 using SharedDump.Models.Reports;
 
-namespace FeedbackFunctions.Services;
+namespace FeedbackFunctions.Services.Reports;
 
 /// <summary>
 /// In-memory cache service for reports with 24-hour TTL

@@ -12,9 +12,13 @@ using SharedDump.AI;
 using FeedbackFunctions.Utils;
 using FeedbackFunctions.Services;
 using FeedbackFunctions.Services.Authentication;
+using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
+using FeedbackFunctions.Services.Account;
 using SharedDump.Services;
+using SharedDump.Models.Account;
+using FeedbackFunctions.Services.Reports;
 
 namespace FeedbackFunctions;
 
@@ -35,7 +39,8 @@ public class ReportRequestFunctions
     private readonly IReportCacheService _cacheService;
     private readonly IRedditService _redditService;
     private readonly IGitHubService _githubService;
-    private readonly AuthenticationMiddleware _authMiddleware;
+    private readonly FeedbackFunctions.Middleware.AuthenticationMiddleware _authMiddleware;
+    private readonly IUserAccountService _userAccountService;
 
     public ReportRequestFunctions(
         ILogger<ReportRequestFunctions> logger,
@@ -44,7 +49,8 @@ public class ReportRequestFunctions
         IGitHubService githubService,
         IFeedbackAnalyzerService analyzerService,
         IReportCacheService cacheService,
-        AuthenticationMiddleware authMiddleware)
+        FeedbackFunctions.Middleware.AuthenticationMiddleware authMiddleware,
+        IUserAccountService userAccountService)
     {
 #if DEBUG
         _configuration = new ConfigurationBuilder()
@@ -59,6 +65,7 @@ public class ReportRequestFunctions
         _redditService = redditService;
         _githubService = githubService;
         _authMiddleware = authMiddleware;
+        _userAccountService = userAccountService;
         
         // Initialize table client
         var storageConnection = _configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
@@ -114,6 +121,11 @@ public class ReportRequestFunctions
         var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
         if (authErrorResponse != null)
             return authErrorResponse;
+
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.ReportCreated, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
 
         if (user == null)
         {
@@ -328,6 +340,10 @@ public class ReportRequestFunctions
                 id = request.Id, 
                 message = "User request added successfully"
             }));
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.ReportCreated, _userAccountService, _logger, request.Type);
+            
             return response;
         }
         catch (Exception ex)
@@ -354,6 +370,11 @@ public class ReportRequestFunctions
         var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
         if (authErrorResponse != null)
             return authErrorResponse;
+
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.ReportDeleted, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
 
         if (user == null)
         {
@@ -438,6 +459,10 @@ public class ReportRequestFunctions
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteStringAsync("User request removed successfully");
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.ReportDeleted, _userAccountService, _logger, id);
+            
             return response;
         }
         catch (Exception ex)

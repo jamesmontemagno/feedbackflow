@@ -4,9 +4,9 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SharedDump.Models.Authentication;
-using SharedDump.Services.Authentication;
+using FeedbackFunctions.Services.Authentication;
 
-namespace FeedbackFunctions.Services.Authentication;
+namespace FeedbackFunctions.Middleware;
 
 /// <summary>
 /// Authentication middleware for processing Azure Easy Auth headers
@@ -129,6 +129,8 @@ public class AuthenticationMiddleware
 
     /// <summary>
     /// Create a new user from the request headers
+    /// WARNING: This method should ONLY be called from RegisterUserAsync function during user registration.
+    /// For authentication, use GetUserAsync instead.
     /// </summary>
     /// <param name="req">HTTP request with authentication headers</param>
     /// <returns>Newly created authenticated user or null if creation failed</returns>
@@ -218,12 +220,6 @@ public class AuthenticationMiddleware
                 ProfileImageUrl = profileImageUrl
             };
             await _userService.CreateOrUpdateUserAsync(user);
-            
-            // Only update email index if email is available
-            if (!string.IsNullOrEmpty(email))
-            {
-                await _userService.UpdateEmailIndexAsync(email, user.UserId, provider, providerUserId);
-            }
 
             return new AuthenticatedUser(user);
         }
@@ -257,15 +253,19 @@ public class AuthenticationMiddleware
     /// Create a development user for auth bypass scenarios
     /// </summary>
     /// <returns>Development authenticated user</returns>
-    private static AuthenticatedUser CreateDevelopmentUser()
+    private AuthenticatedUser CreateDevelopmentUser()
     {
+        var devUserId = _configuration.GetValue<string>("Development:UserId") ?? "dev-user-id";
+        var devEmail = _configuration.GetValue<string>("Development:Email") ?? "dev@example.com";
+        var devName = _configuration.GetValue<string>("Development:Name") ?? "Development User";
+        
         return new AuthenticatedUser
         {
-            UserId = "dev-user-id",
-            Email = "dev@example.com",
-            Name = "Development User",
+            UserId = devUserId,
+            Email = devEmail,
+            Name = devName,
             AuthProvider = "Development",
-            ProviderUserId = "dev-provider-id",
+            ProviderUserId = devUserId,
             CreatedAt = DateTime.UtcNow,
             LastLoginAt = DateTime.UtcNow
         };

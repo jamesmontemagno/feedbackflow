@@ -2,8 +2,14 @@
 @using FeedbackWebApp.Services
 @using FeedbackWebApp.Services.Authentication
 @using FeedbackWebApp.Services.Interfaces
+@using FeedbackWebApp.Components.Account
+@using FeedbackWebApp.Services.Account
+@using SharedDump.Models.Account
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Web
 @inject IUserManagementService UserManagementService
 @inject IAuthenticationService AuthService
+@inject IAccountServiceProvider AccountServiceProvider
 @inject IToastService ToastService
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Navigation
@@ -36,11 +42,30 @@
                         <div class="row mb-4">
                             <div class="col-md-4">
                                 <h5 class="text-primary">Account Information</h5>
+                                @if (userAccount?.Tier == AccountTier.SuperUser)
+                                {
+                                    <div class="mt-2">
+                                        <span class="badge bg-warning text-dark fs-6">
+                                            <i class="bi bi-star-fill me-1"></i>
+                                            Super User
+                                        </span>
+                                        <p class="text-muted small mt-1 mb-0">Administrative Account</p>
+                                    </div>
+                                }
                             </div>
                             <div class="col-md-8">
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Name</label>
-                                    <p class="form-control-plaintext">@userInfo.Name</p>
+                                    <p class="form-control-plaintext">
+                                        @userInfo.Name
+                                        @if (userAccount?.Tier == AccountTier.SuperUser)
+                                        {
+                                            <span class="badge bg-warning text-dark ms-2">
+                                                <i class="bi bi-star-fill me-1"></i>
+                                                Super User
+                                            </span>
+                                        }
+                                    </p>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Email</label>
@@ -82,7 +107,7 @@
                                                id="preferredEmail"
                                                @bind="preferredEmailInput" 
                                                @bind:event="oninput"
-                                               placeholder="@userInfo.Email (your account email)"
+                                               placeholder="@(userInfo?.Email ?? "") (your account email)"
                                                disabled="@isUpdatingEmail" />
                                         <button class="btn btn-outline-primary" 
                                                 type="button" 
@@ -109,7 +134,7 @@
                                     }
                                     <div class="form-text">
                                         <small class="text-muted">
-                                            <strong>Current:</strong> @(string.IsNullOrEmpty(userInfo.PreferredEmail) ? $"{userInfo.Email} (account email)" : userInfo.PreferredEmail)
+                                            <strong>Current:</strong> @(string.IsNullOrEmpty(userInfo?.PreferredEmail) ? $"{userInfo?.Email ?? ""} (account email)" : userInfo.PreferredEmail)
                                         </small>
                                     </div>
                                 </div>
@@ -117,6 +142,71 @@
                         </div>
 
                         <hr class="my-4">
+
+                        <!-- Usage Dashboard -->
+                        @if (!isLoadingUsage)
+                        {
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <h5 class="text-primary mb-3">
+                                        <i class="bi bi-graph-up me-2"></i>
+                                        Current Usage
+                                    </h5>
+                                    <UsageDashboard UserAccount="@userAccount" 
+                                                    Limits="@accountLimits" 
+                                                    IsLoading="@false" />
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <!-- Tier Comparison -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <h5 class="text-primary mb-3">
+                                        <i class="bi bi-star me-2"></i>
+                                        Available Plans
+                                    </h5>
+                                    <TierComparison CurrentTier="@(userAccount?.Tier ?? AccountTier.Free)" 
+                                                    UserAccount="@userAccount" 
+                                                    Tiers="@tierInformation"
+                                                    IsLoading="@false"
+                                                    ErrorMessage="@tierErrorMessage"
+                                                    OnUpgradeRequest="@HandleUpgradeRequest" />
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+                        }
+                        else
+                        {
+                            <!-- Loading state for usage and tier information -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <h5 class="text-primary mb-3">
+                                        <i class="bi bi-graph-up me-2"></i>
+                                        Usage & Plans
+                                    </h5>
+                                    
+                                    <!-- Usage Dashboard Loading -->
+                                    <UsageDashboard UserAccount="@null" 
+                                                    Limits="@null" 
+                                                    IsLoading="@true" />
+                                    
+                                    <hr class="my-3">
+                                    
+                                    <!-- Tier Comparison Loading -->
+                                    <TierComparison CurrentTier="@AccountTier.Free" 
+                                                    UserAccount="@null" 
+                                                    Tiers="@null"
+                                                    IsLoading="@true"
+                                                    ErrorMessage=""
+                                                    OnUpgradeRequest="@HandleUpgradeRequest" />
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+                        }
 
                         <!-- Danger Zone -->
                         <div class="danger-zone">
@@ -173,7 +263,12 @@
 
 @code {
     private UserInfo? userInfo;
+    private UserAccount? userAccount;
+    private AccountLimits? accountLimits;
+    private TierInfo[]? tierInformation;
+    private string tierErrorMessage = "";
     private bool isLoading = true;
+    private bool isLoadingUsage = true;
     private bool isDeleting = false;
     private string errorMessage = "";
     
@@ -182,11 +277,12 @@
     private bool isUpdatingEmail = false;
     private string emailUpdateMessage = "";
     private bool emailUpdateSuccess = false;
-    private bool hasEmailChanged => preferredEmailInput != (userInfo?.PreferredEmail ?? "");
+    private bool hasEmailChanged => preferredEmailInput != (userAccount?.PreferredEmail ?? "");
 
     protected override async Task OnInitializedAsync()
     {
         await LoadUserInfoAsync();
+        await LoadUserAccountAsync();
     }
 
     private async Task LoadUserInfoAsync()
@@ -230,9 +326,6 @@
                     errorMessage = "Unable to load account information. Please try logging out and back in.";
                 }
             }
-
-            // Initialize preferred email input
-            preferredEmailInput = userInfo?.PreferredEmail ?? userInfo?.Email ?? "";
         }
         catch (Exception ex)
         {
@@ -255,8 +348,6 @@
                         CreatedAt = currentUser.CreatedAt,
                         LastLoginAt = currentUser.LastLoginAt ?? DateTime.UtcNow
                     };
-                    // Initialize preferred email input
-                    preferredEmailInput = userInfo?.PreferredEmail ?? userInfo?.Email ?? "";
                     errorMessage = ""; // Clear error if fallback works
                 }
             }
@@ -270,6 +361,66 @@
             isLoading = false;
             StateHasChanged();
         }
+    }
+
+    private async Task LoadUserAccountAsync()
+    {
+        try
+        {
+            isLoadingUsage = true;
+            tierErrorMessage = "";
+            var accountService = AccountServiceProvider.GetService();
+            
+            // Load tier information first
+            try
+            {
+                tierInformation = await accountService.GetTierLimitsAsync();
+            }
+            catch (Exception ex)
+            {
+                tierErrorMessage = $"Failed to load tier information: {ex.Message}";
+                tierInformation = null;
+            }
+
+            // Load user account and limits, passing tier info to avoid duplicate API call
+            var accountResult = await accountService.GetUserAccountAndLimitsAsync(tierInformation);
+            if (accountResult.HasValue)
+            {
+                userAccount = accountResult.Value.account;
+                accountLimits = accountResult.Value.limits;
+                
+                // Update preferred email input to use UserAccount data
+                if (userAccount != null)
+                {
+                    preferredEmailInput = userAccount.PreferredEmail ?? userInfo?.Email ?? "";
+                }
+            }
+            else
+            {
+                userAccount = null;
+                accountLimits = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't show to user - usage dashboard will show error state
+            Console.WriteLine($"Error loading user account: {ex.Message}");
+            userAccount = null;
+            accountLimits = null;
+            tierInformation = null;
+            tierErrorMessage = "Failed to load account data. Please refresh the page.";
+        }
+        finally
+        {
+            isLoadingUsage = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleUpgradeRequest(AccountTier tier)
+    {
+        await ToastService.ShowToastAsync($"Upgrade to {tier} tier coming soon!", ToastType.Info);
+        // TODO: Implement actual upgrade logic when payment system is integrated
     }
 
     private async Task ShowDeleteConfirmation()
@@ -347,11 +498,8 @@
             
             if (result.Success)
             {
-                // Update the userInfo object with the new preferred email
-                if (userInfo != null)
-                {
-                    userInfo.PreferredEmail = preferredEmailInput;
-                }
+                // Refresh the user account to get the updated preferred email
+                await LoadUserAccountAsync();
                 
                 emailUpdateMessage = "Email preference updated successfully!";
                 await ToastService.ShowToastAsync("Email preference updated successfully!", ToastType.Success);

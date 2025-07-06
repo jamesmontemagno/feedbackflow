@@ -148,4 +148,23 @@ public class FeedbackServiceProvider
         // If no specific service matches, treat it as a manual input
         return CreateManualService(url);
     }
+
+    public async Task<HttpResponseMessage?> GetTierLimitsAsync()
+    {
+        try
+        {
+            var baseUrl = _configuration["FeedbackApi:BaseUrl"] ?? "http://localhost:7071";
+            var code = _configuration["FeedbackApi:FunctionsKey"] ?? "";
+            
+            var client = _http.CreateClient();
+            var url = $"{baseUrl}/api/GetTierLimits?code={code}";
+            
+            var response = await client.GetAsync(url);
+            return response;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
 }

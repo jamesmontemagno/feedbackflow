@@ -4,28 +4,34 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using FeedbackFunctions.Services.Authentication;
-using SharedDump.Services.Authentication;
+using FeedbackFunctions.Middleware;
 using SharedDump.Models.Authentication;
+using FeedbackFunctions.Services.Account;
+using SharedDump.Models.Account;
+using FeedbackFunctions.Attributes;
 
-namespace FeedbackFunctions;
+namespace FeedbackFunctions.Account;
 
 /// <summary>
 /// Azure Functions for user management operations
 /// </summary>
-public class UserManagement
+public class AuthUserManagement
 {
-    private readonly ILogger<UserManagement> _logger;
-    private readonly AuthenticationMiddleware _authMiddleware;
+    private readonly ILogger<AuthUserManagement> _logger;
+    private readonly FeedbackFunctions.Middleware.AuthenticationMiddleware _authMiddleware;
     private readonly IAuthUserTableService _userService;
+    private readonly IUserAccountService _userAccountService;
 
-    public UserManagement(
-        ILogger<UserManagement> logger,
-        AuthenticationMiddleware authMiddleware,
-        IAuthUserTableService userService)
+    public AuthUserManagement(
+        ILogger<AuthUserManagement> logger,
+        FeedbackFunctions.Middleware.AuthenticationMiddleware authMiddleware,
+        IAuthUserTableService userService,
+        IUserAccountService userAccountService)
     {
         _logger = logger;
         _authMiddleware = authMiddleware;
         _userService = userService;
+        _userAccountService = userAccountService;
     }
 
     /// <summary>
@@ -34,6 +40,7 @@ public class UserManagement
     /// <param name="req">HTTP request</param>
     /// <returns>HTTP response with user information</returns>
     [Function("RegisterUser")]
+    [Authorize]
     public async Task<HttpResponseData> RegisterUserAsync(
         [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
@@ -54,6 +61,46 @@ public class UserManagement
             // User is created by the middleware
             _logger.LogInformation("User registered successfully: {UserId}", authenticatedUser.UserId);
 
+            // Create a new UserAccount record with default Free tier settings
+            try
+            {
+                _logger.LogInformation("Creating UserAccount record for new user {UserId}", authenticatedUser.UserId);
+
+                // Check if user account already exists
+                var existingUserAccount = await _userAccountService.GetUserAccountAsync(authenticatedUser.UserId);
+                if (existingUserAccount == null)
+                {
+                    // Create new user account with default Free tier
+                    var userAccount = new UserAccount
+                    {
+                        UserId = authenticatedUser.UserId,
+                        Tier = AccountTier.Free,
+                        SubscriptionStart = DateTime.UtcNow,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow,
+                        LastResetDate = DateTime.UtcNow,
+                        AnalysesUsed = 0,
+                        FeedQueriesUsed = 0,
+                        ActiveReports = 0,
+                        PreferredEmail = authenticatedUser.Email ?? string.Empty
+                    };
+                    await _userAccountService.UpsertUserAccountAsync(userAccount);
+                }
+                else
+                {
+                    // Update existing account with latest email if needed
+                    existingUserAccount.PreferredEmail = authenticatedUser.Email ?? string.Empty;
+                    await _userAccountService.UpsertUserAccountAsync(existingUserAccount);
+                }
+
+                _logger.LogInformation("Successfully created UserAccount record for user {UserId} with Free tier", authenticatedUser.UserId);
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't fail the registration - the UserAccount can be created later
+                _logger.LogError(ex, "Failed to create UserAccount record for user {UserId}, but user registration was successful", authenticatedUser.UserId);
+            }
+
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(new
             {
@@ -66,12 +113,11 @@ public class UserManagement
                     authProvider = authenticatedUser.AuthProvider,
                     createdAt = authenticatedUser.CreatedAt,
                     lastLoginAt = authenticatedUser.LastLoginAt,
-                    preferredEmail = authenticatedUser.PreferredEmail,
                     profileImageUrl = authenticatedUser.ProfileImageUrl,
                     providerUserId = authenticatedUser.ProviderUserId
                 }
             });
-            
+
             return response;
         }
         catch (Exception ex)
@@ -89,6 +135,7 @@ public class UserManagement
     /// <param name="req">HTTP request</param>
     /// <returns>HTTP response confirming deletion</returns>
     [Function("DeleteUser")]
+    [Authorize]
     public async Task<HttpResponseData> DeleteUserAsync(
         [HttpTrigger(AuthorizationLevel.Function, "delete")] HttpRequestData req)
     {
@@ -108,7 +155,7 @@ public class UserManagement
 
             // Deactivate the user instead of hard deletion for data integrity
             var success = await _userService.DeactivateUserAsync(authenticatedUser.UserId);
-            
+
             if (!success)
             {
                 _logger.LogWarning("User {UserId} not found for deactivation", authenticatedUser.UserId);
@@ -142,6 +189,8 @@ public class UserManagement
     /// <param name="req">HTTP request</param>
     /// <returns>HTTP response with user information</returns>
     [Function("GetCurrentUser")]
+    [Authorize]
+
     public async Task<HttpResponseData> GetCurrentUserAsync(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
@@ -186,114 +235,5 @@ public class UserManagement
         }
     }
 
-    /// <summary>
-    /// Update the user's preferred email address
-    /// </summary>
-    /// <param name="req">HTTP request</param>
-    /// <returns>HTTP response with success status</returns>
-    [Function("UpdatePreferredEmail")]
-    public async Task<HttpResponseData> UpdatePreferredEmailAsync(
-        [HttpTrigger(AuthorizationLevel.Function, "put")] HttpRequestData req)
-    {
-        try
-        {
-            _logger.LogInformation("UpdatePreferredEmail function triggered");
-
-            // Get authenticated user from middleware
-            var authenticatedUser = await _authMiddleware.GetUserAsync(req);
-            if (authenticatedUser == null)
-            {
-                _logger.LogWarning("No authenticated user found for UpdatePreferredEmail request");
-                var unauthorizedResponse = req.CreateResponse(HttpStatusCode.Unauthorized);
-                await unauthorizedResponse.WriteStringAsync("User authentication required");
-                return unauthorizedResponse;
-            }
-
-            // Read the request body
-            var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            if (string.IsNullOrWhiteSpace(requestBody))
-            {
-                var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await badRequestResponse.WriteStringAsync("Request body is required");
-                return badRequestResponse;
-            }
-
-            // Parse the preferred email from the request
-            var requestData = JsonSerializer.Deserialize<UpdatePreferredEmailRequest>(requestBody, new JsonSerializerOptions 
-            { 
-                PropertyNameCaseInsensitive = true 
-            });
-
-            if (requestData == null)
-            {
-                var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await badRequestResponse.WriteStringAsync("Invalid request format");
-                return badRequestResponse;
-            }
-
-            // Validate email format if provided
-            if (!string.IsNullOrWhiteSpace(requestData.PreferredEmail))
-            {
-                if (!IsValidEmail(requestData.PreferredEmail))
-                {
-                    var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                    await badRequestResponse.WriteStringAsync("Invalid email format");
-                    return badRequestResponse;
-                }
-            }
-
-            // Update the user's preferred email
-            var updated = await _userService.UpdatePreferredEmailAsync(
-                authenticatedUser.AuthProvider, 
-                authenticatedUser.ProviderUserId, 
-                requestData.PreferredEmail);
-
-            if (!updated)
-            {
-                _logger.LogError("Failed to update preferred email for user {UserId}", authenticatedUser.UserId);
-                var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-                await errorResponse.WriteStringAsync("Failed to update preferred email");
-                return errorResponse;
-            }
-
-            _logger.LogInformation("Successfully updated preferred email for user {UserId}", authenticatedUser.UserId);
-
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            await response.WriteAsJsonAsync(new { Success = true, Message = "Preferred email updated successfully" });
-            return response;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error in UpdatePreferredEmail function");
-            var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await errorResponse.WriteStringAsync("Internal server error occurred while updating preferred email");
-            return errorResponse;
-        }
-    }
-
-    /// <summary>
-    /// Simple email validation
-    /// </summary>
-    /// <param name="email">Email to validate</param>
-    /// <returns>True if email format is valid</returns>
-    private static bool IsValidEmail(string email)
-    {
-        try
-        {
-            var addr = new System.Net.Mail.MailAddress(email);
-            return addr.Address == email;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Request model for updating preferred email
-    /// </summary>
-    private class UpdatePreferredEmailRequest
-    {
-        public string? PreferredEmail { get; set; }
-    }
+  
 }

@@ -18,11 +18,13 @@ using SharedDump.Models.BlueSkyFeedback;
 using SharedDump.Json;
 using SharedDump.Services;
 using SharedDump.Services.Interfaces;
-using FeedbackFunctions.Services.Authentication;
+using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
+using FeedbackFunctions.Services.Account;
+using SharedDump.Models.Account;
 
-namespace FeedbackFunctions;
+namespace FeedbackFunctions.FeedbackAnalysis;
 
 /// <summary>
 /// Azure Functions for retrieving and analyzing feedback from various platforms
@@ -43,6 +45,7 @@ public class FeedbackFunctions
     private readonly ITwitterService _twitterService;
     private readonly IBlueSkyService _blueSkyService;
     private readonly AuthenticationMiddleware _authMiddleware;
+    private readonly IUserAccountService _userAccountService;
 
     /// <summary>
     /// Initializes a new instance of the FeedbackFunctions class
@@ -66,7 +69,8 @@ public class FeedbackFunctions
         IFeedbackAnalyzerService analyzerService,
         ITwitterService twitterService,
         IBlueSkyService blueSkyService,
-        AuthenticationMiddleware authMiddleware)
+        AuthenticationMiddleware authMiddleware,
+        IUserAccountService userAccountService)
     {
         _logger = logger;
         _githubService = githubService;
@@ -78,6 +82,7 @@ public class FeedbackFunctions
         _twitterService = twitterService;
         _blueSkyService = blueSkyService;
         _authMiddleware = authMiddleware;
+        _userAccountService = userAccountService;
     }
 
     /// <summary>
@@ -104,6 +109,11 @@ public class FeedbackFunctions
         var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
         if (authErrorResponse != null)
             return authErrorResponse;
+
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.FeedQuery, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
 
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var url = queryParams["url"];
@@ -233,6 +243,10 @@ public class FeedbackFunctions
 
             var successResponse = req.CreateResponse(HttpStatusCode.OK);
             await successResponse.WriteAsJsonAsync(result);
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, url);
+            
             return successResponse;
         }
         catch (Exception ex)
@@ -268,6 +282,11 @@ public class FeedbackFunctions
         if (authErrorResponse != null)
             return authErrorResponse;
 
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.FeedQuery, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
+
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var idsParam = queryParams["ids"];
 
@@ -294,6 +313,10 @@ public class FeedbackFunctions
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(results);
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, idsParam);
+            
             return response;
         }
         catch (Exception ex)
@@ -316,6 +339,11 @@ public class FeedbackFunctions
         var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
         if (authErrorResponse != null)
             return authErrorResponse;
+
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.FeedQuery, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
 
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var videoIds = queryParams["videos"]?.Split(',', StringSplitOptions.RemoveEmptyEntries);
@@ -365,6 +393,10 @@ public class FeedbackFunctions
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(outputVideos);
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, $"Videos: {allVideoIds.Count}");
+            
             return response;
         }
         catch (Exception ex)
@@ -387,6 +419,11 @@ public class FeedbackFunctions
         var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
         if (authErrorResponse != null)
             return authErrorResponse;
+
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.FeedQuery, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
 
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var threadIds = queryParams["threads"]?.Split(',', StringSplitOptions.RemoveEmptyEntries);
@@ -424,6 +461,10 @@ public class FeedbackFunctions
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(threadResults);
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, $"Threads: {threadResults.Count}");
+            
             return response;
         }
         catch (Exception ex)
@@ -446,6 +487,11 @@ public class FeedbackFunctions
         var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
         if (authErrorResponse != null)
             return authErrorResponse;
+
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.FeedQuery, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
             
         try
         {
@@ -468,6 +514,10 @@ public class FeedbackFunctions
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(result);
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, articleUrl);
+            
             return response;
         }
         catch (Exception ex)
@@ -511,6 +561,11 @@ public class FeedbackFunctions
         if (authErrorResponse != null)
             return authErrorResponse;
 
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.Analysis, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
+
         try
         {
             var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -534,6 +589,10 @@ public class FeedbackFunctions
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteStringAsync(analysisBuilder.ToString());
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.Analysis, _userAccountService, _logger, request.ServiceType);
+            
             return response;
         }
         catch (Exception ex)
@@ -545,56 +604,7 @@ public class FeedbackFunctions
         }
     }
 
-    [Function("AnalyzeCommentsBYOK")]
-    public async Task<HttpResponseData> AnalyzeCommentsBYOK(
-        [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
-    {
-        _logger.LogInformation("Processing BYOK comment analysis request");
 
-        try
-        {
-            var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            var request = JsonSerializer.Deserialize(requestBody, FeedbackJsonContext.Default.AnalyzeCommentsBYOKRequest);
-
-            if (string.IsNullOrEmpty(request?.Comments))
-            {
-                var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await badResponse.WriteStringAsync("Comments JSON is required");
-                return badResponse;
-            }
-
-            if (string.IsNullOrEmpty(request.Endpoint) || string.IsNullOrEmpty(request.ApiKey) || string.IsNullOrEmpty(request.Deployment))
-            {
-                var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await badResponse.WriteStringAsync("Azure OpenAI configuration (endpoint, apiKey, deployment) is required");
-                return badResponse;
-            }
-
-            var analyzerService = new FeedbackAnalyzerService(request.Endpoint, request.ApiKey, request.Deployment);
-            
-            var analysisBuilder = new System.Text.StringBuilder();
-            await foreach (var update in analyzerService.GetStreamingAnalysisAsync(
-                request.ServiceType, 
-                request.Comments,
-                request.SystemPrompt))
-            {
-                analysisBuilder.Append(update);
-            }
-
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            await response.WriteStringAsync(analysisBuilder.ToString());
-            return response;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error processing BYOK comment analysis request");
-            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await response.WriteStringAsync("An error occurred processing the request");
-            return response;
-        }
-    }
-
-   
     [Function("GetTwitterFeedback")]
     [Authorize]
     public async Task<HttpResponseData> GetTwitterFeedback(
@@ -606,6 +616,11 @@ public class FeedbackFunctions
         var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
         if (authErrorResponse != null)
             return authErrorResponse;
+
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.FeedQuery, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
             
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var tweetUrlOrId = queryParams["tweet"];
@@ -627,6 +642,10 @@ public class FeedbackFunctions
             var response = req.CreateResponse(HttpStatusCode.OK);
             var json = System.Text.Json.JsonSerializer.Serialize(result, TwitterFeedbackJsonContext.Default.TwitterFeedbackResponse);
             await response.WriteStringAsync(json);
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, tweetUrlOrId);
+            
             return response;
         }
         catch (Exception ex)
@@ -649,6 +668,11 @@ public class FeedbackFunctions
         var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
         if (authErrorResponse != null)
             return authErrorResponse;
+
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.FeedQuery, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
             
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var postUrlOrId = queryParams["post"];
@@ -673,6 +697,10 @@ public class FeedbackFunctions
             var response = req.CreateResponse(HttpStatusCode.OK);
             var json = System.Text.Json.JsonSerializer.Serialize(result, BlueSkyFeedbackJsonContext.Default.BlueSkyFeedbackResponse);
             await response.WriteStringAsync(json);
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, postUrlOrId);
+            
             return response;
         }
         catch (Exception ex)
@@ -683,39 +711,4 @@ public class FeedbackFunctions
             return response;
         }
     }
-    
-
-}
-
-public class AnalyzeCommentsRequest
-{
-    [JsonPropertyName("comments")]
-    public string Comments { get; set; } = string.Empty;
-    
-    [JsonPropertyName("serviceType")]
-    public string ServiceType { get; set; } = string.Empty;
-
-    [JsonPropertyName("customPrompt")]
-    public string? CustomPrompt { get; set; }
-}
-
-public class AnalyzeCommentsBYOKRequest
-{
-    [JsonPropertyName("comments")]
-    public string Comments { get; set; } = string.Empty;
-    
-    [JsonPropertyName("serviceType")]
-    public string ServiceType { get; set; } = string.Empty;
-
-    [JsonPropertyName("endpoint")]
-    public string Endpoint { get; set; } = string.Empty;
-
-    [JsonPropertyName("apiKey")]
-    public string ApiKey { get; set; } = string.Empty;
-
-    [JsonPropertyName("deployment")]
-    public string Deployment { get; set; } = string.Empty;
-
-    [JsonPropertyName("systemPrompt")]
-    public string? SystemPrompt { get; set; }
 }
