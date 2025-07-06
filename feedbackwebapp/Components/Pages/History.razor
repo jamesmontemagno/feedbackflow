@@ -11,7 +11,6 @@
 @using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web.Virtualization
-@using FeedbackWebApp.Components.Shared
 @using FeedbackWebApp.Services.Interfaces
 @using SharedDump.Utils
 @using FeedbackWebApp.Utils
@@ -140,11 +139,12 @@
                 </small>
             </div>
             
-            <div class="list-group" style="overflow-y: auto;">
-                <Virtualize Items="filteredItems" Context="item" ItemSize="250">
+            <div class="list-group">
+                <Virtualize Items="filteredItems" Context="item" ItemSize="200">
                     <div class="list-group-item shared-item" @key="item.Id">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div class="d-flex align-items-center gap-2">
+                        <!-- Header with metadata and actions -->
+                        <div class="item-header d-flex justify-content-between align-items-start mb-3">
+                            <div class="item-meta d-flex align-items-center gap-2 flex-wrap">
                                 @{
                                     var sourceTypes = item.SourceType.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                                     foreach (var sourceType in sourceTypes)
@@ -154,103 +154,74 @@
                                     <span class="source-badge">@item.SourceType</span>
                                 }
                                 <small class="text-muted">@item.Timestamp.ToLocalTime().ToString("g")</small>
-                                @* Visibility indicator *@
                                 <span class="badge visibility-badge @(item.IsPublic ? "visibility-public" : "visibility-private")">
                                     <i class="bi @(item.IsPublic ? "bi-globe" : "bi-lock") me-1"></i>
                                     @(item.IsPublic ? "Public" : "Private")
                                 </span>
-                            </div>                        
-                            <ActionMenu>
-                                <ChildContent>
+                            </div>
+                            
+                            <div class="item-actions d-flex align-items-center gap-2">
+                                @if (item.IsPublic)
+                                {
                                     <button class="btn btn-sm btn-outline-success action-btn" 
-                                            title="@(item.IsPublic ? "Copy Share Link" : "Item must be public to share")" 
-                                            disabled="@(!item.IsPublic)"
+                                            title="Copy Share Link"
                                             @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
-                                        <i class="bi bi-link-45deg"></i> Copy Share Link
+                                        <i class="bi bi-link-45deg"></i>
                                     </button>
-                                    <button class="btn btn-sm @(item.IsPublic ? "btn-outline-warning" : "btn-outline-info") action-btn" 
-                                            title="@(item.IsPublic ? "Make Private" : "Make Public")"
-                                            disabled="@isUpdatingVisibility"
-                                            @onclick="() => ToggleVisibility(item.Id, !item.IsPublic)">
-                                        <i class="bi @(item.IsPublic ? "bi-lock" : "bi-globe") me-1"></i>
-                                        @(item.IsPublic ? "Make Private" : "Make Public")
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger action-btn" title="Delete" @onclick="() => ConfirmDelete(item.Id)">
-                                        <i class="bi bi-trash"></i> Delete
-                                    </button>
-                                </ChildContent>
-                                <SecondaryActions>
-                                    <li><button class="dropdown-item @(item.IsPublic ? "" : "disabled")" 
-                                                disabled="@(!item.IsPublic)"
-                                                @onclick="() => HistoryHelper.CopyShareLink(item, NavigationManager.BaseUri, JSRuntime, ToastService, ShowCopyFailedDialog)">
-                                        <i class="bi bi-link-45deg"></i> Copy Share Link @(item.IsPublic ? "" : "(Private)")
-                                    </button></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><button class="dropdown-item @(item.IsPublic ? "text-warning" : "text-info")" 
-                                                disabled="@isUpdatingVisibility"
-                                                @onclick="() => ToggleVisibility(item.Id, !item.IsPublic)">
-                                        <i class="bi @(item.IsPublic ? "bi-lock" : "bi-globe")"></i> @(item.IsPublic ? "Make Private" : "Make Public")
-                                    </button></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><button class="dropdown-item text-danger" @onclick="() => ConfirmDelete(item.Id)">
-                                        <i class="bi bi-trash"></i> Delete
-                                    </button></li>
-                                </SecondaryActions>
-                            </ActionMenu>
+                                }
+                                <button class="btn btn-sm @(item.IsPublic ? "btn-outline-secondary" : "btn-outline-info") action-btn" 
+                                        title="@(item.IsPublic ? "Make Private" : "Make Public")"
+                                        disabled="@isUpdatingVisibility"
+                                        @onclick="() => ToggleVisibility(item.Id, !item.IsPublic)">
+                                    <i class="bi @(item.IsPublic ? "bi-lock" : "bi-globe")"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger action-btn" 
+                                        title="Delete" 
+                                        @onclick="() => ConfirmDelete(item.Id)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
                         </div>
                                               
                         @if (!string.IsNullOrWhiteSpace(item.UserInput) && item.SourceType != "Manual")
                         {
                             <div class="user-input mb-3">
-                                <strong>Input:</strong>
                                 @{
                                     var urls = item.UserInput.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                                     if (urls.All(url => UrlParsing.IsValidUrl(url)))
                                     {
-                                        <div class="url-list">
+                                        <div class="url-links">
                                             @foreach (var url in urls)
                                             {
-                                                <div class="url-item">                                                
-                                                    @{
-                                                        var isYouTube = UrlParsing.IsYouTubeUrl(url);
-                                                        var videoId = UrlParsing.ExtractVideoId(url);
-                                                        if (isYouTube && !string.IsNullOrWhiteSpace(videoId))
-                                                        {
-                                                            <div class="youtube-thumbnail-container">
-                                                                <a href="@url" target="_blank" rel="noopener noreferrer" class="d-block">
-                                                                    <img src="@FeedbackWebApp.Utils.UrlHelpers.GetYouTubeThumbnailUrl(videoId)" alt="YouTube Video Thumbnail" class="rounded shadow-sm" />
-                                                                </a>
-                                                            </div>
-                                                        }
-                                                    }
-                                                    <div class="url-link">
-                                                        <a href="@url" target="_blank" rel="noopener noreferrer">@url</a>
-                                                    </div>
+                                                <div class="url-link-item">
+                                                    <i class="bi bi-link-45deg text-primary me-1"></i>
+                                                    <a href="@url" target="_blank" rel="noopener noreferrer" class="url-link">@url</a>
                                                 </div>
                                             }
                                         </div>
                                     }
                                     else
                                     {
-                                        @item.UserInput
+                                        <div class="manual-input">
+                                            <i class="bi bi-chat-text text-primary me-1"></i>
+                                            <span>@item.UserInput</span>
+                                        </div>
                                     }
                                 }
                             </div>
                         }
 
                         <div class="analysis-content clickable-analysis" @onclick="() => NavigateToAnalysis(item.Id)">
-                            <div class="content-wrapper">
-                                <div class="analysis-preview">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <span class="analysis-preview-label">Analysis Preview</span>
-                                        <span class="view-full-indicator">
-                                            <i class="bi bi-arrow-right"></i>
-                                            View Full
-                                        </span>
-                                    </div>
-                                    <div class="markdown-content summary-preview">
-                                        @((MarkupString)HistoryHelper.ConvertMarkdownToHtml(item.Summary))
-                                    </div>
+                            <div class="analysis-summary">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="analysis-label">Analysis</span>
+                                    <span class="view-full-indicator">
+                                        <span class="me-1">View Full</span>
+                                        <i class="bi bi-arrow-right"></i>
+                                    </span>
+                                </div>
+                                <div class="markdown-content">
+                                    @((MarkupString)HistoryHelper.ConvertMarkdownToHtml(item.Summary))
                                 </div>
                             </div>
                         </div>
