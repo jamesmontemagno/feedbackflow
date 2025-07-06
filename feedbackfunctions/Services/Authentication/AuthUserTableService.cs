@@ -147,36 +147,4 @@ public class AuthUserTableService : IAuthUserTableService
         }
         return activeUsers;
     }
-
-    /// <inheritdoc />
-    public async Task<bool> UpdatePreferredEmailAsync(string provider, string providerUserId, string? preferredEmail)
-    {
-        try
-        {
-            // Get the existing user
-            var existingUser = await GetUserByProviderAsync(provider, providerUserId);
-            if (existingUser == null)
-            {
-                _logger.LogWarning("User not found for provider {Provider} and user ID {ProviderUserId}", provider, providerUserId);
-                return false;
-            }
-
-            // Update the preferred email
-            existingUser.PreferredEmail = preferredEmail;
-
-            // Save the updated user
-            await _userTableClient.UpdateEntityAsync(existingUser, existingUser.ETag);
-            
-            _logger.LogInformation("Updated preferred email for user {UserId} to {PreferredEmail}", 
-                existingUser.UserId, preferredEmail ?? "(cleared)");
-            
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating preferred email for provider {Provider} and user ID {ProviderUserId}", 
-                provider, providerUserId);
-            return false;
-        }
-    }
 }

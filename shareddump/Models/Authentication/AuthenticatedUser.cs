@@ -58,7 +58,6 @@ public class AuthenticatedUser
     {
         UserId = userEntity.UserId;
         Email = userEntity.Email;
-        PreferredEmail = userEntity.PreferredEmail;
         Name = userEntity.Name;
         AuthProvider = userEntity.AuthProvider;
         ProviderUserId = userEntity.ProviderUserId;

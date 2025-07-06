@@ -42,16 +42,19 @@ namespace FeedbackFunctions.Account
             {
                 var account = await _userAccountService.GetUserAccountAsync(user!.UserId);
                 
-                // If account doesn't exist, create a new one for this user
+                // If account doesn't exist, return error - accounts should only be created during registration
                 if (account == null)
                 {
-                    _logger.LogInformation("User account not found, creating new account for user {UserId}", user!.UserId);
+                    _logger.LogWarning("User account not found for user {UserId}. User must register first.", user!.UserId);
                     
-                    account = await _userAccountService.CreateOrGetUserAccountAsync(user.UserId);
-                    account.PreferredEmail = user.Email ?? string.Empty;
-                    await _userAccountService.UpsertUserAccountAsync(account);
-                    
-                    _logger.LogInformation("Created new user account for user {UserId} with Free tier", user.UserId);
+                    var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+                    await notFoundResponse.WriteAsJsonAsync(new
+                    {
+                        Data = (object?)null,
+                        Success = false,
+                        Message = "User account not found. Please register first."
+                    });
+                    return notFoundResponse;
                 }
 
                 var response = req.CreateResponse(HttpStatusCode.OK);
@@ -70,6 +73,119 @@ namespace FeedbackFunctions.Account
                 await errorResponse.WriteStringAsync("Error retrieving user account");
                 return errorResponse;
             }
+        }
+
+        /// <summary>
+        /// Update the user's preferred email address
+        /// </summary>
+        /// <param name="req">HTTP request</param>
+        /// <returns>HTTP response with success status</returns>
+        [Function("UpdatePreferredEmail")]
+        [Authorize]
+
+        public async Task<HttpResponseData> UpdatePreferredEmailAsync(
+            [HttpTrigger(AuthorizationLevel.Function, "put")] HttpRequestData req)
+        {
+            try
+            {
+                _logger.LogInformation("UpdatePreferredEmail function triggered");
+
+                // Get authenticated user from middleware
+                var authenticatedUser = await _authMiddleware.GetUserAsync(req);
+                if (authenticatedUser == null)
+                {
+                    _logger.LogWarning("No authenticated user found for UpdatePreferredEmail request");
+                    var unauthorizedResponse = req.CreateResponse(HttpStatusCode.Unauthorized);
+                    await unauthorizedResponse.WriteStringAsync("User authentication required");
+                    return unauthorizedResponse;
+                }
+
+                // Read the request body
+                var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+                if (string.IsNullOrWhiteSpace(requestBody))
+                {
+                    var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await badRequestResponse.WriteStringAsync("Request body is required");
+                    return badRequestResponse;
+                }
+
+                // Parse the preferred email from the request
+                var requestData = JsonSerializer.Deserialize<UpdatePreferredEmailRequest>(requestBody, new JsonSerializerOptions 
+                { 
+                    PropertyNameCaseInsensitive = true 
+                });
+
+                if (requestData == null)
+                {
+                    var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await badRequestResponse.WriteStringAsync("Invalid request format");
+                    return badRequestResponse;
+                }
+
+                // Validate email format if provided
+                if (!string.IsNullOrWhiteSpace(requestData.PreferredEmail))
+                {
+                    if (!IsValidEmail(requestData.PreferredEmail))
+                    {
+                        var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                        await badRequestResponse.WriteStringAsync("Invalid email format");
+                        return badRequestResponse;
+                    }
+                }
+
+                // Update the user's preferred email in UserAccount
+                var userAccount = await _userAccountService.GetUserAccountAsync(authenticatedUser.UserId);
+                if (userAccount == null)
+                {
+                    _logger.LogError("User account not found for user {UserId}", authenticatedUser.UserId);
+                    var errorResponse = req.CreateResponse(HttpStatusCode.NotFound);
+                    await errorResponse.WriteStringAsync("User account not found");
+                    return errorResponse;
+                }
+
+                // Update the preferred email
+                userAccount.PreferredEmail = requestData.PreferredEmail ?? string.Empty;
+                await _userAccountService.UpsertUserAccountAsync(userAccount);
+
+                _logger.LogInformation("Successfully updated preferred email for user {UserId}", authenticatedUser.UserId);
+
+                var response = req.CreateResponse(HttpStatusCode.OK);
+                await response.WriteAsJsonAsync(new { Success = true, Message = "Preferred email updated successfully" });
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in UpdatePreferredEmail function");
+                var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+                await errorResponse.WriteStringAsync("Internal server error occurred while updating preferred email");
+                return errorResponse;
+            }
+        }
+
+        /// <summary>
+        /// Simple email validation
+        /// </summary>
+        /// <param name="email">Email to validate</param>
+        /// <returns>True if email format is valid</returns>
+        private static bool IsValidEmail(string email)
+        {
+            try
+            {
+                var addr = new System.Net.Mail.MailAddress(email);
+                return addr.Address == email;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Request model for updating preferred email
+        /// </summary>
+        private class UpdatePreferredEmailRequest
+        {
+            public string? PreferredEmail { get; set; }
         }
 
         [Function("ResetMonthlyUsage")]

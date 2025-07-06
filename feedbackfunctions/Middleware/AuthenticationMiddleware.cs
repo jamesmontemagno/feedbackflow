@@ -129,6 +129,8 @@ public class AuthenticationMiddleware
 
     /// <summary>
     /// Create a new user from the request headers
+    /// WARNING: This method should ONLY be called from RegisterUserAsync function during user registration.
+    /// For authentication, use GetUserAsync instead.
     /// </summary>
     /// <param name="req">HTTP request with authentication headers</param>
     /// <returns>Newly created authenticated user or null if creation failed</returns>

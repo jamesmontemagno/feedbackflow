@@ -36,36 +36,13 @@ public class UserAccountService : IUserAccountService
             var response = await _userAccountsTable.GetEntityIfExistsAsync<UserAccountEntity>(userId, "account");
             if (!response.HasValue) return null;
 
-            return MapEntityToModel(response.Value);
+            return MapEntityToModel(response.Value!);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error retrieving user account for {UserId}", userId);
             return null;
         }
-    }
-
-    public async Task<UserAccount> CreateOrGetUserAccountAsync(string userId)
-    {
-        var existing = await GetUserAccountAsync(userId);
-        if (existing != null) return existing;
-
-        var newUser = new UserAccount
-        {
-            UserId = userId,
-            Tier = AccountTier.Free,
-            SubscriptionStart = DateTime.UtcNow,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow,
-            LastResetDate = DateTime.UtcNow,
-            AnalysesUsed = 0,
-            FeedQueriesUsed = 0,
-            ActiveReports = 0,
-            PreferredEmail = string.Empty
-        };
-
-        await UpsertUserAccountAsync(newUser);
-        return newUser;
     }
 
     public async Task UpsertUserAccountAsync(UserAccount userAccount)
@@ -132,7 +109,24 @@ public class UserAccountService : IUserAccountService
 
     public async Task<UsageValidationResult> ValidateUsageAsync(string userId, UsageType usageType)
     {
-        var user = await CreateOrGetUserAccountAsync(userId);
+        var user = await GetUserAccountAsync(userId);
+        
+        // If user account doesn't exist, they haven't registered yet
+        if (user == null)
+        {
+            return new UsageValidationResult 
+            { 
+                IsWithinLimit = false, 
+                UsageType = usageType,
+                CurrentUsage = 0,
+                Limit = 0,
+                CurrentTier = AccountTier.Free,
+                ResetDate = DateTime.UtcNow.AddDays(30),
+                ErrorMessage = "User account not found. Please register first.",
+                UpgradeUrl = null
+            };
+        }
+        
         var limits = GetLimitsForTier(user.Tier);
         
         bool withinLimit = usageType switch
@@ -168,7 +162,14 @@ public class UserAccountService : IUserAccountService
 
     public async Task TrackUsageAsync(string userId, UsageType usageType, string? resourceId = null)
     {
-        var user = await CreateOrGetUserAccountAsync(userId);
+        var user = await GetUserAccountAsync(userId);
+        
+        // If user account doesn't exist, they haven't registered yet - don't track usage
+        if (user == null)
+        {
+            _logger?.LogWarning("Cannot track usage for user {UserId} - account not found. User must register first.", userId);
+            return;
+        }
 
         // Update usage counters
         switch (usageType)
@@ -243,7 +244,14 @@ public class UserAccountService : IUserAccountService
 
     public async Task<AccountLimits> GetUserLimitsAsync(string userId)
     {
-        var user = await CreateOrGetUserAccountAsync(userId);
+        var user = await GetUserAccountAsync(userId);
+        
+        // If user account doesn't exist, return default Free tier limits
+        if (user == null)
+        {
+            return GetLimitsForTier(AccountTier.Free);
+        }
+        
         return GetLimitsForTier(user.Tier);
     }
 

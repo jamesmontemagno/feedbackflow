@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using SharedDump.Models.Authentication;
 
 namespace FeedbackFunctions.Services.Authentication;
@@ -48,13 +51,4 @@ public interface IAuthUserTableService
     /// </summary>
     /// <returns>Collection of active users</returns>
     Task<IEnumerable<AuthUserEntity>> GetActiveUsersAsync();
-
-    /// <summary>
-    /// Update the user's preferred email address
-    /// </summary>
-    /// <param name="provider">Authentication provider name</param>
-    /// <param name="providerUserId">Provider-specific user ID</param>
-    /// <param name="preferredEmail">New preferred email address (can be null to clear)</param>
-    /// <returns>True if successful, false if user not found</returns>
-    Task<bool> UpdatePreferredEmailAsync(string provider, string providerUserId, string? preferredEmail);
 }

@@ -12,7 +12,6 @@ public interface IUserAccountService
 {
     // User Account Management
     Task<UserAccount?> GetUserAccountAsync(string userId);
-    Task<UserAccount> CreateOrGetUserAccountAsync(string userId);
     Task UpsertUserAccountAsync(UserAccount userAccount);
     Task<int> ResetAllMonthlyUsageAsync();
 
