@@ -121,7 +121,7 @@ Keep each section very brief and focused. Total analysis should be no more than 
                     return new TopCommentInfo(
                         Comment: comment,
                         Thread: parentThread,
-                        CommentUrl: $"https://reddit.com{parentThread.Permalink}{comment.Id}"
+                        CommentUrl: RedditUrlParser.GenerateCommentUrl(parentThread.Permalink, comment.Id)
                     );
                 })
                 .ToList();
