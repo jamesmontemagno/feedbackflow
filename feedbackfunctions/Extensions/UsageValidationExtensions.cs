@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using FeedbackFunctions.Services.Account;
 using SharedDump.Models.Account;
 using SharedDump.Models.Authentication;
+using SharedDump.Models;
 
 namespace FeedbackFunctions.Extensions;
 
@@ -37,15 +38,15 @@ public static class UsageValidationExtensions
                 logger?.LogWarning("Usage limit exceeded for user {UserId} and type {UsageType}", user.UserId, usageType);
                 
                 var errorResponse = req.CreateResponse(HttpStatusCode.TooManyRequests);
-                await errorResponse.WriteAsJsonAsync(new
+                await errorResponse.WriteAsJsonAsync(new UsageLimitError
                 {
                     ErrorCode = "USAGE_LIMIT_EXCEEDED",
                     Message = result.ErrorMessage ?? "Usage limit exceeded.",
-                    LimitType = result.UsageType,
+                    LimitType = (int)result.UsageType,
                     CurrentUsage = result.CurrentUsage,
                     Limit = result.Limit,
-                    ResetDate = result.ResetDate,
-                    CurrentTier = result.CurrentTier,
+                    ResetDate = usageType == UsageType.ReportCreated ? null : result.ResetDate,
+                    CurrentTier = (int)result.CurrentTier,
                     UpgradeUrl = result.UpgradeUrl
                 });
                 
