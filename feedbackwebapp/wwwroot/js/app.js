@@ -240,6 +240,255 @@ async function fetchAuthMeDetailed() {
 
 window.fetchAuthMeDetailed = fetchAuthMeDetailed;
 
+// Authentication token refresh management
+class AuthTokenManager {
+    constructor() {
+        this.refreshIntervalId = null;
+        this.isRefreshing = false;
+        this.lastRefreshTime = null;
+        this.refreshInterval = 15 * 60 * 1000; // 15 minutes (configurable)
+        this.minRefreshInterval = 5 * 60 * 1000; // 5 minutes (configurable)
+        this.dotNetHelper = null; // Reference to .NET object for callbacks
+    }
+
+    // Start automatic token refresh
+    startAutoRefresh() {
+        console.log('AuthTokenManager: Starting automatic token refresh');
+        this.stopAutoRefresh(); // Clear any existing interval
+        
+        // Initial refresh check
+        this.refreshTokenIfNeeded();
+        
+        // Set up periodic refresh
+        this.refreshIntervalId = setInterval(() => {
+            this.refreshTokenIfNeeded();
+        }, this.refreshInterval);
+    }
+
+    // Stop automatic token refresh
+    stopAutoRefresh() {
+        if (this.refreshIntervalId) {
+            console.log('AuthTokenManager: Stopping automatic token refresh');
+            clearInterval(this.refreshIntervalId);
+            this.refreshIntervalId = null;
+        }
+    }
+
+    // Set .NET helper for callbacks
+    setDotNetHelper(dotNetHelper) {
+        this.dotNetHelper = dotNetHelper;
+        console.log('AuthTokenManager: .NET helper set for callbacks');
+    }
+
+    // Configure refresh interval
+    setRefreshInterval(intervalMs) {
+        this.refreshInterval = intervalMs;
+        console.log('AuthTokenManager: Refresh interval set to', intervalMs, 'ms');
+        
+        // Restart auto refresh if it's already running
+        if (this.refreshIntervalId) {
+            this.stopAutoRefresh();
+            this.startAutoRefresh();
+        }
+    }
+
+    // Configure minimum refresh interval
+    setMinRefreshInterval(intervalMs) {
+        this.minRefreshInterval = intervalMs;
+        console.log('AuthTokenManager: Min refresh interval set to', intervalMs, 'ms');
+    }
+
+    // Check if token refresh is needed and perform it
+    async refreshTokenIfNeeded() {
+        if (this.isRefreshing) {
+            console.log('AuthTokenManager: Refresh already in progress, skipping');
+            return;
+        }
+
+        const now = Date.now();
+        
+        // Don't refresh too frequently (use configured minimum interval)
+        if (this.lastRefreshTime && (now - this.lastRefreshTime) < this.minRefreshInterval) {
+            console.log('AuthTokenManager: Too soon for another refresh, skipping. Min interval:', this.minRefreshInterval, 'ms');
+            return;
+        }
+
+        try {
+            console.log('AuthTokenManager: Attempting token refresh');
+            this.isRefreshing = true;
+            
+            const refreshResult = await this.performTokenRefresh();
+            
+            if (refreshResult.success) {
+                console.log('AuthTokenManager: Token refresh successful');
+                this.lastRefreshTime = now;
+                
+                // Notify .NET about successful refresh
+                if (this.dotNetHelper) {
+                    try {
+                        await this.dotNetHelper.invokeMethodAsync('OnAuthStateChangedFromJS', true);
+                    } catch (callbackError) {
+                        console.warn('AuthTokenManager: Error calling .NET callback:', callbackError);
+                    }
+                }
+            } else {
+                console.warn('AuthTokenManager: Token refresh failed', refreshResult);
+                
+                // If refresh failed, try to check current auth status
+                const authStatus = await this.checkAuthStatus();
+                if (!authStatus.isAuthenticated) {
+                    console.warn('AuthTokenManager: User appears to be logged out');
+                    
+                    // Notify .NET about auth failure
+                    if (this.dotNetHelper) {
+                        try {
+                            await this.dotNetHelper.invokeMethodAsync('OnAuthStateChangedFromJS', false);
+                        } catch (callbackError) {
+                            console.warn('AuthTokenManager: Error calling .NET callback:', callbackError);
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('AuthTokenManager: Error during token refresh:', error);
+        } finally {
+            this.isRefreshing = false;
+        }
+    }
+
+    // Perform the actual token refresh
+    async performTokenRefresh() {
+        try {
+            const response = await fetch('/.auth/refresh', {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            });
+
+            return {
+                success: response.ok,
+                status: response.status,
+                statusText: response.statusText
+            };
+        } catch (error) {
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    // Check current authentication status
+    async checkAuthStatus() {
+        try {
+            const response = await fetch('/.auth/me', {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache'
+                }
+            });
+
+            if (!response.ok) {
+                return { isAuthenticated: false, status: response.status };
+            }
+
+            const text = await response.text();
+            const isAuthenticated = text && text.trim() !== '[]' && text.trim() !== '';
+            
+            return { isAuthenticated, response: text };
+        } catch (error) {
+            console.error('AuthTokenManager: Error checking auth status:', error);
+            return { isAuthenticated: false, error: error.message };
+        }
+    }
+
+    // Manual refresh trigger (can be called from components)
+    async manualRefresh() {
+        console.log('AuthTokenManager: Manual refresh requested');
+        this.lastRefreshTime = null; // Reset to allow immediate refresh
+        await this.refreshTokenIfNeeded();
+    }
+}
+
+// Create global auth token manager
+const authTokenManager = new AuthTokenManager();
+window.authTokenManager = authTokenManager;
+
+// Expose enhanced fetch auth functions
+window.fetchAuthMeWithRefresh = fetchAuthMeWithRefresh;
+
+// Helper function to ensure authentication before API calls
+async function ensureAuthenticated() {
+    try {
+        console.log('ensureAuthenticated: Checking and refreshing authentication');
+        
+        // Force a manual refresh
+        await authTokenManager.manualRefresh();
+        
+        // Check the current auth status
+        const authStatus = await authTokenManager.checkAuthStatus();
+        
+        console.log('ensureAuthenticated: Authentication status:', authStatus.isAuthenticated);
+        return authStatus.isAuthenticated;
+    } catch (error) {
+        console.error('ensureAuthenticated: Error ensuring authentication:', error);
+        return false;
+    }
+}
+
+window.ensureAuthenticated = ensureAuthenticated;
+
+// Enhanced fetch auth me with automatic refresh
+async function fetchAuthMeWithRefresh() {
+    try {
+        console.log('fetchAuthMeWithRefresh: Starting auth check with refresh');
+        
+        // First, attempt to refresh tokens
+        try {
+            const refreshResponse = await fetch('/.auth/refresh', {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            });
+            console.log('fetchAuthMeWithRefresh: Token refresh response status:', refreshResponse.status);
+        } catch (refreshError) {
+            console.warn('fetchAuthMeWithRefresh: Token refresh failed, continuing with auth check:', refreshError);
+        }
+        
+        // Now fetch the auth information
+        const response = await fetch('/.auth/me', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            }
+        });
+        
+        console.log('fetchAuthMeWithRefresh: Response status:', response.status);
+        
+        if (!response.ok) {
+            console.warn('fetchAuthMeWithRefresh: Auth check failed with status:', response.status);
+            return null;
+        }
+        
+        const text = await response.text();
+        console.log('fetchAuthMeWithRefresh: Response text:', text);
+        return text;
+    } catch (error) {
+        console.error('fetchAuthMeWithRefresh: Error fetching auth info:', error);
+        return null;
+    }
+}
+
+window.fetchAuthMeWithRefresh = fetchAuthMeWithRefresh;
+
 document.addEventListener('DOMContentLoaded', async () => {
     // Add the toast container to the DOM if it doesn't exist
     if (!document.getElementById('toast-container')) {
@@ -257,4 +506,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
         console.error('Failed to load IndexedDB module:', error);
     }
+
+    // Start automatic token refresh after page load
+    console.log('Starting automatic authentication token refresh');
+    authTokenManager.startAutoRefresh();
 });
