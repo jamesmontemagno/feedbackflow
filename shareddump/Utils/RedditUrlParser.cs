@@ -182,4 +182,31 @@ public static class RedditUrlParser
             }
         }
     }
+
+    /// <summary>
+    /// Generates a properly formatted Reddit comment URL
+    /// </summary>
+    /// <param name="threadPermalink">The thread permalink (e.g., "/r/subreddit/comments/threadid/title/")</param>
+    /// <param name="commentId">The comment ID</param>
+    /// <returns>A properly formatted Reddit comment URL</returns>
+    public static string GenerateCommentUrl(string threadPermalink, string commentId)
+    {
+        if (string.IsNullOrWhiteSpace(threadPermalink) || string.IsNullOrWhiteSpace(commentId))
+            return string.Empty;
+
+        // Ensure permalink starts with /
+        if (!threadPermalink.StartsWith('/'))
+        {
+            threadPermalink = "/" + threadPermalink;
+        }
+        
+        // Ensure permalink ends with /
+        if (!threadPermalink.EndsWith('/'))
+        {
+            threadPermalink += "/";
+        }
+        
+        // Construct the full URL
+        return $"https://www.reddit.com{threadPermalink}{commentId}/";
+    }
 }
