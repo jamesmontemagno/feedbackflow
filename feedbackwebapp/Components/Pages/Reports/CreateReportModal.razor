@@ -472,7 +472,13 @@
             }
             else
             {
-                if (result.IsConflict)
+                // Check if this is a usage limit error first
+                if (UsageLimitErrorHelper.TryParseUsageLimitError(result.ErrorMessage ?? "", result.StatusCode, out var limitError))
+                {
+                    usageLimitError = limitError;
+                    showUsageLimitDialog = true;
+                }
+                else if (result.IsConflict)
                 {
                     var conflictMessage = !string.IsNullOrEmpty(result.ErrorMessage) 
                         ? result.ErrorMessage 

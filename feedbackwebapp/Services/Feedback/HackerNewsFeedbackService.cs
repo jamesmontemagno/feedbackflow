@@ -42,8 +42,7 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
 
         // Get comments from the Hacker News API
         var getFeedbackUrl = $"{BaseUrl}/api/GetHackerNewsFeedback?code={Uri.EscapeDataString(hnCode)}&ids={Uri.EscapeDataString(processedId)}&maxComments={maxComments}";
-        var feedbackResponse = await SendAuthenticatedRequestAsync(HttpMethod.Get, getFeedbackUrl);
-        feedbackResponse.EnsureSuccessStatusCode();
+        var feedbackResponse = await SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod.Get, getFeedbackUrl);
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
 
         // Parse the Hacker News response        

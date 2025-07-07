@@ -46,8 +46,7 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
 
         // Get comments from the Reddit API
         var getFeedbackUrl = $"{BaseUrl}/api/GetRedditFeedback?code={Uri.EscapeDataString(redditCode)}&threads={Uri.EscapeDataString(processedId)}&maxComments={maxComments}";
-        var feedbackResponse = await SendAuthenticatedRequestAsync(HttpMethod.Get, getFeedbackUrl);
-        feedbackResponse.EnsureSuccessStatusCode();
+        var feedbackResponse = await SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod.Get, getFeedbackUrl);
         
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
         // Parse the Reddit response

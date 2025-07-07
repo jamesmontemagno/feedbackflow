@@ -59,8 +59,7 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         }
 
         var getFeedbackUrl = $"{BaseUrl}/api/GetYouTubeFeedback?{string.Join("&", queryParams)}";
-        var feedbackResponse = await SendAuthenticatedRequestAsync(HttpMethod.Get, getFeedbackUrl);
-        feedbackResponse.EnsureSuccessStatusCode();
+        var feedbackResponse = await SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod.Get, getFeedbackUrl);
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
         
         // Parse the YouTube response

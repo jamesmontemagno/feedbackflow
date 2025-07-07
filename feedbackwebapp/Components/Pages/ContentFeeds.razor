@@ -248,9 +248,14 @@
                     break;
             }
         }
+        catch (UsageLimitExceededException ex)
+        {
+            usageLimitError = ex.LimitError;
+            showUsageLimitDialog = true;
+        }
         catch (Exception ex)
         {
-            // Check if this is a usage limit error
+            // Check if this is a usage limit error from error message
             if (UsageLimitErrorHelper.TryParseUsageLimitError(ex.Message, out var limitError))
             {
                 usageLimitError = limitError;

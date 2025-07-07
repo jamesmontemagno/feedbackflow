@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using FeedbackWebApp.Services.Interfaces;
 using FeedbackWebApp.Services.Authentication;
+using SharedDump.Utils;
 
 namespace FeedbackWebApp.Services.Feedback;
 
@@ -127,8 +128,7 @@ public abstract class FeedbackService : IFeedbackService
             "application/json");
 
         var getAnalysisUrl = $"{BaseUrl}/api/AnalyzeComments?code={Uri.EscapeDataString(analyzeCode)}";
-        var analyzeResponse = await SendAuthenticatedRequestAsync(HttpMethod.Post, getAnalysisUrl, analyzeContent);
-        analyzeResponse.EnsureSuccessStatusCode();
+        var analyzeResponse = await SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod.Post, getAnalysisUrl, analyzeContent);
 
         UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed");
         return await analyzeResponse.Content.ReadAsStringAsync();
@@ -173,8 +173,7 @@ public abstract class FeedbackService : IFeedbackService
             "application/json");
 
         var getAnalysisUrl = $"{BaseUrl}/api/AnalyzeComments?code={Uri.EscapeDataString(analyzeCode)}";
-        var analyzeResponse = await SendAuthenticatedRequestAsync(HttpMethod.Post, getAnalysisUrl, analyzeContent);
-        analyzeResponse.EnsureSuccessStatusCode();
+        var analyzeResponse = await SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod.Post, getAnalysisUrl, analyzeContent);
 
         // Note: This method doesn't call UpdateStatus to avoid multiple completion status updates
         return await analyzeResponse.Content.ReadAsStringAsync();
@@ -216,5 +215,31 @@ public abstract class FeedbackService : IFeedbackService
     {
         var request = await CreateAuthenticatedRequestAsync(method, requestUri, content);
         return await Http.SendAsync(request);
+    }
+
+    /// <summary>
+    /// Sends an authenticated HTTP request and ensures success, with special handling for usage limit errors
+    /// </summary>
+    /// <param name="method">HTTP method</param>
+    /// <param name="requestUri">Request URI</param>
+    /// <param name="content">Optional content</param>
+    /// <returns>HTTP response message</returns>
+    /// <exception cref="UsageLimitExceededException">Thrown when usage limits are exceeded</exception>
+    protected async Task<HttpResponseMessage> SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod method, string requestUri, HttpContent? content = null)
+    {
+        var response = await SendAuthenticatedRequestAsync(method, requestUri, content);
+        
+        // Check for usage limit error before calling EnsureSuccessStatusCode
+        if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            if (UsageLimitErrorHelper.TryParseUsageLimitError(errorContent, response.StatusCode, out var limitError) && limitError != null)
+            {
+                throw new UsageLimitExceededException(limitError);
+            }
+        }
+        
+        response.EnsureSuccessStatusCode();
+        return response;
     }
 }

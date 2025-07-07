@@ -36,8 +36,7 @@ public class BlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackService
 
         var maxComments = await GetMaxCommentsToAnalyze();
         var getFeedbackUrl = $"{BaseUrl}/api/GetBlueSkyFeedback?code={Uri.EscapeDataString(blueSkyCode)}&post={Uri.EscapeDataString(_postUrlOrId)}&maxComments={maxComments}";
-        var feedbackResponse = await SendAuthenticatedRequestAsync(HttpMethod.Get, getFeedbackUrl);
-        feedbackResponse.EnsureSuccessStatusCode();
+        var feedbackResponse = await SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod.Get, getFeedbackUrl);
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
         
         var feedback = JsonSerializer.Deserialize<BlueSkyFeedbackResponse>(responseContent);

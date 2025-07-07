@@ -33,8 +33,7 @@ public class TwitterFeedbackService : FeedbackService, ITwitterFeedbackService
 
         var maxComments = await GetMaxCommentsToAnalyze();
         var getFeedbackUrl = $"{BaseUrl}/api/GetTwitterFeedback?code={Uri.EscapeDataString(twitterCode)}&tweet={Uri.EscapeDataString(_tweetUrlOrId)}&maxComments={maxComments}";
-        var feedbackResponse = await SendAuthenticatedRequestAsync(HttpMethod.Get, getFeedbackUrl);
-        feedbackResponse.EnsureSuccessStatusCode();
+        var feedbackResponse = await SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod.Get, getFeedbackUrl);
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
         var feedback = JsonSerializer.Deserialize<TwitterFeedbackResponse>(responseContent);
 

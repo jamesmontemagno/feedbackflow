@@ -37,8 +37,7 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
 
         // Get comments from the GitHub API
         var getFeedbackUrl = $"{BaseUrl}/api/GetGitHubFeedback?code={Uri.EscapeDataString(githubCode)}&url={Uri.EscapeDataString(_url)}&maxComments={maxComments}";
-        var feedbackResponse = await SendAuthenticatedRequestAsync(HttpMethod.Get, getFeedbackUrl);
-        feedbackResponse.EnsureSuccessStatusCode();
+        var feedbackResponse = await SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod.Get, getFeedbackUrl);
         
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
         var totalComments = 0;
