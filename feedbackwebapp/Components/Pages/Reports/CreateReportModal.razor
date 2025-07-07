@@ -8,7 +8,7 @@
 @using SharedDump.Utils
 @inject IReportRequestService ReportRequestService
 
-<div class="modal fade @(IsVisible ? "show" : "")" tabindex="-1" style="display: @(IsVisible ? "block" : "none")" aria-hidden="@(!IsVisible)">
+<div class="modal fade @(DisplayCreateReport ? "show" : "")" tabindex="-1" style="display: @(DisplayCreateReport ? "block" : "none")" aria-hidden="@(!DisplayCreateReport)">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -19,8 +19,6 @@
                 <button type="button" class="btn-close" @onclick="HandleCancel" disabled="@isSubmitting"></button>
             </div>
             <div class="modal-body">
-                @if (!showUsageLimitDialog && !showValidationModal)
-                {
                     <EditForm Model="@reportRequest" OnValidSubmit="@HandleSubmit">
                         <DataAnnotationsValidator />
                         
@@ -145,11 +143,8 @@
                         </div>
                     }
                 </EditForm>
-                }
             </div>
             <div class="modal-footer">
-                @if (!showUsageLimitDialog && !showValidationModal)
-                {
                     <button type="button" 
                             class="btn btn-outline-secondary" 
                             @onclick="HandleCancel"
@@ -171,13 +166,12 @@
                             <span>Create Request</span>
                         }
                     </button>
-                }
             </div>
         </div>
     </div>
 </div>
 
-@if (IsVisible)
+@if (DisplayCreateReport)
 {
     <div class="modal-backdrop fade show"></div>
 }
@@ -193,6 +187,8 @@
     [Parameter] public bool IsVisible { get; set; }
     [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
     [Parameter] public EventCallback OnReportCreated { get; set; }
+
+    public bool DisplayCreateReport => IsVisible && !showUsageLimitDialog && !showValidationModal;
 
     private bool isSubmitting = false;
     private string errorMessage = string.Empty;
