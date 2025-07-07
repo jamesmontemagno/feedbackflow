@@ -8,6 +8,7 @@
 @using SharedDump.Models.Reddit
 @using SharedDump.Models.HackerNews
 @using SharedDump.Models.Account
+@using SharedDump.Utils
 @using FeedbackWebApp.Components.Feedback
 @using FeedbackWebApp.Components.Feedback.Forms
 @using FeedbackWebApp.Components.ContentFeed.Forms
@@ -250,7 +251,7 @@
         catch (Exception ex)
         {
             // Check if this is a usage limit error
-            if (TryParseUsageLimitError(ex.Message, out var limitError))
+            if (UsageLimitErrorHelper.TryParseUsageLimitError(ex.Message, out var limitError))
             {
                 usageLimitError = limitError;
                 showUsageLimitDialog = true;
@@ -271,24 +272,5 @@
         showUsageLimitDialog = false;
         usageLimitError = null;
         StateHasChanged();
-    }
-
-    private bool TryParseUsageLimitError(string errorMessage, out UsageLimitError? limitError)
-    {
-        limitError = null;
-        try
-        {
-            // Try to parse the error message as JSON
-            if (errorMessage.Contains("USAGE_LIMIT_EXCEEDED") || errorMessage.Contains("ErrorCode"))
-            {
-                limitError = System.Text.Json.JsonSerializer.Deserialize<UsageLimitError>(errorMessage);
-                return limitError != null && limitError.ErrorCode == "USAGE_LIMIT_EXCEEDED";
-            }
-        }
-        catch
-        {
-            // Not a JSON error, continue with normal error handling
-        }
-        return false;
     }
 }

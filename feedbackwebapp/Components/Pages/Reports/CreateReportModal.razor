@@ -3,6 +3,8 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using System.ComponentModel.DataAnnotations
 @using SharedDump.Services
+@using SharedDump.Models
+@using SharedDump.Utils
 @inject IReportRequestService ReportRequestService
 
 <div class="modal fade @(IsVisible ? "show" : "")" tabindex="-1" style="display: @(IsVisible ? "block" : "none")" aria-hidden="@(!IsVisible)">
@@ -175,6 +177,11 @@
 
 <ValidationErrorModal @ref="validationModal" IsVisible="showValidationModal" IsVisibleChanged="OnValidationModalVisibilityChanged" />
 
+<UsageLimitDialog 
+    UsageError="@usageLimitError" 
+    IsVisible="@showUsageLimitDialog" 
+    OnClose="@CloseUsageLimitDialog" />
+
 @code {
     [Parameter] public bool IsVisible { get; set; }
     [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
@@ -186,6 +193,8 @@
     private Dictionary<string, FieldValidationState> fieldValidationStates = new();
     private ValidationErrorModal validationModal = null!;
     private bool showValidationModal = false;
+    private bool showUsageLimitDialog = false;
+    private UsageLimitError? usageLimitError;
     
     // Debouncing for real-time validation
     private readonly Dictionary<string, CancellationTokenSource> _validationCancellationTokens = new();
@@ -494,11 +503,20 @@
         }
         catch (Exception ex)
         {
-            await validationModal.Show(
-                "Error", 
-                $"Error creating report request: {ex.Message}",
-                new List<string>()
-            );
+            // Check if this is a usage limit error
+            if (UsageLimitErrorHelper.TryParseUsageLimitError(ex.Message, out var limitError))
+            {
+                usageLimitError = limitError;
+                showUsageLimitDialog = true;
+            }
+            else
+            {
+                await validationModal.Show(
+                    "Error", 
+                    $"Error creating report request: {ex.Message}",
+                    new List<string>()
+                );
+            }
         }
         finally
         {
@@ -534,6 +552,13 @@
     {
         showValidationModal = isVisible;
         return Task.CompletedTask;
+    }
+
+    private void CloseUsageLimitDialog()
+    {
+        showUsageLimitDialog = false;
+        usageLimitError = null;
+        StateHasChanged();
     }
 
     private static string GenerateRequestId(ReportRequestModel request)

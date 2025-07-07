@@ -2,7 +2,6 @@
 @using FeedbackWebApp.Services
 @using FeedbackWebApp.Services.Authentication
 @using SharedDump.Models.Reports
-@using SharedDump.Models.Account
 @inject NavigationManager NavigationManager
 @inject IAuthenticationService AuthService
 @inject IReportRequestService ReportRequestService
@@ -157,11 +156,6 @@
                    IsVisibleChanged="OnCreateModalVisibilityChanged" 
                    OnReportCreated="OnReportCreated" />
 
-<UsageLimitDialog 
-    UsageError="@usageLimitError" 
-    IsVisible="@showUsageLimitDialog" 
-    OnClose="@CloseUsageLimitDialog" />
-
 @code {
     private bool isAuthenticated = false;
     private bool isLoading = true;
@@ -170,8 +164,6 @@
     private IEnumerable<UserReportRequestModel>? reportRequests;
     private readonly HashSet<string> deletingRequests = new();
     private bool showCreateModal = false;
-    private bool showUsageLimitDialog = false;
-    private UsageLimitError? usageLimitError;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -202,16 +194,7 @@
         }
         catch (Exception ex)
         {
-            // Check if this is a usage limit error
-            if (TryParseUsageLimitError(ex.Message, out var limitError))
-            {
-                usageLimitError = limitError;
-                showUsageLimitDialog = true;
-            }
-            else
-            {
-                errorMessage = $"Failed to load report requests: {ex.Message}";
-            }
+            errorMessage = $"Failed to load report requests: {ex.Message}";
             reportRequests = Enumerable.Empty<UserReportRequestModel>();
         }
         finally
@@ -247,16 +230,7 @@
         }
         catch (Exception ex)
         {
-            // Check if this is a usage limit error
-            if (TryParseUsageLimitError(ex.Message, out var limitError))
-            {
-                usageLimitError = limitError;
-                showUsageLimitDialog = true;
-            }
-            else
-            {
-                errorMessage = $"Failed to delete report request: {ex.Message}";
-            }
+            errorMessage = $"Failed to delete report request: {ex.Message}";
         }
         finally
         {
@@ -305,31 +279,5 @@
         successMessage = "Report request created successfully! Reports are generated every Monday morning.";
         await LoadReportRequests();
         StateHasChanged();
-    }
-
-    private void CloseUsageLimitDialog()
-    {
-        showUsageLimitDialog = false;
-        usageLimitError = null;
-        StateHasChanged();
-    }
-
-    private bool TryParseUsageLimitError(string errorMessage, out UsageLimitError? limitError)
-    {
-        limitError = null;
-        try
-        {
-            // Try to parse the error message as JSON
-            if (errorMessage.Contains("USAGE_LIMIT_EXCEEDED") || errorMessage.Contains("ErrorCode"))
-            {
-                limitError = System.Text.Json.JsonSerializer.Deserialize<UsageLimitError>(errorMessage);
-                return limitError != null && limitError.ErrorCode == "USAGE_LIMIT_EXCEEDED";
-            }
-        }
-        catch
-        {
-            // Not a JSON error, continue with normal error handling
-        }
-        return false;
     }
 }

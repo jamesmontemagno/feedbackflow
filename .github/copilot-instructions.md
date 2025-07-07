@@ -240,25 +240,25 @@ catch (Exception ex)
 ```
 
 ### Usage Limit Error Pattern
+Use the shared `UsageLimitErrorHelper.TryParseUsageLimitError()` method for consistent error handling:
 ```csharp
-private bool TryParseUsageLimitError(string errorMessage, out UsageLimitError? limitError)
+catch (Exception ex)
 {
-    limitError = null;
-    try
+    // Check if this is a usage limit error
+    if (UsageLimitErrorHelper.TryParseUsageLimitError(ex.Message, out var limitError))
     {
-        if (errorMessage.Contains("USAGE_LIMIT_EXCEEDED") || errorMessage.Contains("ErrorCode"))
-        {
-            limitError = System.Text.Json.JsonSerializer.Deserialize<UsageLimitError>(errorMessage);
-            return limitError != null && limitError.ErrorCode == "USAGE_LIMIT_EXCEEDED";
-        }
+        usageLimitError = limitError;
+        showUsageLimitDialog = true;
     }
-    catch
+    else
     {
-        // Not a JSON error, continue with normal error handling
+        // Handle regular errors
+        error = $"An error occurred: {ex.Message}";
     }
-    return false;
 }
 ```
+
+Add required using directive: `@using SharedDump.Utils`
 
 ### Service Registration Pattern
 Services are registered conditionally based on `UseMocks` configuration:
