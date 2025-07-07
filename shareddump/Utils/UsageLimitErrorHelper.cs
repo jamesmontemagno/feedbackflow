@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text.Json;
-using SharedDump.Models;
+using SharedDump.Models.Account;
 
 namespace SharedDump.Utils;
 
@@ -10,9 +10,9 @@ public static class UsageLimitErrorHelper
     /// Tries to parse an error message as a usage limit exceeded JSON response
     /// </summary>
     /// <param name="errorMessage">The error message to parse</param>
-    /// <param name="limitError">The parsed UsageLimitError if successful</param>
+    /// <param name="limitError">The parsed UsageValidationResult if successful</param>
     /// <returns>True if the error is a usage limit error, false otherwise</returns>
-    public static bool TryParseUsageLimitError(string errorMessage, out UsageLimitError? limitError)
+    public static bool TryParseUsageLimitError(string errorMessage, out UsageValidationResult? limitError)
     {
         limitError = null;
         
@@ -24,7 +24,7 @@ public static class UsageLimitErrorHelper
             // Try to parse the error message as JSON
             if (errorMessage.Contains("USAGE_LIMIT_EXCEEDED") || errorMessage.Contains("ErrorCode"))
             {
-                limitError = JsonSerializer.Deserialize<UsageLimitError>(errorMessage);
+                limitError = JsonSerializer.Deserialize<UsageValidationResult>(errorMessage);
                 return limitError != null && limitError.ErrorCode == "USAGE_LIMIT_EXCEEDED";
             }
         }
@@ -41,9 +41,9 @@ public static class UsageLimitErrorHelper
     /// </summary>
     /// <param name="errorMessage">The error message to parse</param>
     /// <param name="statusCode">The HTTP status code (optional)</param>
-    /// <param name="limitError">The parsed UsageLimitError if successful</param>
+    /// <param name="limitError">The parsed UsageValidationResult if successful</param>
     /// <returns>True if the error is a usage limit error, false otherwise</returns>
-    public static bool TryParseUsageLimitError(string errorMessage, HttpStatusCode? statusCode, out UsageLimitError? limitError)
+    public static bool TryParseUsageLimitError(string errorMessage, HttpStatusCode? statusCode, out UsageValidationResult? limitError)
     {
         limitError = null;
         
@@ -56,7 +56,7 @@ public static class UsageLimitErrorHelper
             try
             {
                 // For 429 responses, the error message should be the JSON body
-                limitError = JsonSerializer.Deserialize<UsageLimitError>(errorMessage);
+                limitError = JsonSerializer.Deserialize<UsageValidationResult>(errorMessage);
                 return limitError != null && limitError.ErrorCode == "USAGE_LIMIT_EXCEEDED";
             }
             catch

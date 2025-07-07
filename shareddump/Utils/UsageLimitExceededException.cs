@@ -1,4 +1,4 @@
-using SharedDump.Models;
+using SharedDump.Models.Account;
 
 namespace SharedDump.Utils;
 
@@ -7,15 +7,15 @@ namespace SharedDump.Utils;
 /// </summary>
 public class UsageLimitExceededException : Exception
 {
-    public UsageLimitError LimitError { get; }
+    public UsageValidationResult LimitError { get; }
 
-    public UsageLimitExceededException(UsageLimitError limitError) 
+    public UsageLimitExceededException(UsageValidationResult limitError) 
         : base($"Usage limit exceeded: {limitError.Message}")
     {
         LimitError = limitError;
     }
 
-    public UsageLimitExceededException(UsageLimitError limitError, Exception innerException) 
+    public UsageLimitExceededException(UsageValidationResult limitError, Exception innerException) 
         : base($"Usage limit exceeded: {limitError.Message}", innerException)
     {
         LimitError = limitError;

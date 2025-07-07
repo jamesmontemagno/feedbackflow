@@ -150,9 +150,9 @@ public class UserAccountService : IUserAccountService
             CurrentUsage = GetCurrentUsage(user, usageType),
             Limit = GetLimitForUsageType(limits, usageType),
             CurrentTier = user.Tier,
-            ResetDate = user.LastResetDate.AddDays(30),
+            ResetDate = usageType == UsageType.ReportCreated ? null : user.LastResetDate.AddDays(30),
             ErrorMessage = withinLimit ? null : $"Usage limit exceeded for {usageType}",
-            UpgradeUrl = user.Tier == AccountTier.Free ? "/upgrade" : null
+            UpgradeUrl = "/account-settings"
         };
     }
 

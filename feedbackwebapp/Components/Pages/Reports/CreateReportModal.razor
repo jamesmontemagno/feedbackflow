@@ -4,6 +4,7 @@
 @using System.ComponentModel.DataAnnotations
 @using SharedDump.Services
 @using SharedDump.Models
+@using SharedDump.Models.Account
 @using SharedDump.Utils
 @inject IReportRequestService ReportRequestService
 
@@ -194,7 +195,7 @@
     private ValidationErrorModal validationModal = null!;
     private bool showValidationModal = false;
     private bool showUsageLimitDialog = false;
-    private UsageLimitError? usageLimitError;
+    private UsageValidationResult? usageLimitError;
     
     // Debouncing for real-time validation
     private readonly Dictionary<string, CancellationTokenSource> _validationCancellationTokens = new();

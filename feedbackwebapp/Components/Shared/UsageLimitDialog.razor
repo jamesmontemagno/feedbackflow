@@ -1,5 +1,5 @@
 @namespace FeedbackWebApp.Components.Shared
-@using SharedDump.Models
+@using SharedDump.Models.Account
 @inject NavigationManager NavigationManager
 
 @if (IsVisible && UsageError != null)
@@ -56,22 +56,25 @@
                         <div class="upgrade-section">
                             <h6 class="fw-bold mb-3">What's Next?</h6>
                             <div class="upgrade-options">
-                                <div class="upgrade-option mb-3">
-                                    <div class="d-flex align-items-start">
-                                        <i class="bi bi-clock me-2 mt-1 text-info"></i>
-                                        <div>
-                                            <strong>Wait for Reset</strong>
-                                            @if (UsageError.ResetDate.HasValue)
-                                            {
-                                                <p class="mb-0 text-muted small">Your usage will reset @GetFormattedResetDate() and you can continue using this feature.</p>
-                                            }
-                                            else
-                                            {
-                                                <p class="mb-0 text-muted small">Your usage will reset at the next billing cycle.</p>
-                                            }
+                                @if (UsageError.ResetDate.HasValue)
+                                {
+                                    <div class="upgrade-option mb-3">
+                                        <div class="d-flex align-items-start">
+                                            <i class="bi bi-clock me-2 mt-1 text-info"></i>
+                                            <div>
+                                                <strong>Wait for Reset</strong>
+                                                @if (UsageError.ResetDate.HasValue)
+                                                {
+                                                    <p class="mb-0 text-muted small">Your usage will reset @GetFormattedResetDate() and you can continue using this feature.</p>
+                                                }
+                                                else
+                                                {
+                                                    <p class="mb-0 text-muted small">Your usage will reset at the next billing cycle.</p>
+                                                }
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                }
                                 @if (!string.IsNullOrEmpty(UsageError.UpgradeUrl))
                                 {
                                     <div class="upgrade-option">
@@ -109,7 +112,7 @@
 
 @code {
     [Parameter] public bool IsVisible { get; set; }
-    [Parameter] public UsageLimitError? UsageError { get; set; }
+    [Parameter] public UsageValidationResult? UsageError { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
 
     private void NavigateToUpgrade()
