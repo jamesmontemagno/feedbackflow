@@ -19,18 +19,20 @@
                 <button type="button" class="btn-close" @onclick="HandleCancel" disabled="@isSubmitting"></button>
             </div>
             <div class="modal-body">
-                <EditForm Model="@reportRequest" OnValidSubmit="@HandleSubmit">
-                    <DataAnnotationsValidator />
-                    
-                    <div class="mb-3">
-                        <label class="form-label" for="source-type">Source Type</label>
-                        <select id="source-type" class="form-select" @bind="reportRequest.Type" disabled="@isSubmitting">
-                            <option value="">Select source type</option>
-                            <option value="reddit">Reddit</option>
-                            <option value="github">GitHub</option>
-                        </select>
-                        <ValidationMessage For="@(() => reportRequest.Type)" />
-                    </div>
+                @if (!showUsageLimitDialog && !showValidationModal)
+                {
+                    <EditForm Model="@reportRequest" OnValidSubmit="@HandleSubmit">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="mb-3">
+                            <label class="form-label" for="source-type">Source Type</label>
+                            <select id="source-type" class="form-select" @bind="reportRequest.Type" disabled="@isSubmitting">
+                                <option value="">Select source type</option>
+                                <option value="reddit">Reddit</option>
+                                <option value="github">GitHub</option>
+                            </select>
+                            <ValidationMessage For="@(() => reportRequest.Type)" />
+                        </div>
 
                     @if (reportRequest.Type == "reddit")
                     {
@@ -143,29 +145,33 @@
                         </div>
                     }
                 </EditForm>
+                }
             </div>
             <div class="modal-footer">
-                <button type="button" 
-                        class="btn btn-outline-secondary" 
-                        @onclick="HandleCancel"
-                        disabled="@isSubmitting">
-                    Cancel
-                </button>
-                <button type="button" 
-                        class="btn btn-primary" 
-                        @onclick="HandleSubmit"
-                        disabled="@(isSubmitting || !IsFormValid())">
-                    @if (isSubmitting)
-                    {
-                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        <span>Creating...</span>
-                    }
-                    else
-                    {
-                        <i class="bi bi-plus-lg me-2"></i>
-                        <span>Create Request</span>
-                    }
-                </button>
+                @if (!showUsageLimitDialog && !showValidationModal)
+                {
+                    <button type="button" 
+                            class="btn btn-outline-secondary" 
+                            @onclick="HandleCancel"
+                            disabled="@isSubmitting">
+                        Cancel
+                    </button>
+                    <button type="button" 
+                            class="btn btn-primary" 
+                            @onclick="HandleSubmit"
+                            disabled="@(isSubmitting || !IsFormValid())">
+                        @if (isSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            <span>Creating...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-plus-lg me-2"></i>
+                            <span>Create Request</span>
+                        }
+                    </button>
+                }
             </div>
         </div>
     </div>
@@ -558,6 +564,7 @@
     private Task OnValidationModalVisibilityChanged(bool isVisible)
     {
         showValidationModal = isVisible;
+        StateHasChanged();
         return Task.CompletedTask;
     }
 
