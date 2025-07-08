@@ -38,8 +38,6 @@ public class ReportServiceProvider : IReportServiceProvider
 
 public interface IReportService
 {
-    Task<IEnumerable<ReportModel>> ListReportsAsync();
-    Task<IEnumerable<ReportModel>> ListReportsAsync(string? source = null, string? subsource = null);
     Task<ReportModel?> GetReportAsync(string id);
 }
 
@@ -71,24 +69,6 @@ public class MockReportService : IReportService
         }
     };
 
-    public Task<IEnumerable<ReportModel>> ListReportsAsync()
-    {
-        return ListReportsAsync(null, null);
-    }
-
-    public Task<IEnumerable<ReportModel>> ListReportsAsync(string? source = null, string? subsource = null)
-    {
-        var reports = _mockReports.AsEnumerable();
-        
-        if (!string.IsNullOrEmpty(source))
-            reports = reports.Where(r => r.Source == source);
-            
-        if (!string.IsNullOrEmpty(subsource))
-            reports = reports.Where(r => r.SubSource == subsource);
-
-        return Task.FromResult(reports);
-    }
-
     public Task<ReportModel?> GetReportAsync(string id)
     {
         if (!Guid.TryParse(id, out var guidId))
@@ -101,7 +81,6 @@ public class MockReportService : IReportService
 
 public class ReportService : IReportService
 {
-    private const string ReportsListCacheKeyPrefix = "reports_list_";
     private const string ReportCacheKeyPrefix = "report_";
     private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(4); // Cache for 4 hours since reports don't change
 
@@ -115,50 +94,6 @@ public class ReportService : IReportService
         _httpClient = httpClientFactory.CreateClient("DefaultClient");
         _configuration = configuration;
         _memoryCache = memoryCache;
-    }
-
-    public async Task<IEnumerable<ReportModel>> ListReportsAsync()
-    {
-        return await ListReportsAsync(null, null);
-    }
-
-    public async Task<IEnumerable<ReportModel>> ListReportsAsync(string? source = null, string? subsource = null)
-    {
-        // Create cache key based on parameters
-        var cacheKey = $"{ReportsListCacheKeyPrefix}{source ?? "null"}_{subsource ?? "null"}";
-        // Check cache first
-        if (_memoryCache.TryGetValue(cacheKey, out IEnumerable<ReportModel>? cachedReports) && cachedReports != null)
-        {
-            return cachedReports;
-        }
-
-        var baseUrl = _configuration["FeedbackApi:BaseUrl"]
-            ?? throw new InvalidOperationException("API base URL not configured");
-        var code = _configuration["FeedbackApi:FunctionsKey"]
-            ?? throw new InvalidOperationException("List reports code not configured");
-
-        var queryParams = new List<string> { $"code={Uri.EscapeDataString(code)}" };
-        if (!string.IsNullOrEmpty(source))
-            queryParams.Add($"source={Uri.EscapeDataString(source)}");
-        if (!string.IsNullOrEmpty(subsource))
-            queryParams.Add($"subsource={Uri.EscapeDataString(subsource)}");
-
-        var url = $"{baseUrl}/api/ListReports?{string.Join("&", queryParams)}";
-        var response = await _httpClient.GetAsync(url);
-        response.EnsureSuccessStatusCode();
-
-        var content = await response.Content.ReadAsStringAsync();
-        var result = JsonSerializer.Deserialize<ReportsResponse>(content, _jsonOptions);
-        var reports = (result?.Reports ?? Enumerable.Empty<ReportModel>())
-            .OrderByDescending(r => r.GeneratedAt);
-
-        // Cache the result
-        var cacheOptions = new MemoryCacheEntryOptions()
-            .SetAbsoluteExpiration(CacheDuration)
-            .SetPriority(CacheItemPriority.Normal);
-        _memoryCache.Set(cacheKey, reports, cacheOptions);
-
-        return reports;
     }
 
     public async Task<ReportModel?> GetReportAsync(string id)
@@ -198,10 +133,5 @@ public class ReportService : IReportService
         }
 
         return report;
-    }
-
-    private class ReportsResponse
-    {
-        public ReportModel[] Reports { get; set; } = Array.Empty<ReportModel>();
     }
 }

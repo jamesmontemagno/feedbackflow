@@ -1,4 +1,5 @@
 using FeedbackWebApp.Services.Interfaces;
+using FeedbackWebApp.Services.Authentication;
 using SharedDump.Models.YouTube;
 using SharedDump.Utils;
 using System.Text.Json;
@@ -14,10 +15,11 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         IHttpClientFactory http, 
         IConfiguration configuration,
         UserSettingsService userSettings,
+        IAuthenticationHeaderService authHeaderService,
         string videoId,
         string playlistId,
         FeedbackStatusUpdate? onStatusUpdate = null) 
-        : base(http, configuration, userSettings, onStatusUpdate)
+        : base(http, configuration, userSettings, authHeaderService, onStatusUpdate)
     {
         _videoId = videoId;
         _playlistId = playlistId;
@@ -57,8 +59,7 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         }
 
         var getFeedbackUrl = $"{BaseUrl}/api/GetYouTubeFeedback?{string.Join("&", queryParams)}";
-        var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
-        feedbackResponse.EnsureSuccessStatusCode();
+        var feedbackResponse = await SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod.Get, getFeedbackUrl);
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
         
         // Parse the YouTube response

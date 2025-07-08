@@ -7,6 +7,8 @@
 @using SharedDump.Models.YouTube
 @using SharedDump.Models.Reddit
 @using SharedDump.Models.HackerNews
+@using SharedDump.Models.Account
+@using SharedDump.Utils
 @using FeedbackWebApp.Components.Feedback
 @using FeedbackWebApp.Components.Feedback.Forms
 @using FeedbackWebApp.Components.ContentFeed.Forms
@@ -129,6 +131,11 @@
     }
 </div>
 
+<UsageLimitDialog 
+    UsageError="@usageLimitError" 
+    IsVisible="@showUsageLimitDialog" 
+    OnClose="@CloseUsageLimitDialog" />
+
 @code {
     private bool isAuthenticated;
     private bool isLoading;
@@ -140,6 +147,8 @@
     private HackerNewsFeedForm? hackerNewsFeedForm;    private List<YouTubeOutputVideo>? youtubeVideos;
     private List<RedditThreadModel>? redditThreads;
     private List<HackerNewsItem>? hackerNewsItems;
+    private bool showUsageLimitDialog = false;
+    private UsageValidationResult? usageLimitError;
     
     private record SourceOption(string Name, string IconClass, string Value, string Description);
 
@@ -239,13 +248,34 @@
                     break;
             }
         }
+        catch (UsageLimitExceededException ex)
+        {
+            usageLimitError = ex.LimitError;
+            showUsageLimitDialog = true;
+        }
         catch (Exception ex)
         {
-            error = $"Error fetching content: {ex.Message}";
+            // Check if this is a usage limit error from error message
+            if (UsageLimitErrorHelper.TryParseUsageLimitError(ex.Message, out var limitError))
+            {
+                usageLimitError = limitError;
+                showUsageLimitDialog = true;
+            }
+            else
+            {
+                error = $"Error fetching content: {ex.Message}";
+            }
         }
         finally
         {
             isLoading = false;
         }
+    }
+
+    private void CloseUsageLimitDialog()
+    {
+        showUsageLimitDialog = false;
+        usageLimitError = null;
+        StateHasChanged();
     }
 }

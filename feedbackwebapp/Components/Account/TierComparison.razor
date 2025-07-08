@@ -1,0 +1,127 @@
+@namespace FeedbackWebApp.Components.Account
+@using SharedDump.Models.Account
+@using FeedbackWebApp.Services.Account
+
+<div class="tier-comparison">
+    @if (IsLoading)
+    {
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading tiers...</span>
+            </div>
+        </div>
+    }
+    else if (Tiers != null && Tiers.Any())
+    {
+        <div class="tier-grid">
+            @foreach (var tier in Tiers)
+            {
+                <div class="tier-card @(tier.Tier == CurrentTier ? "current-tier" : "")">
+                    <div class="tier-header">
+                        <h5 class="tier-name">@tier.Name</h5>
+                        <div class="tier-price">@tier.Price</div>
+                        @if (tier.Tier == CurrentTier)
+                        {
+                            <div class="current-badge">Current Plan</div>
+                        }
+                    </div>
+                    
+                    <p class="tier-description">@tier.Description</p>
+                    
+                    <div class="tier-limits">
+                        <h6>Limits</h6>
+                        <ul class="limits-list">
+                            <li>
+                                <i class="bi bi-graph-up"></i>
+                                <strong>@tier.Limits.AnalysisLimit</strong> analyses/month
+                                @if (tier.Tier == CurrentTier && UserAccount != null)
+                                {
+                                    <span class="current-usage">(@UserAccount.AnalysesUsed used)</span>
+                                }
+                            </li>
+                            <li>
+                                <i class="bi bi-file-earmark-text"></i>
+                                <strong>@tier.Limits.ReportLimit</strong> active reports
+                                @if (tier.Tier == CurrentTier && UserAccount != null)
+                                {
+                                    <span class="current-usage">(@UserAccount.ActiveReports active)</span>
+                                }
+                            </li>
+                            <li>
+                                <i class="bi bi-search"></i>
+                                <strong>@tier.Limits.FeedQueryLimit</strong> queries/month
+                                @if (tier.Tier == CurrentTier && UserAccount != null)
+                                {
+                                    <span class="current-usage">(@UserAccount.FeedQueriesUsed used)</span>
+                                }
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    @*                    <div class="tier-features">
+                        <h6>Features</h6>
+                        <ul class="features-list">
+                            @foreach (var feature in tier.Features.Take(4))
+                            {
+                                <li>
+                                    <i class="bi bi-check-circle text-success"></i>
+                                    @feature
+                                </li>
+                            }
+                            @if (tier.Features.Length > 4)
+                            {
+                                <li>
+                                    <i class="bi bi-plus-circle text-muted"></i>
+                                    @(tier.Features.Length - 4) more...
+                                </li>
+                            }
+                        </ul>
+                    </div>*@
+                    
+                    <div class="tier-action">
+                        @if (tier.Tier == CurrentTier)
+                        {
+                            <button class="btn btn-outline-primary" disabled>Current Plan</button>
+                        }
+                        else if (tier.Tier > CurrentTier)
+                        {
+                            <button class="btn btn-primary" @onclick="() => UpgradeToTier(tier.Tier)">
+                                Upgrade to @tier.Name
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-outline-secondary" disabled>
+                                Downgrade (Contact Support)
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            @ErrorMessage
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public AccountTier CurrentTier { get; set; } = AccountTier.Free;
+    [Parameter] public UserAccount? UserAccount { get; set; }
+    [Parameter] public TierInfo[]? Tiers { get; set; }
+    [Parameter] public bool IsLoading { get; set; } = false;
+    [Parameter] public string ErrorMessage { get; set; } = "";
+    [Parameter] public EventCallback<AccountTier> OnUpgradeRequest { get; set; }
+
+    private async Task UpgradeToTier(AccountTier tier)
+    {
+        if (OnUpgradeRequest.HasDelegate)
+        {
+            await OnUpgradeRequest.InvokeAsync(tier);
+        }
+    }
+}

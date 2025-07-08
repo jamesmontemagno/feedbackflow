@@ -25,6 +25,28 @@ GET http://localhost:7204/api/GetHackerNewsFeedback?ids=43772311
 ### Search Hacker News Articles
 GET http://localhost:7071/api/SearchHackerNewsArticles?keywords=dotnet,aspnet,blazor
 
+# Sharing Functions APIs
+### Save Shared Analysis (requires authentication)
+POST http://localhost:7071/api/SaveSharedAnalysis
+Content-Type: application/json
+
+{
+    "title": "Sample Analysis",
+    "summary": "This is a summary of the analysis",
+    "fullAnalysis": "This is the full analysis content with detailed findings...",
+    "sourceType": "GitHub",
+    "userInput": "Please analyze the feedback from the repository"
+}
+
+### Get User's Saved Analyses (requires authentication)
+GET http://localhost:7071/api/GetUsersSavedAnalysis
+
+### Delete Shared Analysis (requires authentication)
+DELETE http://localhost:7071/api/DeleteSharedAnalysis/your-analysis-id-here
+
+### Get Shared Analysis (public access)
+GET http://localhost:7071/api/GetSharedAnalysis/your-analysis-id-here
+
 ### Analyze Comments
 POST http://localhost:7071/api/AnalyzeComments
 Content-Type: application/json

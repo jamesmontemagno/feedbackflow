@@ -9,14 +9,17 @@
 @using FeedbackWebApp.Components.Feedback.Results
 @using FeedbackWebApp.Services.Interfaces
 @using FeedbackWebApp.Services.Feedback
+@using FeedbackWebApp.Services.Authentication
 @using FeedbackWebApp.Components.Shared
 @using SharedDump.Models
+@using SharedDump.Models.Account
 @using SharedDump.Models.BlueSkyFeedback
 @using SharedDump.Models.DevBlogs
 @using SharedDump.Models.GitHub
 @using SharedDump.Models.HackerNews
 @using SharedDump.Models.Reddit
 @using SharedDump.Models.YouTube
+@using SharedDump.Utils
 
 @inject IConfiguration Configuration
 @inject FeedbackServiceProvider ServiceProvider
@@ -24,6 +27,7 @@
 @inject NavigationManager NavigationManager
 @inject UserSettingsService UserSettings
 @inject IHistoryService HistoryService
+@inject IAuthenticationService AuthService
 
 <PageTitle>Feedback Analysis - FeedbackFlow</PageTitle>
 
@@ -32,6 +36,11 @@
     OnClose="@CloseNewFeaturesDialog"
     OnGotIt="@MarkNewFeaturesAsSeen" 
     OnRemindLater="@CloseNewFeaturesDialog" />
+
+<UsageLimitDialog 
+    UsageError="@usageLimitError" 
+    IsVisible="@showUsageLimitDialog" 
+    OnClose="@CloseUsageLimitDialog" />
 
 <div class="container">
     @if (!isAuthenticated)
@@ -139,6 +148,8 @@
     private bool isLoading = false;
     private bool isAuthenticated = false;
     private bool showNewFeaturesDialog = false;
+    private bool showUsageLimitDialog = false;
+    private UsageValidationResult? usageLimitError;
     private List<FeedbackSourceData>? feedbackSources;
     private object? currentAdditionalData;
     private FeedbackProcessStatus currentStatus;
@@ -153,6 +164,18 @@
 
         if (success)
         {
+            // Handle post-login registration for OAuth providers (GitHub, Google, etc.)
+            // This ensures users are properly registered in the backend after OAuth login
+            try
+            {
+                await AuthService.HandlePostLoginRegistrationAsync();
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail the authentication flow if registration has issues
+                Console.WriteLine($"Post-login registration warning: {ex.Message}");
+            }
+
             await HandleQueryNav();
             await CheckForNewFeatures();
         }
@@ -195,6 +218,13 @@
     {
         await UserSettings.MarkFeatureAnnouncementShownAsync();
         CloseNewFeaturesDialog();
+    }
+
+    private void CloseUsageLimitDialog()
+    {
+        showUsageLimitDialog = false;
+        usageLimitError = null;
+        StateHasChanged();
     }
 
     private void HandleStatusUpdate(FeedbackProcessStatus status, string message)
@@ -314,9 +344,24 @@
                 feedbackSources = sources;
             }
         }
+        catch (UsageLimitExceededException ex)
+        {
+            usageLimitError = ex.LimitError;
+            showUsageLimitDialog = true;
+            StateHasChanged();
+        }
         catch (Exception ex)
         {
-            error = $"An error occurred: {ex.Message}";
+            // Check if this is a usage limit error from error message
+            if (UsageLimitErrorHelper.TryParseUsageLimitError(ex.Message, out var limitError))
+            {
+                usageLimitError = limitError;
+                showUsageLimitDialog = true;
+            }
+            else
+            {
+                error = $"An error occurred: {ex.Message}";
+            }
             StateHasChanged();
         }
         finally
@@ -334,6 +379,14 @@
         var uri = new Uri(NavigationManager.Uri);
         var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
 
+        // Store auth status for later processing in OnAfterRenderAsync
+        var authStatus = query["auth"];
+        if (authStatus == "failed" || authStatus == "error")
+        {
+            // Store the auth error status to handle in OnAfterRenderAsync
+            await Task.CompletedTask; // Placeholder - will handle in OnAfterRenderAsync
+        }
+
         initialSource = query["source"]?.ToLower();
         initialId = query["id"];
         var url = query["url"];
@@ -346,6 +399,28 @@
         }
 
         await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Handle authentication error logging after render
+            var uri = new Uri(NavigationManager.Uri);
+            var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+            var authStatus = query["auth"];
+            
+            if (authStatus == "failed")
+            {
+                // Show authentication failed message
+                await JSRuntime.InvokeVoidAsync("console.log", "Authentication failed");
+            }
+            else if (authStatus == "error")
+            {
+                // Show authentication error message
+                await JSRuntime.InvokeVoidAsync("console.log", "Authentication error occurred");
+            }
+        }
     }    
     
     private async Task HandleQueryNav()

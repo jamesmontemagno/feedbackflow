@@ -8,6 +8,11 @@ using SharedDump.Models.HackerNews;
 using SharedDump.Models.YouTube;
 using SharedDump.Models.Reddit;
 using SharedDump.Services.Interfaces;
+using FeedbackFunctions.Middleware;
+using FeedbackFunctions.Extensions;
+using FeedbackFunctions.Attributes;
+using FeedbackFunctions.Services.Account;
+using SharedDump.Models.Account;
 
 namespace FeedbackFunctions;
 
@@ -25,6 +30,8 @@ public class ContentFeedFunctions
     private readonly IHackerNewsService _hnService;
     private readonly IYouTubeService _ytService;
     private readonly IRedditService _redditService;
+    private readonly AuthenticationMiddleware _authMiddleware;
+    private readonly IUserAccountService _userAccountService;
     private static readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(10);
 
     /// <summary>
@@ -34,16 +41,21 @@ public class ContentFeedFunctions
     /// <param name="hackerNewsService">HackerNews service for story operations</param>
     /// <param name="youtubeService">YouTube service for video operations</param>
     /// <param name="redditService">Reddit service for thread operations</param>
+    /// <param name="authMiddleware">Authentication middleware for request validation</param>
     public ContentFeedFunctions(
         ILogger<ContentFeedFunctions> logger,
         IHackerNewsService hackerNewsService,
         IYouTubeService youtubeService,
-        IRedditService redditService)
+        IRedditService redditService,
+        AuthenticationMiddleware authMiddleware,
+        IUserAccountService userAccountService)
     {
         _logger = logger;
         _hnService = hackerNewsService;
         _ytService = youtubeService;
         _redditService = redditService;
+        _authMiddleware = authMiddleware;
+        _userAccountService = userAccountService;
     }
 
     /// <summary>
@@ -62,10 +74,21 @@ public class ContentFeedFunctions
     /// GET /api/GetRecentYouTubeVideos?days=7&amp;query=dotnet&amp;maxResults=20
     /// </remarks>
     [Function("GetRecentYouTubeVideos")]
+    [Authorize]
     public async Task<HttpResponseData> GetRecentYouTubeVideos(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
         _logger.LogInformation("Processing recent YouTube videos request");
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
+
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.FeedQuery, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
 
         try
         {
@@ -93,6 +116,10 @@ public class ContentFeedFunctions
             
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(videos);
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, $"Topic: {topic ?? tag}, Videos: {videos.Count}");
+            
             return response;
         }
         catch (Exception ex)
@@ -105,10 +132,21 @@ public class ContentFeedFunctions
     }
 
     [Function("GetTrendingRedditThreads")]
+    [Authorize]
     public async Task<HttpResponseData> GetTrendingRedditThreads(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
         _logger.LogInformation("Processing trending Reddit threads request");
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
+
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.FeedQuery, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
 
         try
         {
@@ -140,6 +178,10 @@ public class ContentFeedFunctions
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(threads);
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, $"Subreddit: {subreddit}, Threads: {threads.Count}");
+            
             return response;
         }
         catch (Exception ex)
@@ -151,14 +193,23 @@ public class ContentFeedFunctions
         }
     }
 
-#if !DEBUG
-
     [Function("SearchHackerNewsArticles")]
+    [Authorize]
     public async Task<HttpResponseData> SearchHackerNewsArticles(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req,
-        [BlobInput("hackernews-cache/all.json")] string? cachedBlob)
+        [BlobInput("hackernews-cache/all.json", Connection = "ProductionStorage")] string? cachedBlob)
     {
         _logger.LogInformation("Processing Hacker News search request");
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
+
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.FeedQuery, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
 
         try
         {
@@ -178,6 +229,10 @@ public class ContentFeedFunctions
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(matchingItems);
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, $"Articles: {matchingItems.Count}");
+            
             return response;
         }
         catch (Exception ex)
@@ -190,7 +245,7 @@ public class ContentFeedFunctions
     }
 
     [Function("CacheHackerNewsArticlesHourly")]
-    [BlobOutput("hackernews-cache/all.json")]
+    [BlobOutput("hackernews-cache/all.json", Connection = "ProductionStorage")]
     public async Task<string> CacheHackerNewsArticlesHourly(
         [TimerTrigger("0 0 */2 * * *")] TimerInfo timerInfo)
     {
@@ -209,5 +264,4 @@ public class ContentFeedFunctions
             return string.Empty;
         }
     }
-#endif
 }

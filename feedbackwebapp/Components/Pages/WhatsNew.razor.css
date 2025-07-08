@@ -1,28 +1,26 @@
+/* Let global app.css handle dark mode theming - removed hardcoded styles */
+
 .whats-new-content {
     margin: 2rem auto;
 }
 
-/* Card styles with explicit dark mode handling */
+/* Card styles - using global variables */
 .card {
-    background-color: var(--bs-body-bg) !important;
-    color: var(--bs-body-color) !important;
-    border: 1px solid var(--bs-border-color);
-    border-radius: 1rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    background-color: var(--card-bg) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
     transition: transform 0.2s ease-in-out;
 }
 
-/* Explicit dark mode overrides */
-[data-theme='dark'] .card,
-[data-theme='dark'] .card.bg-body {
-    background-color: #212529 !important; /* Nearly black to match other cards */
-    color: var(--bs-light) !important;
-    border-color: #495057 !important; /* Darker border */
-}
+
+/* Removed duplicate - using explicit dark mode styles at top of file */
 
 .card:hover {
     transform: translateY(-2px);
 }
+
 
 .card-body {
     padding: 2rem;
@@ -32,19 +30,14 @@
     line-height: 1.6;
 }
 
-/* Removed custom page header styling in favor of shared history-title style */
-
-.markdown-content h1 {
-    display: none; /* Hide the H1 since we have a page header */
-}
-
+/* Markdown content styles - using global variables */
 .markdown-content h2 {
     font-size: 1.75rem;
     margin-top: 2rem;
     margin-bottom: 1.5rem;
     padding-bottom: 0.5rem;
-    border-bottom: 2px solid var(--bs-border-color);
-    color: var(--bs-heading-color);
+    border-bottom: 2px solid var(--border-color);
+    color: var(--text-primary);
     font-weight: 600;
 }
 
@@ -52,8 +45,38 @@
     font-size: 1.35rem;
     margin-top: 1.5rem;
     margin-bottom: 1rem;
-    color: var(--bs-heading-color);
+    color: var(--text-primary);
     font-weight: 500;
+}
+
+.markdown-content p {
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.markdown-content code {
+    background-color: var(--code-bg);
+    color: var(--code-color);
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+}
+
+.markdown-content a {
+    color: var(--link-color);
+    text-decoration: none;
+    transition: color 0.2s ease-in-out;
+}
+
+.markdown-content a:hover {
+    color: var(--link-hover-color);
+    text-decoration: underline;
+}
+
+
+/* Markdown list styles - using global variables */
+.markdown-content h1 {
+    display: none; /* Hide the H1 since we have a page header */
 }
 
 .markdown-content ul {
@@ -66,56 +89,14 @@
     margin-bottom: 0.75rem;
     padding-left: 1.5rem;
     position: relative;
+    color: var(--text-primary);
 }
 
 .markdown-content li:before {
     content: "•";
     position: absolute;
     left: 0;
-    color: var(--bs-primary);
-}
-
-.markdown-content p {
-    margin-bottom: 1rem;
-    color: var(--bs-body-color);
-}
-
-.markdown-content code {
-    background-color: var(--bs-secondary-bg);
-    padding: 0.2rem 0.4rem;
-    border-radius: 0.25rem;
-    font-size: 0.9em;
-}
-
-/* Custom dark mode styles for Markdown content elements */
-[data-theme='dark'] .markdown-content h2 {
-    border-bottom-color: #495057;
-    color: #e9ecef;
-}
-
-[data-theme='dark'] .markdown-content h3 {
-    color: #e9ecef;
-}
-
-[data-theme='dark'] .markdown-content p,
-[data-theme='dark'] .markdown-content li {
-    color: #ced4da;
-}
-
-[data-theme='dark'] .markdown-content code {
-    background-color: #343a40;
-    color: #f8f9fa;
-}
-
-.markdown-content a {
-    color: var(--bs-primary);
-    text-decoration: none;
-    transition: color 0.2s ease-in-out;
-}
-
-.markdown-content a:hover {
-    color: var(--bs-primary-hover);
-    text-decoration: underline;
+    color: var(--primary-color);
 }
 
 ::deep .spinner-border {
@@ -146,36 +127,21 @@
     font-size: 1.2rem;
 }
 
-/* Dark theme card specific styles */
-.dark-theme-card {
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-}
 
-[data-theme='dark'] .dark-theme-card {
-    background-color: #212529 !important; /* Nearly black to match other cards */
-    color: var(--bs-light) !important;
-    border-color: #495057 !important; /* Darker border */
-}
+/* Removed duplicate - using explicit dark mode styles at top of file */
 
-[data-theme='dark'] .dark-theme-card .card-body {
-    color: var(--bs-light) !important;
-}
-
-[data-theme='dark'] .dark-theme-card .text-muted {
-    color: #adb5bd !important; /* Lighter gray for better readability */
-    opacity: 1;
-}
-
-/* Loading state */
+/* Loading state - using global variables */
 .loading-state {
     text-align: center;
-    color: var(--bs-body-color);
+    color: var(--text-primary);
     animation: fadeIn 0.6s ease-in-out;
-    background-color: var(--bs-body-bg) !important;
+    background-color: var(--card-bg) !important;
     border-radius: var(--border-radius);
     margin: 1rem 0;
     min-height: 250px;
 }
+
+/* Removed - using global theming */
 
 .loading-state .card-body {
     display: flex;

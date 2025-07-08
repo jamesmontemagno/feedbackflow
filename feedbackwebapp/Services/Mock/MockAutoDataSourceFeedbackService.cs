@@ -1,5 +1,6 @@
 using FeedbackWebApp.Services.Feedback;
 using FeedbackWebApp.Services.Interfaces;
+using FeedbackWebApp.Services.Authentication;
 using SharedDump.Services.Mock;
 
 namespace FeedbackWebApp.Services.Mock;
@@ -10,8 +11,9 @@ public class MockAutoDataSourceFeedbackService : FeedbackService, IAutoDataSourc
         IHttpClientFactory http,
         IConfiguration configuration,
         UserSettingsService userSettings,
+        IAuthenticationHeaderService authenticationHeaderService,
         FeedbackStatusUpdate? onStatusUpdate = null)
-        : base(http, configuration, userSettings, onStatusUpdate)
+        : base(http, configuration, userSettings, authenticationHeaderService, onStatusUpdate)
     {
     }
 

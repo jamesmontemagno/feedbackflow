@@ -1,0 +1,171 @@
+.usage-limit-content {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.usage-details {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    padding: 1rem;
+}
+
+.usage-stat {
+    text-align: center;
+    padding: 0.5rem;
+}
+
+.usage-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.usage-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.upgrade-section {
+    background: var(--hover-bg);
+    border-radius: var(--border-radius-sm);
+    padding: 1rem;
+}
+
+.upgrade-option {
+    padding: 0.75rem;
+    border-radius: var(--border-radius-sm);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+}
+
+.upgrade-option:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--card-shadow);
+}
+
+.modal-header.bg-warning {
+    background: linear-gradient(135deg, var(--warning-color), rgba(var(--warning-color-rgb), 0.9)) !important;
+    border-bottom: none;
+    color: var(--text-primary) !important;
+}
+
+/* Close button styling for dark theme */
+.modal-header .btn-close {
+    filter: var(--bs-btn-close-white-filter, invert(1) grayscale(100%) brightness(200%));
+}
+
+[data-theme="dark"] .modal-header .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* Ensure warning alert works in dark theme */
+.alert-warning {
+    background-color: rgba(var(--warning-color-rgb), 0.1) !important;
+    border-color: rgba(var(--warning-color-rgb), 0.3) !important;
+    color: var(--text-primary) !important;
+}
+
+.alert-warning .bi-info-circle-fill {
+    color: var(--warning-color) !important;
+}
+
+/* Text color overrides for dark theme */
+.text-warning {
+    color: var(--warning-color) !important;
+}
+
+.text-muted {
+    color: var(--text-secondary) !important;
+}
+
+.text-info {
+    color: var(--info-color) !important;
+}
+
+.text-success {
+    color: var(--success-color) !important;
+}
+
+.modal-content {
+    border: none;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    background: var(--card-bg);
+    color: var(--text-primary);
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border-color);
+    background: var(--card-bg);
+}
+
+/* Button styling for dark theme */
+.btn-secondary {
+    background-color: var(--btn-secondary-bg, #6c757d) !important;
+    border-color: var(--btn-secondary-border, #6c757d) !important;
+    color: var(--btn-secondary-color, #fff) !important;
+}
+
+.btn-secondary:hover {
+    background-color: var(--btn-secondary-hover-bg, #5a6268) !important;
+    border-color: var(--btn-secondary-hover-border, #545b62) !important;
+}
+
+.btn-success {
+    background-color: var(--success-color) !important;
+    border-color: var(--success-color) !important;
+    color: #fff !important;
+}
+
+.btn-success:hover {
+    background-color: rgba(var(--success-color-rgb), 0.8) !important;
+    border-color: rgba(var(--success-color-rgb), 0.8) !important;
+}
+
+/* Animation for the modal */
+.modal.fade.show {
+    animation: slideInDown 0.3s ease-out;
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .modal-dialog {
+        margin: 1rem;
+    }
+    
+    .usage-limit-content {
+        max-height: 60vh;
+    }
+    
+    .usage-details .row {
+        text-align: center;
+    }
+    
+    .usage-stat {
+        margin-bottom: 1rem;
+    }
+    
+    .upgrade-option {
+        padding: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    /* Dark theme text colors for mobile */
+    .text-muted {
+        color: var(--text-secondary) !important;
+    }
+}

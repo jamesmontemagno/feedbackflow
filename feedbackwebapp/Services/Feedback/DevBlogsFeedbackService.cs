@@ -1,5 +1,6 @@
 using SharedDump.Models.DevBlogs;
 using FeedbackWebApp.Services.Interfaces;
+using FeedbackWebApp.Services.Authentication;
 using System.Text.Json;
 
 namespace FeedbackWebApp.Services.Feedback;
@@ -8,8 +9,8 @@ public class DevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackService
 {
     public string ArticleUrl { get; set; } = string.Empty;
 
-    public DevBlogsFeedbackService(IHttpClientFactory http, IConfiguration configuration, UserSettingsService userSettings, string articleUrl, FeedbackStatusUpdate? onStatusUpdate = null)
-        : base(http, configuration, userSettings, onStatusUpdate)
+    public DevBlogsFeedbackService(IHttpClientFactory http, IConfiguration configuration, UserSettingsService userSettings, IAuthenticationHeaderService authHeaderService, string articleUrl, FeedbackStatusUpdate? onStatusUpdate = null)
+        : base(http, configuration, userSettings, authHeaderService, onStatusUpdate)
     {
         ArticleUrl = articleUrl;
     }
@@ -22,7 +23,7 @@ public class DevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackService
 
         var devBlogsCode = Configuration["FeedbackApi:FunctionsKey"] ?? throw new InvalidOperationException("DevBlogs feedback API code is required in configuration (FeedbackApi:FunctionsKey)");
         var url = $"{BaseUrl}/api/GetDevBlogsFeedback?articleUrl={Uri.EscapeDataString(ArticleUrl)}&code={Uri.EscapeDataString(devBlogsCode)}";
-        var response = await Http.GetAsync(url);
+        var response = await SendAuthenticatedRequestAsync(HttpMethod.Get, url);
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync();

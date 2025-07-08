@@ -26,11 +26,6 @@ using SharedDump.Models;
 ///         var historyItems = await _historyService.GetHistoryAsync();
 ///         // Process history items
 ///     }
-///     
-///     public async Task SaveAnalysisAsync(AnalysisHistoryItem item)
-///     {
-///         await _historyService.SaveToHistoryAsync(item);
-///     }
 /// }
 /// </code>
 /// </example>
@@ -41,13 +36,6 @@ public interface IHistoryService
     /// </summary>
     /// <returns>A list of analysis history items</returns>
     Task<List<AnalysisHistoryItem>> GetHistoryAsync();
-    
-    /// <summary>
-    /// Saves an analysis result to history
-    /// </summary>
-    /// <param name="item">The analysis history item to save</param>
-    /// <returns>A task representing the asynchronous operation</returns>
-    Task SaveToHistoryAsync(AnalysisHistoryItem item);
     
     /// <summary>
     /// Deletes a specific history item by ID

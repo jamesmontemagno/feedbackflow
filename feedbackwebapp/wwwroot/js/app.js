@@ -125,6 +125,121 @@ function downloadFile(dataUrl, fileName) {
 
 window.downloadFile = downloadFile;
 
+// Easy Auth utility function - simplified for server-side authentication
+async function fetchAuthMe() {
+    try {
+        console.log('fetchAuthMe: Starting token refresh and auth check');
+        
+        // First, attempt to refresh tokens to ensure we have valid access tokens
+        try {
+            const refreshResponse = await fetch('/.auth/refresh', {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            });
+            console.log('fetchAuthMe: Token refresh response status:', refreshResponse.status);
+        } catch (refreshError) {
+            console.warn('fetchAuthMe: Token refresh failed, continuing with auth check:', refreshError);
+        }
+        
+        // Now fetch the auth information
+        console.log('fetchAuthMe: Starting request to /.auth/me');
+        
+        const response = await fetch('/.auth/me', {
+            method: 'GET',
+            credentials: 'include', // Include cookies for authentication
+            headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            }
+        });
+        
+        console.log('fetchAuthMe: Response status:', response.status);
+        
+        if (!response.ok) {
+            console.warn('fetchAuthMe: Auth check failed with status:', response.status);
+            return null;
+        }
+        
+        const text = await response.text();
+        console.log('fetchAuthMe: Response text:', text);
+        return text;
+    } catch (error) {
+        console.error('fetchAuthMe: Error fetching auth info:', error);
+        return null;
+    }
+}
+
+window.fetchAuthMe = fetchAuthMe;
+
+// Enhanced debug function for detailed auth info
+async function fetchAuthMeDetailed() {
+    try {
+        const startTime = performance.now();
+        
+        // First, attempt to refresh tokens
+        let refreshInfo = null;
+        try {
+            const refreshStartTime = performance.now();
+            const refreshResponse = await fetch('/.auth/refresh', {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            });
+            const refreshEndTime = performance.now();
+            
+            refreshInfo = {
+                status: refreshResponse.status,
+                statusText: refreshResponse.statusText,
+                timing: refreshEndTime - refreshStartTime,
+                headers: Object.fromEntries(refreshResponse.headers.entries())
+            };
+        } catch (refreshError) {
+            refreshInfo = {
+                error: refreshError.message,
+                stack: refreshError.stack
+            };
+        }
+        
+        const response = await fetch('/.auth/me', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            }
+        });
+        
+        const endTime = performance.now();
+        const text = await response.text();
+        
+        return {
+            success: true,
+            status: response.status,
+            statusText: response.statusText,
+            headers: Object.fromEntries(response.headers.entries()),
+            body: text,
+            timing: endTime - startTime,
+            cookies: document.cookie,
+            url: response.url,
+            refreshInfo: refreshInfo
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message,
+            stack: error.stack,
+            cookies: document.cookie
+        };
+    }
+}
+
+window.fetchAuthMeDetailed = fetchAuthMeDetailed;
+
 document.addEventListener('DOMContentLoaded', async () => {
     // Add the toast container to the DOM if it doesn't exist
     if (!document.getElementById('toast-container')) {

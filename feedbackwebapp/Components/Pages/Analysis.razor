@@ -1,0 +1,262 @@
+@page "/analysis/{Id}"
+@page "/shared/{Id}"
+
+@inject FeedbackWebApp.Services.ISharedHistoryServiceProvider SharedHistoryServiceProvider
+@inject FeedbackWebApp.Services.IToastService ToastService
+@inject IJSRuntime JSRuntime
+@inject ILogger<Analysis> Logger
+@using SharedDump.Models
+@using Markdig
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Logging
+@using SharedDump.Utils
+@using FeedbackWebApp.Utils
+@using FeedbackWebApp.Services
+@using FeedbackWebApp.Components.Shared
+@namespace FeedbackWebApp.Components.Pages
+
+<PageTitle>Analysis</PageTitle>
+
+<CopyFailedDialog 
+    IsVisible="@showCopyFailedDialog"
+    Content="@failedCopyContent"
+    ContentType="@failedCopyContentType"
+    OnClose="@CloseCopyFailedDialog" />
+
+<div class="container-lg px-2 px-md-3 py-2 py-md-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 mb-md-4">
+        <h1 class="feedbackflow-title mb-0 fs-4 fs-md-3">
+            <i class="bi bi-file-text me-2" aria-hidden="true"></i>
+            Analysis
+        </h1>        
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-state">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading shared analysis...</p>
+        </div>
+    }
+    else if (loadError)
+    {
+        <div class="error-state">
+            <i class="bi bi-exclamation-circle"></i>
+            <p>@errorMessage</p>
+            <a href="/" class="btn btn-primary">Return to Home</a>
+        </div>
+    }
+    else if (analysis == null)
+    {
+        <div class="empty-state">
+            <i class="bi bi-search"></i>
+            <p>The requested analysis could not be found.</p>
+            <a href="/" class="btn btn-primary">Return to Home</a>
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="analysis-header mb-3">
+                    <div class="header-info">
+                        <div class="service-icons-group">
+                            @{
+                                var sourceTypes = analysis.SourceType.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                                foreach (var sourceType in sourceTypes)
+                                {
+                                    <i class="bi @GetServiceIcon(sourceType) service-icon"></i>
+                                }
+                            }
+                            <span class="source-badge">@analysis.SourceType</span>
+                        </div>
+                        <small class="text-muted created-date">@analysis.CreatedDate.ToLocalTime().ToString("g")</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary copy-btn" title="Copy Analysis" @onclick="CopyToClipboard">
+                        <i class="bi bi-clipboard"></i>
+                        <span class="btn-text">Copy</span>
+                    </button>
+                </div>
+                              
+                @if (!string.IsNullOrWhiteSpace(analysis.UserInput))
+                {
+                    <div class="user-input mb-3">
+                        <strong>Input:</strong>
+                        @{
+                            var urls = analysis.UserInput.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                            if (urls.All(url => UrlParsing.IsValidUrl(url)))
+                            {
+                                <div class="url-list">
+                                    @foreach (var url in urls)
+                                    {
+                                        <div class="url-item">                                            
+                                            @{
+                                                var isYouTube = UrlParsing.IsYouTubeUrl(url);
+                                                var videoId = UrlParsing.ExtractVideoId(url);
+                                                if (isYouTube && !string.IsNullOrWhiteSpace(videoId))
+                                                {
+                                                    <div class="youtube-thumbnail-container">
+                                                        <a href="@url" target="_blank" rel="noopener noreferrer" class="d-block">
+                                                            <img src="@FeedbackWebApp.Utils.UrlHelpers.GetYouTubeThumbnailUrl(videoId)" alt="YouTube Video Thumbnail" class="rounded shadow-sm" />
+                                                        </a>
+                                                    </div>
+                                                }
+                                            }
+                                            <div class="url-link">
+                                                <a href="@url" target="_blank" rel="noopener noreferrer">@url</a>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                @analysis.UserInput
+                            }
+                        }
+                    </div>
+                }
+
+                <div class="analysis-content">
+                    <div class="content-wrapper">
+                        <div class="markdown-content">
+                            @((MarkupString)ConvertMarkdownToHtml(
+                                !string.IsNullOrEmpty(analysis.FullAnalysis) 
+                                    ? analysis.FullAnalysis 
+                                    : analysis.Summary))
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    private AnalysisData? analysis;
+    private bool isLoading = true;
+    private bool loadError = false;
+    private string errorMessage = "An error occurred while loading the analysis.";
+    
+    // Copy failed dialog state
+    private bool showCopyFailedDialog = false;
+    private string failedCopyContent = string.Empty;
+    private string failedCopyContentType = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAnalysisAsync();
+    }
+
+    private async Task LoadAnalysisAsync()
+    {
+        try
+        {
+            if(analysis is not null)
+                return;
+
+            isLoading = true;
+            loadError = false;
+            
+            if (string.IsNullOrWhiteSpace(Id))
+            {
+                loadError = true;
+                errorMessage = "No analysis ID provided.";
+                Logger.LogWarning("Attempted to load shared analysis with empty ID");
+                return;
+            }
+
+            analysis = await SharedHistoryServiceProvider.GetService().GetSharedAnalysisAsync(Id);
+            
+            if (analysis == null)
+            {
+                loadError = true;
+                errorMessage = "The requested analysis could not be found or has been removed.";
+                Logger.LogWarning("No analysis found for ID: {Id}", Id);
+            }
+            else
+            {
+                Logger.LogInformation("Successfully loaded analysis {Id}", Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            loadError = true;
+            errorMessage = "An error occurred while loading the analysis.";
+            Logger.LogError(ex, "Error loading shared analysis {Id}", Id);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }    
+    
+    private string ConvertMarkdownToHtml(string markdown)
+    {
+        return SharedDump.Utils.MarkdownRenderer.ConvertToHtml(markdown);
+    }    
+    
+    private string GetServiceIcon(string sourceType)
+    {
+        return ServiceIconHelper.GetServiceIcon(sourceType);
+    }
+
+    private async Task CopyToClipboard()
+    {
+        string textToCopy = "";
+        
+        if (!string.IsNullOrEmpty(analysis.FullAnalysis))
+        {
+            textToCopy = analysis.FullAnalysis;
+        }
+        else
+        {
+            await ToastService.ShowErrorAsync("Nothing to copy - no analysis or summary available.");
+            return;
+        }
+
+        try
+        {
+            var success = await JSRuntime.InvokeAsync<bool>("copyToClipboard", textToCopy);
+            if (success)
+            {
+                await ToastService.ShowSuccessAsync("Analysis copied to clipboard", 3000);
+            }
+            else
+            {
+                // Show dialog instead of error toast
+                ShowCopyFailedDialog(textToCopy, "Analysis");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to copy analysis to clipboard");
+            // Show dialog instead of error toast
+            ShowCopyFailedDialog(textToCopy, "Analysis");
+        }
+    }
+    
+    private void ShowCopyFailedDialog(string content, string contentType)
+    {
+        failedCopyContent = content;
+        failedCopyContentType = contentType;
+        showCopyFailedDialog = true;
+        StateHasChanged();
+    }
+
+    private void CloseCopyFailedDialog()
+    {
+        showCopyFailedDialog = false;
+        failedCopyContent = string.Empty;
+        failedCopyContentType = string.Empty;
+        StateHasChanged();
+    }
+    
+    // IsValidUrl and GetYouTubeThumbnailUrl methods have been moved to UrlParsing class
+}

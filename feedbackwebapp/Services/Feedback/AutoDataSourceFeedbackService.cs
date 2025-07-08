@@ -1,4 +1,5 @@
 using FeedbackWebApp.Services.Interfaces;
+using FeedbackWebApp.Services.Authentication;
 using SharedDump.Utils;
 
 namespace FeedbackWebApp.Services.Feedback;
@@ -12,10 +13,11 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         IHttpClientFactory http,
         IConfiguration configuration,
         UserSettingsService userSettings,
+        IAuthenticationHeaderService authenticationHeaderService,
         FeedbackServiceProvider serviceProvider,
         string[] urls,
         FeedbackStatusUpdate? onStatusUpdate = null)
-        : base(http, configuration, userSettings, onStatusUpdate)
+        : base(http, configuration, userSettings, authenticationHeaderService, onStatusUpdate)
     {
         _urls = urls;
         _serviceProvider = serviceProvider;

@@ -1,4 +1,6 @@
-/* filepath: c:\GitHub\feedbackflow\feedbackwebapp\Components\Feedback\Results\AnalysisResults.razor.css */
+/* Analysis Results Component Styles */
+
+/* Markdown content styling */
 .markdown-body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
     font-size: 16px;
@@ -34,12 +36,82 @@
     box-shadow: 0 0 0 0.25rem rgba(var(--bg-secondary-rgb, 255, 255, 255), 0.2);
 }
 
-/* Card header action button consistency */
+/* Analysis Actions Layout */
+.analysis-actions {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.analysis-actions .btn {
+    white-space: nowrap;
+}
+
+/* Card header improvements */
 .card-header .action-btn {
     font-size: 0.875rem;
     padding: 0.375rem 0.75rem;
     min-width: 80px;
     border-radius: var(--border-radius-sm);
+}
+
+/* Mobile-first responsive design */
+@media (max-width: 768px) {
+    .analysis-actions {
+        gap: 0.5rem !important;
+    }
+    
+    .analysis-actions .btn {
+        flex: 1;
+        min-width: 0;
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .analysis-actions .btn .bi {
+        margin-right: 0.25rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .analysis-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem !important;
+    }
+    
+    .analysis-actions .btn,
+    .analysis-actions .dropdown {
+        width: 100%;
+    }
+    
+    .analysis-actions .dropdown .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Action button improvements */
+.action-btn {
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.action-btn:disabled {
+    transform: none;
+    box-shadow: none;
+    opacity: 0.6;
+}
+
+.action-btn .spinner-border-sm {
+    width: 0.875rem;
+    height: 0.875rem;
 }
 
 /* Markdown specific styles */
@@ -176,5 +248,137 @@
     100% {
         transform: scale(1);
         opacity: 0.8;
+    }
+}
+
+/* Save & Share Dropdown Styling */
+.save-share-menu {
+    min-width: 280px;
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(var(--border-color-rgb), 0.2);
+    background-color: var(--card-bg) !important;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.save-share-menu .dropdown-header {
+    color: var(--text-primary) !important;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.75rem;
+    padding: 0.75rem 1rem 0.5rem 1rem;
+}
+
+.save-share-menu .dropdown-item {
+    color: var(--text-primary) !important;
+    padding: 0.75rem 1rem;
+    transition: all 0.2s ease;
+    border: none;
+    background: transparent;
+}
+
+.save-share-menu .dropdown-item:hover {
+    background-color: rgba(var(--primary-color-rgb), 0.1) !important;
+    color: var(--primary-color) !important;
+}
+
+.save-share-menu .dropdown-item:focus {
+    background-color: rgba(var(--primary-color-rgb), 0.1) !important;
+    color: var(--primary-color) !important;
+}
+
+.save-share-menu .dropdown-item small {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    opacity: 0.8;
+}
+
+.save-share-menu .dropdown-item i {
+    width: 1.25rem;
+    text-align: center;
+}
+
+.save-share-menu .dropdown-item-text {
+    padding: 0.75rem 1rem;
+    color: var(--text-secondary) !important;
+    font-style: italic;
+}
+
+.save-share-menu .dropdown-divider {
+    border-color: rgba(var(--border-color-rgb), 0.2);
+}
+
+/* Button states */
+.btn-saved {
+    background-color: rgba(var(--success-color-rgb), 0.1) !important;
+    border-color: var(--success-color) !important;
+    color: var(--success-color) !important;
+}
+
+.btn-saved:hover,
+.btn-saved:focus {
+    background-color: rgba(var(--success-color-rgb), 0.2) !important;
+    border-color: var(--success-color) !important;
+    color: var(--success-color) !important;
+}
+
+/* Dark theme support */
+[data-theme="dark"] .save-share-menu {
+    background-color: var(--card-bg) !important;
+    border-color: rgba(var(--border-color-rgb), 0.3);
+}
+
+[data-theme="dark"] .save-share-menu .dropdown-header {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .save-share-menu .dropdown-item {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .save-share-menu .dropdown-item:hover {
+    background-color: rgba(var(--primary-color-rgb), 0.15) !important;
+    color: var(--primary-color) !important;
+}
+
+[data-theme="dark"] .save-share-menu .dropdown-item:focus {
+    background-color: rgba(var(--primary-color-rgb), 0.15) !important;
+    color: var(--primary-color) !important;
+}
+
+[data-theme="dark"] .save-share-menu .dropdown-item-text {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .save-share-menu .dropdown-divider {
+    border-color: rgba(var(--border-color-rgb), 0.3);
+}
+
+[data-theme="dark"] .btn-saved {
+    background-color: rgba(var(--success-color-rgb), 0.15) !important;
+    border-color: var(--success-color) !important;
+    color: var(--success-color) !important;
+}
+
+[data-theme="dark"] .btn-saved:hover,
+[data-theme="dark"] .btn-saved:focus {
+    background-color: rgba(var(--success-color-rgb), 0.25) !important;
+    border-color: var(--success-color) !important;
+    color: var(--success-color) !important;
+}
+
+/* Responsive design */
+@media (max-width: 576px) {
+    .save-share-menu {
+        min-width: 240px;
+    }
+    
+    .save-share-menu .dropdown-item {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .save-share-menu .dropdown-header {
+        padding: 0.5rem 0.75rem 0.25rem 0.75rem;
     }
 }

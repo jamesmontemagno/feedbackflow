@@ -1,5 +1,6 @@
 using FeedbackWebApp.Services.Feedback;
 using FeedbackWebApp.Services.Interfaces;
+using FeedbackWebApp.Services.Authentication;
 using SharedDump.Models.HackerNews;
 using SharedDump.Models.YouTube;
 using SharedDump.Services.Mock;
@@ -10,8 +11,9 @@ public class MockYouTubeFeedbackService(
     IHttpClientFactory http,
     IConfiguration configuration,
     UserSettingsService userSettings,
+    IAuthenticationHeaderService authenticationHeaderService,
     FeedbackStatusUpdate? onStatusUpdate = null)
-    : FeedbackService(http, configuration, userSettings, onStatusUpdate), IYouTubeFeedbackService
+    : FeedbackService(http, configuration, userSettings, authenticationHeaderService, onStatusUpdate), IYouTubeFeedbackService
 {    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock YouTube comments...");
@@ -57,8 +59,9 @@ public class MockHackerNewsFeedbackService(
     IHttpClientFactory http,
     IConfiguration configuration,
     UserSettingsService userSettings,
+    IAuthenticationHeaderService authenticationHeaderService,
     FeedbackStatusUpdate? onStatusUpdate = null)
-    : FeedbackService(http, configuration, userSettings, onStatusUpdate), IHackerNewsFeedbackService
+    : FeedbackService(http, configuration, userSettings, authenticationHeaderService, onStatusUpdate), IHackerNewsFeedbackService
 {
     public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {

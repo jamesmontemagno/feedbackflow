@@ -8,6 +8,7 @@ using SharedDump.AI;
 using FeedbackFunctions.Services;
 using FeedbackFunctions;
 using System.Reflection;
+using FeedbackFunctions.Services.Reports;
 
 namespace FeedbackFlow.Tests;
 

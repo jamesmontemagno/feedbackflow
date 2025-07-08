@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using SharedDump.Models.Reports;
+using FeedbackWebApp.Services.Authentication;
 
 namespace FeedbackWebApp.Services;
 
@@ -12,6 +13,7 @@ public record RequestResult
     public bool IsBadRequest => StatusCode == HttpStatusCode.BadRequest;
     public bool IsServerError => StatusCode >= HttpStatusCode.InternalServerError;
     public bool IsNotFound => StatusCode == HttpStatusCode.NotFound;
+    public bool IsConflict => StatusCode == HttpStatusCode.Conflict;
     
     public static RequestResult CreateSuccess() => new() { Success = true };
     
@@ -21,36 +23,42 @@ public record RequestResult
 
 public interface IReportRequestService
 {
-    Task<IEnumerable<ReportModel>> FilterReportsAsync(IEnumerable<object> userRequests);
+    Task<IEnumerable<ReportModel>> GetUserReportsAsync();
     Task<RequestResult> AddReportRequestAsync(object request);
     Task<RequestResult> RemoveReportRequestAsync(string id);
+    Task<IEnumerable<UserReportRequestModel>> GetUserReportRequestsAsync();
 }
 
 public class ReportRequestService : IReportRequestService
 {
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
+    private readonly IAuthenticationHeaderService _authHeaderService;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-    public ReportRequestService(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+    public ReportRequestService(IHttpClientFactory httpClientFactory, IConfiguration configuration, IAuthenticationHeaderService authHeaderService)
     {
         _httpClient = httpClientFactory.CreateClient();
         _configuration = configuration;
+        _authHeaderService = authHeaderService;
     }
 
-    public async Task<IEnumerable<ReportModel>> FilterReportsAsync(IEnumerable<object> userRequests)
+    public async Task<IEnumerable<ReportModel>> GetUserReportsAsync()
     {
         try
         {
             var baseUrl = _configuration["FeedbackApi:BaseUrl"] 
                 ?? throw new InvalidOperationException("API base URL not configured");
             var code = _configuration["FeedbackApi:FunctionsKey"]
-                ?? throw new InvalidOperationException("Filter reports code not configured");
+                ?? throw new InvalidOperationException("Get user reports code not configured");
 
-            var json = JsonSerializer.Serialize(userRequests, _jsonOptions);
-            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            // Create the request message to add authentication headers
+            var requestMessage = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/GetUserReports?code={Uri.EscapeDataString(code)}");
 
-            var response = await _httpClient.PostAsync($"{baseUrl}/api/FilterReports?code={Uri.EscapeDataString(code)}", content);
+            // Add authentication headers
+            await _authHeaderService.AddAuthenticationHeadersAsync(requestMessage);
+
+            var response = await _httpClient.SendAsync(requestMessage);
             response.EnsureSuccessStatusCode();
 
             var responseContent = await response.Content.ReadAsStringAsync();
@@ -61,7 +69,7 @@ public class ReportRequestService : IReportRequestService
         catch (Exception ex)
         {
             // Log error but don't throw - return empty collection to gracefully handle errors
-            Console.WriteLine($"Error filtering reports: {ex.Message}");
+            Console.WriteLine($"Error getting user reports: {ex.Message}");
             return Enumerable.Empty<ReportModel>();
         }
     }
@@ -78,7 +86,16 @@ public class ReportRequestService : IReportRequestService
             var json = JsonSerializer.Serialize(request, _jsonOptions);
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync($"{baseUrl}/api/AddReportRequest?code={Uri.EscapeDataString(code)}", content);
+            // Create the request message to add authentication headers
+            var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/AddUserReportRequest?code={Uri.EscapeDataString(code)}")
+            {
+                Content = content
+            };
+
+            // Add authentication headers
+            await _authHeaderService.AddAuthenticationHeadersAsync(requestMessage);
+
+            var response = await _httpClient.SendAsync(requestMessage);
             
             if (response.IsSuccessStatusCode)
             {
@@ -108,7 +125,13 @@ public class ReportRequestService : IReportRequestService
             var code = _configuration["FeedbackApi:FunctionsKey"]
                 ?? throw new InvalidOperationException("Remove report request code not configured");
 
-            var response = await _httpClient.DeleteAsync($"{baseUrl}/api/reportrequest/{Uri.EscapeDataString(id)}?code={Uri.EscapeDataString(code)}");
+            // Create the request message to add authentication headers
+            var requestMessage = new HttpRequestMessage(HttpMethod.Delete, $"{baseUrl}/api/userreportrequest/{Uri.EscapeDataString(id)}?code={Uri.EscapeDataString(code)}");
+
+            // Add authentication headers
+            await _authHeaderService.AddAuthenticationHeadersAsync(requestMessage);
+
+            var response = await _httpClient.SendAsync(requestMessage);
             
             if (response.IsSuccessStatusCode)
             {
@@ -129,8 +152,44 @@ public class ReportRequestService : IReportRequestService
         }
     }
 
+    public async Task<IEnumerable<UserReportRequestModel>> GetUserReportRequestsAsync()
+    {
+        try
+        {
+            var baseUrl = _configuration["FeedbackApi:BaseUrl"] 
+                ?? throw new InvalidOperationException("API base URL not configured");
+            var code = _configuration["FeedbackApi:FunctionsKey"]
+                ?? throw new InvalidOperationException("Get user report requests code not configured");
+
+            // Create the request message to add authentication headers
+            var requestMessage = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/ListUserReportRequests?code={Uri.EscapeDataString(code)}");
+
+            // Add authentication headers
+            await _authHeaderService.AddAuthenticationHeadersAsync(requestMessage);
+
+            var response = await _httpClient.SendAsync(requestMessage);
+            response.EnsureSuccessStatusCode();
+
+            var responseContent = await response.Content.ReadAsStringAsync();
+            var requestsResponse = JsonSerializer.Deserialize<UserReportRequestsResponse>(responseContent, _jsonOptions);
+
+            return requestsResponse?.Requests ?? Enumerable.Empty<UserReportRequestModel>();
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't throw - return empty collection to gracefully handle errors
+            Console.WriteLine($"Error getting user report requests: {ex.Message}");
+            return Enumerable.Empty<UserReportRequestModel>();
+        }
+    }
+
     private class ReportsFilterResponse
     {
         public ReportModel[] Reports { get; set; } = Array.Empty<ReportModel>();
+    }
+
+    private class UserReportRequestsResponse
+    {
+        public UserReportRequestModel[] Requests { get; set; } = Array.Empty<UserReportRequestModel>();
     }
 }

@@ -3,6 +3,13 @@
     z-index: 11000;
 }
 
+/* Mobile navigation adjustment for bottom positioned toasts */
+@media (max-width: 991.98px) {
+    .toast-container[id*="bottom"] {
+        bottom: calc(5rem + env(safe-area-inset-bottom, 0)) !important;
+    }
+}
+
 /* Toast styling */
 .toast {
     min-width: 280px;
@@ -16,37 +23,85 @@
     overflow: hidden;
 }
 
+/* Toast Header Styling */
+.toast-header {
+    border-bottom: none;
+    color: white;
+    font-weight: 600;
+    padding: 0.75rem 1rem;
+    background: inherit;
+}
+
+.toast-header strong {
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+}
+
+/* Close button styling */
+.toast-header .btn-close,
+.toast-header .btn-close-white {
+    filter: invert(1) grayscale(100%) brightness(200%);
+    opacity: 0.8;
+    transition: opacity 0.3s ease, transform 0.2s ease;
+    font-size: 0.8rem;
+    width: 0.8em;
+    height: 0.8em;
+}
+
+.toast-header .btn-close:hover,
+.toast-header .btn-close-white:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
 .toast-body {
     border-radius: var(--border-radius);
-    padding: 1rem 1.25rem;
+    padding: 0.75rem 1rem;
     color: white;
     font-weight: 500;
 }
 
-/* Toast colors with better contrast and pastel purple theme */
+/* Toast colors with better contrast and header/body styling */
+.toast-header.bg-success,
 .toast-body.bg-success {
-    background-color: var(--success-color) !important;
-    color: #1e3932;
+    background: linear-gradient(135deg, var(--success-color), #20c997) !important;
+    color: #ffffff !important;
 }
 
+.toast-header.bg-warning,
 .toast-body.bg-warning {
-    background-color: var(--warning-color) !important;
-    color: #5a4215;
+    background: linear-gradient(135deg, var(--warning-color), #fd7e14) !important;
+    color: #212529 !important; /* Dark text for better contrast on yellow */
 }
 
+/* Dark close button for warning toasts */
+.toast-header.bg-warning .btn-close,
+.toast-header.bg-warning .btn-close-white {
+    filter: none;
+    opacity: 0.7;
+}
+
+.toast-header.bg-warning .btn-close:hover,
+.toast-header.bg-warning .btn-close-white:hover {
+    opacity: 1;
+}
+
+.toast-header.bg-danger,
 .toast-body.bg-danger {
-    background-color: var(--danger-color) !important;
-    color: #721c24;
+    background: linear-gradient(135deg, var(--danger-color), #e74c3c) !important;
+    color: #ffffff !important;
 }
 
+.toast-header.bg-info,
 .toast-body.bg-info {
-    background-color: var(--info-color) !important;
-    color: #0c5460;
+    background: linear-gradient(135deg, var(--info-color), #3498db) !important;
+    color: #ffffff !important;
 }
 
+.toast-header.bg-primary,
 .toast-body.bg-primary {
-    background-color: var(--primary-color) !important;
-    color: #ffffff;
+    background: var(--primary-gradient) !important;
+    color: #ffffff !important;
 }
 
 /* Toast animation */

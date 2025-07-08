@@ -15,35 +15,6 @@ public class HistoryService : IHistoryService, IAsyncDisposable
         _jsRuntime = jsRuntime;
     }
 
-    private async Task MigrateFromLocalStorageAsync()
-    {
-        try
-        {
-            // Get the data from localStorage
-            var json = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", StorageKey);
-            if (string.IsNullOrEmpty(json))
-                return;
-
-            // Parse the JSON into our model
-            var items = System.Text.Json.JsonSerializer.Deserialize<List<AnalysisHistoryItem>>(json);
-            if (items == null || !items.Any())
-                return;
-
-            // Save each item to IndexedDB
-            foreach (var item in items)
-            {
-                await _module!.InvokeVoidAsync("saveHistoryItem", item);
-            }
-
-            // Clear the localStorage
-            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", StorageKey);
-        }
-        catch (Exception)
-        {
-            // If anything fails during migration, we'll just continue without migrating
-        }
-    }
-
     private async Task InitializeAsync()
     {
         if (_initialized)
@@ -53,8 +24,6 @@ public class HistoryService : IHistoryService, IAsyncDisposable
         {
             _initialized = true;
             _module = await _jsRuntime.InvokeAsync<IJSObjectReference>("import", "./js/indexedDb.js");
-            // After initializing IndexedDB, try to migrate any existing data
-            await MigrateFromLocalStorageAsync();
         }
         catch (InvalidOperationException)
         {
@@ -76,21 +45,6 @@ public class HistoryService : IHistoryService, IAsyncDisposable
         catch (InvalidOperationException)
         {
             return new List<AnalysisHistoryItem>();
-        }
-    }
-
-    public async Task SaveToHistoryAsync(AnalysisHistoryItem item)
-    {
-        await InitializeAsync();
-        if (_module == null) return;
-
-        try
-        {
-            await _module.InvokeVoidAsync("saveHistoryItem", item);
-        }
-        catch (InvalidOperationException)
-        {
-            // We're probably in prerendering
         }
     }
 
@@ -127,17 +81,9 @@ public class HistoryService : IHistoryService, IAsyncDisposable
 
     public async Task UpdateHistoryItemAsync(AnalysisHistoryItem item)
     {
-        await InitializeAsync();
-        if (_module == null) return;
-
-        try
-        {
-            await _module.InvokeVoidAsync("updateHistoryItem", item);
-        }
-        catch (InvalidOperationException)
-        {
-            // We're probably in prerendering
-        }
+        // No longer saving to IndexedDB - this is now a no-op
+        // History items are managed through the cloud service only
+        await Task.CompletedTask;
     }
 
     public async Task<List<AnalysisHistoryItem>> GetHistoryPagedAsync(int skip, int take, string? searchTerm = null)
