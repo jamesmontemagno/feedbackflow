@@ -2,6 +2,7 @@
 @using FeedbackWebApp.Services.Authentication
 @using SharedDump.Models.Authentication
 @inject IAuthenticationService AuthService
+@inject IAuthTokenRefreshService TokenRefreshService
 @inject NavigationManager Navigation
 
 <div class="user-navigation d-flex align-items-center">
@@ -81,8 +82,9 @@
         // Check authentication status
         await CheckAuthenticationAsync();
         
-        // Subscribe to authentication state changes
+        // Subscribe to authentication state changes from both services
         AuthService.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        TokenRefreshService.AuthenticationStateChanged += OnTokenRefreshStateChanged;
     }
 
     private async Task CheckAuthenticationAsync()
@@ -110,6 +112,14 @@
     }
 
     private void OnAuthenticationStateChanged(object? sender, bool isAuth)
+    {
+        InvokeAsync(async () =>
+        {
+            await CheckAuthenticationAsync();
+        });
+    }
+
+    private void OnTokenRefreshStateChanged(object? sender, bool isAuth)
     {
         InvokeAsync(async () =>
         {
@@ -158,5 +168,6 @@
     public void Dispose()
     {
         AuthService.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        TokenRefreshService.AuthenticationStateChanged -= OnTokenRefreshStateChanged;
     }
 }
