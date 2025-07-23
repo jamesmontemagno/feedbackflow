@@ -30,4 +30,9 @@ public interface IUserAccountService
 
     // Table Management
     Task InitializeTablesAsync();
+
+    /// <summary>
+    /// Returns a dictionary of userId to AccountTier for all users.
+    /// </summary>
+    Task<Dictionary<string, SharedDump.Models.Account.AccountTier>> GetAllUserTiersAsync();
 }

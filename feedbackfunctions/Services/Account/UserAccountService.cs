@@ -51,6 +51,27 @@ public class UserAccountService : IUserAccountService
         await _userAccountsTable.UpsertEntityAsync(entity);
     }
 
+    public async Task<Dictionary<string, SharedDump.Models.Account.AccountTier>> GetAllUserTiersAsync()
+    {
+        var userTiers = new Dictionary<string, SharedDump.Models.Account.AccountTier>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            await foreach (var entity in _userAccountsTable.QueryAsync<UserAccountEntity>())
+            {
+                var userId = entity.PartitionKey;
+                if (!string.IsNullOrWhiteSpace(userId))
+                {
+                    userTiers[userId] = (SharedDump.Models.Account.AccountTier)entity.Tier;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error querying all user tiers");
+        }
+        return userTiers;
+    }
+
     public async Task<int> ResetAllMonthlyUsageAsync()
     {
         var resetCount = 0;

@@ -16,6 +16,9 @@ namespace FeedbackFunctions;
 
 /// <summary>
 /// Request model for saving shared analysis with privacy settings
+
+/// <summary>
+/// Request model for saving shared analysis with privacy settings
 /// </summary>
 public class SaveAnalysisRequest
 {
@@ -50,6 +53,7 @@ public class UpdateVisibilityRequest
 /// </remarks>
 public class SharingFunctions
 {
+    private readonly FeedbackFunctions.Services.Account.IUserAccountService _userAccountService;
     private const string ContainerName = "shared-analyses";
     private const string TableName = "SharedAnalyses";
     private readonly ILogger<SharingFunctions> _logger;
@@ -63,17 +67,22 @@ public class SharingFunctions
     /// <param name="logger">Logger for diagnostic information</param>
     /// <param name="authMiddleware">Authentication middleware for request validation</param>
     /// <param name="configuration">Configuration for connection strings</param>
-    public SharingFunctions(ILogger<SharingFunctions> logger, AuthenticationMiddleware authMiddleware, IConfiguration configuration)
+    public SharingFunctions(
+        ILogger<SharingFunctions> logger,
+        AuthenticationMiddleware authMiddleware,
+        IConfiguration configuration,
+        FeedbackFunctions.Services.Account.IUserAccountService userAccountService)
     {
         _logger = logger;
         _authMiddleware = authMiddleware;
-        
+        _userAccountService = userAccountService;
         // Initialize table client
         var storageConnection = configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
         var tableServiceClient = new TableServiceClient(storageConnection);
         _tableClient = tableServiceClient.GetTableClient(TableName);
         _tableClient.CreateIfNotExists();
     }
+
 
     /// <summary>
     /// Saves an analysis to Azure Blob Storage for sharing
@@ -380,7 +389,7 @@ public class SharingFunctions
     }
 
     /// <summary>
-    /// Timer-triggered function to clean up old shared analyses
+    /// Timer-triggered function to clean up old shared analyses based on account tier retention periods
     /// </summary>
     /// <param name="timerInfo">Timer information</param>
     /// <param name="containerClient">Azure Blob container client injected by the runtime</param>
@@ -391,34 +400,108 @@ public class SharingFunctions
     {
         _logger.LogInformation($"Starting cleanup of old analyses at: {DateTime.UtcNow}");
 
-        var cutoffDate = DateTime.UtcNow.AddDays(-30);
         var deletedBlobCount = 0;
         var deletedTableCount = 0;
+
+        // Fetch all user tiers once for efficiency
+        var userTiers = await _userAccountService.GetAllUserTiersAsync();
+
+        // Helper method to get cutoff date based on account tier
+        DateTime GetCutoffDateForTier(SharedDump.Models.Account.AccountTier tier)
+        {
+            return tier switch
+            {
+                SharedDump.Models.Account.AccountTier.Free => DateTime.UtcNow.AddDays(-30),
+                SharedDump.Models.Account.AccountTier.Pro => DateTime.UtcNow.AddDays(-60),
+                SharedDump.Models.Account.AccountTier.ProPlus => DateTime.UtcNow.AddDays(-90),
+                SharedDump.Models.Account.AccountTier.SuperUser => DateTime.MinValue, // Never delete
+                _ => DateTime.UtcNow.AddDays(-30) // Default to Free tier retention
+            };
+        }
 
         // Clean up old blobs
         await foreach (var blobItem in containerClient.GetBlobsAsync())
         {
+            var id = Path.GetFileNameWithoutExtension(blobItem.Name);
+            
+            // Check table for owner information
+            SharedAnalysisEntity? entity = null;
+            try
+            {
+                await foreach (var e in _tableClient.QueryAsync<SharedAnalysisEntity>(filter: $"RowKey eq '{id}'"))
+                {
+                    entity = e;
+                    break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error querying table for blob cleanup: {Id}", id);
+            }
+
+            var ownerId = entity?.UserId;
+            
+            // If there's no owner, keep the analysis (as per requirements)
+            if (string.IsNullOrWhiteSpace(ownerId))
+            {
+                _logger.LogInformation("Skipping deletion of blob {Id} due to missing owner", id);
+                continue;
+            }
+
+            // Get the user's tier and determine cutoff date
+            var userTier = userTiers.GetValueOrDefault(ownerId, SharedDump.Models.Account.AccountTier.Free);
+            var cutoffDate = GetCutoffDateForTier(userTier);
+            
+            // SuperUser tier has cutoff of DateTime.MinValue, so analyses will never be old enough to delete
             if (blobItem.Properties.LastModified <= cutoffDate)
             {
+                _logger.LogInformation("Deleting blob {Id} for user {UserId} with tier {Tier} (cutoff: {CutoffDate})", 
+                    id, ownerId, userTier, cutoffDate);
+
                 var blobClient = containerClient.GetBlobClient(blobItem.Name);
                 await blobClient.DeleteIfExistsAsync();
 
                 // Remove from cache if present
-                var id = Path.GetFileNameWithoutExtension(blobItem.Name);
                 _sharedAnalysisCache.TryRemove(id, out _);
 
                 deletedBlobCount++;
             }
+            else
+            {
+                _logger.LogDebug("Keeping blob {Id} for user {UserId} with tier {Tier} (last modified: {LastModified}, cutoff: {CutoffDate})", 
+                    id, ownerId, userTier, blobItem.Properties.LastModified, cutoffDate);
+            }
         }
 
         // Clean up old table entries
-        var cutoffDateTime = DateTime.UtcNow.AddDays(-30);
         await foreach (var entity in _tableClient.QueryAsync<SharedAnalysisEntity>())
         {
+            var ownerId = entity.UserId;
+            
+            // If there's no owner, keep the analysis (as per requirements)
+            if (string.IsNullOrWhiteSpace(ownerId))
+            {
+                _logger.LogInformation("Skipping deletion of table entry {Id} due to missing owner", entity.RowKey);
+                continue;
+            }
+
+            // Get the user's tier and determine cutoff date
+            var userTier = userTiers.GetValueOrDefault(ownerId, SharedDump.Models.Account.AccountTier.Free);
+            var cutoffDateTime = GetCutoffDateForTier(userTier);
+            
+            // SuperUser tier has cutoff of DateTime.MinValue, so analyses will never be old enough to delete
             if (entity.CreatedDate <= cutoffDateTime)
             {
+                _logger.LogInformation("Deleting table entry {Id} for user {UserId} with tier {Tier} (cutoff: {CutoffDate})", 
+                    entity.RowKey, ownerId, userTier, cutoffDateTime);
+
                 await _tableClient.DeleteEntityAsync(entity.PartitionKey, entity.RowKey);
                 deletedTableCount++;
+            }
+            else
+            {
+                _logger.LogDebug("Keeping table entry {Id} for user {UserId} with tier {Tier} (created: {CreatedDate}, cutoff: {CutoffDate})", 
+                    entity.RowKey, ownerId, userTier, entity.CreatedDate, cutoffDateTime);
             }
         }
 
