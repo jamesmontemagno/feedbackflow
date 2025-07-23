@@ -179,6 +179,12 @@ public class SharingFunctions
         _logger.LogInformation("Retrieving shared analysis with ID: {Id}", id);
         _logger.LogDebug("Blob input analysisJson is {IsNull}", analysisJson == null ? "null" : "not null");
 
+        if (string.IsNullOrEmpty(analysisJson))
+        {
+            var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+            await notFoundResponse.WriteStringAsync("Shared analysis content not found");
+            return notFoundResponse;
+        }
         // First, check if the analysis exists in table storage to get privacy settings
         SharedAnalysisEntity? analysisEntity = null;
         try
@@ -207,9 +213,14 @@ public class SharingFunctions
         if (analysisEntity == null)
         {
             _logger.LogWarning("Analysis entity not found for ID: {Id}", id);
-            var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
-            await notFoundResponse.WriteStringAsync("Shared analysis not found");
-            return notFoundResponse;
+            //returning legacy item
+            var responseLegacy = req.CreateResponse(HttpStatusCode.OK);
+            responseLegacy.Headers.Add("Content-Type", "application/json");
+            await responseLegacy.WriteStringAsync(analysisJson);
+            return responseLegacy;
+            //var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+            //await notFoundResponse.WriteStringAsync("Shared analysis not found");
+            //return notFoundResponse;
         }
 
         _logger.LogDebug("Analysis entity found - UserId: {UserId}, IsPublic: {IsPublic}, CreatedDate: {CreatedDate}",
@@ -265,13 +276,6 @@ public class SharingFunctions
             cachedResponse.Headers.Add("Content-Type", "application/json");
             await cachedResponse.WriteStringAsync(cachedJson);
             return cachedResponse;
-        }
-
-        if (string.IsNullOrEmpty(analysisJson))
-        {
-            var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
-            await notFoundResponse.WriteStringAsync("Shared analysis content not found");
-            return notFoundResponse;
         }
 
         // Add to cache for future requests
