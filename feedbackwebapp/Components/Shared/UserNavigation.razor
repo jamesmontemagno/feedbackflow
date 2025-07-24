@@ -160,8 +160,11 @@
         catch (Exception ex)
         {
             Console.WriteLine($"Error during logout: {ex.Message}");
-            // Force navigation to logout endpoint
-            Navigation.NavigateTo("/.auth/logout", forceLoad: true);
+            // Force navigation to logout endpoint with post-logout redirect
+            var baseUrl = $"{Navigation.BaseUri.TrimEnd('/')}";
+            var homeRedirect = Uri.EscapeDataString($"{baseUrl}/");
+            var logoutUrl = $"/.auth/logout?post_logout_redirect_uri={homeRedirect}";
+            Navigation.NavigateTo(logoutUrl, forceLoad: true);
         }
     }
 
