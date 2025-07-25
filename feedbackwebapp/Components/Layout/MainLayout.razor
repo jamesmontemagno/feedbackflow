@@ -1,7 +1,7 @@
 ﻿@inherits LayoutComponentBase
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
-@inject IAuthTokenRefreshService TokenRefreshService
+
 @inject ILogger<MainLayout> Logger
 
 <div class="page d-flex flex-column min-vh-100">
@@ -129,8 +129,7 @@
             // Initialize automatic token refresh
             try
             {
-                await TokenRefreshService.InitializeAsync();
-                await TokenRefreshService.StartAutoRefreshAsync();
+
                 Logger.LogInformation("Authentication token refresh started in MainLayout");
             }
             catch (Exception ex)

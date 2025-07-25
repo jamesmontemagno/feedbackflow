@@ -60,7 +60,7 @@ else
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 
 // Register authentication token refresh service
-builder.Services.AddScoped<IAuthTokenRefreshService, AuthTokenRefreshService>();
+
 
 // Register the proper frontend account service that calls backend APIs
 var useMocks = builder.Configuration.GetValue<bool>("UseMocks", false);
