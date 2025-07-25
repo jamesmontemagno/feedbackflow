@@ -17,6 +17,12 @@ public class ServerSideAuthService : IAuthenticationService
     private readonly ILogger<ServerSideAuthService> _logger;
     private readonly UserSettingsService _userSettingsService;
 
+    // Cache for authenticated user to reduce .auth/me calls
+    private AuthenticatedUser? _cachedUser;
+    private DateTime? _cacheExpiry;
+    private readonly TimeSpan _cacheValidityPeriod = TimeSpan.FromMinutes(30); // Cache for 30 minutes
+    private readonly object _cacheLock = new object();
+
     public event EventHandler<bool>? AuthenticationStateChanged;
 
     public ServerSideAuthService(
@@ -52,9 +58,18 @@ public class ServerSideAuthService : IAuthenticationService
 
         try
         {
+            // Try to get user from cache first
+            var cachedUser = GetCachedUser();
+            if (cachedUser != null)
+            {
+                await _userSettingsService.LogAuthDebugAsync("IsAuthenticatedAsync result from cache", new { isAuthenticated = true, hasUserInfo = true });
+                return true;
+            }
+
+            // If not in cache, check with Easy Auth
             var userInfo = await GetEasyAuthUserAsync();
             var isAuthenticated = userInfo != null;
-            await _userSettingsService.LogAuthDebugAsync("IsAuthenticatedAsync result", new { isAuthenticated, hasUserInfo = userInfo != null });
+            await _userSettingsService.LogAuthDebugAsync("IsAuthenticatedAsync result from Easy Auth", new { isAuthenticated, hasUserInfo = userInfo != null });
             return isAuthenticated;
         }
         catch (Exception ex)
@@ -77,13 +92,29 @@ public class ServerSideAuthService : IAuthenticationService
         if (bypassAuth && isDevelopment)
         {
             await _userSettingsService.LogAuthDebugAsync("Returning development user", new { bypassAuth, isDevelopment });
-            return CreateDevelopmentUser();
+            var devUser = CreateDevelopmentUser();
+            SetCachedUser(devUser); // Cache the development user too
+            return devUser;
         }
 
         try
         {
+            // Try to get user from cache first
+            var cachedUser = GetCachedUser();
+            if (cachedUser != null)
+            {
+                await _userSettingsService.LogAuthDebugAsync("GetCurrentUserAsync result from cache", new { 
+                    hasUser = true, 
+                    userId = cachedUser.UserId, 
+                    email = cachedUser.Email, 
+                    provider = cachedUser.AuthProvider 
+                });
+                return cachedUser;
+            }
+
+            // If not in cache, get from Easy Auth and cache the result
             var user = await GetEasyAuthUserAsync();
-            await _userSettingsService.LogAuthDebugAsync("GetCurrentUserAsync result", new { 
+            await _userSettingsService.LogAuthDebugAsync("GetCurrentUserAsync result from Easy Auth", new { 
                 hasUser = user != null, 
                 userId = user?.UserId, 
                 email = user?.Email, 
@@ -156,6 +187,9 @@ public class ServerSideAuthService : IAuthenticationService
         var httpContext = _httpContextAccessor.HttpContext;
         if (httpContext == null)
             throw new InvalidOperationException("HttpContext not available");
+
+        // Clear the cached user
+        ClearUserCache();
 
         // Trigger authentication state change
         AuthenticationStateChanged?.Invoke(this, false);
@@ -372,6 +406,9 @@ public class ServerSideAuthService : IAuthenticationService
                 provider = authenticatedUser.AuthProvider
             });
             
+            // Cache the authenticated user
+            SetCachedUser(authenticatedUser);
+            
             _logger.LogDebug("Successfully authenticated user: {Email}", email);
             return authenticatedUser;
         }
@@ -443,6 +480,9 @@ public class ServerSideAuthService : IAuthenticationService
             {
                 await _userSettingsService.LogAuthDebugAsync("Token refresh successful");
                 _logger.LogDebug("Token refresh successful");
+                
+                // Clear cached user since token was refreshed
+                ClearUserCache();
                 
                 // Update last login time in user settings
                 await _userSettingsService.UpdateLastLoginAtAsync();
@@ -535,6 +575,9 @@ public class ServerSideAuthService : IAuthenticationService
             // Perform registration and await the result
             await AutoRegisterUserAsync();
             
+            // Clear cache after registration in case user information changed
+            ClearUserCache();
+            
             await _userSettingsService.LogAuthDebugAsync("Post-login registration completed successfully", new { provider = user.AuthProvider });
             _logger.LogInformation("Post-login registration completed successfully for {AuthProvider} user", user.AuthProvider);
             return true;
@@ -548,6 +591,55 @@ public class ServerSideAuthService : IAuthenticationService
             });
             _logger.LogError(ex, "Error during post-login registration");
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Get cached user if still valid
+    /// </summary>
+    /// <returns>Cached user or null if cache is invalid/expired</returns>
+    private AuthenticatedUser? GetCachedUser()
+    {
+        lock (_cacheLock)
+        {
+            if (_cachedUser != null && _cacheExpiry.HasValue && DateTime.UtcNow < _cacheExpiry.Value)
+            {
+                return _cachedUser;
+            }
+            
+            // Cache expired or invalid, clear it
+            if (_cachedUser != null)
+            {
+                _cachedUser = null;
+                _cacheExpiry = null;
+            }
+            
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Cache the authenticated user
+    /// </summary>
+    /// <param name="user">User to cache</param>
+    private void SetCachedUser(AuthenticatedUser user)
+    {
+        lock (_cacheLock)
+        {
+            _cachedUser = user;
+            _cacheExpiry = DateTime.UtcNow.Add(_cacheValidityPeriod);
+        }
+    }
+
+    /// <summary>
+    /// Clear the user cache
+    /// </summary>
+    private void ClearUserCache()
+    {
+        lock (_cacheLock)
+        {
+            _cachedUser = null;
+            _cacheExpiry = null;
         }
     }
 
