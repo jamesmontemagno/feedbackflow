@@ -190,15 +190,15 @@ public class ServerSideAuthService : IAuthenticationService
             var baseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}";
             await _userSettingsService.LogAuthDebugAsync("Authentication check starting", new { baseUrl });
             
-            // Check if we should refresh the token (if it's been over 12 hours since last login)
+            // Check if we should refresh the token (if it's been over 2 hours since last login)
             var lastLogin = await _userSettingsService.GetLastLoginAtAsync();
-            if (lastLogin.HasValue && DateTime.UtcNow.Subtract(lastLogin.Value).TotalHours > 12)
+            if (lastLogin.HasValue && DateTime.UtcNow.Subtract(lastLogin.Value).TotalHours > 2)
             {
                 await _userSettingsService.LogAuthDebugAsync("Token refresh needed", new { 
                     lastLogin, 
                     hoursSinceLogin = DateTime.UtcNow.Subtract(lastLogin.Value).TotalHours 
                 });
-                _logger.LogDebug("Last login was over 12 hours ago, attempting token refresh");
+                _logger.LogDebug("Last login was over 2 hours ago, attempting token refresh");
                 await TryRefreshTokenAsync(baseUrl, httpContext);
             }
             else
@@ -211,6 +211,10 @@ public class ServerSideAuthService : IAuthenticationService
             
             // Create request to /.auth/me with forwarded cookies
             var authMeUrl = $"{baseUrl}/.auth/me";
+            HttpResponseMessage response;
+            bool retryAttempted = false;
+            
+            // First attempt
             var request = new HttpRequestMessage(HttpMethod.Get, authMeUrl);
             
             // Forward all cookies from the current request
@@ -219,21 +223,56 @@ public class ServerSideAuthService : IAuthenticationService
             {
                 request.Headers.Add("Cookie", httpContext.Request.Headers["Cookie"].ToString());
             }
-            await _userSettingsService.LogAuthDebugAsync("Making /.auth/me request", new { authMeUrl, hasCookies });
+            await _userSettingsService.LogAuthDebugAsync("Making /.auth/me request (first attempt)", new { authMeUrl, hasCookies });
 
             // Add cache control to ensure fresh data
             request.Headers.Add("Cache-Control", "no-cache");
 
-            var response = await _httpClient.SendAsync(request);
-            await _userSettingsService.LogAuthDebugAsync("/.auth/me response received", new { 
+            response = await _httpClient.SendAsync(request);
+            await _userSettingsService.LogAuthDebugAsync("/.auth/me response received (first attempt)", new { 
                 statusCode = response.StatusCode, 
                 isSuccess = response.IsSuccessStatusCode 
             });
             
+            // If first attempt fails, try refreshing token and retry once
+            if (!response.IsSuccessStatusCode && !retryAttempted)
+            {
+                await _userSettingsService.LogAuthDebugAsync("First /.auth/me attempt failed, trying token refresh", new { statusCode = response.StatusCode });
+                _logger.LogDebug("First authentication check failed with status: {StatusCode}, attempting token refresh", response.StatusCode);
+                
+                // Attempt token refresh
+                await TryRefreshTokenAsync(baseUrl, httpContext);
+                retryAttempted = true;
+                
+                // Dispose the failed response
+                response.Dispose();
+                
+                // Retry the request with fresh cookies
+                var retryRequest = new HttpRequestMessage(HttpMethod.Get, authMeUrl);
+                
+                // Forward cookies again (they may have been updated by refresh)
+                if (httpContext.Request.Headers.ContainsKey("Cookie"))
+                {
+                    retryRequest.Headers.Add("Cookie", httpContext.Request.Headers["Cookie"].ToString());
+                }
+                retryRequest.Headers.Add("Cache-Control", "no-cache");
+                
+                await _userSettingsService.LogAuthDebugAsync("Making /.auth/me request (retry after refresh)", new { authMeUrl });
+                response = await _httpClient.SendAsync(retryRequest);
+                
+                await _userSettingsService.LogAuthDebugAsync("/.auth/me response received (retry attempt)", new { 
+                    statusCode = response.StatusCode, 
+                    isSuccess = response.IsSuccessStatusCode 
+                });
+            }
+            
+            // If still failing after retry, return null
             if (!response.IsSuccessStatusCode)
             {
-                await _userSettingsService.LogAuthWarnAsync("Authentication check failed", new { statusCode = response.StatusCode });
-                _logger.LogDebug("Authentication check failed with status: {StatusCode}", response.StatusCode);
+                var attemptType = retryAttempted ? "after token refresh retry" : "on first attempt";
+                await _userSettingsService.LogAuthWarnAsync($"Authentication check failed {attemptType}", new { statusCode = response.StatusCode, retryAttempted });
+                _logger.LogDebug("Authentication check failed {AttemptType} with status: {StatusCode}", attemptType, response.StatusCode);
+                
                 return null;
             }
 
