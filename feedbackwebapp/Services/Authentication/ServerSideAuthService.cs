@@ -417,7 +417,7 @@ public class ServerSideAuthService : IAuthenticationService
         try
         {
             var refreshUrl = $"{baseUrl}/.auth/refresh";
-            var refreshRequest = new HttpRequestMessage(HttpMethod.Post, refreshUrl);
+            var refreshRequest = new HttpRequestMessage(HttpMethod.Get, refreshUrl);
             
             // Forward all cookies from the current request
             var hasCookies = httpContext.Request.Headers.ContainsKey("Cookie");
