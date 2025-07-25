@@ -7,6 +7,7 @@ public class UserSettingsService
 {
     private readonly IJSRuntime _jsRuntime;
     private const string SETTINGS_KEY = "feedbackflow_settings";
+    private const string LAST_LOGIN_KEY = "feedbackflow_last_login";
     private UserSettings? _cachedSettings;
     public class UserSettings
     {
@@ -14,7 +15,6 @@ public class UserSettingsService
         public bool UseCustomPrompts { get; set; } = false;
         public string? PreferredVoice { get; set; }
         public DateTime? LastFeatureAnnouncementShown { get; set; }
-        public DateTime? LastLoginAt { get; set; }
         public Dictionary<string, string> ServicePrompts { get; set; } = new()
         {
             ["youtube"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("youtube"),
@@ -38,7 +38,7 @@ public class UserSettingsService
         if (_cachedSettings != null)
             return _cachedSettings;
 
-        var stored = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", SETTINGS_KEY);
+        var stored = await GetStringFromLocalStorageAsync(SETTINGS_KEY);
         if (string.IsNullOrEmpty(stored))
         {
             _cachedSettings = new UserSettings();
@@ -94,8 +94,7 @@ public class UserSettingsService
     }
     public async Task SaveSettingsAsync(UserSettings settings)
     {
-        var json = JsonSerializer.Serialize(settings);
-        await _jsRuntime.InvokeVoidAsync("localStorage.setItem", SETTINGS_KEY, json);
+        await SaveToLocalStorageAsync(SETTINGS_KEY, settings);
         _cachedSettings = settings;
     }
     
@@ -133,14 +132,67 @@ public class UserSettingsService
 
     public async Task<DateTime?> GetLastLoginAtAsync()
     {
-        var settings = await GetSettingsAsync();
-        return settings.LastLoginAt;
+        var stored = await GetStringFromLocalStorageAsync(LAST_LOGIN_KEY);
+        if (string.IsNullOrEmpty(stored))
+            return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<DateTime?>(stored);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public async Task UpdateLastLoginAtAsync()
     {
-        var settings = await GetSettingsAsync();
-        settings.LastLoginAt = DateTime.UtcNow;
-        await SaveSettingsAsync(settings);
+        var now = DateTime.UtcNow;
+        await SaveToLocalStorageAsync(LAST_LOGIN_KEY, now);
+    }
+
+    // Generic localStorage helpers
+    public async Task<T?> GetFromLocalStorageAsync<T>(string key) where T : class
+    {
+        var stored = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", key);
+        if (string.IsNullOrEmpty(stored))
+            return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<T>(stored);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<T> GetFromLocalStorageAsync<T>(string key, T defaultValue) where T : class
+    {
+        var result = await GetFromLocalStorageAsync<T>(key);
+        return result ?? defaultValue;
+    }
+
+    public async Task SaveToLocalStorageAsync<T>(string key, T value)
+    {
+        var json = JsonSerializer.Serialize(value);
+        await _jsRuntime.InvokeVoidAsync("localStorage.setItem", key, json);
+    }
+
+    public async Task RemoveFromLocalStorageAsync(string key)
+    {
+        await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", key);
+    }
+
+    public async Task<string?> GetStringFromLocalStorageAsync(string key)
+    {
+        return await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", key);
+    }
+
+    public async Task SaveStringToLocalStorageAsync(string key, string value)
+    {
+        await _jsRuntime.InvokeVoidAsync("localStorage.setItem", key, value);
     }
 }

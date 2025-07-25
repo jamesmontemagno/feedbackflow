@@ -13,6 +13,7 @@ public class AuthenticationService : IAuthenticationService
     private readonly IConfiguration _configuration;
     private readonly IDataProtector _dataProtector;
     private readonly IServiceProvider _serviceProvider;
+    private readonly UserSettingsService _userSettingsService;
     private const string AUTH_KEY = "feedbackflow_auth";
     private bool? _isAuthenticated;
     private string? _lastAuthenticationError;
@@ -24,12 +25,13 @@ public class AuthenticationService : IAuthenticationService
     /// </summary>
     public string? LastAuthenticationError => _lastAuthenticationError;
 
-    public AuthenticationService(IJSRuntime jsRuntime, IConfiguration configuration, IDataProtectionProvider dataProtectionProvider, IServiceProvider serviceProvider)
+    public AuthenticationService(IJSRuntime jsRuntime, IConfiguration configuration, IDataProtectionProvider dataProtectionProvider, IServiceProvider serviceProvider, UserSettingsService userSettingsService)
     {
         _jsRuntime = jsRuntime;
         _configuration = configuration;
         _dataProtector = dataProtectionProvider.CreateProtector("FeedbackFlow.Authentication.v1");
         _serviceProvider = serviceProvider;
+        _userSettingsService = userSettingsService;
     }
 
     public async Task<bool> IsAuthenticatedAsync()
@@ -37,7 +39,7 @@ public class AuthenticationService : IAuthenticationService
         if (_isAuthenticated.HasValue)
             return _isAuthenticated.Value;
 
-        var protectedToken = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", AUTH_KEY);
+        var protectedToken = await _userSettingsService.GetStringFromLocalStorageAsync(AUTH_KEY);
         if (string.IsNullOrEmpty(protectedToken))
         {
             _isAuthenticated = false;
@@ -57,7 +59,7 @@ public class AuthenticationService : IAuthenticationService
         {
             // Token is invalid or tampered with
             _isAuthenticated = false;
-            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_KEY);
+            await _userSettingsService.RemoveFromLocalStorageAsync(AUTH_KEY);
             return false;
         }
     }
@@ -86,7 +88,7 @@ public class AuthenticationService : IAuthenticationService
 
             // Create a protected token that proves authentication
             var protectedToken = _dataProtector.Protect("FeedbackFlow_Authenticated");
-            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", AUTH_KEY, protectedToken);
+            await _userSettingsService.SaveStringToLocalStorageAsync(AUTH_KEY, protectedToken);
             _isAuthenticated = true;
 
             // Try to register user in the backend system - this must succeed
@@ -119,7 +121,7 @@ public class AuthenticationService : IAuthenticationService
     {
         if (!authenticated)
         {
-            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", AUTH_KEY);
+            await _userSettingsService.RemoveFromLocalStorageAsync(AUTH_KEY);
         }
         _isAuthenticated = authenticated;
     }
