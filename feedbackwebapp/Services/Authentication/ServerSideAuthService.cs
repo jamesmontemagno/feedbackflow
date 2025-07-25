@@ -15,6 +15,7 @@ public class ServerSideAuthService : IAuthenticationService
     private readonly HttpClient _httpClient;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ServerSideAuthService> _logger;
+    private readonly UserSettingsService _userSettingsService;
 
     public event EventHandler<bool>? AuthenticationStateChanged;
 
@@ -23,13 +24,15 @@ public class ServerSideAuthService : IAuthenticationService
         IConfiguration configuration,
         IHttpClientFactory httpClientFactory,
         IServiceProvider serviceProvider,
-        ILogger<ServerSideAuthService> logger)
+        ILogger<ServerSideAuthService> logger,
+        UserSettingsService userSettingsService)
     {
         _httpContextAccessor = httpContextAccessor;
         _configuration = configuration;
         _httpClient = httpClientFactory.CreateClient();
         _serviceProvider = serviceProvider;
         _logger = logger;
+        _userSettingsService = userSettingsService;
     }
 
     /// <inheritdoc />
@@ -164,10 +167,18 @@ public class ServerSideAuthService : IAuthenticationService
 
         try
         {
-            // Create request to /.auth/me with forwarded cookies
             var baseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}";
+            
+            // Check if we should refresh the token (if it's been over 12 hours since last login)
+            var lastLogin = await _userSettingsService.GetLastLoginAtAsync();
+            if (lastLogin.HasValue && DateTime.UtcNow.Subtract(lastLogin.Value).TotalHours > 12)
+            {
+                _logger.LogDebug("Last login was over 12 hours ago, attempting token refresh");
+                await TryRefreshTokenAsync(baseUrl, httpContext);
+            }
+            
+            // Create request to /.auth/me with forwarded cookies
             var authMeUrl = $"{baseUrl}/.auth/me";
-
             var request = new HttpRequestMessage(HttpMethod.Get, authMeUrl);
             
             // Forward all cookies from the current request
@@ -273,6 +284,48 @@ public class ServerSideAuthService : IAuthenticationService
     }
 
     /// <summary>
+    /// Attempt to refresh the authentication token via /.auth/refresh
+    /// </summary>
+    /// <param name="baseUrl">Base URL of the application</param>
+    /// <param name="httpContext">Current HTTP context</param>
+    private async Task TryRefreshTokenAsync(string baseUrl, HttpContext httpContext)
+    {
+        try
+        {
+            var refreshUrl = $"{baseUrl}/.auth/refresh";
+            var refreshRequest = new HttpRequestMessage(HttpMethod.Post, refreshUrl);
+            
+            // Forward all cookies from the current request
+            if (httpContext.Request.Headers.ContainsKey("Cookie"))
+            {
+                refreshRequest.Headers.Add("Cookie", httpContext.Request.Headers["Cookie"].ToString());
+            }
+
+            // Add cache control to ensure fresh data
+            refreshRequest.Headers.Add("Cache-Control", "no-cache");
+
+            _logger.LogDebug("Attempting to refresh authentication token");
+            var refreshResponse = await _httpClient.SendAsync(refreshRequest);
+
+            if (refreshResponse.IsSuccessStatusCode)
+            {
+                _logger.LogDebug("Token refresh successful");
+                
+                // Update last login time in user settings
+                await _userSettingsService.UpdateLastLoginAtAsync();
+            }
+            else
+            {
+                _logger.LogDebug("Token refresh failed with status: {StatusCode}", refreshResponse.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Token refresh attempt failed, but continuing with authentication check");
+        }
+    }
+
+    /// <summary>
     /// Auto-register the current user in the backend system
     /// </summary>
     private async Task AutoRegisterUserAsync()
@@ -316,6 +369,9 @@ public class ServerSideAuthService : IAuthenticationService
                 _logger.LogDebug("No authenticated user found for post-login registration");
                 return false;
             }
+
+            // Update last login time in user settings
+            await _userSettingsService.UpdateLastLoginAtAsync();
 
             // Only auto-register for OAuth providers (GitHub, Google, Microsoft), not for password auth
             if (user.AuthProvider == "Password" || user.AuthProvider == "Development")

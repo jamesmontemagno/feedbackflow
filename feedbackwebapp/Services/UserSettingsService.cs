@@ -14,6 +14,7 @@ public class UserSettingsService
         public bool UseCustomPrompts { get; set; } = false;
         public string? PreferredVoice { get; set; }
         public DateTime? LastFeatureAnnouncementShown { get; set; }
+        public DateTime? LastLoginAt { get; set; }
         public Dictionary<string, string> ServicePrompts { get; set; } = new()
         {
             ["youtube"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("youtube"),
@@ -127,6 +128,19 @@ public class UserSettingsService
     {
         var settings = await GetSettingsAsync();
         settings.LastFeatureAnnouncementShown = DateTime.UtcNow;
+        await SaveSettingsAsync(settings);
+    }
+
+    public async Task<DateTime?> GetLastLoginAtAsync()
+    {
+        var settings = await GetSettingsAsync();
+        return settings.LastLoginAt;
+    }
+
+    public async Task UpdateLastLoginAtAsync()
+    {
+        var settings = await GetSettingsAsync();
+        settings.LastLoginAt = DateTime.UtcNow;
         await SaveSettingsAsync(settings);
     }
 }
