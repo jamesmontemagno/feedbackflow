@@ -1,4 +1,5 @@
 using Microsoft.JSInterop;
+using Microsoft.Extensions.Configuration;
 using System.Text.Json;
 
 namespace FeedbackWebApp.Services;
@@ -6,6 +7,8 @@ namespace FeedbackWebApp.Services;
 public class UserSettingsService
 {
     private readonly IJSRuntime _jsRuntime;
+    private readonly IConfiguration _configuration;
+    private readonly bool _authDebugEnabled;
     private const string SETTINGS_KEY = "feedbackflow_settings";
     private const string LAST_LOGIN_KEY = "feedbackflow_last_login";
     private UserSettings? _cachedSettings;
@@ -28,9 +31,11 @@ public class UserSettingsService
         };
     }
 
-    public UserSettingsService(IJSRuntime jsRuntime)
+    public UserSettingsService(IJSRuntime jsRuntime, IConfiguration configuration)
     {
         _jsRuntime = jsRuntime;
+        _configuration = configuration;
+        _authDebugEnabled = _configuration.GetValue<bool>("Authentication:DEBUG", false);
     }
 
     public async Task<UserSettings> GetSettingsAsync()
@@ -194,5 +199,51 @@ public class UserSettingsService
     public async Task SaveStringToLocalStorageAsync(string key, string value)
     {
         await _jsRuntime.InvokeVoidAsync("localStorage.setItem", key, value);
+    }
+
+    // Auth debugging helpers
+    public async Task LogAuthDebugAsync(string message, object? data = null)
+    {
+        if (_authDebugEnabled)
+        {
+            if (data != null)
+            {
+                await _jsRuntime.InvokeVoidAsync("console.log", $"[AUTH DEBUG] {message}", data);
+            }
+            else
+            {
+                await _jsRuntime.InvokeVoidAsync("console.log", $"[AUTH DEBUG] {message}");
+            }
+        }
+    }
+
+    public async Task LogAuthErrorAsync(string message, object? error = null)
+    {
+        if (_authDebugEnabled)
+        {
+            if (error != null)
+            {
+                await _jsRuntime.InvokeVoidAsync("console.error", $"[AUTH ERROR] {message}", error);
+            }
+            else
+            {
+                await _jsRuntime.InvokeVoidAsync("console.error", $"[AUTH ERROR] {message}");
+            }
+        }
+    }
+
+    public async Task LogAuthWarnAsync(string message, object? data = null)
+    {
+        if (_authDebugEnabled)
+        {
+            if (data != null)
+            {
+                await _jsRuntime.InvokeVoidAsync("console.warn", $"[AUTH WARN] {message}", data);
+            }
+            else
+            {
+                await _jsRuntime.InvokeVoidAsync("console.warn", $"[AUTH WARN] {message}");
+            }
+        }
     }
 }

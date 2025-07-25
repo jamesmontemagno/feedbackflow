@@ -38,22 +38,28 @@ public class ServerSideAuthService : IAuthenticationService
     /// <inheritdoc />
     public async Task<bool> IsAuthenticatedAsync()
     {
+        await _userSettingsService.LogAuthDebugAsync("IsAuthenticatedAsync called");
+        
         // Check if auth is bypassed for development
         var bypassAuth = _configuration.GetValue<bool>("Authentication:BypassInDevelopment", false);
         var isDevelopment = _configuration.GetValue<string>("ASPNETCORE_ENVIRONMENT") == "Development";
 
         if (bypassAuth && isDevelopment)
         {
+            await _userSettingsService.LogAuthDebugAsync("Auth bypassed for development");
             return true;
         }
 
         try
         {
             var userInfo = await GetEasyAuthUserAsync();
-            return userInfo != null;
+            var isAuthenticated = userInfo != null;
+            await _userSettingsService.LogAuthDebugAsync("IsAuthenticatedAsync result", new { isAuthenticated, hasUserInfo = userInfo != null });
+            return isAuthenticated;
         }
         catch (Exception ex)
         {
+            await _userSettingsService.LogAuthErrorAsync("Error in IsAuthenticatedAsync", new { error = ex.Message, stackTrace = ex.StackTrace });
             _logger.LogWarning(ex, "Error checking authentication status");
             return false;
         }
@@ -62,21 +68,32 @@ public class ServerSideAuthService : IAuthenticationService
     /// <inheritdoc />
     public async Task<AuthenticatedUser?> GetCurrentUserAsync()
     {
+        await _userSettingsService.LogAuthDebugAsync("GetCurrentUserAsync called");
+        
         // Check if auth is bypassed for development
         var bypassAuth = _configuration.GetValue<bool>("Authentication:BypassInDevelopment", false);
         var isDevelopment = _configuration.GetValue<string>("ASPNETCORE_ENVIRONMENT") == "Development";
 
         if (bypassAuth && isDevelopment)
         {
+            await _userSettingsService.LogAuthDebugAsync("Returning development user", new { bypassAuth, isDevelopment });
             return CreateDevelopmentUser();
         }
 
         try
         {
-            return await GetEasyAuthUserAsync();
+            var user = await GetEasyAuthUserAsync();
+            await _userSettingsService.LogAuthDebugAsync("GetCurrentUserAsync result", new { 
+                hasUser = user != null, 
+                userId = user?.UserId, 
+                email = user?.Email, 
+                provider = user?.AuthProvider 
+            });
+            return user;
         }
         catch (Exception ex)
         {
+            await _userSettingsService.LogAuthErrorAsync("Error in GetCurrentUserAsync", new { error = ex.Message, stackTrace = ex.StackTrace });
             _logger.LogWarning(ex, "Error getting current user");
             return null;
         }
@@ -158,9 +175,12 @@ public class ServerSideAuthService : IAuthenticationService
     /// <returns>Authenticated user or null</returns>
     private async Task<AuthenticatedUser?> GetEasyAuthUserAsync()
     {
+        await _userSettingsService.LogAuthDebugAsync("GetEasyAuthUserAsync called");
+        
         var httpContext = _httpContextAccessor.HttpContext;
         if (httpContext == null)
         {
+            await _userSettingsService.LogAuthErrorAsync("HttpContext not available for authentication check");
             _logger.LogWarning("HttpContext not available for authentication check");
             return null;
         }
@@ -168,13 +188,25 @@ public class ServerSideAuthService : IAuthenticationService
         try
         {
             var baseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}";
+            await _userSettingsService.LogAuthDebugAsync("Authentication check starting", new { baseUrl });
             
             // Check if we should refresh the token (if it's been over 12 hours since last login)
             var lastLogin = await _userSettingsService.GetLastLoginAtAsync();
             if (lastLogin.HasValue && DateTime.UtcNow.Subtract(lastLogin.Value).TotalHours > 12)
             {
+                await _userSettingsService.LogAuthDebugAsync("Token refresh needed", new { 
+                    lastLogin, 
+                    hoursSinceLogin = DateTime.UtcNow.Subtract(lastLogin.Value).TotalHours 
+                });
                 _logger.LogDebug("Last login was over 12 hours ago, attempting token refresh");
                 await TryRefreshTokenAsync(baseUrl, httpContext);
+            }
+            else
+            {
+                await _userSettingsService.LogAuthDebugAsync("Token refresh not needed", new { 
+                    lastLogin, 
+                    hoursSinceLogin = lastLogin.HasValue ? DateTime.UtcNow.Subtract(lastLogin.Value).TotalHours : (double?)null
+                });
             }
             
             // Create request to /.auth/me with forwarded cookies
@@ -182,26 +214,39 @@ public class ServerSideAuthService : IAuthenticationService
             var request = new HttpRequestMessage(HttpMethod.Get, authMeUrl);
             
             // Forward all cookies from the current request
-            if (httpContext.Request.Headers.ContainsKey("Cookie"))
+            var hasCookies = httpContext.Request.Headers.ContainsKey("Cookie");
+            if (hasCookies)
             {
                 request.Headers.Add("Cookie", httpContext.Request.Headers["Cookie"].ToString());
             }
+            await _userSettingsService.LogAuthDebugAsync("Making /.auth/me request", new { authMeUrl, hasCookies });
 
             // Add cache control to ensure fresh data
             request.Headers.Add("Cache-Control", "no-cache");
 
             var response = await _httpClient.SendAsync(request);
+            await _userSettingsService.LogAuthDebugAsync("/.auth/me response received", new { 
+                statusCode = response.StatusCode, 
+                isSuccess = response.IsSuccessStatusCode 
+            });
             
             if (!response.IsSuccessStatusCode)
             {
+                await _userSettingsService.LogAuthWarnAsync("Authentication check failed", new { statusCode = response.StatusCode });
                 _logger.LogDebug("Authentication check failed with status: {StatusCode}", response.StatusCode);
                 return null;
             }
 
             var responseContent = await response.Content.ReadAsStringAsync();
+            await _userSettingsService.LogAuthDebugAsync("/.auth/me response content", new { 
+                contentLength = responseContent?.Length ?? 0,
+                isEmpty = string.IsNullOrEmpty(responseContent),
+                isEmptyArray = responseContent?.Trim() == "[]"
+            });
             
             if (string.IsNullOrEmpty(responseContent) || responseContent.Trim() == "[]")
             {
+                await _userSettingsService.LogAuthDebugAsync("No authenticated user found in response");
                 _logger.LogDebug("No authenticated user found");
                 return null;
             }
@@ -210,12 +255,22 @@ public class ServerSideAuthService : IAuthenticationService
             var userArray = JsonSerializer.Deserialize<EasyAuthUser[]>(responseContent);
             if (userArray == null || userArray.Length == 0)
             {
+                await _userSettingsService.LogAuthWarnAsync("Failed to parse user array or empty array", new { 
+                    isNull = userArray == null, 
+                    length = userArray?.Length ?? 0 
+                });
                 _logger.LogDebug("Empty user array from Easy Auth");
                 return null;
             }
 
             var userInfo = userArray[0];
             var provider = GetProviderFromIdentityProvider(userInfo.ProviderName);
+            await _userSettingsService.LogAuthDebugAsync("Parsed Easy Auth user", new { 
+                userId = userInfo.UserId,
+                providerName = userInfo.ProviderName,
+                mappedProvider = provider,
+                claimsCount = userInfo.UserClaims?.Length ?? 0
+            });
             
             // Extract user details from claims
             var email = userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Val;
@@ -250,6 +305,13 @@ public class ServerSideAuthService : IAuthenticationService
             }
             
             var profileImageUrl = GetProfileImageUrl(userInfo.ProviderName, userInfo.UserClaims);
+            
+            await _userSettingsService.LogAuthDebugAsync("Extracted user details", new { 
+                email, 
+                name, 
+                profileImageUrl, 
+                provider 
+            });
                       
             var authenticatedUser = new AuthenticatedUser
             {
@@ -263,21 +325,42 @@ public class ServerSideAuthService : IAuthenticationService
                 LastLoginAt = DateTime.UtcNow
             };
             
+            // Update last login time in user settings
+            await _userSettingsService.UpdateLastLoginAtAsync();
+            await _userSettingsService.LogAuthDebugAsync("Updated last login time and created authenticated user", new { 
+                userId = authenticatedUser.UserId,
+                email = authenticatedUser.Email,
+                provider = authenticatedUser.AuthProvider
+            });
+            
             _logger.LogDebug("Successfully authenticated user: {Email}", email);
             return authenticatedUser;
         }
         catch (HttpRequestException ex)
         {
+            await _userSettingsService.LogAuthErrorAsync("Network error during authentication check", new { 
+                error = ex.Message, 
+                innerException = ex.InnerException?.Message 
+            });
             _logger.LogWarning(ex, "Network error during authentication check");
             return null;
         }
         catch (JsonException ex)
         {
+            await _userSettingsService.LogAuthErrorAsync("Failed to parse Easy Auth response", new { 
+                error = ex.Message, 
+                path = ex.Path 
+            });
             _logger.LogError(ex, "Failed to parse Easy Auth response");
             return null;
         }
         catch (Exception ex)
         {
+            await _userSettingsService.LogAuthErrorAsync("Unexpected error during authentication check", new { 
+                error = ex.Message, 
+                type = ex.GetType().Name,
+                stackTrace = ex.StackTrace
+            });
             _logger.LogError(ex, "Unexpected error during authentication check");
             return null;
         }
@@ -290,13 +373,16 @@ public class ServerSideAuthService : IAuthenticationService
     /// <param name="httpContext">Current HTTP context</param>
     private async Task TryRefreshTokenAsync(string baseUrl, HttpContext httpContext)
     {
+        await _userSettingsService.LogAuthDebugAsync("TryRefreshTokenAsync called", new { baseUrl });
+        
         try
         {
             var refreshUrl = $"{baseUrl}/.auth/refresh";
             var refreshRequest = new HttpRequestMessage(HttpMethod.Post, refreshUrl);
             
             // Forward all cookies from the current request
-            if (httpContext.Request.Headers.ContainsKey("Cookie"))
+            var hasCookies = httpContext.Request.Headers.ContainsKey("Cookie");
+            if (hasCookies)
             {
                 refreshRequest.Headers.Add("Cookie", httpContext.Request.Headers["Cookie"].ToString());
             }
@@ -304,11 +390,19 @@ public class ServerSideAuthService : IAuthenticationService
             // Add cache control to ensure fresh data
             refreshRequest.Headers.Add("Cache-Control", "no-cache");
 
+            await _userSettingsService.LogAuthDebugAsync("Sending token refresh request", new { refreshUrl, hasCookies });
             _logger.LogDebug("Attempting to refresh authentication token");
+            
             var refreshResponse = await _httpClient.SendAsync(refreshRequest);
+            
+            await _userSettingsService.LogAuthDebugAsync("Token refresh response received", new { 
+                statusCode = refreshResponse.StatusCode,
+                isSuccess = refreshResponse.IsSuccessStatusCode
+            });
 
             if (refreshResponse.IsSuccessStatusCode)
             {
+                await _userSettingsService.LogAuthDebugAsync("Token refresh successful");
                 _logger.LogDebug("Token refresh successful");
                 
                 // Update last login time in user settings
@@ -316,11 +410,16 @@ public class ServerSideAuthService : IAuthenticationService
             }
             else
             {
+                await _userSettingsService.LogAuthWarnAsync("Token refresh failed", new { statusCode = refreshResponse.StatusCode });
                 _logger.LogDebug("Token refresh failed with status: {StatusCode}", refreshResponse.StatusCode);
             }
         }
         catch (Exception ex)
         {
+            await _userSettingsService.LogAuthErrorAsync("Token refresh exception", new { 
+                error = ex.Message, 
+                type = ex.GetType().Name 
+            });
             _logger.LogWarning(ex, "Token refresh attempt failed, but continuing with authentication check");
         }
     }
@@ -353,11 +452,14 @@ public class ServerSideAuthService : IAuthenticationService
     /// <returns>True if registration was successful, false otherwise</returns>
     public async Task<bool> HandlePostLoginRegistrationAsync()
     {
+        await _userSettingsService.LogAuthDebugAsync("HandlePostLoginRegistrationAsync called");
+        
         try
         {
             var httpContext = _httpContextAccessor.HttpContext;
             if (httpContext == null)
             {
+                await _userSettingsService.LogAuthErrorAsync("HttpContext not available for post-login registration");
                 _logger.LogWarning("HttpContext not available for post-login registration");
                 return false;
             }
@@ -366,9 +468,16 @@ public class ServerSideAuthService : IAuthenticationService
             var user = await GetEasyAuthUserAsync();
             if (user == null)
             {
+                await _userSettingsService.LogAuthDebugAsync("No authenticated user found for post-login registration");
                 _logger.LogDebug("No authenticated user found for post-login registration");
                 return false;
             }
+
+            await _userSettingsService.LogAuthDebugAsync("Post-login registration for user", new { 
+                provider = user.AuthProvider,
+                userId = user.UserId,
+                email = user.Email
+            });
 
             // Update last login time in user settings
             await _userSettingsService.UpdateLastLoginAtAsync();
@@ -376,20 +485,28 @@ public class ServerSideAuthService : IAuthenticationService
             // Only auto-register for OAuth providers (GitHub, Google, Microsoft), not for password auth
             if (user.AuthProvider == "Password" || user.AuthProvider == "Development")
             {
+                await _userSettingsService.LogAuthDebugAsync("Skipping auto-registration for auth provider", new { provider = user.AuthProvider });
                 _logger.LogDebug("Skipping auto-registration for {AuthProvider} provider", user.AuthProvider);
                 return true;
             }
 
+            await _userSettingsService.LogAuthDebugAsync("Performing auto-registration", new { provider = user.AuthProvider });
             _logger.LogInformation("Performing post-login registration for user from {AuthProvider} provider", user.AuthProvider);
 
             // Perform registration and await the result
             await AutoRegisterUserAsync();
             
+            await _userSettingsService.LogAuthDebugAsync("Post-login registration completed successfully", new { provider = user.AuthProvider });
             _logger.LogInformation("Post-login registration completed successfully for {AuthProvider} user", user.AuthProvider);
             return true;
         }
         catch (Exception ex)
         {
+            await _userSettingsService.LogAuthErrorAsync("Error during post-login registration", new { 
+                error = ex.Message, 
+                type = ex.GetType().Name,
+                stackTrace = ex.StackTrace
+            });
             _logger.LogError(ex, "Error during post-login registration");
             return false;
         }

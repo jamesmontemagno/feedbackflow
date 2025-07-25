@@ -36,12 +36,18 @@ public class AuthenticationService : IAuthenticationService
 
     public async Task<bool> IsAuthenticatedAsync()
     {
+        await _userSettingsService.LogAuthDebugAsync("Password auth: IsAuthenticatedAsync called");
+        
         if (_isAuthenticated.HasValue)
+        {
+            await _userSettingsService.LogAuthDebugAsync("Password auth: Returning cached result", new { isAuthenticated = _isAuthenticated.Value });
             return _isAuthenticated.Value;
+        }
 
         var protectedToken = await _userSettingsService.GetStringFromLocalStorageAsync(AUTH_KEY);
         if (string.IsNullOrEmpty(protectedToken))
         {
+            await _userSettingsService.LogAuthDebugAsync("Password auth: No token found");
             _isAuthenticated = false;
             return false;
         }
@@ -53,10 +59,12 @@ public class AuthenticationService : IAuthenticationService
             
             // Verify the unprotected data contains valid authentication marker
             _isAuthenticated = unprotectedData == "FeedbackFlow_Authenticated";
+            await _userSettingsService.LogAuthDebugAsync("Password auth: Token validation result", new { isAuthenticated = _isAuthenticated.Value });
             return _isAuthenticated.Value;
         }
         catch (CryptographicException)
         {
+            await _userSettingsService.LogAuthErrorAsync("Password auth: Token is invalid or tampered with");
             // Token is invalid or tampered with
             _isAuthenticated = false;
             await _userSettingsService.RemoveFromLocalStorageAsync(AUTH_KEY);
@@ -66,8 +74,11 @@ public class AuthenticationService : IAuthenticationService
 
     public async Task<bool> AuthenticateAsync(string password)
     {
+        await _userSettingsService.LogAuthDebugAsync("Password auth: AuthenticateAsync called");
+        
         if (string.IsNullOrEmpty(password))
         {
+            await _userSettingsService.LogAuthWarnAsync("Password auth: Empty password provided");
             _isAuthenticated = false;
             return false;
         }
@@ -76,11 +87,14 @@ public class AuthenticationService : IAuthenticationService
         var configuredPassword = _configuration["FeedbackApp:AccessPassword"];
         if (string.IsNullOrEmpty(configuredPassword))
         {
+            await _userSettingsService.LogAuthErrorAsync("Password auth: No configured password found");
             _isAuthenticated = false;
             return false;
         }
 
         var isValid = password == configuredPassword;
+        await _userSettingsService.LogAuthDebugAsync("Password auth: Password validation result", new { isValid });
+        
         if (isValid)
         {
             // Clear any previous error
@@ -95,6 +109,7 @@ public class AuthenticationService : IAuthenticationService
             var registrationResult = await AutoRegisterUserAsync();
             if (!registrationResult.Success)
             {
+                await _userSettingsService.LogAuthErrorAsync("Password auth: User registration failed", registrationResult.ErrorMessage);
                 // Registration failed - log user out and clear authentication
                 await SetAuthenticatedAsync(false);
                 _isAuthenticated = false;
@@ -105,10 +120,12 @@ public class AuthenticationService : IAuthenticationService
                 return false;
             }
 
+            await _userSettingsService.LogAuthDebugAsync("Password auth: Authentication successful");
             AuthenticationStateChanged?.Invoke(this, true);
         }
         else
         {
+            await _userSettingsService.LogAuthWarnAsync("Password auth: Invalid password");
             _isAuthenticated = false;
             _lastAuthenticationError = "Invalid password";
             AuthenticationStateChanged?.Invoke(this, false);
