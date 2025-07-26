@@ -32,7 +32,7 @@ public class ReportServiceProvider : IReportServiceProvider
         if (_useMockService)
             return new MockReportService();
 
-        return new ReportService(_httpClientFactory, _configuration, _memoryCache);
+        return new ReportService(_httpClientFactory, _configuration);
     }
 }
 
