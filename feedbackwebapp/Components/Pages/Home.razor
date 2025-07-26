@@ -45,7 +45,7 @@
 <div class="container">
     @if (!isAuthenticated)
     {
-        <AuthenticationForm OnAuthenticated="HandleAuthenticated" />
+        <AuthenticationForm OnAuthenticatedWithDetails="HandleAuthenticatedWithDetails" />
     }
     else
     {        
@@ -156,6 +156,33 @@
     private string currentStatusMessage = "";
     private string? initialSource;
     private string? initialId;
+
+    private async Task HandleAuthenticatedWithDetails((bool success, bool justLoggedIn) details)
+    {
+        isAuthenticated = details.success;
+        StateHasChanged();
+
+        if (details.success)
+        {
+            // Only handle post-login registration if the user just logged in
+            // This avoids unnecessary backend calls when user was already authenticated
+            if (details.justLoggedIn)
+            {
+                try
+                {
+                    await AuthService.HandlePostLoginRegistrationAsync();
+                }
+                catch (Exception ex)
+                {
+                    // Log but don't fail the authentication flow if registration has issues
+                    Console.WriteLine($"Post-login registration warning: {ex.Message}");
+                }
+            }
+
+            await HandleQueryNav();
+            //await CheckForNewFeatures();
+        }
+    }
 
     private async Task HandleAuthenticated(bool success)
     {
@@ -381,6 +408,11 @@
         var uri = new Uri(NavigationManager.Uri);
         var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
 
+        // Check if this is an OAuth redirect (user just completed login)
+        var isOAuthRedirect = !string.IsNullOrEmpty(query["code"]) || 
+                             !string.IsNullOrEmpty(query["state"]) ||
+                             uri.AbsolutePath.Contains("/.auth/login/");
+
         // Store auth status for later processing in OnAfterRenderAsync
         var authStatus = query["auth"];
         if (authStatus == "failed" || authStatus == "error")
@@ -398,6 +430,27 @@
         {
             initialSource = "auto";
             initialId = url;
+        }
+
+        // If this is an OAuth redirect, check authentication and handle post-login registration
+        if (isOAuthRedirect)
+        {
+            try
+            {
+                // Give time for OAuth tokens to settle
+                await Task.Delay(500);
+                
+                var isAuthenticated = await AuthService.IsAuthenticatedAsync();
+                if (isAuthenticated)
+                {
+                    // This is a fresh OAuth login, handle post-login registration
+                    await HandleAuthenticatedWithDetails((true, true));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"OAuth redirect handling error: {ex.Message}");
+            }
         }
 
         await base.OnInitializedAsync();

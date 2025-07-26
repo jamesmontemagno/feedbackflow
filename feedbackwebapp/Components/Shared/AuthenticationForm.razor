@@ -156,6 +156,9 @@ else
 
     [Parameter]
     public EventCallback<bool> OnAuthenticated { get; set; }
+    
+    [Parameter]
+    public EventCallback<(bool success, bool justLoggedIn)> OnAuthenticatedWithDetails { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -184,7 +187,7 @@ else
 
             if (useMockMode)
             {
-                await HandleAuthenticated(true);
+                await HandleAuthenticated(true, false); // Already authenticated (mock mode)
                 return;
             }
 
@@ -192,7 +195,7 @@ else
             isAuthenticated = await AuthService.IsAuthenticatedAsync();
             if (isAuthenticated)
             {
-                await HandleAuthenticated(true);
+                await HandleAuthenticated(true, false); // Already authenticated
                 return;
             }
         }
@@ -228,10 +231,20 @@ else
         }
     }
 
-    private async Task HandleAuthenticated(bool success)
+    private async Task HandleAuthenticated(bool success, bool justLoggedIn = false)
     {
         isAuthenticated = success;
-        await OnAuthenticated.InvokeAsync(success);
+        
+        // Call both callbacks if they are provided
+        if (OnAuthenticated.HasDelegate)
+        {
+            await OnAuthenticated.InvokeAsync(success);
+        }
+        
+        if (OnAuthenticatedWithDetails.HasDelegate)
+        {
+            await OnAuthenticatedWithDetails.InvokeAsync((success, justLoggedIn));
+        }
     }
 
     private async Task HandleKeyPress(KeyboardEventArgs e)
@@ -255,7 +268,7 @@ else
             var isAuthenticated = await ((AuthenticationService)AuthService).AuthenticateAsync(password);
             if (isAuthenticated)
             {
-                await HandleAuthenticated(true);
+                await HandleAuthenticated(true, true); // Fresh login
             }
             else
             {
