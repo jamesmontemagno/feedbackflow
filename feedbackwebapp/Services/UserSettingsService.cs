@@ -18,6 +18,11 @@ public class UserSettingsService
         public bool UseCustomPrompts { get; set; } = false;
         public string? PreferredVoice { get; set; }
         public DateTime? LastFeatureAnnouncementShown { get; set; }
+        
+        // New universal prompt property
+        public string UniversalPrompt { get; set; } = SharedDump.AI.FeedbackAnalyzerService.GetUniversalPrompt();
+        
+        // Keep ServicePrompts for backward compatibility during migration
         public Dictionary<string, string> ServicePrompts { get; set; } = new()
         {
             ["youtube"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("youtube"),
@@ -55,7 +60,15 @@ public class UserSettingsService
         {
             _cachedSettings = JsonSerializer.Deserialize<UserSettings>(stored) ?? new UserSettings();
 
-            // Validate and reset any empty prompts to defaults
+            // Migration: If UniversalPrompt is empty or missing, initialize it
+            bool needsMigration = false;
+            if (string.IsNullOrWhiteSpace(_cachedSettings.UniversalPrompt))
+            {
+                _cachedSettings.UniversalPrompt = SharedDump.AI.FeedbackAnalyzerService.GetUniversalPrompt();
+                needsMigration = true;
+            }
+
+            // For backward compatibility, still validate ServicePrompts for old clients
             bool hasEmptyPrompts = false;
             foreach (var serviceType in _cachedSettings.ServicePrompts.Keys.ToList())
             {
@@ -66,7 +79,7 @@ public class UserSettingsService
                 }
             }
 
-            // Add any missing service prompts for new services
+            // Add any missing service prompts for backward compatibility
             var defaultPrompts = new[]
             {
                 "youtube", "github", "hackernews", "reddit", "devblogs", 
@@ -82,8 +95,8 @@ public class UserSettingsService
                 }
             }
 
-            // Save if any prompts were reset
-            if (hasEmptyPrompts)
+            // Save if any migration or prompt reset was needed
+            if (needsMigration || hasEmptyPrompts)
             {
                 await SaveSettingsAsync(_cachedSettings);
             }
@@ -99,7 +112,8 @@ public class UserSettingsService
     }
     public async Task SaveSettingsAsync(UserSettings settings)
     {
-        await SaveToLocalStorageAsync(SETTINGS_KEY, settings);
+        var json = JsonSerializer.Serialize(settings);
+        await _jsRuntime.InvokeVoidAsync("localStorage.setItem", SETTINGS_KEY, json);
         _cachedSettings = settings;
     }
     

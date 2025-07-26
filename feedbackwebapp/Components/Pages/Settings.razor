@@ -149,86 +149,37 @@
             <div class="col-12 mb-4">
                 <div class="card shadow-sm @(!UseCustomPrompts ? "opacity-50" : "")">
                     <div class="card-header">
-                        <h5 class="card-title mb-0">Analysis Prompts</h5>
+                        <h5 class="card-title mb-0">Universal Analysis Prompt</h5>
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
                             @if (!UseCustomPrompts)
                             {
                                 <div class="alert alert-info">
-                                    Enable custom prompts in the settings above to modify these values.
+                                    Enable custom prompts in the settings above to modify this universal prompt.
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-success">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    This universal prompt will be used for analyzing content from all platforms. It automatically detects content type and adapts the analysis accordingly.
                                 </div>
                             }
                         </div>
                         <fieldset disabled="@(!UseCustomPrompts)">
                             <div class="mb-4">
                                 <label class="form-label d-flex justify-content-between">
-                                    <span>YouTube Analysis Prompt</span>
+                                    <span>Universal Analysis Prompt</span>
                                     <button class="btn btn-sm btn-outline-secondary"
-                                        @onclick="@(() => ResetPrompt("youtube"))">Reset to Default</button>
+                                        @onclick="ResetUniversalPrompt">Reset to Default</button>
                                 </label>
-                                <textarea class="form-control font-monospace" rows="6" @bind="YouTubePrompt"
-                                    @bind:event="oninput"></textarea>
-                            </div>
-
-                            <div class="mb-4">
-                                <label class="form-label d-flex justify-content-between">
-                                    <span>GitHub Analysis Prompt</span>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        @onclick="@(() => ResetPrompt("github"))">Reset to Default</button>
-                                </label>
-                                <textarea class="form-control font-monospace" rows="6" @bind="GitHubPrompt"
-                                    @bind:event="oninput"></textarea>
-                            </div>
-
-                            <div class="mb-4">
-                                <label class="form-label d-flex justify-content-between">
-                                    <span>Hacker News Analysis Prompt</span>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        @onclick="@(() => ResetPrompt("hackernews"))">Reset to Default</button>
-                                </label>
-                                <textarea class="form-control font-monospace" rows="6" @bind="HackerNewsPrompt"
-                                    @bind:event="oninput"></textarea>
-                            </div>
-
-                            <div class="mb-4">
-                                <label class="form-label d-flex justify-content-between">
-                                    <span>Reddit Analysis Prompt</span>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        @onclick="@(() => ResetPrompt("reddit"))">Reset to Default</button>
-                                </label>
-                                <textarea class="form-control font-monospace" rows="6" @bind="RedditPrompt"
-                                    @bind:event="oninput"></textarea>
-                            </div>
-
-                            <div class="mb-4">
-                                <label class="form-label d-flex justify-content-between">
-                                    <span>DevBlogs Analysis Prompt</span>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        @onclick="@(() => ResetPrompt("devblogs"))">Reset to Default</button>
-                                </label>
-                                <textarea class="form-control font-monospace" rows="6" @bind="DevBlogsPrompt"
-                                    @bind:event="oninput"></textarea>
-                            </div>
-
-                            <div class="mb-4">
-                                <label class="form-label d-flex justify-content-between">
-                                    <span>Twitter Analysis Prompt</span>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        @onclick="@(() => ResetPrompt("twitter"))">Reset to Default</button>
-                                </label>
-                                <textarea class="form-control font-monospace" rows="6" @bind="TwitterPrompt"
-                                    @bind:event="oninput"></textarea>
-                            </div>
-
-                            <div class="mb-4">
-                                <label class="form-label d-flex justify-content-between">
-                                    <span>BlueSky Analysis Prompt</span>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        @onclick="@(() => ResetPrompt("bluesky"))">Reset to Default</button>
-                                </label>
-                                <textarea class="form-control font-monospace" rows="6" @bind="BlueSkyPrompt"
-                                    @bind:event="oninput"></textarea>
+                                <textarea class="form-control font-monospace" rows="12" @bind="UniversalPrompt"
+                                    @bind:event="oninput" placeholder="Enter your universal analysis prompt instructions..."></textarea>
+                                <div class="text-muted small mt-2">
+                                    This prompt will be used for all content analysis across YouTube, GitHub, Reddit, Hacker News, and other platforms.
+                                    The AI will automatically detect the content type and adapt its analysis approach accordingly.
+                                </div>
                             </div>
                         </fieldset>
 
@@ -262,7 +213,7 @@
     private bool _useCustomPrompts;
     private string? _preferredVoice;
     private int _maxCommentsToAnalyze = 1200;
-    private Dictionary<string, string> _servicePrompts = new();
+    private string _universalPrompt = string.Empty;
 
     internal record VoiceInfo(
     string Name = "",
@@ -313,92 +264,14 @@
         }
     }
 
-    private string YouTubePrompt
+    private string UniversalPrompt
     {
-        get => _servicePrompts.GetValueOrDefault("youtube", "");
+        get => _universalPrompt;
         set
         {
-            if (_servicePrompts.GetValueOrDefault("youtube", "") != value)
+            if (_universalPrompt != value)
             {
-                _servicePrompts["youtube"] = value;
-                hasUnsavedChanges = true;
-            }
-        }
-    }
-
-    private string GitHubPrompt
-    {
-        get => _servicePrompts.GetValueOrDefault("github", "");
-        set
-        {
-            if (_servicePrompts.GetValueOrDefault("github", "") != value)
-            {
-                _servicePrompts["github"] = value;
-                hasUnsavedChanges = true;
-            }
-        }
-    }
-
-    private string HackerNewsPrompt
-    {
-        get => _servicePrompts.GetValueOrDefault("hackernews", "");
-        set
-        {
-            if (_servicePrompts.GetValueOrDefault("hackernews", "") != value)
-            {
-                _servicePrompts["hackernews"] = value;
-                hasUnsavedChanges = true;
-            }
-        }
-    }
-
-    private string RedditPrompt
-    {
-        get => _servicePrompts.GetValueOrDefault("reddit", "");
-        set
-        {
-            if (_servicePrompts.GetValueOrDefault("reddit", "") != value)
-            {
-                _servicePrompts["reddit"] = value;
-                hasUnsavedChanges = true;
-            }
-        }
-    }
-
-    private string DevBlogsPrompt
-    {
-        get => _servicePrompts.GetValueOrDefault("devblogs", "");
-        set
-        {
-            if (_servicePrompts.GetValueOrDefault("devblogs", "") != value)
-            {
-                _servicePrompts["devblogs"] = value;
-                hasUnsavedChanges = true;
-            }
-        }
-    }
-
-    private string TwitterPrompt
-    {
-        get => _servicePrompts.GetValueOrDefault("twitter", "");
-        set
-        {
-            if (_servicePrompts.GetValueOrDefault("twitter", "") != value)
-            {
-                _servicePrompts["twitter"] = value;
-                hasUnsavedChanges = true;
-            }
-        }
-    }
-
-    private string BlueSkyPrompt
-    {
-        get => _servicePrompts.GetValueOrDefault("bluesky", "");
-        set
-        {
-            if (_servicePrompts.GetValueOrDefault("bluesky", "") != value)
-            {
-                _servicePrompts["bluesky"] = value;
+                _universalPrompt = value;
                 hasUnsavedChanges = true;
             }
         }
@@ -429,9 +302,7 @@
             _useCustomPrompts = settings.UseCustomPrompts;
             _preferredVoice = settings.PreferredVoice;
             _maxCommentsToAnalyze = settings.MaxCommentsToAnalyze;
-
-            // Initialize service prompts
-            _servicePrompts = new Dictionary<string, string>(settings.ServicePrompts);
+            _universalPrompt = settings.UniversalPrompt;
         }
 
         hasUnsavedChanges = false;
@@ -547,12 +418,9 @@
             settings.UseCustomPrompts = _useCustomPrompts;
             settings.PreferredVoice = _preferredVoice;
             settings.MaxCommentsToAnalyze = _maxCommentsToAnalyze;
+            settings.UniversalPrompt = _universalPrompt;
 
-            // Apply service prompts
-            foreach (var key in _servicePrompts.Keys)
-            {
-                settings.ServicePrompts[key] = _servicePrompts[key];
-            } // Save to persistent storage
+            // Save to persistent storage
             await UserSettings.SaveSettingsAsync(settings);
             hasUnsavedChanges = false;
 
@@ -564,23 +432,11 @@
             isSaving = false;
         }
     }
-    private void ResetPrompt(string serviceType)
+    private void ResetUniversalPrompt()
     {
         if (settings == null) return;
 
-        _servicePrompts[serviceType] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt(serviceType);
-        hasUnsavedChanges = true;
-        StateHasChanged();
-    }
-
-    private void ResetAllPrompts()
-    {
-        if (settings == null) return;
-
-        foreach (var serviceType in settings.ServicePrompts.Keys.ToList())
-        {
-            _servicePrompts[serviceType] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt(serviceType);
-        }
+        _universalPrompt = SharedDump.AI.FeedbackAnalyzerService.GetUniversalPrompt();
         hasUnsavedChanges = true;
         StateHasChanged();
     }
