@@ -83,12 +83,14 @@ public class ReportService : IReportService
 {
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
+    private readonly IMemoryCache _memoryCache;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-    public ReportService(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+    public ReportService(IHttpClientFactory httpClientFactory, IConfiguration configuration, IMemoryCache memoryCache)
     {
         _httpClient = httpClientFactory.CreateClient("DefaultClient");
         _configuration = configuration;
+        _memoryCache = memoryCache;
     }
 
     public async Task<ReportModel?> GetReportAsync(string id)
