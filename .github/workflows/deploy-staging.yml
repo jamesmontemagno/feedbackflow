@@ -69,7 +69,7 @@ jobs:
   deploy-staging:
     runs-on: windows-latest
     needs: build
-    if: github.event.pull_request.draft == false || github.event_name == 'workflow_dispatch'
+    if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'workflow_dispatch'
     environment:
       name: 'staging'
       url: ${{ steps.deploy-to-staging.outputs.webapp-url }}
