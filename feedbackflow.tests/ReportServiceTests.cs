@@ -33,7 +33,7 @@ public class ReportServiceTests
         var httpClientFactory = Substitute.For<IHttpClientFactory>();
         httpClientFactory.CreateClient("DefaultClient").Returns(_httpClient);
 
-        _reportService = new ReportService(httpClientFactory, _configuration, _memoryCache);
+        _reportService = new ReportService(httpClientFactory, _configuration);
     }
 
     [TestCleanup]
