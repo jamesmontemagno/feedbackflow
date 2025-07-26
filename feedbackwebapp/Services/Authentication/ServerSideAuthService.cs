@@ -8,7 +8,7 @@ namespace FeedbackWebApp.Services.Authentication;
 /// <summary>
 /// Server-side Azure Easy Auth implementation that uses HttpContext and cookies
 /// </summary>
-public class ServerSideAuthService : IAuthenticationService
+public class ServerSideAuthService : IAuthenticationService, IDisposable
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IConfiguration _configuration;
@@ -22,6 +22,9 @@ public class ServerSideAuthService : IAuthenticationService
     private DateTime? _cacheExpiry;
     private readonly TimeSpan _cacheValidityPeriod = TimeSpan.FromMinutes(30); // Cache for 30 minutes
     private readonly object _cacheLock = new object();
+    
+    // Semaphore to ensure only one authentication check happens at a time
+    private readonly SemaphoreSlim _authSemaphore = new SemaphoreSlim(1, 1);
 
     public event EventHandler<bool>? AuthenticationStateChanged;
 
@@ -211,16 +214,33 @@ public class ServerSideAuthService : IAuthenticationService
     {
         await _userSettingsService.LogAuthDebugAsync("GetEasyAuthUserAsync called");
         
-        var httpContext = _httpContextAccessor.HttpContext;
-        if (httpContext == null)
-        {
-            await _userSettingsService.LogAuthErrorAsync("HttpContext not available for authentication check");
-            _logger.LogWarning("HttpContext not available for authentication check");
-            return null;
-        }
-
+        // Use semaphore to prevent concurrent authentication calls
+        await _authSemaphore.WaitAsync();
         try
         {
+            // Double-check cache after acquiring semaphore (in case another thread cached while we were waiting)
+            var cachedUserAfterWait = GetCachedUser();
+            if (cachedUserAfterWait != null)
+            {
+                await _userSettingsService.LogAuthDebugAsync("GetEasyAuthUserAsync result from cache after semaphore wait", new { 
+                    hasUser = true, 
+                    userId = cachedUserAfterWait.UserId, 
+                    email = cachedUserAfterWait.Email, 
+                    provider = cachedUserAfterWait.AuthProvider 
+                });
+                return cachedUserAfterWait;
+            }
+            
+            var httpContext = _httpContextAccessor.HttpContext;
+            if (httpContext == null)
+            {
+                await _userSettingsService.LogAuthErrorAsync("HttpContext not available for authentication check");
+                _logger.LogWarning("HttpContext not available for authentication check");
+                return null;
+            }
+
+            try
+            {
             var baseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}";
             await _userSettingsService.LogAuthDebugAsync("Authentication check starting", new { baseUrl });
             
@@ -439,6 +459,11 @@ public class ServerSideAuthService : IAuthenticationService
             });
             _logger.LogError(ex, "Unexpected error during authentication check");
             return null;
+        }
+        }
+        finally
+        {
+            _authSemaphore.Release();
         }
     }
 
@@ -698,6 +723,14 @@ public class ServerSideAuthService : IAuthenticationService
             "twitter" => claims.FirstOrDefault(c => c.Typ == "urn:twitter:profile_image_url_https")?.Val,
             _ => null
         };
+    }
+
+    /// <summary>
+    /// Dispose of resources
+    /// </summary>
+    public void Dispose()
+    {
+        _authSemaphore?.Dispose();
     }
 }
 

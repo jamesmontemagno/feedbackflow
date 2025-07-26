@@ -1,23 +1,30 @@
 # Centralized Authentication Implementation
 
 ## Overview
-This implementation ensures that authentication is handled centrally through the Home page (`/`) instead of displaying login forms on individual pages that require authentication. Additionally, it includes optimized user registration by distinguishing between fresh logins and existing authenticated sessions.
+This implementation ensures that authentication is handled centrally through the Home page (`/`) instead of displaying login forms on individual pages that require authentication. Additionally, it includes optimized user registration by distinguishing between fresh logins and existing authenticated sessions, plus thread-safe concurrency control to prevent race conditions in authentication calls.
 
 ## Changes Made
 
-### 1. Enhanced AuthenticationForm (`Components/Shared/AuthenticationForm.razor`)
+### 1. Enhanced ServerSideAuthService (`Services/Authentication/ServerSideAuthService.cs`)
+- **Caching system**: 30-minute cache for authenticated users to reduce `.auth/me` API calls
+- **Thread-safe operations**: Object locking for cache access and proper disposal
+- **Semaphore protection**: `SemaphoreSlim` prevents concurrent authentication calls and race conditions
+- **Double-check pattern**: After acquiring semaphore, checks cache again before making API calls
+- **IDisposable implementation**: Proper resource disposal for semaphore
+
+### 2. Enhanced AuthenticationForm (`Components/Shared/AuthenticationForm.razor`)
 - **Added new callback**: `OnAuthenticatedWithDetails` that provides both success status and whether user just logged in
 - **Backward compatibility**: Maintains existing `OnAuthenticated` callback for other components
 - **Smart detection**: Distinguishes between fresh logins vs already authenticated sessions
 - **Dual callback support**: Can handle both simple and detailed authentication callbacks
 
-### 2. Home Page (`Components/Pages/Home.razor`)
+### 3. Home Page (`Components/Pages/Home.razor`)
 - **Enhanced authentication handling**: Uses `HandleAuthenticatedWithDetails` method
 - **OAuth redirect detection**: Detects OAuth login redirects and handles fresh login registration
 - **Optimized backend calls**: Only calls `HandlePostLoginRegistrationAsync` for fresh logins
 - **Backward compatibility**: Maintains existing `HandleAuthenticated` method as fallback
 
-### 3. Updated Pages with Redirect Logic
+### 4. Updated Pages with Redirect Logic
 
 The following pages now redirect to Home (`/`) when a user is not authenticated:
 
@@ -61,26 +68,92 @@ The following pages now redirect to Home (`/`) when a user is not authenticated:
 4. **OAuth detection logic** identifies fresh login and triggers registration
 5. **User registration completed** and session established
 
+### 4. Concurrent Authentication Flow
+1. **Multiple pages/components check authentication simultaneously**
+2. **Semaphore ensures only one GetEasyAuthUserAsync call at a time**
+3. **First call executes, subsequent calls wait**
+4. **After first call completes, waiting calls check cache first**
+5. **Cache hits prevent duplicate API calls, improving performance**
+
 ## Benefits
 
 ### Performance Optimizations
-- **Reduced backend calls**: User registration only happens on fresh logins
-- **Caching integration**: Works seamlessly with ServerSideAuthService caching
-- **Smart detection**: Avoids unnecessary API calls for already authenticated users
+- **Reduced API calls**: 30-minute caching eliminates excessive `.auth/me` requests
+- **Prevented race conditions**: Semaphore protection ensures thread-safe authentication
+- **Optimized concurrent access**: Double-check pattern minimizes duplicate API calls
+- **Smart detection**: Avoids unnecessary backend user registration calls
 
 ### User Experience
 - **Consistent login experience**: Single location for all authentication
 - **Clear redirect flow**: Users understand they need to login at Home
 - **Seamless OAuth handling**: Automatic detection and handling of OAuth flows
 - **No scattered login forms**: Cleaner UI across the application
+- **Faster page loads**: Cached authentication reduces loading times
 
 ### Development Benefits
 - **Centralized authentication logic**: Easier to maintain and update
-- **Backward compatibility**: Existing code continues to work
+- **Thread-safe operations**: Prevents concurrency issues in authentication
 - **Enhanced debugging**: Clear distinction between fresh logins and existing sessions
 - **Consistent styling**: Authentication form styling managed in one place
+- **Resource management**: Proper disposal of semaphore and other resources
 
 ## Technical Implementation
+
+### Semaphore-Protected Authentication
+```csharp
+private readonly SemaphoreSlim _authSemaphore = new SemaphoreSlim(1, 1);
+
+private async Task<AuthenticatedUser?> GetEasyAuthUserAsync()
+{
+    await _userSettingsService.LogAuthDebugAsync("GetEasyAuthUserAsync called");
+    
+    // Use semaphore to prevent concurrent authentication calls
+    await _authSemaphore.WaitAsync();
+    try
+    {
+        // Double-check cache after acquiring semaphore (in case another thread cached while we were waiting)
+        var cachedUserAfterWait = GetCachedUser();
+        if (cachedUserAfterWait != null)
+        {
+            return cachedUserAfterWait;
+        }
+        
+        // Continue with actual authentication logic...
+    }
+    finally
+    {
+        _authSemaphore.Release();
+    }
+}
+```
+
+### Thread-Safe Caching
+```csharp
+private readonly object _cacheLock = new object();
+private AuthenticatedUser? _cachedUser;
+private DateTime? _cacheExpiry;
+private readonly TimeSpan _cacheValidityPeriod = TimeSpan.FromMinutes(30);
+
+private AuthenticatedUser? GetCachedUser()
+{
+    lock (_cacheLock)
+    {
+        if (_cachedUser != null && _cacheExpiry.HasValue && DateTime.UtcNow < _cacheExpiry.Value)
+        {
+            return _cachedUser;
+        }
+        
+        // Cache expired or invalid, clear it
+        if (_cachedUser != null)
+        {
+            _cachedUser = null;
+            _cacheExpiry = null;
+        }
+        
+        return null;
+    }
+}
+```
 
 ### Enhanced AuthenticationForm Callbacks
 ```csharp
@@ -162,6 +235,8 @@ protected override async Task OnInitializedAsync()
 2. **Authentication guard**: Consider implementing a more formal route guard system
 3. **Deep linking**: Preserve query parameters when redirecting to/from authentication
 4. **Session management**: Enhanced session timeout and refresh handling
+5. **Cache invalidation**: More sophisticated cache invalidation strategies
+6. **Metrics**: Add performance metrics for authentication caching and concurrency
 
 ### Breaking Changes
 - Users can no longer authenticate directly on protected pages
@@ -174,3 +249,13 @@ protected override async Task OnInitializedAsync()
 - Caching ensures efficient authentication verification without excessive API calls
 - Backend user registration only happens on confirmed fresh logins
 - OAuth flows are properly detected and handled securely
+- Thread-safe operations prevent race conditions in authentication state
+- Semaphore protection ensures atomic authentication operations
+- Proper resource disposal prevents memory leaks
+
+## Performance Impact
+- **API call reduction**: Up to 30-minute reduction in authentication API calls
+- **Concurrency optimization**: Prevents duplicate simultaneous authentication requests
+- **Memory efficiency**: Bounded cache with automatic expiration
+- **Thread safety**: No performance penalty from race conditions or locks contention
+- **Resource management**: Proper cleanup prevents resource leaks
