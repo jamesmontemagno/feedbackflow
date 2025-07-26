@@ -242,6 +242,62 @@
     color: currentColor;
 }
 
+/* Email notification section styling */
+.email-notification-card {
+    background: var(--bs-light);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    transition: all 0.3s ease;
+}
+
+.email-notification-card:hover {
+    background: var(--card-bg);
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+[data-theme="dark"] .email-notification-card {
+    background: var(--surface-color);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .email-notification-card:hover {
+    background: var(--card-bg);
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 8px rgba(255,255,255,0.1);
+}
+
+.form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.form-check-label {
+    font-weight: 500;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.email-info-text {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.form-check-input {
+    transition: all 0.2s ease;
+}
+
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+.email-notification-card .bi-info-circle {
+    color: var(--info-color);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .modal-dialog {

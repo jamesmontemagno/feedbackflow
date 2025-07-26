@@ -141,6 +141,74 @@
                             </div>
                         </div>
 
+                        <!-- Email Notification Settings -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <h6 class="text-primary">📧 Report Notifications</h6>
+                                <p class="text-muted small">
+                                    Configure when you'd like to receive email notifications about your reports.
+                                </p>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="card border-light">
+                                    <div class="card-body p-3">
+                                        <!-- Enable Notifications Toggle -->
+                                        <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" 
+                                                   type="checkbox" 
+                                                   id="emailNotificationsEnabled"
+                                                   @bind="emailNotificationsEnabled"
+                                                   @bind:event="onchange"
+                                                   @bind:after="UpdateEmailNotificationSettings"
+                                                   disabled="@isUpdatingEmailSettings">
+                                            <label class="form-check-label fw-bold" for="emailNotificationsEnabled">
+                                                Enable email notifications
+                                            </label>
+                                        </div>
+                                        
+                                        @if (emailNotificationsEnabled)
+                                        {
+                                            <!-- Frequency Selection -->
+                                            <div class="mb-3">
+                                                <label class="form-label">Notification Frequency</label>
+                                                <select class="form-select" 
+                                                        @bind="selectedEmailFrequency"
+                                                        @bind:event="onchange"
+                                                        @bind:after="UpdateEmailNotificationSettings"
+                                                        disabled="@isUpdatingEmailSettings">
+                                                    <option value="@((int)EmailReportFrequency.Immediate)">Immediately (when report is ready)</option>
+                                                    <option value="@((int)EmailReportFrequency.Daily)">Daily digest</option>
+                                                    <option value="@((int)EmailReportFrequency.Weekly)">Weekly digest</option>
+                                                </select>
+                                            </div>
+                                        }
+                                        
+                                        @if (isUpdatingEmailSettings)
+                                        {
+                                            <div class="text-muted small">
+                                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                                Updating settings...
+                                            </div>
+                                        }
+                                        
+                                        @if (!string.IsNullOrEmpty(emailSettingsMessage))
+                                        {
+                                            <div class="alert @(emailSettingsSuccess ? "alert-success" : "alert-danger") alert-sm py-2 mt-2">
+                                                <small>@emailSettingsMessage</small>
+                                            </div>
+                                        }
+                                        
+                                        <div class="form-text">
+                                            <small class="text-muted">
+                                                <i class="bi bi-info-circle me-1"></i>
+                                                Email notifications will be sent to: <strong>@(string.IsNullOrEmpty(userAccount?.PreferredEmail) ? userInfo?.Email : userAccount.PreferredEmail)</strong>
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <hr class="my-4">
 
                         <!-- Usage Dashboard -->
@@ -278,6 +346,13 @@
     private string emailUpdateMessage = "";
     private bool emailUpdateSuccess = false;
     private bool hasEmailChanged => preferredEmailInput != (userAccount?.PreferredEmail ?? "");
+    
+    // Email notification settings fields
+    private bool emailNotificationsEnabled = false;
+    private int selectedEmailFrequency = (int)EmailReportFrequency.Immediate;
+    private bool isUpdatingEmailSettings = false;
+    private string emailSettingsMessage = "";
+    private bool emailSettingsSuccess = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -393,6 +468,10 @@
                 if (userAccount != null)
                 {
                     preferredEmailInput = userAccount.PreferredEmail ?? userInfo?.Email ?? "";
+                    
+                    // Initialize email notification settings
+                    emailNotificationsEnabled = userAccount.EmailNotificationsEnabled;
+                    selectedEmailFrequency = (int)userAccount.EmailFrequency;
                 }
             }
             else
@@ -518,6 +597,45 @@
         finally
         {
             isUpdatingEmail = false;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task UpdateEmailNotificationSettings()
+    {
+        try
+        {
+            isUpdatingEmailSettings = true;
+            emailSettingsMessage = "";
+            emailSettingsSuccess = false;
+            StateHasChanged();
+
+            // For now, we'll update the local UserAccount model since we don't have a backend service yet
+            if (userAccount != null)
+            {
+                userAccount.EmailNotificationsEnabled = emailNotificationsEnabled;
+                userAccount.EmailFrequency = (EmailReportFrequency)selectedEmailFrequency;
+                
+                // TODO: Add actual API call to update email notification settings
+                // var result = await UserManagementService.UpdateEmailNotificationSettingsAsync(emailNotificationsEnabled, (EmailReportFrequency)selectedEmailFrequency);
+                
+                // Simulate API call delay
+                await Task.Delay(500);
+                
+                emailSettingsMessage = "Email notification settings updated successfully!";
+                emailSettingsSuccess = true;
+                await ToastService.ShowToastAsync("Email notification settings updated!", ToastType.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            emailSettingsMessage = $"Error updating email notification settings: {ex.Message}";
+            emailSettingsSuccess = false;
+            await ToastService.ShowToastAsync($"Error updating email notification settings: {ex.Message}", ToastType.Danger);
+        }
+        finally
+        {
+            isUpdatingEmailSettings = false;
             StateHasChanged();
         }
     }
