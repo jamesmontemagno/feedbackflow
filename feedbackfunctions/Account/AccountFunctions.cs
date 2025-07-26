@@ -248,7 +248,7 @@ namespace FeedbackFunctions.Account
                         Name = "Pro",
                         Description = "Priority processing, increased limits, basic support",
                         Price = "$9.99/month",
-                        Features = new[] { "Priority processing", "Increased limits", "Email support", "Advanced features" },
+                        Features = new[] { "Priority processing", "Increased limits", "Email support", "Advanced features", "📧 Email notifications" },
                         Limits = _userAccountService.GetLimitsForTier(AccountTier.Pro)
                     },
                     new { 
@@ -256,7 +256,7 @@ namespace FeedbackFunctions.Account
                         Name = "Pro+",
                         Description = "Advanced analytics, email notifications, highest limits",
                         Price = "$29.99/month",
-                        Features = new[] { "Advanced analytics", "Email notifications", "Highest limits", "Priority support", "Custom integrations" },
+                        Features = new[] { "Advanced analytics", "📧 Email notifications", "Highest limits", "Priority support", "Custom integrations" },
                         Limits = _userAccountService.GetLimitsForTier(AccountTier.ProPlus)
                     }
                 };

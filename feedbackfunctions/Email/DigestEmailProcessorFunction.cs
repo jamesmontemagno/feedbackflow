@@ -4,6 +4,7 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using SharedDump.Models.Reports;
 using SharedDump.Models.Account;
+using SharedDump.Utils.Account;
 using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
@@ -134,6 +135,14 @@ public class DigestEmailProcessorFunction
                 {
                     usersProcessed++;
                     var userId = userAccountEntity.PartitionKey;
+                    
+                    // Check if user's tier supports email notifications
+                    if (!AccountTierUtils.SupportsEmailNotifications((AccountTier)userAccountEntity.Tier))
+                    {
+                        _logger.LogDebug("Skipping digest for user {UserId} - tier {Tier} does not support email notifications", 
+                            userId, (AccountTier)userAccountEntity.Tier);
+                        continue;
+                    }
                     
                     // Get user's email address
                     var emailAddress = !string.IsNullOrEmpty(userAccountEntity.PreferredEmail) 

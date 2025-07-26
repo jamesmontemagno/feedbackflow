@@ -5,6 +5,7 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using SharedDump.Models.Reports;
 using SharedDump.Models.Account;
+using SharedDump.Utils.Account;
 using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
@@ -509,6 +510,14 @@ public class ReportProcessorFunctions
                     if (!userAccount.EmailNotificationsEnabled)
                     {
                         _logger.LogDebug("Email notifications disabled for user {UserId}", userId);
+                        continue;
+                    }
+
+                    // Check if user's tier supports email notifications
+                    if (!AccountTierUtils.SupportsEmailNotifications(userAccount.Tier))
+                    {
+                        _logger.LogDebug("Email notifications not supported for user {UserId} with tier {Tier}", 
+                            userId, userAccount.Tier);
                         continue;
                     }
 

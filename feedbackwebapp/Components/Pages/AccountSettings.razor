@@ -5,6 +5,7 @@
 @using FeedbackWebApp.Components.Account
 @using FeedbackWebApp.Services.Account
 @using SharedDump.Models.Account
+@using SharedDump.Utils.Account
 @using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Components.Web
 @inject IUserManagementService UserManagementService
@@ -148,64 +149,108 @@
                                 <p class="text-muted small">
                                     Configure when you'd like to receive email notifications about your reports.
                                 </p>
+                                @if (userAccount != null && !AccountTierUtils.SupportsEmailNotifications(userAccount.Tier))
+                                {
+                                    <p class="text-muted small">
+                                        <i class="bi bi-star-fill text-warning me-1"></i>
+                                        <strong>Pro feature</strong> - Upgrade to Pro or Pro+ to receive email notifications.
+                                    </p>
+                                }
                             </div>
                             <div class="col-md-8">
-                                <div class="card border-light">
-                                    <div class="card-body p-3">
-                                        <!-- Enable Notifications Toggle -->
-                                        <div class="form-check form-switch mb-3">
-                                            <input class="form-check-input" 
-                                                   type="checkbox" 
-                                                   id="emailNotificationsEnabled"
-                                                   @bind="emailNotificationsEnabled"
-                                                   @bind:event="onchange"
-                                                   @bind:after="UpdateEmailNotificationSettings"
-                                                   disabled="@isUpdatingEmailSettings">
-                                            <label class="form-check-label fw-bold" for="emailNotificationsEnabled">
-                                                Enable email notifications
-                                            </label>
-                                        </div>
-                                        
-                                        @if (emailNotificationsEnabled)
-                                        {
-                                            <!-- Frequency Selection -->
-                                            <div class="mb-3">
-                                                <label class="form-label">Notification Frequency</label>
-                                                <select class="form-select" 
-                                                        @bind="selectedEmailFrequency"
-                                                        @bind:event="onchange"
-                                                        @bind:after="UpdateEmailNotificationSettings"
-                                                        disabled="@isUpdatingEmailSettings">
-                                                    <option value="@((int)EmailReportFrequency.Immediate)">Immediately (when report is ready)</option>
-                                                    <option value="@((int)EmailReportFrequency.Daily)">Daily digest</option>
-                                                    <option value="@((int)EmailReportFrequency.Weekly)">Weekly digest</option>
-                                                </select>
+                                @if (userAccount != null && AccountTierUtils.SupportsEmailNotifications(userAccount.Tier))
+                                {
+                                    <div class="card border-light">
+                                        <div class="card-body p-3">
+                                            <!-- Enable Notifications Toggle -->
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" 
+                                                       type="checkbox" 
+                                                       id="emailNotificationsEnabled"
+                                                       @bind="emailNotificationsEnabled"
+                                                       @bind:event="onchange"
+                                                       @bind:after="UpdateEmailNotificationSettings"
+                                                       disabled="@isUpdatingEmailSettings">
+                                                <label class="form-check-label fw-bold" for="emailNotificationsEnabled">
+                                                    Enable email notifications
+                                                </label>
                                             </div>
-                                        }
-                                        
-                                        @if (isUpdatingEmailSettings)
-                                        {
-                                            <div class="text-muted small">
-                                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                                                Updating settings...
+                                            
+                                            @if (emailNotificationsEnabled)
+                                            {
+                                                <!-- Frequency Selection -->
+                                                <div class="mb-3">
+                                                    <label class="form-label">Notification Frequency</label>
+                                                    <select class="form-select" 
+                                                            @bind="selectedEmailFrequency"
+                                                            @bind:event="onchange"
+                                                            @bind:after="UpdateEmailNotificationSettings"
+                                                            disabled="@isUpdatingEmailSettings">
+                                                        <option value="@((int)EmailReportFrequency.Immediate)">Immediately (when report is ready)</option>
+                                                        <option value="@((int)EmailReportFrequency.Daily)">Daily digest</option>
+                                                        <option value="@((int)EmailReportFrequency.Weekly)">Weekly digest</option>
+                                                    </select>
+                                                </div>
+                                            }
+                                            
+                                            @if (isUpdatingEmailSettings)
+                                            {
+                                                <div class="text-muted small">
+                                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                                    Updating settings...
+                                                </div>
+                                            }
+                                            
+                                            @if (!string.IsNullOrEmpty(emailSettingsMessage))
+                                            {
+                                                <div class="alert @(emailSettingsSuccess ? "alert-success" : "alert-danger") alert-sm py-2 mt-2">
+                                                    <small>@emailSettingsMessage</small>
+                                                </div>
+                                            }
+                                            
+                                            <div class="form-text">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-info-circle me-1"></i>
+                                                    Email notifications will be sent to: <strong>@(string.IsNullOrEmpty(userAccount?.PreferredEmail) ? userInfo?.Email : userAccount.PreferredEmail)</strong>
+                                                </small>
                                             </div>
-                                        }
-                                        
-                                        @if (!string.IsNullOrEmpty(emailSettingsMessage))
-                                        {
-                                            <div class="alert @(emailSettingsSuccess ? "alert-success" : "alert-danger") alert-sm py-2 mt-2">
-                                                <small>@emailSettingsMessage</small>
-                                            </div>
-                                        }
-                                        
-                                        <div class="form-text">
-                                            <small class="text-muted">
-                                                <i class="bi bi-info-circle me-1"></i>
-                                                Email notifications will be sent to: <strong>@(string.IsNullOrEmpty(userAccount?.PreferredEmail) ? userInfo?.Email : userAccount.PreferredEmail)</strong>
-                                            </small>
                                         </div>
                                     </div>
-                                </div>
+                                }
+                                else
+                                {
+                                    <!-- Tier restriction message with upgrade prompt -->
+                                    <div class="card border-warning">
+                                        <div class="card-body p-3 text-center">
+                                            <div class="mb-3">
+                                                <i class="bi bi-star-fill text-warning" style="font-size: 2rem;"></i>
+                                            </div>
+                                            <h6 class="text-warning mb-2">Email Notifications - Pro Feature</h6>
+                                            <p class="text-muted mb-3">
+                                                Get notified when your reports are ready! Email notifications are available for Pro and Pro+ subscribers.
+                                            </p>
+                                            <div class="d-flex gap-2 justify-content-center flex-wrap">
+                                                <button class="btn btn-warning btn-sm" @onclick="() => HandleUpgradeRequest(AccountTier.Pro)">
+                                                    <i class="bi bi-arrow-up-circle me-1"></i>
+                                                    Upgrade to Pro
+                                                </button>
+                                                <button class="btn btn-outline-warning btn-sm" @onclick="() => HandleUpgradeRequest(AccountTier.ProPlus)">
+                                                    <i class="bi bi-star-fill me-1"></i>
+                                                    Upgrade to Pro+
+                                                </button>
+                                            </div>
+                                            <div class="mt-2">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-check-circle-fill text-success me-1"></i>
+                                                    Instant notifications when reports are generated
+                                                    <br>
+                                                    <i class="bi bi-check-circle-fill text-success me-1"></i>
+                                                    Daily and weekly digest options
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
                             </div>
                         </div>
 
