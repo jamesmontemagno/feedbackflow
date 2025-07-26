@@ -8,6 +8,9 @@
     border: none;
     border-radius: var(--border-radius);
     box-shadow: var(--card-shadow);
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .modal-header {
@@ -39,16 +42,27 @@
 
 .modal-body {
     padding: 1.5rem;
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .modal-footer {
     border-top: 1px solid var(--border-color);
     background-color: var(--surface-color);
     border-radius: 0 0 var(--border-radius) var(--border-radius);
+    color: var(--text-primary);
+    transition: all 0.3s ease;
 }
 
 .modal-backdrop {
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(var(--text-secondary-rgb), 0.6);
+    transition: background-color 0.3s ease;
+}
+
+/* Dark theme specific backdrop override for better contrast */
+[data-theme="dark"] .modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.75);
 }
 
 /* Form validation styling */
@@ -142,6 +156,23 @@
         opacity: 1;
         transform: scale(1);
     }
+}
+
+/* Dark theme specific modal content overrides */
+[data-theme="dark"] .modal-content {
+    background-color: var(--card-bg) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .modal-body {
+    background-color: var(--card-bg) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .modal-footer {
+    background-color: var(--surface-color) !important;
+    color: var(--text-primary) !important;
+    border-top-color: var(--border-color) !important;
 }
 
 /* Bootstrap Alert Overrides for Dark Theme */
