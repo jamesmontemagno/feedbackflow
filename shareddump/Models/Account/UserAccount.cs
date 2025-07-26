@@ -15,4 +15,9 @@ public class UserAccount
     public int FeedQueriesUsed { get; set; }
     public int ActiveReports { get; set; }
     public string PreferredEmail { get; set; } = string.Empty;
+    
+    // Email notification settings
+    public bool EmailNotificationsEnabled { get; set; } = false;
+    public EmailReportFrequency EmailFrequency { get; set; } = EmailReportFrequency.None;
+    public DateTime? LastEmailSent { get; set; }
 }
