@@ -4,6 +4,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using SharedDump.Models.Reports;
+using SharedDump.Models.Account;
 using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
@@ -12,6 +13,9 @@ using SharedDump.AI;
 using FeedbackFunctions.Utils;
 using FeedbackFunctions.Services;
 using FeedbackFunctions.Services.Reports;
+using FeedbackFunctions.Services.Email;
+using FeedbackFunctions.Services.Account;
+using FeedbackFunctions.Models.Email;
 
 namespace FeedbackFunctions;
 
@@ -23,11 +27,15 @@ public class ReportProcessorFunctions
     private readonly ILogger<ReportProcessorFunctions> _logger;
     private readonly IConfiguration _configuration;
     private const string TableName = "reportrequests";
+    private const string UserRequestsTableName = "userreportrequests";
     private readonly TableClient _tableClient;
+    private readonly TableClient _userRequestsTableClient;
     private readonly BlobServiceClient _serviceClient;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
     private readonly ReportGenerator _reportGenerator;
     private readonly IReportCacheService _cacheService;
+    private readonly IEmailService _emailService;
+    private readonly IUserAccountService _userAccountService;
 
     public ReportProcessorFunctions(
         ILogger<ReportProcessorFunctions> logger,
@@ -35,7 +43,9 @@ public class ReportProcessorFunctions
         IRedditService redditService,
         IGitHubService githubService,
         IFeedbackAnalyzerService analyzerService,
-        IReportCacheService cacheService)
+        IReportCacheService cacheService,
+        IEmailService emailService,
+        IUserAccountService userAccountService)
     {
 #if DEBUG
         _configuration = new ConfigurationBuilder()
@@ -47,12 +57,18 @@ public class ReportProcessorFunctions
 #endif
         _logger = logger;
         _cacheService = cacheService;
+        _emailService = emailService;
+        _userAccountService = userAccountService;
         
         // Initialize table client
         var storageConnection = _configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
         var tableServiceClient = new TableServiceClient(storageConnection);
         _tableClient = tableServiceClient.GetTableClient(TableName);
         _tableClient.CreateIfNotExists();
+        
+        // Initialize user requests table client
+        _userRequestsTableClient = tableServiceClient.GetTableClient(UserRequestsTableName);
+        _userRequestsTableClient.CreateIfNotExists();
 
         // Initialize blob service client
         _serviceClient = new BlobServiceClient(storageConnection);
@@ -319,6 +335,9 @@ public class ReportProcessorFunctions
                 }
             }
 
+            // Send email notifications for generated reports
+            await ProcessEmailNotificationsAsync(generatedReports, requests);
+
             // Store summary of the weekly processing session
             await StoreWeeklyProcessingSummaryAsync(generatedReports, failedRequests);
 
@@ -425,6 +444,178 @@ public class ReportProcessorFunctions
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error storing weekly processing summary");
+        }
+    }
+
+    /// <summary>
+    /// Process email notifications for generated reports
+    /// </summary>
+    private async Task ProcessEmailNotificationsAsync(List<ReportModel> generatedReports, List<ReportRequestModel> requests)
+    {
+        try
+        {
+            _logger.LogInformation("Processing email notifications for {ReportCount} generated reports", generatedReports.Count);
+
+            // For each generated report, find users who requested it
+            var userReportsMap = new Dictionary<string, List<ReportModel>>();
+            
+            foreach (var report in generatedReports)
+            {
+                try
+                {
+                    // Generate the expected request ID from the report
+                    var requestId = $"{report.Source}_{report.SubSource?.Replace("/", "_")}";
+                    
+                    // Query user requests that match this report
+                    var filter = $"RowKey eq '{requestId}'";
+                    
+                    await foreach (var userRequest in _userRequestsTableClient.QueryAsync<UserReportRequestModel>(filter))
+                    {
+                        var userId = userRequest.UserId;
+                        if (!string.IsNullOrEmpty(userId))
+                        {
+                            if (!userReportsMap.ContainsKey(userId))
+                                userReportsMap[userId] = new List<ReportModel>();
+                            
+                            userReportsMap[userId].Add(report);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error finding users for report {ReportId}", report.Id);
+                }
+            }
+
+            _logger.LogInformation("Found reports for {UserCount} users", userReportsMap.Count);
+
+            // Process each user's reports
+            foreach (var kvp in userReportsMap)
+            {
+                var userId = kvp.Key;
+                var userReports = kvp.Value;
+                
+                try
+                {
+                    // Get user account to check email preferences
+                    var userAccount = await _userAccountService.GetUserAccountAsync(userId);
+                    if (userAccount == null)
+                    {
+                        _logger.LogWarning("Could not find user account for userId: {UserId}", userId);
+                        continue;
+                    }
+
+                    // Check if user has email notifications enabled
+                    if (!userAccount.EmailNotificationsEnabled)
+                    {
+                        _logger.LogDebug("Email notifications disabled for user {UserId}", userId);
+                        continue;
+                    }
+
+                    // Get user's email address
+                    var emailAddress = !string.IsNullOrEmpty(userAccount.PreferredEmail) 
+                        ? userAccount.PreferredEmail 
+                        : userId; // Assuming userId is the email address
+
+                    // Validate email address
+                    if (!_emailService.IsValidEmailAddress(emailAddress))
+                    {
+                        _logger.LogWarning("Invalid email address for user {UserId}: {Email}", userId, emailAddress);
+                        continue;
+                    }
+
+                    // For immediate notifications, send individual emails
+                    if (userAccount.EmailFrequency == EmailReportFrequency.Immediate)
+                    {
+                        foreach (var report in userReports)
+                        {
+                            await SendImmediateReportEmailAsync(emailAddress, report);
+                        }
+                    }
+                    // For daily/weekly notifications, we'll need a separate digest processor
+                    // For now, we'll queue them for later processing by creating digest entries
+                    else if (userAccount.EmailFrequency != EmailReportFrequency.None)
+                    {
+                        await QueueDigestEmailAsync(userId, emailAddress, userReports, userAccount.EmailFrequency);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing email notifications for user {UserId}", userId);
+                }
+            }
+
+            _logger.LogInformation("Completed processing email notifications");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in email notification processing");
+        }
+    }
+
+    /// <summary>
+    /// Send immediate email notification for a single report
+    /// </summary>
+    private async Task SendImmediateReportEmailAsync(string emailAddress, ReportModel report)
+    {
+        try
+        {
+            var emailRequest = new ReportEmailRequest
+            {
+                RecipientEmail = emailAddress,
+                RecipientName = "User", // We could enhance this by getting the actual name
+                ReportId = report.Id.ToString(),
+                ReportTitle = $"{report.Source} Report - {report.SubSource}",
+                ReportSummary = $"Generated report with {report.ThreadCount} threads and {report.CommentCount} comments",
+                ReportUrl = $"https://www.feedbackflow.app/?source=email&id={report.Id}",
+                ReportType = report.Source,
+                GeneratedAt = report.GeneratedAt.DateTime
+            };
+
+            var deliveryStatus = await _emailService.SendReportEmailAsync(emailRequest);
+            
+            if (deliveryStatus.Status == Azure.Communication.Email.EmailSendStatus.Succeeded || 
+                deliveryStatus.Status == Azure.Communication.Email.EmailSendStatus.Running)
+            {
+                _logger.LogInformation("Successfully sent email notification to {Email} for report {ReportId}", 
+                    emailAddress, report.Id);
+            }
+            else
+            {
+                _logger.LogWarning("Email notification failed for {Email}, report {ReportId}: {Error}", 
+                    emailAddress, report.Id, deliveryStatus.ErrorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending immediate email for report {ReportId} to {Email}", 
+                report.Id, emailAddress);
+        }
+    }
+
+    /// <summary>
+    /// Queue digest email for daily/weekly processing (placeholder implementation)
+    /// </summary>
+    private async Task QueueDigestEmailAsync(string userId, string emailAddress, List<ReportModel> reports, EmailReportFrequency frequency)
+    {
+        try
+        {
+            // For now, we'll just log that we would queue this
+            // In a full implementation, we'd store this in a queue or table for later processing
+            _logger.LogInformation("Would queue digest email for user {UserId} with {ReportCount} reports for {Frequency} delivery", 
+                userId, reports.Count, frequency);
+            
+            // TODO: Implement actual queueing mechanism for digest emails
+            // This could involve:
+            // 1. Storing digest entries in a table
+            // 2. Having separate timer functions for daily/weekly digest processing
+            // 3. Aggregating reports by user and frequency
+            
+            await Task.CompletedTask; // Placeholder for async operation
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error queueing digest email for user {UserId}", userId);
         }
     }
 }
