@@ -11,13 +11,11 @@
 <div class="container px-4">
     @if (!isAuthenticated)
     {
-        <div class="row justify-content-center">
-            <div class="col-12 col-md-8 col-lg-6">
-                <div class="alert alert-info text-center">
-                    <i class="bi bi-info-circle me-2"></i>
-                    Authentication required to manage report requests.
-                </div>
+        <div class="text-center py-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Redirecting...</span>
             </div>
+            <p class="mt-2">Redirecting to login...</p>
         </div>
     }
     else
@@ -170,6 +168,14 @@
         if (firstRender)
         {
             isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            
+            if (!isAuthenticated)
+            {
+                // Redirect to home page for login
+                NavigationManager.NavigateTo("/");
+                return;
+            }
+            
             if (isAuthenticated)
             {
                 await LoadReportRequests();

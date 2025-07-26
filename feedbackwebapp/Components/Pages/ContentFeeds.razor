@@ -24,13 +24,20 @@
 @inject IConfiguration Configuration
 @inject ContentFeedServiceProvider ContentFeedProvider
 @inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@inject FeedbackWebApp.Services.Authentication.IAuthenticationService AuthService
 
 <PageTitle>Content Feeds - FeedbackFlow</PageTitle>
 
 <div class="container">
     @if (!isAuthenticated)
     {
-        <AuthenticationForm OnAuthenticated="HandleAuthenticated" />
+        <div class="text-center py-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Redirecting...</span>
+            </div>
+            <p class="mt-2">Redirecting to login...</p>
+        </div>
     }
     else
     {
@@ -163,6 +170,23 @@
     {
         isAuthenticated = success;
         StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            
+            if (!isAuthenticated)
+            {
+                // Redirect to home page for login
+                NavigationManager.NavigateTo("/");
+                return;
+            }
+            
+            StateHasChanged();
+        }
     }
 
     private void SelectSource(string source)

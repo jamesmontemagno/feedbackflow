@@ -166,6 +166,7 @@
         {
             // Handle post-login registration for OAuth providers (GitHub, Google, etc.)
             // This ensures users are properly registered in the backend after OAuth login
+            // With caching enabled, this won't make excessive API calls
             try
             {
                 await AuthService.HandlePostLoginRegistrationAsync();

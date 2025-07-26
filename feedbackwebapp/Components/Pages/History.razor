@@ -51,16 +51,22 @@
 </div>
 
 <div class="container-lg py-4 history-page">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="feedbackflow-title mb-0">Saved Analysis</h1>
-    </div>
+
 
     @if (!isAuthenticated)
     {
-        <AuthenticationForm OnAuthenticated="HandleAuthenticated" />
+        <div class="text-center py-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Redirecting...</span>
+            </div>
+            <p class="mt-2">Redirecting to login...</p>
+        </div>
     }
     else
     {
+        <div class="d-flex justify-content-between align-items-center mb-4"></div>
+            <h1 class="feedbackflow-title mb-0">Saved Analysis</h1>
+        </div>
         @if (historyItems is { Count: > 0 })
         {
             <div class="filter-section card bg-body mb-4 p-3 shadow-sm">
@@ -232,27 +238,29 @@
                 }
             </div>
         }
-    }
 
-    @* Local Archive Link - Only show if user has local history items *@
-    @if (hasLocalHistoryItems)
-    {
-        <div class="local-archive-section mt-5 pt-4 border-top">
-            <div class="card bg-body shadow-sm">
-                <div class="card-body text-center">
-                    <i class="bi bi-archive display-6 mb-3 text-muted"></i>
-                    <h5 class="card-title">Local Analysis Archive</h5>
-                    <p class="card-text text-muted">
-                        You have older analyses stored locally on this device. These will eventually be migrated to shared storage.
-                    </p>
-                    <a href="/history-local" class="btn btn-outline-primary">
-                        <i class="bi bi-folder-open me-2"></i>
-                        View Local Archive
-                    </a>
+        @* Local Archive Link - Only show if user has local history items *@
+        @if (hasLocalHistoryItems)
+        {
+            <div class="local-archive-section mt-5 pt-4 border-top">
+                <div class="card bg-body shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="bi bi-archive display-6 mb-3 text-muted"></i>
+                        <h5 class="card-title">Local Analysis Archive</h5>
+                        <p class="card-text text-muted">
+                            You have older analyses stored locally on this device. These will eventually be migrated to shared storage.
+                        </p>
+                        <a href="/history-local" class="btn btn-outline-primary">
+                            <i class="bi bi-folder-open me-2"></i>
+                            View Local Archive
+                        </a>
+                    </div>
                 </div>
             </div>
-        </div>
+        }
     }
+
+
 </div>
 
 
@@ -291,6 +299,14 @@
         if (firstRender)
         {
             isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            
+            if (!isAuthenticated)
+            {
+                // Redirect to home page for login
+                NavigationManager.NavigateTo("/");
+                return;
+            }
+            
             sharedHistoryService = SharedHistoryServiceProvider.GetService();
             
             // Check if user has local history items
