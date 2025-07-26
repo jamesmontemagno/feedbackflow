@@ -170,6 +170,14 @@ public class AuthenticationService : IAuthenticationService
         };
     }
 
+    /// <inheritdoc />
+    public Task<string?> GetAccessTokenAsync()
+    {
+        // Password authentication doesn't use OAuth access tokens
+        // Return null to indicate no token is available
+        return Task.FromResult<string?>(null);
+    }
+
     public string GetLoginUrl(string provider, string? redirectUrl = null)
     {
         // Password auth doesn't use login URLs

@@ -20,6 +20,12 @@ public interface IAuthenticationService
     Task<AuthenticatedUser?> GetCurrentUserAsync();
 
     /// <summary>
+    /// Get the access token for API calls (primarily for OAuth providers)
+    /// </summary>
+    /// <returns>Access token or null if not available</returns>
+    Task<string?> GetAccessTokenAsync();
+
+    /// <summary>
     /// Get the login URL for the specified provider
     /// </summary>
     /// <param name="provider">Authentication provider (e.g., "Microsoft", "Google")</param>

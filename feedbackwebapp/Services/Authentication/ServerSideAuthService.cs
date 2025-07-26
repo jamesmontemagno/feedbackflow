@@ -133,6 +133,56 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
         }
     }
 
+    /// <summary>
+    /// Get the current access token from the request headers (like JavaScript implementation)
+    /// </summary>
+    /// <returns>Access token or null if not available</returns>
+    public async Task<string?> GetAccessTokenAsync()
+    {
+        try
+        {
+            var httpContext = _httpContextAccessor.HttpContext;
+            if (httpContext == null)
+            {
+                await _userSettingsService.LogAuthDebugAsync("No HttpContext available for access token retrieval");
+                return null;
+            }
+
+            var accessToken = GetProviderAccessToken(httpContext);
+            
+            if (!string.IsNullOrEmpty(accessToken))
+            {
+                // Check if token is expired
+                if (await IsTokenExpiredAsync(accessToken))
+                {
+                    await _userSettingsService.LogAuthDebugAsync("Access token expired, attempting refresh");
+                    var baseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}";
+                    await TryRefreshTokenAsync(baseUrl, httpContext);
+                    
+                    // Get token again after refresh
+                    accessToken = GetProviderAccessToken(httpContext);
+                }
+            }
+
+            var provider = GetCurrentProvider(httpContext);
+            await _userSettingsService.LogAuthDebugAsync("GetAccessTokenAsync result", new { 
+                hasToken = !string.IsNullOrEmpty(accessToken),
+                provider
+            });
+            
+            return accessToken;
+        }
+        catch (Exception ex)
+        {
+            await _userSettingsService.LogAuthErrorAsync("Error getting access token", new { 
+                error = ex.Message,
+                type = ex.GetType().Name
+            });
+            _logger.LogWarning(ex, "Error getting access token");
+            return null;
+        }
+    }
+
     /// <inheritdoc />
     public string GetLoginUrl(string provider, string? redirectUrl = null)
     {
@@ -169,10 +219,25 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
             queryParams.Add($"post_login_redirect_url={defaultRedirect}");
         }
         
-        // Add Google-specific parameter for refresh tokens
-        if (provider.ToLower() == "google")
+        // Add provider-specific parameters (based on Microsoft documentation)
+        switch (provider.ToLower())
         {
-            queryParams.Add("access_type=offline");
+            case "google":
+                // Add Google-specific parameter for refresh tokens
+                // Per Microsoft docs: "Append an access_type=offline query string parameter to your /.auth/login/google API call"
+                queryParams.Add("access_type=offline");
+                queryParams.Add("prompt=consent"); // Force consent to get refresh token
+                break;
+            case "microsoft":
+            case "aad":
+                // Add scope parameter for offline access (refresh tokens)
+                // Per Microsoft docs: loginParameters: ["scope=openid profile email offline_access"]
+                queryParams.Add("scope=openid%20profile%20email%20offline_access");
+                break;
+            case "github":
+                // GitHub doesn't explicitly mention refresh tokens in the docs, but we can add scope for better permissions
+                queryParams.Add("scope=user:email");
+                break;
         }
         
         // Append query parameters
@@ -237,6 +302,24 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
                 await _userSettingsService.LogAuthErrorAsync("HttpContext not available for authentication check");
                 _logger.LogWarning("HttpContext not available for authentication check");
                 return null;
+            }
+
+            // First try to get access token from injected headers (more efficient than /.auth/me)
+            var accessToken = GetProviderAccessToken(httpContext);
+            if (!string.IsNullOrEmpty(accessToken))
+            {
+                await _userSettingsService.LogAuthDebugAsync("Found access token in headers, checking if token refresh needed");
+                
+                // Check if token is expired and needs refresh
+                if (await IsTokenExpiredAsync(accessToken))
+                {
+                    await _userSettingsService.LogAuthDebugAsync("Access token is expired, attempting refresh");
+                    var baseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}";
+                    await TryRefreshTokenAsync(baseUrl, httpContext);
+                    
+                    // Re-get the token after refresh attempt
+                    accessToken = GetProviderAccessToken(httpContext);
+                }
             }
 
             try
@@ -468,6 +551,156 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
     }
 
     /// <summary>
+    /// Get the access token from provider-specific headers based on Microsoft documentation
+    /// </summary>
+    /// <param name="httpContext">Current HTTP context</param>
+    /// <returns>Access token or null if not found</returns>
+    private string? GetProviderAccessToken(HttpContext httpContext)
+    {
+        // Try different provider-specific token headers based on Microsoft documentation
+        // https://learn.microsoft.com/en-us/azure/app-service/configure-authentication-oauth-tokens#retrieve-tokens-in-app-code
+        
+        var accessTokenHeaders = new[]
+        {
+            "x-ms-token-aad-access-token",     // Microsoft Entra ID
+            "x-ms-token-google-access-token",  // Google
+            "x-ms-token-github-access-token",  // GitHub
+            "x-ms-token-facebook-access-token", // Facebook
+            "x-ms-token-twitter-access-token"   // Twitter/X
+        };
+
+        foreach (var header in accessTokenHeaders)
+        {
+            var token = httpContext.Request.Headers[header].FirstOrDefault();
+            if (!string.IsNullOrEmpty(token))
+            {
+                return token;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Get the refresh token from provider-specific headers
+    /// </summary>
+    /// <param name="httpContext">Current HTTP context</param>
+    /// <returns>Refresh token or null if not found</returns>
+    private string? GetProviderRefreshToken(HttpContext httpContext)
+    {
+        // Try different provider-specific refresh token headers
+        var refreshTokenHeaders = new[]
+        {
+            "x-ms-token-aad-refresh-token",    // Microsoft Entra ID
+            "x-ms-token-google-refresh-token", // Google
+            "x-ms-token-github-refresh-token"  // GitHub
+        };
+
+        foreach (var header in refreshTokenHeaders)
+        {
+            var token = httpContext.Request.Headers[header].FirstOrDefault();
+            if (!string.IsNullOrEmpty(token))
+            {
+                return token;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Get the provider name from available token headers
+    /// </summary>
+    /// <param name="httpContext">Current HTTP context</param>
+    /// <returns>Provider name or null if not determined</returns>
+    private string? GetCurrentProvider(HttpContext httpContext)
+    {
+        if (!string.IsNullOrEmpty(httpContext.Request.Headers["x-ms-token-aad-access-token"].FirstOrDefault()))
+            return "Microsoft";
+        
+        if (!string.IsNullOrEmpty(httpContext.Request.Headers["x-ms-token-google-access-token"].FirstOrDefault()))
+            return "Google";
+        
+        if (!string.IsNullOrEmpty(httpContext.Request.Headers["x-ms-token-github-access-token"].FirstOrDefault()))
+            return "GitHub";
+        
+        if (!string.IsNullOrEmpty(httpContext.Request.Headers["x-ms-token-facebook-access-token"].FirstOrDefault()))
+            return "Facebook";
+        
+        if (!string.IsNullOrEmpty(httpContext.Request.Headers["x-ms-token-twitter-access-token"].FirstOrDefault()))
+            return "Twitter";
+
+        return null;
+    }
+
+    /// <summary>
+    /// Check if the JWT access token is expired or will expire soon
+    /// </summary>
+    /// <param name="accessToken">JWT access token</param>
+    /// <returns>True if token is expired or will expire within 5 minutes</returns>
+    private async Task<bool> IsTokenExpiredAsync(string accessToken)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(accessToken))
+                return true;
+
+            // Parse JWT token to get expiration
+            var tokenParts = accessToken.Split('.');
+            if (tokenParts.Length != 3)
+            {
+                await _userSettingsService.LogAuthWarnAsync("Invalid JWT token format", new { tokenPartsCount = tokenParts.Length });
+                return true;
+            }
+
+            // Decode the payload (second part)
+            var payload = tokenParts[1];
+            
+            // Add padding if needed for base64 decoding
+            switch (payload.Length % 4)
+            {
+                case 2: payload += "=="; break;
+                case 3: payload += "="; break;
+            }
+
+            var jsonBytes = Convert.FromBase64String(payload);
+            var jsonString = System.Text.Encoding.UTF8.GetString(jsonBytes);
+            var tokenData = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonString);
+
+            if (tokenData?.TryGetValue("exp", out var expElement) == true)
+            {
+                var expUnix = expElement.GetInt64();
+                var expiration = DateTimeOffset.FromUnixTimeSeconds(expUnix);
+                var now = DateTimeOffset.UtcNow;
+                
+                // Consider token expired if it expires within 5 minutes
+                var isExpired = expiration <= now.AddMinutes(5);
+                
+                await _userSettingsService.LogAuthDebugAsync("Token expiration check", new { 
+                    expiration = expiration.ToString(),
+                    now = now.ToString(),
+                    minutesRemaining = (expiration - now).TotalMinutes,
+                    isExpired
+                });
+                
+                return isExpired;
+            }
+
+            await _userSettingsService.LogAuthWarnAsync("No expiration claim found in token");
+            return true; // Assume expired if we can't determine expiration
+        }
+        catch (Exception ex)
+        {
+            await _userSettingsService.LogAuthErrorAsync("Error checking token expiration", new { 
+                error = ex.Message,
+                type = ex.GetType().Name
+            });
+            _logger.LogWarning(ex, "Error checking token expiration, assuming expired");
+            return true; // Assume expired on error
+        }
+    }
+
+    /// <summary>
     /// Attempt to refresh the authentication token via /.auth/refresh
     /// </summary>
     /// <param name="baseUrl">Base URL of the application</param>
@@ -488,10 +721,17 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
                 refreshRequest.Headers.Add("Cookie", httpContext.Request.Headers["Cookie"].ToString());
             }
 
-            // Add cache control to ensure fresh data
-            refreshRequest.Headers.Add("Cache-Control", "no-cache");
+            // Add the current access token as Authorization header for refresh (like JS implementation)
+            var currentAccessToken = GetProviderAccessToken(httpContext);
+            if (!string.IsNullOrEmpty(currentAccessToken))
+            {
+                refreshRequest.Headers.Add("Authorization", $"Bearer {currentAccessToken}");
+            }
 
-            await _userSettingsService.LogAuthDebugAsync("Sending token refresh request", new { refreshUrl, hasCookies });
+            // Add cache control to ensure fresh data
+            refreshRequest.Headers.Add("Cache-Control", "no-cache, no-store");
+
+            await _userSettingsService.LogAuthDebugAsync("Sending token refresh request", new { refreshUrl, hasCookies, hasAccessToken = !string.IsNullOrEmpty(currentAccessToken) });
             _logger.LogDebug("Attempting to refresh authentication token");
             
             var refreshResponse = await _httpClient.SendAsync(refreshRequest);
@@ -514,8 +754,13 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
             }
             else
             {
-                await _userSettingsService.LogAuthWarnAsync("Token refresh failed", new { statusCode = refreshResponse.StatusCode });
-                _logger.LogDebug("Token refresh failed with status: {StatusCode}", refreshResponse.StatusCode);
+                var errorContent = await refreshResponse.Content.ReadAsStringAsync();
+                await _userSettingsService.LogAuthWarnAsync("Token refresh failed", new { 
+                    statusCode = refreshResponse.StatusCode,
+                    errorContent = !string.IsNullOrEmpty(errorContent) ? errorContent : "No error content"
+                });
+                _logger.LogDebug("Token refresh failed with status: {StatusCode}, content: {ErrorContent}", 
+                    refreshResponse.StatusCode, errorContent);
             }
         }
         catch (Exception ex)
