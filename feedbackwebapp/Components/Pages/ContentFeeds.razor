@@ -32,15 +32,10 @@
 <div class="container">
     @if (!isAuthenticated)
     {
-        <div class="loading-state card shadow-sm">
-            <div class="card-body text-center py-5">
-                <div class="d-flex flex-column align-items-center">
-                    <div class="spinner-border mb-3" role="status" style="width: 3rem; height: 3rem;">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <h5 class="card-title mb-2">Loading Content Feeds</h5>
-                    <p class="text-muted mb-0">Checking authentication status...</p>
-                </div>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <span>Loading...</span>
             </div>
         </div>
     }
@@ -100,7 +95,7 @@
                                 <button class="btn btn-primary source-button w-100" disabled="@isLoading" @onclick="FetchContent">
                                     @if (isLoading)
                                     {
-                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        <span class="spinner-border spinner-border-sm text-light me-2" role="status"></span>
                                         <span>Loading...</span>
                                     }
                                     else

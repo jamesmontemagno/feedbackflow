@@ -11,15 +11,10 @@
 <div class="container px-4">
     @if (!isAuthenticated)
     {
-        <div class="loading-state card shadow-sm">
-            <div class="card-body text-center py-5">
-                <div class="d-flex flex-column align-items-center">
-                    <div class="spinner-border mb-3" role="status" style="width: 3rem; height: 3rem;">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <h5 class="card-title mb-2">Loading Report Management</h5>
-                    <p class="text-muted mb-0">Checking authentication status...</p>
-                </div>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <span>Loading...</span>
             </div>
         </div>
     }
@@ -40,7 +35,7 @@
                 @if (isLoading)
                 {
                     <div class="text-center py-5">
-                        <div class="spinner-border text-primary" role="status">
+                        <div class="spinner-border text-primary" role="status" style="width: 2rem; height: 2rem;">
                             <span class="visually-hidden">Loading...</span>
                         </div>
                         <p class="mt-2 text-muted">Loading your report requests...</p>
@@ -117,7 +112,7 @@
                                                     disabled="@(deletingRequests.Contains(request.Id))">
                                                 @if (deletingRequests.Contains(request.Id))
                                                 {
-                                                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                                    <span class="spinner-border spinner-border-sm text-danger me-1" role="status" aria-hidden="true"></span>
                                                     <span>Deleting...</span>
                                                 }
                                                 else
