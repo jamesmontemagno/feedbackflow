@@ -393,7 +393,8 @@ public class SharingFunctions
     }
 
     /// <summary>
-    /// Timer-triggered function to clean up old shared analyses based on account tier retention periods
+    /// Timer-triggered function to clean up old shared analyses based on account tier retention periods.
+    /// Uses dynamic retention settings from AccountLimits: Free (30 days), Pro (60 days), Pro+ (90 days), SuperUser (10 years).
     /// </summary>
     /// <param name="timerInfo">Timer information</param>
     /// <param name="containerClient">Azure Blob container client injected by the runtime</param>
@@ -413,14 +414,8 @@ public class SharingFunctions
         // Helper method to get cutoff date based on account tier
         DateTime GetCutoffDateForTier(SharedDump.Models.Account.AccountTier tier)
         {
-            return tier switch
-            {
-                SharedDump.Models.Account.AccountTier.Free => DateTime.UtcNow.AddDays(-30),
-                SharedDump.Models.Account.AccountTier.Pro => DateTime.UtcNow.AddDays(-60),
-                SharedDump.Models.Account.AccountTier.ProPlus => DateTime.UtcNow.AddDays(-90),
-                SharedDump.Models.Account.AccountTier.SuperUser => DateTime.MinValue, // Never delete
-                _ => DateTime.UtcNow.AddDays(-30) // Default to Free tier retention
-            };
+            var limits = _userAccountService.GetLimitsForTier(tier);
+            return DateTime.UtcNow.AddDays(-limits.AnalysisRetentionDays);
         }
 
         // Clean up old blobs
@@ -456,7 +451,7 @@ public class SharingFunctions
             var userTier = userTiers.GetValueOrDefault(ownerId, SharedDump.Models.Account.AccountTier.Free);
             var cutoffDate = GetCutoffDateForTier(userTier);
             
-            // SuperUser tier has cutoff of DateTime.MinValue, so analyses will never be old enough to delete
+            // Check if the analysis is old enough to delete based on the user's tier retention period
             if (blobItem.Properties.LastModified <= cutoffDate)
             {
                 _logger.LogInformation("Deleting blob {Id} for user {UserId} with tier {Tier} (cutoff: {CutoffDate})", 
@@ -493,7 +488,7 @@ public class SharingFunctions
             var userTier = userTiers.GetValueOrDefault(ownerId, SharedDump.Models.Account.AccountTier.Free);
             var cutoffDateTime = GetCutoffDateForTier(userTier);
             
-            // SuperUser tier has cutoff of DateTime.MinValue, so analyses will never be old enough to delete
+            // Check if the analysis is old enough to delete based on the user's tier retention period
             if (entity.CreatedDate <= cutoffDateTime)
             {
                 _logger.LogInformation("Deleting table entry {Id} for user {UserId} with tier {Tier} (cutoff: {CutoffDate})", 
