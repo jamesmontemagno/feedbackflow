@@ -104,10 +104,10 @@ public abstract class FeedbackService : IFeedbackService
         {
             customPrompt = explicitCustomPrompt;
         }
-        // Otherwise, check user settings for custom prompts (for other service types)
+        // Otherwise, check user settings for custom prompts
         else if (settings.UseCustomPrompts)
         {
-            customPrompt = settings.ServicePrompts.GetValueOrDefault(serviceType.ToLower());
+            customPrompt = settings.UniversalPrompt;
         }
 
         if (customPrompt != null)
@@ -149,10 +149,10 @@ public abstract class FeedbackService : IFeedbackService
         {
             customPrompt = explicitCustomPrompt;
         }
-        // Otherwise, check user settings for custom prompts (for other service types)
+        // Otherwise, check user settings for custom prompts
         else if (settings.UseCustomPrompts)
         {
-            customPrompt = settings.ServicePrompts.GetValueOrDefault(serviceType.ToLower());
+            customPrompt = settings.UniversalPrompt;
         }
 
         if (customPrompt != null)
