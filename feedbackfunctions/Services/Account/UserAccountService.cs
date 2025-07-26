@@ -110,27 +110,31 @@ public class UserAccountService : IUserAccountService
             { 
                 AnalysisLimit = GetConfigValue("AccountTiers:Free:AnalysisLimit", 10),
                 ReportLimit = GetConfigValue("AccountTiers:Free:ReportLimit", 1),
-                FeedQueryLimit = GetConfigValue("AccountTiers:Free:FeedQueryLimit", 20)
+                FeedQueryLimit = GetConfigValue("AccountTiers:Free:FeedQueryLimit", 20),
+                AnalysisRetentionDays = GetConfigValue("AccountTiers:Free:AnalysisRetentionDays", 30)
             },
             AccountTier.Pro => new AccountLimits 
             { 
                 AnalysisLimit = GetConfigValue("AccountTiers:Pro:AnalysisLimit", 75),
                 ReportLimit = GetConfigValue("AccountTiers:Pro:ReportLimit", 5),
-                FeedQueryLimit = GetConfigValue("AccountTiers:Pro:FeedQueryLimit", 200)
+                FeedQueryLimit = GetConfigValue("AccountTiers:Pro:FeedQueryLimit", 200),
+                AnalysisRetentionDays = GetConfigValue("AccountTiers:Pro:AnalysisRetentionDays", 60)
             },
             AccountTier.ProPlus => new AccountLimits 
             { 
                 AnalysisLimit = GetConfigValue("AccountTiers:ProPlus:AnalysisLimit", 300),
                 ReportLimit = GetConfigValue("AccountTiers:ProPlus:ReportLimit", 25),
-                FeedQueryLimit = GetConfigValue("AccountTiers:ProPlus:FeedQueryLimit", 1000)
+                FeedQueryLimit = GetConfigValue("AccountTiers:ProPlus:FeedQueryLimit", 1000),
+                AnalysisRetentionDays = GetConfigValue("AccountTiers:ProPlus:AnalysisRetentionDays", 90)
             },
             AccountTier.SuperUser => new AccountLimits 
             { 
                 AnalysisLimit = 10000,
                 ReportLimit = 10000,
-                FeedQueryLimit = 10000
+                FeedQueryLimit = 10000,
+                AnalysisRetentionDays = 3650 // 10 years
             },
-            _ => new AccountLimits { AnalysisLimit = 0, ReportLimit = 0, FeedQueryLimit = 0 }
+            _ => new AccountLimits { AnalysisLimit = 0, ReportLimit = 0, FeedQueryLimit = 0, AnalysisRetentionDays = 0 }
         };
     }
 

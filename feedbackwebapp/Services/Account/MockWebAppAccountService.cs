@@ -45,7 +45,8 @@ public class MockWebAppAccountService : IWebAppAccountService
                 {
                     AnalysisLimit = userTierInfo.Limits.AnalysisLimit,
                     ReportLimit = userTierInfo.Limits.ReportLimit,
-                    FeedQueryLimit = userTierInfo.Limits.FeedQueryLimit
+                    FeedQueryLimit = userTierInfo.Limits.FeedQueryLimit,
+                    AnalysisRetentionDays = userTierInfo.Limits.AnalysisRetentionDays
                 };
             }
             else
@@ -71,25 +72,29 @@ public class MockWebAppAccountService : IWebAppAccountService
             {
                 AnalysisLimit = 10,
                 ReportLimit = 1,
-                FeedQueryLimit = 20
+                FeedQueryLimit = 20,
+                AnalysisRetentionDays = 30
             },
             AccountTier.Pro => new AccountLimits
             {
                 AnalysisLimit = 75,
                 ReportLimit = 5,
-                FeedQueryLimit = 200
+                FeedQueryLimit = 200,
+                AnalysisRetentionDays = 60
             },
             AccountTier.ProPlus => new AccountLimits
             {
                 AnalysisLimit = 300,
                 ReportLimit = 25,
-                FeedQueryLimit = 1000
+                FeedQueryLimit = 1000,
+                AnalysisRetentionDays = 90
             },
             _ => new AccountLimits
             {
                 AnalysisLimit = 10,
                 ReportLimit = 1,
-                FeedQueryLimit = 20
+                FeedQueryLimit = 20,
+                AnalysisRetentionDays = 30
             }
         };
     }
@@ -116,7 +121,8 @@ public class MockWebAppAccountService : IWebAppAccountService
                 {
                     AnalysisLimit = 10,
                     ReportLimit = 1,
-                    FeedQueryLimit = 20
+                    FeedQueryLimit = 20,
+                    AnalysisRetentionDays = 30
                 }
             },
             new()
@@ -137,7 +143,8 @@ public class MockWebAppAccountService : IWebAppAccountService
                 {
                     AnalysisLimit = 75,
                     ReportLimit = 5,
-                    FeedQueryLimit = 200
+                    FeedQueryLimit = 200,
+                    AnalysisRetentionDays = 60
                 }
             },
             new()
@@ -160,7 +167,8 @@ public class MockWebAppAccountService : IWebAppAccountService
                 {
                     AnalysisLimit = 300,
                     ReportLimit = 25,
-                    FeedQueryLimit = 1000
+                    FeedQueryLimit = 1000,
+                    AnalysisRetentionDays = 90
                 }
             }
         };

@@ -27,7 +27,8 @@ public class WebAppAccountServiceTests
                 {
                     AnalysisLimit = 15, // Different from default
                     ReportLimit = 2,    // Different from default  
-                    FeedQueryLimit = 25 // Different from default
+                    FeedQueryLimit = 25, // Different from default
+                    AnalysisRetentionDays = 45 // Different from default
                 }
             }
         };
@@ -44,6 +45,7 @@ public class WebAppAccountServiceTests
         Assert.AreEqual(15, resultWithTierInfo.Value.limits.AnalysisLimit);
         Assert.AreEqual(2, resultWithTierInfo.Value.limits.ReportLimit);
         Assert.AreEqual(25, resultWithTierInfo.Value.limits.FeedQueryLimit);
+        Assert.AreEqual(45, resultWithTierInfo.Value.limits.AnalysisRetentionDays);
     }
 
     [TestMethod]
@@ -65,6 +67,7 @@ public class WebAppAccountServiceTests
         Assert.AreEqual(10, resultWithoutTierInfo.Value.limits.AnalysisLimit);
         Assert.AreEqual(1, resultWithoutTierInfo.Value.limits.ReportLimit);
         Assert.AreEqual(20, resultWithoutTierInfo.Value.limits.FeedQueryLimit);
+        Assert.AreEqual(30, resultWithoutTierInfo.Value.limits.AnalysisRetentionDays);
     }
 
     [TestMethod]
@@ -87,7 +90,8 @@ public class WebAppAccountServiceTests
                 {
                     AnalysisLimit = 75,
                     ReportLimit = 5,
-                    FeedQueryLimit = 200
+                    FeedQueryLimit = 200,
+                    AnalysisRetentionDays = 60
                 }
             }
         };
@@ -104,5 +108,6 @@ public class WebAppAccountServiceTests
         Assert.AreEqual(10, result.Value.limits.AnalysisLimit);
         Assert.AreEqual(1, result.Value.limits.ReportLimit);
         Assert.AreEqual(20, result.Value.limits.FeedQueryLimit);
+        Assert.AreEqual(30, result.Value.limits.AnalysisRetentionDays);
     }
 }

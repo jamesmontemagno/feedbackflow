@@ -72,7 +72,8 @@ public class WebAppAccountService : IWebAppAccountService
                     {
                         AnalysisLimit = userTierInfo.Limits.AnalysisLimit,
                         ReportLimit = userTierInfo.Limits.ReportLimit,
-                        FeedQueryLimit = userTierInfo.Limits.FeedQueryLimit
+                        FeedQueryLimit = userTierInfo.Limits.FeedQueryLimit,
+                        AnalysisRetentionDays = userTierInfo.Limits.AnalysisRetentionDays
                     };
                 }
                 else
@@ -151,7 +152,8 @@ public class WebAppAccountService : IWebAppAccountService
         {
             AnalysisLimit = 10,
             ReportLimit = 1,
-            FeedQueryLimit = 20
+            FeedQueryLimit = 20,
+            AnalysisRetentionDays = 30
         };
     }
 

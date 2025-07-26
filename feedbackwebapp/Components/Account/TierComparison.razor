@@ -55,28 +55,13 @@
                                     <span class="current-usage">(@UserAccount.FeedQueriesUsed used)</span>
                                 }
                             </li>
+                            <li>
+                                <i class="bi bi-clock-history"></i>
+                                <strong>@tier.Limits.AnalysisRetentionDays</strong> days analysis retention
+                            </li>
                         </ul>
                     </div>
                     
-                    @*                    <div class="tier-features">
-                        <h6>Features</h6>
-                        <ul class="features-list">
-                            @foreach (var feature in tier.Features.Take(4))
-                            {
-                                <li>
-                                    <i class="bi bi-check-circle text-success"></i>
-                                    @feature
-                                </li>
-                            }
-                            @if (tier.Features.Length > 4)
-                            {
-                                <li>
-                                    <i class="bi bi-plus-circle text-muted"></i>
-                                    @(tier.Features.Length - 4) more...
-                                </li>
-                            }
-                        </ul>
-                    </div>*@
                     
                     <div class="tier-action">
                         @if (tier.Tier == CurrentTier)

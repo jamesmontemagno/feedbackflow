@@ -371,6 +371,10 @@ public class SharingFunctions
             // Save updated entity
             await _tableClient.UpsertEntityAsync(entity);
 
+            // Remove from cache to ensure fresh data is loaded with updated visibility settings
+            _sharedAnalysisCache.TryRemove(id, out _);
+            _logger.LogDebug("Removed analysis {Id} from cache after visibility update", id);
+
             _logger.LogInformation("Successfully updated analysis {Id} visibility to {IsPublic} for user {UserId}", 
                 id, isPublic, user.UserId);
 
