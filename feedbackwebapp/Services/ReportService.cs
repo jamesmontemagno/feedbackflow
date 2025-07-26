@@ -81,32 +81,18 @@ public class MockReportService : IReportService
 
 public class ReportService : IReportService
 {
-    private const string ReportCacheKeyPrefix = "report_";
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(4); // Cache for 4 hours since reports don't change
-
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
-    private readonly IMemoryCache _memoryCache;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-    public ReportService(IHttpClientFactory httpClientFactory, IConfiguration configuration, IMemoryCache memoryCache)
+    public ReportService(IHttpClientFactory httpClientFactory, IConfiguration configuration)
     {
         _httpClient = httpClientFactory.CreateClient("DefaultClient");
         _configuration = configuration;
-        _memoryCache = memoryCache;
     }
 
     public async Task<ReportModel?> GetReportAsync(string id)
     {
-        // Create cache key
-        var cacheKey = $"{ReportCacheKeyPrefix}{id}";
-
-        // Check cache first
-        if (_memoryCache.TryGetValue(cacheKey, out ReportModel? cachedReport))
-        {
-            return cachedReport;
-        }
-
         var baseUrl = _configuration["FeedbackApi:BaseUrl"]
             ?? throw new InvalidOperationException("API base URL not configured");
         var code = _configuration["FeedbackApi:FunctionsKey"]
@@ -122,15 +108,6 @@ public class ReportService : IReportService
 
         var content = await response.Content.ReadAsStringAsync();
         var report = JsonSerializer.Deserialize<ReportModel>(content, _jsonOptions);
-
-        // Cache the result if it's not null
-        if (report != null)
-        {
-            var cacheOptions = new MemoryCacheEntryOptions()
-                .SetAbsoluteExpiration(CacheDuration)
-                .SetPriority(CacheItemPriority.Normal);
-            _memoryCache.Set(cacheKey, report, cacheOptions);
-        }
 
         return report;
     }
