@@ -148,6 +148,48 @@ h1:focus {
 /* Bootstrap Overrides - Consolidated in one place */
 /* Place all Bootstrap overrides here to avoid conflicts */
 
+/* Card styling - ensures all cards use theme colors */
+.card {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.card-body {
+    color: var(--text-primary);
+}
+
+.card-header {
+    background-color: rgba(var(--bg-secondary-rgb), 0.8);
+    border-bottom-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.card-footer {
+    background-color: rgba(var(--bg-secondary-rgb), 0.8);
+    border-top-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+/* Text color overrides */
+.text-muted {
+    color: var(--text-secondary) !important;
+}
+
+.text-primary {
+    color: var(--primary-color) !important;
+}
+
+/* Spinner color - ensure all spinners use primary color */
+.spinner-border {
+    color: var(--primary-color);
+}
+
+.spinner-border.text-primary {
+    color: var(--primary-color) !important;
+}
+
 /* Buttons */
 .btn {
     border-radius: var(--border-radius-sm);

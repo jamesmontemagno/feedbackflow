@@ -14,7 +14,7 @@
 }
 
 .loading-state .spinner-border {
-    animation: spin 1s linear infinite, pulse 2s ease-in-out infinite;
+    animation: pulse 2s ease-in-out infinite;
     color: var(--primary-color);
     margin-bottom: 1rem;
 }

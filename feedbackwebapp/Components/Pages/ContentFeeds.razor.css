@@ -2,8 +2,9 @@
 .loading-state {
     margin-top: 2rem;
     border: 1px solid var(--border-color);
-    background: var(--bg-body);
+    background: var(--card-bg);
     transition: all 0.3s ease;
+    box-shadow: var(--card-shadow);
 }
 
 .loading-state .card-body {
@@ -11,7 +12,8 @@
 }
 
 .loading-state .spinner-border {
-    animation: spin 1s linear infinite, pulse 2s ease-in-out infinite;
+    animation: pulse 2s ease-in-out infinite;
+    color: var(--primary-color);
 }
 
 .loading-state .card-title {

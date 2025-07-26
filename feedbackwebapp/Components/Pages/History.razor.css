@@ -3,11 +3,12 @@
 /* Enhanced Loading state styles for History page */
 .loading-state {
     margin-top: 2rem;
-    border: 1px solid rgba(var(--border-color-rgb), 0.2);
+    border: 1px solid var(--border-color);
     border-radius: var(--border-radius-lg);
-    background: var(--card-bg) !important;
-    color: var(--text-primary) !important;
+    background: var(--card-bg);
+    color: var(--text-primary);
     transition: all 0.3s ease;
+    box-shadow: var(--card-shadow);
 }
 
 .loading-state .card-body {
@@ -16,7 +17,7 @@
 }
 
 .loading-state .spinner-border {
-    animation: spin 1s linear infinite, pulse 2s ease-in-out infinite;
+    animation: pulse 2s ease-in-out infinite;
     color: var(--primary-color);
     margin-bottom: 1rem;
 }
