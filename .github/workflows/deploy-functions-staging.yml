@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - 'copilot/**'
+      - 'copilot/fix-19'
     paths:
       - 'feedbackfunctions/**'
       - 'shareddump/**'
