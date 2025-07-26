@@ -34,6 +34,14 @@
         "Deployment": ""
       }
     },
+    "AzureCommunicationServices": {
+      "ConnectionString": "",
+      "SenderEmail": "reports@feedbackflow.dev"
+    },
+    "Email": {
+      "EnableEmailNotifications": true,
+      "DefaultSenderName": "FeedbackFlow Reports"
+    },
     "UseMocks": false,
     "Authentication": {
       "UseEasyAuth": false,

@@ -255,5 +255,7 @@ public class Keys{
     public string? MastodonAccessToken { get; set; }
     public string? MastodonClientKey { get; set; }
     public string? MastodonClientSecret { get; set; }
+    public string? AzureCommunicationServicesConnectionString { get; set; }
+    public string? EmailSenderAddress { get; set; }
     public bool UseMocks { get; set; } = true;
 }
