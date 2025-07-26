@@ -13,6 +13,10 @@ public class ReportRequestModel : ITableEntity
     public string? Repo { get; set; } // if type === "github"
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public int SubscriberCount { get; set; } = 1; // Track how many users want this report
+    
+    // Email notification preferences
+    public string? NotificationEmail { get; set; }
+    public bool EmailNotificationsEnabled { get; set; } = false;
 
     // ITableEntity properties
     public string PartitionKey { get; set; } = string.Empty;

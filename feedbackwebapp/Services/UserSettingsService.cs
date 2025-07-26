@@ -1,5 +1,6 @@
 using Microsoft.JSInterop;
 using System.Text.Json;
+using SharedDump.Models.Email;
 
 namespace FeedbackWebApp.Services;
 
@@ -14,6 +15,12 @@ public class UserSettingsService
         public bool UseCustomPrompts { get; set; } = false;
         public string? PreferredVoice { get; set; }
         public DateTime? LastFeatureAnnouncementShown { get; set; }
+        
+        // Email notification preferences
+        public string? Email { get; set; }
+        public bool EmailNotificationsEnabled { get; set; } = false;
+        public EmailReportFrequency EmailFrequency { get; set; } = EmailReportFrequency.Immediate;
+        
         public Dictionary<string, string> ServicePrompts { get; set; } = new()
         {
             ["youtube"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("youtube"),
