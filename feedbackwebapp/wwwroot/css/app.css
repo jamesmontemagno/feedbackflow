@@ -17,8 +17,10 @@
     --primary-hover: #7758b8;
     --success-color: #9cdbca;
     --success-color-rgb: 156, 219, 202;
+    --success-bg: rgba(156, 219, 202, 0.1);
     --danger-color: #f3a5b1;
     --danger-color-rgb: 243, 165, 177;
+    --danger-bg: rgba(243, 165, 177, 0.1);
     --warning-color: #f8d3a5;
     --github-color: #24292e;
     --warning-color-rgb: 248, 211, 165;
@@ -38,6 +40,7 @@
     /* Additional variables for components */
     --card-bg: var(--bg-secondary);
     --card-bg-rgb: var(--bg-secondary-rgb);
+    --surface-color: var(--bg-secondary);
     --secondary-bg: #f1ebff;
     --secondary-bg-rgb: 241, 235, 255;
     --input-bg: var(--bg-secondary);
@@ -63,8 +66,10 @@
     --primary-hover: #bca4e6;
     --success-color: #7cc3b0;
     --success-color-rgb: 124, 195, 176;
+    --success-bg: rgba(124, 195, 176, 0.1);
     --danger-color: #e78795;
     --danger-color-rgb: 231, 135, 149;
+    --danger-bg: rgba(231, 135, 149, 0.1);
     --warning-color: #e7bf85;
     --warning-color-rgb: 231, 191, 133;
     --github-color: #c9d1d9;
@@ -80,6 +85,7 @@
     /* Additional variables for components */
     --card-bg: var(--bg-secondary);
     --card-bg-rgb: var(--bg-secondary-rgb);
+    --surface-color: var(--bg-secondary);
     --secondary-bg: #2a1e35;
     --secondary-bg-rgb: 42, 30, 53;
     --input-bg: var(--bg-secondary);
@@ -229,6 +235,24 @@ h1:focus {
     color: var(--text-primary);
 }
 
+/* Close button for modals and alerts - Dark theme support */
+.btn-close {
+    transition: opacity 0.3s ease, transform 0.2s ease;
+}
+
+/* Dark theme specific close button styling */
+[data-theme="dark"] .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+[data-theme="dark"] .btn-close:hover {
+    transform: scale(1.1);
+}
+
+[data-theme="dark"] .btn-close:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
+}
+
 /* Forms */
 .form-control,
 .form-select {
@@ -368,6 +392,44 @@ h1:focus {
     color: var(--text-primary);
     padding: 1rem 1.25rem;
     box-shadow: 0 0.25rem 0.75rem rgba(var(--primary-color-rgb), 0.1);
+    transition: all 0.3s ease;
+}
+
+/* Bootstrap Alert Variants with Dark Theme Support */
+.alert-danger {
+    background-color: var(--danger-bg);
+    border: 1px solid var(--danger-color);
+    color: var(--danger-color);
+}
+
+.alert-warning {
+    background-color: rgba(var(--warning-color-rgb), 0.1);
+    border: 1px solid var(--warning-color);
+    color: var(--warning-color);
+}
+
+.alert-success {
+    background-color: var(--success-bg);
+    border: 1px solid var(--success-color);
+    color: var(--success-color);
+}
+
+.alert-info {
+    background-color: rgba(var(--info-color-rgb), 0.1);
+    border: 1px solid var(--info-color);
+    color: var(--info-color);
+}
+
+.alert-primary {
+    background-color: rgba(var(--primary-color-rgb), 0.1);
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+}
+
+.alert-secondary {
+    background-color: rgba(var(--text-secondary-rgb), 0.1);
+    border: 1px solid var(--text-secondary);
+    color: var(--text-secondary);
 }
 
 /* Navbar */

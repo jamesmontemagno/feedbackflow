@@ -23,12 +23,18 @@
 }
 
 .modal-header .btn-close {
-    filter: invert(1);
+    filter: invert(1) grayscale(100%) brightness(200%);
     opacity: 0.8;
+    transition: opacity 0.3s ease, transform 0.2s ease;
 }
 
 .modal-header .btn-close:hover {
     opacity: 1;
+    transform: scale(1.1);
+}
+
+.modal-header .btn-close:focus {
+    box-shadow: 0 0 0 0.25rem rgba(255, 255, 255, 0.25);
 }
 
 .modal-body {
@@ -47,28 +53,79 @@
 
 /* Form validation styling */
 .input-group-text.text-success {
-    background-color: var(--success-bg);
+    background-color: rgba(var(--success-color-rgb), 0.1);
     border-color: var(--success-color);
     color: var(--success-color);
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
 .input-group-text.text-danger {
-    background-color: var(--danger-bg);
+    background-color: rgba(var(--danger-color-rgb), 0.1);
     border-color: var(--danger-color);
     color: var(--danger-color);
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
 .form-control.is-valid {
     border-color: var(--success-color);
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+    transition: all 0.3s ease;
 }
 
 .form-control.is-invalid {
     border-color: var(--danger-color);
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+    transition: all 0.3s ease;
 }
 
 .invalid-feedback {
     font-size: 0.875rem;
     color: var(--danger-color);
+    transition: color 0.3s ease;
+}
+
+/* Input group styling for dark theme */
+.input-group-text {
+    background-color: rgba(var(--bg-secondary-rgb), 0.8);
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+    transition: all 0.3s ease;
+}
+
+/* Form control and select overrides for modal */
+.form-control,
+.form-select {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--input-bg);
+    border-color: var(--primary-color);
+    color: var(--text-primary);
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+.form-control::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+/* Form labels */
+.form-label {
+    color: var(--text-primary);
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.form-text {
+    color: var(--text-secondary);
+    transition: color 0.3s ease;
 }
 
 /* Animation for modal entrance */
@@ -85,6 +142,73 @@
         opacity: 1;
         transform: scale(1);
     }
+}
+
+/* Bootstrap Alert Overrides for Dark Theme */
+.alert {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    border-radius: var(--border-radius-sm);
+    transition: all 0.3s ease;
+}
+
+.alert-danger {
+    background-color: rgba(var(--danger-color-rgb), 0.1);
+    border-color: var(--danger-color);
+    color: var(--danger-color);
+}
+
+.alert-warning {
+    background-color: rgba(var(--warning-color-rgb), 0.1);
+    border-color: var(--warning-color);
+    color: var(--warning-color);
+}
+
+.alert-success {
+    background-color: rgba(var(--success-color-rgb), 0.1);
+    border-color: var(--success-color);
+    color: var(--success-color);
+}
+
+.alert-info {
+    background-color: rgba(var(--info-color-rgb), 0.1);
+    border-color: var(--info-color);
+    color: var(--info-color);
+}
+
+/* Button styling improvements */
+.btn {
+    transition: all 0.3s ease;
+}
+
+.btn-outline-secondary {
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+    background-color: transparent;
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--hover-bg);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-outline-secondary:disabled {
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+    opacity: 0.6;
+}
+
+.btn-primary:disabled {
+    background: var(--primary-gradient);
+    border-color: var(--primary-color);
+    opacity: 0.6;
+}
+
+/* Spinner styling */
+.spinner-border-sm {
+    color: currentColor;
 }
 
 /* Responsive adjustments */

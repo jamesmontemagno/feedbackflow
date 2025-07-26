@@ -1,6 +1,39 @@
 This page tracks the latest features and improvements added to FeedbackFlow.
 
-## 📆 June 2025
+## � August 2025
+
+### 🔐 Authentication & Cloud Backup
+
+FeedbackFlow now offers secure user accounts with cloud synchronization:
+
+- 👤 **User Authentication**: Create your personal FeedbackFlow account for enhanced features
+- ☁️ **Cloud Backup**: Your analysis history automatically syncs across all your devices
+- 🔄 **Seamless Migration**: Existing local data is preserved
+- 🔒 **Secure Storage**: All data is stored securely in the cloud
+
+### 🎯 Tiered Account System
+
+Choose the plan that fits your needs:
+
+- 🆓 **Free**: Basic analysis features with usage limits
+- ⭐ **Pro**: Enhanced capabilities with higher usage limits and priority processing
+- 🏢 **Pro+**: Significantly higher usage limits with advanced features for teams and organizations
+
+### 🌐 Enhanced Sharing System
+
+Share your analysis with more control and flexibility:
+
+- 🔓 **Public Sharing**: Make your analysis discoverable by the community
+- 🔒 **Private Sharing**: Share with specific people using secure links
+- 👁️ **Visibility Controls**: Choose who can view your shared analysis
+
+### 💾 Data Continuity
+
+Your existing data is safe and accessible:
+
+- 🏠 **Local Data Preserved**: All your existing local analysis history remains available
+
+## �📆 June 2025
 
 ### 📊 Custom Reports
 
