@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Http;
 using SharedDump.Models.Authentication;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -506,6 +507,9 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
                 await _userSettingsService.LogAuthDebugAsync("Token refresh successful");
                 _logger.LogDebug("Token refresh successful");
                 
+                // Apply any Set-Cookie headers from the refresh response
+                await ApplySetCookieHeadersAsync(refreshResponse, httpContext);
+                
                 // Clear cached user since token was refreshed
                 ClearUserCache();
                 
@@ -525,6 +529,121 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
                 type = ex.GetType().Name 
             });
             _logger.LogWarning(ex, "Token refresh attempt failed, but continuing with authentication check");
+        }
+    }
+
+    /// <summary>
+    /// Apply Set-Cookie headers from a response to the current HttpContext
+    /// </summary>
+    /// <param name="response">HTTP response containing Set-Cookie headers</param>
+    /// <param name="httpContext">Current HTTP context to apply cookies to</param>
+    private async Task ApplySetCookieHeadersAsync(HttpResponseMessage response, HttpContext httpContext)
+    {
+        try
+        {
+            // Get Set-Cookie headers from the response
+            if (response.Headers.TryGetValues("Set-Cookie", out var setCookieHeaders))
+            {
+                var appliedCookiesCount = 0;
+                
+                foreach (var setCookieHeader in setCookieHeaders)
+                {
+                    // Parse the Set-Cookie header
+                    var cookieParts = setCookieHeader.Split(';');
+                    if (cookieParts.Length > 0)
+                    {
+                        var nameValuePart = cookieParts[0].Trim();
+                        var equalIndex = nameValuePart.IndexOf('=');
+                        
+                        if (equalIndex > 0)
+                        {
+                            var cookieName = nameValuePart.Substring(0, equalIndex).Trim();
+                            var cookieValue = nameValuePart.Substring(equalIndex + 1).Trim();
+                            
+                            // Create cookie options by parsing other parts
+                            var cookieOptions = new CookieOptions();
+                            
+                            foreach (var part in cookieParts.Skip(1))
+                            {
+                                var trimmedPart = part.Trim();
+                                if (trimmedPart.StartsWith("Path=", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    cookieOptions.Path = trimmedPart.Substring(5);
+                                }
+                                else if (trimmedPart.StartsWith("Domain=", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    cookieOptions.Domain = trimmedPart.Substring(7);
+                                }
+                                else if (trimmedPart.StartsWith("Max-Age=", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    if (int.TryParse(trimmedPart.Substring(8), out var maxAge))
+                                    {
+                                        cookieOptions.MaxAge = TimeSpan.FromSeconds(maxAge);
+                                    }
+                                }
+                                else if (trimmedPart.StartsWith("Expires=", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    if (DateTime.TryParse(trimmedPart.Substring(8), out var expires))
+                                    {
+                                        cookieOptions.Expires = expires;
+                                    }
+                                }
+                                else if (string.Equals(trimmedPart, "HttpOnly", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    cookieOptions.HttpOnly = true;
+                                }
+                                else if (string.Equals(trimmedPart, "Secure", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    cookieOptions.Secure = true;
+                                }
+                                else if (trimmedPart.StartsWith("SameSite=", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    var sameSiteValue = trimmedPart.Substring(9);
+                                    if (Enum.TryParse<SameSiteMode>(sameSiteValue, true, out var sameSite))
+                                    {
+                                        cookieOptions.SameSite = sameSite;
+                                    }
+                                }
+                            }
+                            
+                            // Apply the cookie to the response
+                            httpContext.Response.Cookies.Append(cookieName, cookieValue, cookieOptions);
+                            appliedCookiesCount++;
+                            
+                            await _userSettingsService.LogAuthDebugAsync("Applied Set-Cookie header", new { 
+                                cookieName, 
+                                cookieValueLength = cookieValue?.Length ?? 0,
+                                path = cookieOptions.Path,
+                                domain = cookieOptions.Domain,
+                                httpOnly = cookieOptions.HttpOnly,
+                                secure = cookieOptions.Secure,
+                                sameSite = cookieOptions.SameSite.ToString()
+                            });
+                        }
+                    }
+                }
+                
+                await _userSettingsService.LogAuthDebugAsync("Applied Set-Cookie headers from refresh response", new { 
+                    totalHeaders = setCookieHeaders.Count(), 
+                    appliedCookies = appliedCookiesCount 
+                });
+                
+                _logger.LogDebug("Applied {AppliedCount} cookies from {TotalCount} Set-Cookie headers", 
+                    appliedCookiesCount, setCookieHeaders.Count());
+            }
+            else
+            {
+                await _userSettingsService.LogAuthDebugAsync("No Set-Cookie headers found in refresh response");
+                _logger.LogDebug("No Set-Cookie headers found in refresh response");
+            }
+        }
+        catch (Exception ex)
+        {
+            await _userSettingsService.LogAuthErrorAsync("Error applying Set-Cookie headers from refresh response", new { 
+                error = ex.Message, 
+                type = ex.GetType().Name 
+            });
+            _logger.LogWarning(ex, "Error applying Set-Cookie headers from refresh response");
         }
     }
 
