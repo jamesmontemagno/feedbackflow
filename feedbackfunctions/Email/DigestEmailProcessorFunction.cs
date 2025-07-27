@@ -115,8 +115,8 @@ public class DigestEmailProcessorFunction
             var cutoffDate = DateTime.UtcNow.AddDays(-7); // Only reports from the last week
             _logger.LogInformation("Processing individual report emails for reports since {CutoffDate}", cutoffDate);
 
-            // Find all user report requests with individual email notifications enabled
-            var filter = "EmailNotificationEnabled eq true and EmailFrequency eq 1"; // Individual = 1
+            // Find all user report requests with email notifications enabled
+            var filter = "EmailEnabled eq true";
             var emailsSent = 0;
             var usersProcessed = 0;
 
@@ -127,14 +127,28 @@ public class DigestEmailProcessorFunction
                     usersProcessed++;
                     var userId = userRequest.UserId;
                     
-                    // Get user account to check tier and email address
+                    // Get user account to check tier, email settings, and email address
                     var userAccountEntity = await _userAccountsTableClient.GetEntityAsync<UserAccountEntity>(userId, userId);
                     
                     // Check if user's tier supports email notifications
                     if (!AccountTierUtils.SupportsEmailNotifications((AccountTier)userAccountEntity.Value.Tier))
                     {
-                        _logger.LogDebug("Skipping individual emails for user {UserId} - tier {Tier} does not support email notifications", 
+                        _logger.LogDebug("Skipping emails for user {UserId} - tier {Tier} does not support email notifications", 
                             userId, (AccountTier)userAccountEntity.Value.Tier);
+                        continue;
+                    }
+                    
+                    // Check if user has email notifications enabled globally
+                    if (!userAccountEntity.Value.EmailNotificationsEnabled)
+                    {
+                        _logger.LogDebug("Skipping emails for user {UserId} - email notifications disabled in account settings", userId);
+                        continue;
+                    }
+                    
+                    // Check if user wants individual emails (not digest)
+                    if ((EmailReportFrequency)userAccountEntity.Value.EmailFrequency != EmailReportFrequency.Individual)
+                    {
+                        _logger.LogDebug("Skipping individual emails for user {UserId} - user prefers digest emails", userId);
                         continue;
                     }
                     
@@ -221,7 +235,7 @@ public class DigestEmailProcessorFunction
 
             // Group user requests by user ID for digest emails
             var digestRequests = new Dictionary<string, List<UserReportRequestModel>>();
-            var filter = "EmailNotificationEnabled eq true and EmailFrequency eq 2"; // WeeklyDigest = 2
+            var filter = "EmailEnabled eq true";
 
             await foreach (var userRequest in _userRequestsTableClient.QueryAsync<UserReportRequestModel>(filter))
             {
@@ -243,7 +257,7 @@ public class DigestEmailProcessorFunction
                     var userId = userDigestGroup.Key;
                     var userRequests = userDigestGroup.Value;
                     
-                    // Get user account to check tier and email address
+                    // Get user account to check tier, email settings, and email address
                     var userAccountEntity = await _userAccountsTableClient.GetEntityAsync<UserAccountEntity>(userId, userId);
                     
                     // Check if user's tier supports email notifications
@@ -251,6 +265,20 @@ public class DigestEmailProcessorFunction
                     {
                         _logger.LogDebug("Skipping digest for user {UserId} - tier {Tier} does not support email notifications", 
                             userId, (AccountTier)userAccountEntity.Value.Tier);
+                        continue;
+                    }
+                    
+                    // Check if user has email notifications enabled globally
+                    if (!userAccountEntity.Value.EmailNotificationsEnabled)
+                    {
+                        _logger.LogDebug("Skipping digest for user {UserId} - email notifications disabled in account settings", userId);
+                        continue;
+                    }
+                    
+                    // Check if user wants digest emails (not individual)
+                    if ((EmailReportFrequency)userAccountEntity.Value.EmailFrequency != EmailReportFrequency.WeeklyDigest)
+                    {
+                        _logger.LogDebug("Skipping digest for user {UserId} - user prefers individual emails", userId);
                         continue;
                     }
                     

@@ -159,46 +159,18 @@
                                             <input class="form-check-input" 
                                                    type="checkbox" 
                                                    id="emailNotification"
-                                                   @bind="reportRequest.EmailNotificationEnabled" 
+                                                   @bind="reportRequest.EmailEnabled" 
                                                    disabled="@isSubmitting">
                                             <label class="form-check-label fw-bold" for="emailNotification">
                                                 📧 Enable email notifications for this report
                                             </label>
                                         </div>
+                                        <small class="form-text text-muted">
+                                            Make sure to enable email notifications in your 
+                                            <a href="/account-settings" target="_blank">Account Settings</a> 
+                                            and set your notification preference (Individual or Weekly Digest).
+                                        </small>
                                     </div>
-                                    
-                                    @if (reportRequest.EmailNotificationEnabled)
-                                    {
-                                        <div class="ms-4">
-                                            <label class="form-label small text-muted">Notification preference:</label>
-                                            <div class="form-check">
-                                                <input class="form-check-input" 
-                                                       type="radio" 
-                                                       name="emailFrequency" 
-                                                       id="emailIndividual"
-                                                       value="@((int)EmailReportFrequency.Individual)"
-                                                       @onchange="@((e) => OnEmailFrequencyChanged(e))"
-                                                       checked="@(reportRequest.EmailFrequency == EmailReportFrequency.Individual)"
-                                                       disabled="@isSubmitting">
-                                                <label class="form-check-label" for="emailIndividual">
-                                                    <strong>Individual reports</strong> - Get email for each report (recommended)
-                                                </label>
-                                            </div>
-                                            <div class="form-check">
-                                                <input class="form-check-input" 
-                                                       type="radio" 
-                                                       name="emailFrequency" 
-                                                       id="emailDigest"
-                                                       value="@((int)EmailReportFrequency.WeeklyDigest)"
-                                                       @onchange="@((e) => OnEmailFrequencyChanged(e))"
-                                                       checked="@(reportRequest.EmailFrequency == EmailReportFrequency.WeeklyDigest)"
-                                                       disabled="@isSubmitting">
-                                                <label class="form-check-label" for="emailDigest">
-                                                    <strong>Weekly digest</strong> - Combine all reports into one email
-                                                </label>
-                                            </div>
-                                        </div>
-                                    }
                                     
                                     <div class="form-text mt-2">
                                         <small class="text-muted email-info-text">
@@ -329,8 +301,7 @@
         [RequiredIf(nameof(Type), "github", ErrorMessage = "Repository name is required for GitHub reports")]
         public string? Repo { get; set; }
         
-        public bool EmailNotificationEnabled { get; set; } = false;
-        public EmailReportFrequency EmailFrequency { get; set; } = EmailReportFrequency.Individual;
+        public bool EmailEnabled { get; set; } = false;
     }
 
     public class RequiredIfAttribute : ValidationAttribute
@@ -590,10 +561,10 @@
             var id = GenerateRequestId(reportRequest);
 
             // Validate email notification permissions (prevent Free tier users from bypassing UI restrictions)
-            var emailNotificationEnabled = reportRequest.EmailNotificationEnabled;
-            if (emailNotificationEnabled && (userAccount == null || !AccountTierUtils.SupportsEmailNotifications(userAccount.Tier)))
+            var emailEnabled = reportRequest.EmailEnabled;
+            if (emailEnabled && (userAccount == null || !AccountTierUtils.SupportsEmailNotifications(userAccount.Tier)))
             {
-                emailNotificationEnabled = false; // Silently disable for Free tier users
+                emailEnabled = false; // Silently disable for Free tier users
             }
 
             // Create request object for backend
@@ -605,8 +576,7 @@
                 owner = reportRequest.Type == "github" ? reportRequest.Owner : null,
                 repo = reportRequest.Type == "github" ? reportRequest.Repo : null,
                 createdAt = DateTimeOffset.UtcNow,
-                emailNotificationEnabled = emailNotificationEnabled,
-                emailFrequency = reportRequest.EmailFrequency
+                emailEnabled = emailEnabled
             };
 
             // Send to backend
@@ -716,14 +686,6 @@
         showUsageLimitDialog = false;
         usageLimitError = null;
         StateHasChanged();
-    }
-
-    private void OnEmailFrequencyChanged(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out var frequency))
-        {
-            reportRequest.EmailFrequency = (EmailReportFrequency)frequency;
-        }
     }
 
     private static string GenerateRequestId(ReportRequestModel request)

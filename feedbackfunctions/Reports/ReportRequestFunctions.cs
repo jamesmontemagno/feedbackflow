@@ -231,7 +231,7 @@ public class ReportRequestFunctions
             }
 
             // Validate email notification settings
-            if (request.EmailNotificationEnabled)
+            if (request.EmailEnabled)
             {
                 // Get user account to validate tier permissions
                 var userAccount = await _userAccountService.GetUserAccountAsync(user.UserId);
@@ -249,11 +249,6 @@ public class ReportRequestFunctions
                     await forbiddenResponse.WriteStringAsync("Email notifications are not available for your current account tier. Please upgrade to Pro or Pro+ to enable email notifications.");
                     return forbiddenResponse;
                 }
-            }
-            else
-            {
-                // If email notifications are disabled, set frequency to None
-                request.EmailFrequency = SharedDump.Models.Account.EmailReportFrequency.None;
             }
 
             // Generate deterministic ID based on type and parameters
@@ -574,8 +569,8 @@ public class ReportRequestFunctions
             }
 
             // Validate email notification permissions (prevent Free tier users from enabling notifications)
-            var emailNotificationEnabled = emailSettings.EmailNotificationEnabled;
-            if (emailNotificationEnabled && !SharedDump.Utils.Account.AccountTierUtils.SupportsEmailNotifications(userAccount.Tier))
+            var emailEnabled = emailSettings.EmailEnabled;
+            if (emailEnabled && !SharedDump.Utils.Account.AccountTierUtils.SupportsEmailNotifications(userAccount.Tier))
             {
                 var forbiddenResponse = req.CreateResponse(HttpStatusCode.Forbidden);
                 await forbiddenResponse.WriteStringAsync("Email notifications are not available for your current account tier. Please upgrade to Pro or Pro+ to enable email notifications.");
@@ -583,14 +578,13 @@ public class ReportRequestFunctions
             }
 
             // Update the email settings
-            existingEntity.EmailNotificationEnabled = emailNotificationEnabled;
-            existingEntity.EmailFrequency = emailSettings.EmailFrequency;
+            existingEntity.EmailEnabled = emailEnabled;
 
             // Update the entity in table storage
             await _userRequestsTableClient.UpdateEntityAsync(existingEntity, existingEntity.ETag);
             
-            _logger.LogInformation("Updated email settings for user report request {RequestId} for user {UserId}: EmailEnabled={EmailEnabled}, Frequency={Frequency}", 
-                id, user.UserId, emailNotificationEnabled, emailSettings.EmailFrequency);
+            _logger.LogInformation("Updated email settings for user report request {RequestId} for user {UserId}: EmailEnabled={EmailEnabled}", 
+                id, user.UserId, emailEnabled);
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteStringAsync("Email settings updated successfully");
@@ -676,11 +670,10 @@ public class ReportRequestFunctions
     }
 
     /// <summary>
-    /// Model for updating email notification settings
+    /// Model for updating email notification settings for a specific report
     /// </summary>
     public class EmailSettingsUpdate
     {
-        public bool EmailNotificationEnabled { get; set; }
-        public SharedDump.Models.Account.EmailReportFrequency EmailFrequency { get; set; }
+        public bool EmailEnabled { get; set; }
     }
 }

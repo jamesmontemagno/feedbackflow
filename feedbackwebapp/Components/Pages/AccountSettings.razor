@@ -654,21 +654,29 @@
             emailSettingsSuccess = false;
             StateHasChanged();
 
-            // For now, we'll update the local UserAccount model since we don't have a backend service yet
-            if (userAccount != null)
+            // Call the backend API to update email notification settings
+            var result = await UserManagementService.UpdateEmailNotificationSettingsAsync(
+                emailNotificationsEnabled, 
+                (EmailReportFrequency)selectedEmailFrequency);
+            
+            if (result.Success)
             {
-                userAccount.EmailNotificationsEnabled = emailNotificationsEnabled;
-                userAccount.EmailFrequency = (EmailReportFrequency)selectedEmailFrequency;
-                
-                // TODO: Add actual API call to update email notification settings
-                // var result = await UserManagementService.UpdateEmailNotificationSettingsAsync(emailNotificationsEnabled, (EmailReportFrequency)selectedEmailFrequency);
-                
-                // Simulate API call delay
-                await Task.Delay(500);
+                // Update the local UserAccount model to reflect the changes
+                if (userAccount != null)
+                {
+                    userAccount.EmailNotificationsEnabled = emailNotificationsEnabled;
+                    userAccount.EmailFrequency = (EmailReportFrequency)selectedEmailFrequency;
+                }
                 
                 emailSettingsMessage = "Email notification settings updated successfully!";
                 emailSettingsSuccess = true;
                 await ToastService.ShowToastAsync("Email notification settings updated!", ToastType.Success);
+            }
+            else
+            {
+                emailSettingsMessage = $"Failed to update email notification settings: {result.ErrorMessage}";
+                emailSettingsSuccess = false;
+                await ToastService.ShowToastAsync($"Failed to update email notification settings: {result.ErrorMessage}", ToastType.Danger);
             }
         }
         catch (Exception ex)

@@ -48,14 +48,9 @@ public class UserReportRequestModel : ITableEntity
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     
     /// <summary>
-    /// Whether email notifications are enabled for this report
+    /// Whether email notifications are enabled for this specific report
     /// </summary>
-    public bool EmailNotificationEnabled { get; set; } = false;
-    
-    /// <summary>
-    /// Email notification preference for this report (Individual or WeeklyDigest)
-    /// </summary>
-    public EmailReportFrequency EmailFrequency { get; set; } = EmailReportFrequency.Individual;
+    public bool EmailEnabled { get; set; } = false;
     
     /// <summary>
     /// Display name for the request (auto-generated)

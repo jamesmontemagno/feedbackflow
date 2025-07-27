@@ -106,11 +106,10 @@
                                                             }
                                                             
                                                             <!-- Email notification status -->
-                                                            @if (request.EmailNotificationEnabled)
+                                                            @if (request.EmailEnabled)
                                                             {
                                                                 <span class="badge bg-success" title="Email notifications enabled">
-                                                                    <i class="bi bi-envelope-check me-1"></i>
-                                                                    @(request.EmailFrequency == EmailReportFrequency.Individual ? "Individual" : "Weekly Digest")
+                                                                    <i class="bi bi-envelope-check me-1"></i>Email Enabled
                                                                 </span>
                                                             }
                                                             else
@@ -228,40 +227,12 @@
                                 Enable email notifications for this report
                             </label>
                         </div>
+                        <small class="form-text text-muted">
+                            Make sure to enable email notifications in your 
+                            <a href="/account-settings" target="_blank">Account Settings</a> 
+                            and set your notification preference (Individual or Weekly Digest).
+                        </small>
                     </div>
-                    
-                    @if (editEmailEnabled)
-                    {
-                        <div class="ms-3">
-                            <label class="form-label small text-muted">Notification preference:</label>
-                            <div class="form-check">
-                                <input class="form-check-input" 
-                                       type="radio" 
-                                       name="editEmailFrequency" 
-                                       id="editEmailIndividual"
-                                       value="@((int)EmailReportFrequency.Individual)"
-                                       @onchange="@((e) => OnEditEmailFrequencyChanged(e))"
-                                       checked="@(editEmailFrequency == EmailReportFrequency.Individual)"
-                                       disabled="@isUpdatingEmailSettings">
-                                <label class="form-check-label" for="editEmailIndividual">
-                                    <strong>Individual reports</strong> - Get email for each report (recommended)
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" 
-                                       type="radio" 
-                                       name="editEmailFrequency" 
-                                       id="editEmailDigest"
-                                       value="@((int)EmailReportFrequency.WeeklyDigest)"
-                                       @onchange="@((e) => OnEditEmailFrequencyChanged(e))"
-                                       checked="@(editEmailFrequency == EmailReportFrequency.WeeklyDigest)"
-                                       disabled="@isUpdatingEmailSettings">
-                                <label class="form-check-label" for="editEmailDigest">
-                                    <strong>Weekly digest</strong> - Combine all reports into one email
-                                </label>
-                            </div>
-                        </div>
-                    }
                     
                     @if (!string.IsNullOrEmpty(emailUpdateMessage))
                     {
@@ -315,7 +286,6 @@
     // Email settings editing
     private UserReportRequestModel? editingEmailSettings = null;
     private bool editEmailEnabled = false;
-    private EmailReportFrequency editEmailFrequency = EmailReportFrequency.Individual;
     private bool isUpdatingEmailSettings = false;
     private string emailUpdateMessage = string.Empty;
     private bool emailUpdateSuccess = false;
@@ -467,8 +437,7 @@
     private void EditEmailSettings(UserReportRequestModel request)
     {
         editingEmailSettings = request;
-        editEmailEnabled = request.EmailNotificationEnabled;
-        editEmailFrequency = request.EmailFrequency;
+        editEmailEnabled = request.EmailEnabled;
         emailUpdateMessage = string.Empty;
         emailUpdateSuccess = false;
     }
@@ -477,18 +446,9 @@
     {
         editingEmailSettings = null;
         editEmailEnabled = false;
-        editEmailFrequency = EmailReportFrequency.Individual;
         emailUpdateMessage = string.Empty;
         emailUpdateSuccess = false;
         isUpdatingEmailSettings = false;
-    }
-
-    private void OnEditEmailFrequencyChanged(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out var frequency))
-        {
-            editEmailFrequency = (EmailReportFrequency)frequency;
-        }
     }
 
     private async Task SaveEmailSettings()
@@ -502,17 +462,16 @@
             emailUpdateMessage = string.Empty;
 
             // Validate email notification permissions
-            var emailNotificationEnabled = editEmailEnabled;
-            if (emailNotificationEnabled && (userAccount == null || !AccountTierUtils.SupportsEmailNotifications(userAccount.Tier)))
+            var emailEnabled = editEmailEnabled;
+            if (emailEnabled && (userAccount == null || !AccountTierUtils.SupportsEmailNotifications(userAccount.Tier)))
             {
-                emailNotificationEnabled = false; // Silently disable for Free tier users
+                emailEnabled = false; // Silently disable for Free tier users
             }
 
             // Create update object for backend
             var updateData = new
             {
-                emailNotificationEnabled = emailNotificationEnabled,
-                emailFrequency = editEmailFrequency
+                emailEnabled = emailEnabled
             };
 
             // Update via backend
@@ -524,8 +483,7 @@
                 emailUpdateSuccess = true;
                 
                 // Update local model
-                editingEmailSettings.EmailNotificationEnabled = emailNotificationEnabled;
-                editingEmailSettings.EmailFrequency = editEmailFrequency;
+                editingEmailSettings.EmailEnabled = emailEnabled;
                 
                 // Refresh the list to show updated badges
                 await LoadReportRequests();

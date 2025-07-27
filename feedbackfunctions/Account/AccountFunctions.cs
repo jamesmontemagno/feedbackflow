@@ -181,11 +181,107 @@ namespace FeedbackFunctions.Account
         }
 
         /// <summary>
+        /// Update the user's email notification settings
+        /// </summary>
+        /// <param name="req">HTTP request</param>
+        /// <returns>HTTP response with success status</returns>
+        [Function("UpdateEmailNotificationSettings")]
+        [Authorize]
+        public async Task<HttpResponseData> UpdateEmailNotificationSettingsAsync(
+            [HttpTrigger(AuthorizationLevel.Function, "put")] HttpRequestData req)
+        {
+            try
+            {
+                _logger.LogInformation("UpdateEmailNotificationSettings function triggered");
+
+                // Get authenticated user from middleware
+                var authenticatedUser = await _authMiddleware.GetUserAsync(req);
+                if (authenticatedUser == null)
+                {
+                    _logger.LogWarning("No authenticated user found for UpdateEmailNotificationSettings request");
+                    var unauthorizedResponse = req.CreateResponse(HttpStatusCode.Unauthorized);
+                    await unauthorizedResponse.WriteStringAsync("User authentication required");
+                    return unauthorizedResponse;
+                }
+
+                // Read the request body
+                var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+                if (string.IsNullOrWhiteSpace(requestBody))
+                {
+                    var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await badRequestResponse.WriteStringAsync("Request body is required");
+                    return badRequestResponse;
+                }
+
+                // Parse the email notification settings from the request
+                var requestData = JsonSerializer.Deserialize<UpdateEmailNotificationSettingsRequest>(requestBody, new JsonSerializerOptions 
+                { 
+                    PropertyNameCaseInsensitive = true 
+                });
+
+                if (requestData == null)
+                {
+                    var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await badRequestResponse.WriteStringAsync("Invalid request format");
+                    return badRequestResponse;
+                }
+
+                // Get the user account
+                var userAccount = await _userAccountService.GetUserAccountAsync(authenticatedUser.UserId);
+                if (userAccount == null)
+                {
+                    _logger.LogError("User account not found for user {UserId}", authenticatedUser.UserId);
+                    var errorResponse = req.CreateResponse(HttpStatusCode.NotFound);
+                    await errorResponse.WriteStringAsync("User account not found");
+                    return errorResponse;
+                }
+
+                // Check if user has permission to use email notifications
+                if (!SharedDump.Utils.Account.AccountTierUtils.SupportsEmailNotifications(userAccount.Tier))
+                {
+                    _logger.LogWarning("User {UserId} with tier {Tier} attempted to enable email notifications", 
+                        authenticatedUser.UserId, userAccount.Tier);
+                    var forbiddenResponse = req.CreateResponse(HttpStatusCode.Forbidden);
+                    await forbiddenResponse.WriteStringAsync("Email notifications are only available for Pro, Pro+, and SuperUser accounts");
+                    return forbiddenResponse;
+                }
+
+                // Update the email notification settings
+                userAccount.EmailNotificationsEnabled = requestData.EmailNotificationsEnabled;
+                userAccount.EmailFrequency = requestData.EmailFrequency;
+                await _userAccountService.UpsertUserAccountAsync(userAccount);
+
+                _logger.LogInformation("Successfully updated email notification settings for user {UserId}: Enabled={Enabled}, Frequency={Frequency}", 
+                    authenticatedUser.UserId, requestData.EmailNotificationsEnabled, requestData.EmailFrequency);
+
+                var response = req.CreateResponse(HttpStatusCode.OK);
+                await response.WriteAsJsonAsync(new { Success = true, Message = "Email notification settings updated successfully" });
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in UpdateEmailNotificationSettings function");
+                var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+                await errorResponse.WriteStringAsync("Internal server error occurred while updating email notification settings");
+                return errorResponse;
+            }
+        }
+
+        /// <summary>
         /// Request model for updating preferred email
         /// </summary>
         private class UpdatePreferredEmailRequest
         {
             public string? PreferredEmail { get; set; }
+        }
+
+        /// <summary>
+        /// Request model for updating email notification settings
+        /// </summary>
+        private class UpdateEmailNotificationSettingsRequest
+        {
+            public bool EmailNotificationsEnabled { get; set; }
+            public EmailReportFrequency EmailFrequency { get; set; }
         }
 
         [Function("ResetMonthlyUsage")]
