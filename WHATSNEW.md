@@ -10,6 +10,7 @@ FeedbackFlow now offers secure user accounts with cloud synchronization:
 - ☁️ **Cloud Backup**: Your analysis history automatically syncs across all your devices
 - 🔄 **Seamless Migration**: Existing local data is preserved
 - 🔒 **Secure Storage**: All data is stored securely in the cloud
+- 📧 **Report Emails**: Wake up to weekly reports in your inbox
 
 ### 🎯 Tiered Account System
 
