@@ -351,7 +351,10 @@ public class UserAccountService : IUserAccountService
             AnalysesUsed = entity.AnalysesUsed,
             FeedQueriesUsed = entity.FeedQueriesUsed,
             ActiveReports = entity.ActiveReports,
-            PreferredEmail = entity.PreferredEmail
+            PreferredEmail = entity.PreferredEmail,
+            EmailFrequency = (EmailReportFrequency)entity.EmailFrequency,
+            EmailNotificationsEnabled = entity.EmailNotificationsEnabled,
+            LastEmailSent = entity.LastEmailSent
         };
     }
 
