@@ -128,7 +128,7 @@ public class DigestEmailProcessorFunction
                     var userId = userRequest.UserId;
                     
                     // Get user account to check tier, email settings, and email address
-                    var userAccountEntity = await _userAccountsTableClient.GetEntityAsync<UserAccountEntity>(userId, userId);
+                    var userAccountEntity = await _userAccountsTableClient.GetEntityAsync<UserAccountEntity>(userId, "account");
                     
                     // Check if user's tier supports email notifications
                     if (!AccountTierUtils.SupportsEmailNotifications((AccountTier)userAccountEntity.Value.Tier))
@@ -260,7 +260,7 @@ public class DigestEmailProcessorFunction
                     var userRequests = userDigestGroup.Value;
                     
                     // Get user account to check tier, email settings, and email address
-                    var userAccountEntity = await _userAccountsTableClient.GetEntityAsync<UserAccountEntity>(userId, userId);
+                    var userAccountEntity = await _userAccountsTableClient.GetEntityAsync<UserAccountEntity>(userId, "account");
                     
                     // Check if user's tier supports email notifications
                     if (!AccountTierUtils.SupportsEmailNotifications((AccountTier)userAccountEntity.Value.Tier))
