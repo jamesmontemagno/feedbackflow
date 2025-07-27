@@ -23,6 +23,7 @@ public class DigestEmailProcessorFunction
     private readonly ILogger<DigestEmailProcessorFunction> _logger;
     private readonly IConfiguration _configuration;
     private readonly TableClient _userAccountsTableClient;
+    private readonly TableClient _userRequestsTableClient;
     private readonly IReportCacheService _reportCacheService;
     private readonly IEmailService _emailService;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
@@ -52,6 +53,9 @@ public class DigestEmailProcessorFunction
         
         _userAccountsTableClient = tableServiceClient.GetTableClient("useraccounts");
         _userAccountsTableClient.CreateIfNotExists();
+        
+        _userRequestsTableClient = tableServiceClient.GetTableClient("userreportrequests");
+        _userRequestsTableClient.CreateIfNotExists();
     }
 
     /// <summary>
@@ -66,11 +70,11 @@ public class DigestEmailProcessorFunction
     }
 
     /// <summary>
-    /// Weekly digest processor - runs every Monday at 9:00 AM UTC
+    /// Weekly digest processor - runs every Monday at 12:00 PM UTC (after reports are generated at 11:00 AM)
     /// </summary>
     [Function("WeeklyDigestProcessor")]
     public async Task ProcessWeeklyDigests(
-        [TimerTrigger("0 0 9 * * 1")] TimerInfo timer)
+        [TimerTrigger("0 0 12 * * 1")] TimerInfo timer)
     {
         _logger.LogInformation("Starting weekly digest processing at {Time}", DateTime.UtcNow);
         await ProcessDigestEmails(EmailReportFrequency.Weekly);
@@ -217,7 +221,7 @@ public class DigestEmailProcessorFunction
     }
 
     /// <summary>
-    /// Get recent reports for a specific user
+    /// Get recent reports for a specific user based on their report requests
     /// </summary>
     private async Task<List<ReportModel>> GetRecentReportsForUser(string userId, DateTime cutoffDate)
     {
@@ -225,26 +229,72 @@ public class DigestEmailProcessorFunction
         
         try
         {
-            // Use the report cache service to get all reports, then filter by date
-            var allReports = await _reportCacheService.GetReportsAsync(sourceFilter: null, subsourceFilter: null);
+            // First, get all user requests for this user
+            var userRequestsFilter = $"PartitionKey eq '{userId}'";
+            var userRequests = new List<UserReportRequestModel>();
             
-            foreach (var report in allReports)
+            await foreach (var userRequest in _userRequestsTableClient.QueryAsync<UserReportRequestModel>(userRequestsFilter))
             {
-                // Filter reports generated since cutoff date
-                if (report.GeneratedAt >= cutoffDate)
+                userRequests.Add(userRequest);
+            }
+            
+            if (userRequests.Count == 0)
+            {
+                _logger.LogDebug("No report requests found for user {UserId}", userId);
+                return reports;
+            }
+            
+            // For each user request, find corresponding reports generated since cutoff date
+            foreach (var userRequest in userRequests)
+            {
+                try
                 {
-                    reports.Add(report);
+                    string source, subSource;
                     
-                    // Limit to prevent very large digest emails
-                    if (reports.Count >= 10)
-                        break;
+                    if (userRequest.Type == "reddit")
+                    {
+                        source = "reddit";
+                        subSource = userRequest.Subreddit ?? "";
+                    }
+                    else if (userRequest.Type == "github")
+                    {
+                        source = "github";
+                        subSource = $"{userRequest.Owner}/{userRequest.Repo}";
+                    }
+                    else
+                    {
+                        continue; // Skip unknown types
+                    }
+                    
+                    // Get reports for this source/subsource combination
+                    var sourceReports = await _reportCacheService.GetReportsAsync(source, subSource);
+                    
+                    // Filter by cutoff date and add to results
+                    var recentReports = sourceReports
+                        .Where(r => r.GeneratedAt >= cutoffDate)
+                        .OrderByDescending(r => r.GeneratedAt)
+                        .Take(5) // Limit per source to prevent huge emails
+                        .ToList();
+                    
+                    reports.AddRange(recentReports);
+                    
+                    _logger.LogDebug("Found {ReportCount} recent reports for user {UserId} source {Source}/{SubSource}", 
+                        recentReports.Count, userId, source, subSource);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error processing user request {RequestId} for user {UserId}", 
+                        userRequest.Id, userId);
                 }
             }
             
-            // Sort by most recent first
-            reports = reports.OrderByDescending(r => r.GeneratedAt).ToList();
+            // Sort all reports by most recent first and limit total
+            reports = reports
+                .OrderByDescending(r => r.GeneratedAt)
+                .Take(10) // Overall limit for digest email
+                .ToList();
             
-            _logger.LogDebug("Found {ReportCount} recent reports for user {UserId} since {CutoffDate}", 
+            _logger.LogDebug("Found {ReportCount} total recent reports for user {UserId} since {CutoffDate}", 
                 reports.Count, userId, cutoffDate);
         }
         catch (Exception ex)
