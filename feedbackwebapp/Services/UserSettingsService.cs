@@ -22,18 +22,8 @@ public class UserSettingsService
         // New universal prompt property
         public string UniversalPrompt { get; set; } = SharedDump.AI.FeedbackAnalyzerService.GetUniversalPrompt();
         
-        // Keep ServicePrompts for backward compatibility during migration
-        public Dictionary<string, string> ServicePrompts { get; set; } = new()
-        {
-            ["youtube"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("youtube"),
-            ["github"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("github"),
-            ["hackernews"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("hackernews"),
-            ["reddit"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("reddit"),
-            ["devblogs"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("devblogs"),
-            ["twitter"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("twitter"),
-            ["bluesky"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("bluesky"),
-            ["manual"] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("manual")
-        };
+        // Manual prompt property - separate from universal prompt
+        public string ManualPrompt { get; set; } = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("manual");
     }
 
     public UserSettingsService(IJSRuntime jsRuntime, IConfiguration configuration)
@@ -67,36 +57,16 @@ public class UserSettingsService
                 _cachedSettings.UniversalPrompt = SharedDump.AI.FeedbackAnalyzerService.GetUniversalPrompt();
                 needsMigration = true;
             }
-
-            // For backward compatibility, still validate ServicePrompts for old clients
-            bool hasEmptyPrompts = false;
-            foreach (var serviceType in _cachedSettings.ServicePrompts.Keys.ToList())
+            
+            // Migration: If ManualPrompt is empty or missing, initialize it
+            if (string.IsNullOrWhiteSpace(_cachedSettings.ManualPrompt))
             {
-                if (string.IsNullOrWhiteSpace(_cachedSettings.ServicePrompts[serviceType]))
-                {
-                    _cachedSettings.ServicePrompts[serviceType] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt(serviceType);
-                    hasEmptyPrompts = true;
-                }
+                _cachedSettings.ManualPrompt = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("manual");
+                needsMigration = true;
             }
 
-            // Add any missing service prompts for backward compatibility
-            var defaultPrompts = new[]
-            {
-                "youtube", "github", "hackernews", "reddit", "devblogs", 
-                "twitter", "bluesky", "manual"
-            };
-
-            foreach (var serviceType in defaultPrompts)
-            {
-                if (!_cachedSettings.ServicePrompts.ContainsKey(serviceType))
-                {
-                    _cachedSettings.ServicePrompts[serviceType] = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt(serviceType);
-                    hasEmptyPrompts = true;
-                }
-            }
-
-            // Save if any migration or prompt reset was needed
-            if (needsMigration || hasEmptyPrompts)
+            // Save if any migration was needed
+            if (needsMigration)
             {
                 await SaveSettingsAsync(_cachedSettings);
             }

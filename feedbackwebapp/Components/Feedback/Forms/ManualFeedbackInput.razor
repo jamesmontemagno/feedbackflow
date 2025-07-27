@@ -71,21 +71,21 @@
         {
             var settings = await UserSettingsService.GetSettingsAsync();
             
-            // Use the universal prompt for manual input
-            if (!string.IsNullOrWhiteSpace(settings.UniversalPrompt))
+            // Use the manual prompt for manual input
+            if (!string.IsNullOrWhiteSpace(settings.ManualPrompt))
             {
-                _customPrompt = settings.UniversalPrompt;
+                _customPrompt = settings.ManualPrompt;
             }
             else
             {
-                // Fallback to default universal prompt if user hasn't set one
-                _customPrompt = FeedbackAnalyzerService.GetUniversalPrompt();
+                // Fallback to default manual prompt if user hasn't set one
+                _customPrompt = FeedbackAnalyzerService.GetServiceSpecificPrompt("manual");
             }
         }
         catch (Exception)
         {
             // Fallback to default prompt if there's an error
-            _customPrompt = FeedbackAnalyzerService.GetUniversalPrompt();
+            _customPrompt = FeedbackAnalyzerService.GetServiceSpecificPrompt("manual");
         }
     }
 
@@ -97,7 +97,7 @@
         try
         {
             var settings = await UserSettingsService.GetSettingsAsync();
-            settings.UniversalPrompt = _customPrompt;
+            settings.ManualPrompt = _customPrompt;
             await UserSettingsService.SaveSettingsAsync(settings);
         }
         catch (Exception)
