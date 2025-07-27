@@ -9,7 +9,7 @@ public class UserSettingsService
     private readonly IJSRuntime _jsRuntime;
     private readonly IConfiguration _configuration;
     private readonly bool _authDebugEnabled;
-    private const string SETTINGS_KEY = "feedbackflow_settings";
+    private const string SETTINGS_KEY = "feedbackflow_settings_v2";
     private const string LAST_LOGIN_KEY = "feedbackflow_last_login";
     private UserSettings? _cachedSettings;
     public class UserSettings
