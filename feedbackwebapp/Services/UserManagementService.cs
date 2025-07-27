@@ -33,6 +33,14 @@ public interface IUserManagementService
     /// <param name="preferredEmail">The new preferred email address</param>
     /// <returns>Result of the update operation</returns>
     Task<RequestResult> UpdatePreferredEmailAsync(string? preferredEmail);
+    
+    /// <summary>
+    /// Update the user's email notification settings
+    /// </summary>
+    /// <param name="emailNotificationsEnabled">Whether email notifications are enabled</param>
+    /// <param name="emailFrequency">Email notification frequency preference</param>
+    /// <returns>Result of the update operation</returns>
+    Task<RequestResult> UpdateEmailNotificationSettingsAsync(bool emailNotificationsEnabled, SharedDump.Models.Account.EmailReportFrequency emailFrequency);
 }
 
 /// <summary>
@@ -221,6 +229,51 @@ public class UserManagementService : IUserManagementService
             { 
                 Success = false, 
                 ErrorMessage = $"Error updating preferred email: {ex.Message}" 
+            };
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<RequestResult> UpdateEmailNotificationSettingsAsync(bool emailNotificationsEnabled, SharedDump.Models.Account.EmailReportFrequency emailFrequency)
+    {
+        try
+        {
+            var baseUrl = _configuration["FeedbackApi:BaseUrl"] 
+                ?? throw new InvalidOperationException("API base URL not configured");
+            var code = _configuration["FeedbackApi:FunctionsKey"]
+                ?? throw new InvalidOperationException("Functions key not configured");
+
+            // Create the request message
+            var requestMessage = new HttpRequestMessage(HttpMethod.Put, $"{baseUrl}/api/UpdateEmailNotificationSettings?code={Uri.EscapeDataString(code)}");
+
+            // Add authentication headers
+            await _authHeaderService.AddAuthenticationHeadersAsync(requestMessage);
+
+            // Add the email notification settings as request body
+            var requestData = new { EmailNotificationsEnabled = emailNotificationsEnabled, EmailFrequency = emailFrequency };
+            var requestJson = JsonSerializer.Serialize(requestData, _jsonOptions);
+            requestMessage.Content = new StringContent(requestJson, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.SendAsync(requestMessage);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return new RequestResult { Success = true };
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            return new RequestResult 
+            { 
+                Success = false, 
+                ErrorMessage = $"API error: {response.StatusCode} - {errorContent}" 
+            };
+        }
+        catch (Exception ex)
+        {
+            return new RequestResult 
+            { 
+                Success = false, 
+                ErrorMessage = $"Error updating email notification settings: {ex.Message}" 
             };
         }
     }

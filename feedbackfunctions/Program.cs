@@ -17,6 +17,7 @@ using SharedDump.Services.Mock;
 using FeedbackFunctions.Services.Authentication;
 using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Services.Account;
+using FeedbackFunctions.Services.Email;
 using System.Configuration;
 using Azure.Storage.Blobs;
 using FeedbackFunctions.Services.Reports;
@@ -74,6 +75,7 @@ if (useMocks)
     builder.Services.AddScoped<IFeedbackAnalyzerService, MockFeedbackAnalyzerService>();
     builder.Services.AddScoped<ITwitterService, MockTwitterService>();
     builder.Services.AddScoped<IBlueSkyService, MockBlueSkyService>();
+    builder.Services.AddScoped<IEmailService, MockEmailService>();
     
     // Register unified account service
     RegisterAccountServices(builder.Services);
@@ -194,6 +196,27 @@ else
         blueSkyFetcher.SetCredentials(blueSkyUsername, blueSkyAppPassword);
         return new BlueSkyServiceAdapter(blueSkyFetcher);
     });
+    
+    // Register email service
+    builder.Services.AddScoped<IEmailService>(serviceProvider =>
+    {
+        var configuration = GetConfig(serviceProvider);
+        var logger = serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<EmailService>>();
+        
+        var connectionString = configuration["AzureCommunicationServices:ConnectionString"];
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            if (throwIfNullOrEmpty)
+                throw new ConfigurationErrorsException("Azure Communication Services connection string is not configured.");
+                
+            Console.WriteLine("Using mock email service, no Azure Communication Services connection string provided.");
+            var mockLogger = serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<MockEmailService>>();
+            return new MockEmailService(mockLogger);
+        }
+        
+        return new EmailService(configuration, logger);
+    });
+    
     // Register unified account service
     RegisterAccountServices(builder.Services);
 }

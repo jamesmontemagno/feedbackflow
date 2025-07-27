@@ -6,7 +6,9 @@
 @using SharedDump.Models
 @using SharedDump.Models.Account
 @using SharedDump.Utils
+@using SharedDump.Utils.Account
 @inject IReportRequestService ReportRequestService
+@inject FeedbackWebApp.Services.Account.IAccountServiceProvider AccountServiceProvider
 
 <div class="modal fade @(DisplayCreateReport ? "show" : "")" tabindex="-1" style="display: @(DisplayCreateReport ? "block" : "none")" aria-hidden="@(!DisplayCreateReport)">
     <div class="modal-dialog modal-lg">
@@ -135,6 +137,78 @@
                         </div>
                     }
 
+                    <!-- Email Notification Options -->
+                    <div class="mb-3">
+                        @if (isLoadingUserAccount)
+                        {
+                            <div class="card border-light email-notification-card">
+                                <div class="card-body py-3 text-center">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <small class="text-muted ms-2">Loading notification options...</small>
+                                </div>
+                            </div>
+                        }
+                        else if (userAccount != null && AccountTierUtils.SupportsEmailNotifications(userAccount.Tier))
+                        {
+                            <div class="card border-light email-notification-card">
+                                <div class="card-body py-3">
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" 
+                                                   type="checkbox" 
+                                                   id="emailNotification"
+                                                   @bind="reportRequest.EmailEnabled" 
+                                                   disabled="@isSubmitting">
+                                            <label class="form-check-label fw-bold" for="emailNotification">
+                                                📧 Enable email notifications for this report
+                                            </label>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            Make sure to enable email notifications in your 
+                                            <a href="/account-settings" target="_blank">Account Settings</a> 
+                                            and set your notification preference (Individual or Weekly Digest).
+                                        </small>
+                                    </div>
+                                    
+                                    <div class="form-text mt-2">
+                                        <small class="text-muted email-info-text">
+                                            <i class="bi bi-info-circle me-1"></i>
+                                            Email reports are sent every Monday after new reports are generated. 
+                                            You can manage preferences in your account settings.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- Tier restriction message -->
+                            <div class="card border-warning email-notification-card">
+                                <div class="card-body py-3">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <div class="text-muted">
+                                                <i class="bi bi-star-fill text-warning me-2"></i>
+                                                <strong>Email notifications</strong> - Pro feature
+                                            </div>
+                                            <small class="text-muted">
+                                                Upgrade to Pro or Pro+ to get notified when your reports are ready
+                                            </small>
+                                        </div>
+                                        <div>
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="bi bi-arrow-up-circle me-1"></i>
+                                                Upgrade
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
                     @if (!string.IsNullOrEmpty(errorMessage))
                     {
                         <div class="alert alert-danger">
@@ -199,6 +273,10 @@
     private bool showUsageLimitDialog = false;
     private UsageValidationResult? usageLimitError;
     
+    // User account for tier checking
+    private UserAccount? userAccount;
+    private bool isLoadingUserAccount = true;
+    
     // Debouncing for real-time validation
     private readonly Dictionary<string, CancellationTokenSource> _validationCancellationTokens = new();
 
@@ -222,6 +300,8 @@
 
         [RequiredIf(nameof(Type), "github", ErrorMessage = "Repository name is required for GitHub reports")]
         public string? Repo { get; set; }
+        
+        public bool EmailEnabled { get; set; } = false;
     }
 
     public class RequiredIfAttribute : ValidationAttribute
@@ -249,6 +329,35 @@
             }
 
             return ValidationResult.Success;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserAccountAsync();
+    }
+
+    private async Task LoadUserAccountAsync()
+    {
+        try
+        {
+            var accountService = AccountServiceProvider.GetService();
+            var accountResult = await accountService.GetUserAccountAndLimitsAsync();
+            
+            if (accountResult.HasValue)
+            {
+                userAccount = accountResult.Value.account;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't show to user - email feature will just be disabled
+            Console.WriteLine($"Error loading user account: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingUserAccount = false;
+            StateHasChanged();
         }
     }
 
@@ -451,6 +560,13 @@
             // Generate deterministic ID for the request
             var id = GenerateRequestId(reportRequest);
 
+            // Validate email notification permissions (prevent Free tier users from bypassing UI restrictions)
+            var emailEnabled = reportRequest.EmailEnabled;
+            if (emailEnabled && (userAccount == null || !AccountTierUtils.SupportsEmailNotifications(userAccount.Tier)))
+            {
+                emailEnabled = false; // Silently disable for Free tier users
+            }
+
             // Create request object for backend
             var requestData = new
             {
@@ -459,7 +575,8 @@
                 subreddit = reportRequest.Type == "reddit" ? reportRequest.Subreddit : null,
                 owner = reportRequest.Type == "github" ? reportRequest.Owner : null,
                 repo = reportRequest.Type == "github" ? reportRequest.Repo : null,
-                createdAt = DateTimeOffset.UtcNow
+                createdAt = DateTimeOffset.UtcNow,
+                emailEnabled = emailEnabled
             };
 
             // Send to backend

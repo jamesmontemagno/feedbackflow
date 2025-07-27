@@ -5,6 +5,7 @@
 @using FeedbackWebApp.Components.Account
 @using FeedbackWebApp.Services.Account
 @using SharedDump.Models.Account
+@using SharedDump.Utils.Account
 @using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Components.Web
 @inject IUserManagementService UserManagementService
@@ -138,6 +139,117 @@
                                         </small>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- Email Notification Settings -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <h6 class="text-primary">📧 Report Notifications</h6>
+                                <p class="text-muted small">
+                                    Configure when you'd like to receive email notifications about your reports.
+                                </p>
+                                @if (userAccount != null && !AccountTierUtils.SupportsEmailNotifications(userAccount.Tier))
+                                {
+                                    <p class="text-muted small">
+                                        <i class="bi bi-star-fill text-warning me-1"></i>
+                                        <strong>Pro feature</strong> - Upgrade to Pro or Pro+ to receive email notifications.
+                                    </p>
+                                }
+                            </div>
+                            <div class="col-md-8">
+                                @if (userAccount != null && AccountTierUtils.SupportsEmailNotifications(userAccount.Tier))
+                                {
+                                    <div class="card border-light">
+                                        <div class="card-body p-3">
+                                            <!-- Enable Notifications Toggle -->
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" 
+                                                       type="checkbox" 
+                                                       id="emailNotificationsEnabled"
+                                                       @bind="emailNotificationsEnabled"
+                                                       @bind:event="onchange"
+                                                       @bind:after="UpdateEmailNotificationSettings"
+                                                       disabled="@isUpdatingEmailSettings">
+                                                <label class="form-check-label fw-bold" for="emailNotificationsEnabled">
+                                                    Enable email notifications
+                                                </label>
+                                            </div>
+                                            
+                                            @if (emailNotificationsEnabled)
+                                            {
+                                                <!-- Frequency Selection -->
+                                                <div class="mb-3">
+                                                    <label class="form-label">Notification Frequency</label>
+                                                    <select class="form-select" 
+                                                            @bind="selectedEmailFrequency"
+                                                            @bind:event="onchange"
+                                                            @bind:after="UpdateEmailNotificationSettings"
+                                                            disabled="@isUpdatingEmailSettings">
+                                                        <option value="@((int)EmailReportFrequency.Individual)">Individual reports (send email for each report)</option>
+                                                        <option value="@((int)EmailReportFrequency.WeeklyDigest)">Weekly digest (combine all reports)</option>
+                                                    </select>
+                                                </div>
+                                            }
+                                            
+                                            @if (isUpdatingEmailSettings)
+                                            {
+                                                <div class="text-muted small">
+                                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                                    Updating settings...
+                                                </div>
+                                            }
+                                            
+                                            @if (!string.IsNullOrEmpty(emailSettingsMessage))
+                                            {
+                                                <div class="alert @(emailSettingsSuccess ? "alert-success" : "alert-danger") alert-sm py-2 mt-2">
+                                                    <small>@emailSettingsMessage</small>
+                                                </div>
+                                            }
+                                            
+                                            <div class="form-text">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-info-circle me-1"></i>
+                                                    Email notifications will be sent to: <strong>@(string.IsNullOrEmpty(userAccount?.PreferredEmail) ? userInfo?.Email : userAccount.PreferredEmail)</strong>
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <!-- Tier restriction message with upgrade prompt -->
+                                    <div class="card border-warning">
+                                        <div class="card-body p-3 text-center">
+                                            <div class="mb-3">
+                                                <i class="bi bi-star-fill text-warning" style="font-size: 2rem;"></i>
+                                            </div>
+                                            <h6 class="text-warning mb-2">Email Notifications - Pro Feature</h6>
+                                            <p class="text-muted mb-3">
+                                                Get notified when your reports are ready! Email notifications are available for Pro and Pro+ subscribers.
+                                            </p>
+                                            <div class="d-flex gap-2 justify-content-center flex-wrap">
+                                                <button class="btn btn-warning btn-sm" @onclick="() => HandleUpgradeRequest(AccountTier.Pro)">
+                                                    <i class="bi bi-arrow-up-circle me-1"></i>
+                                                    Upgrade to Pro
+                                                </button>
+                                                <button class="btn btn-outline-warning btn-sm" @onclick="() => HandleUpgradeRequest(AccountTier.ProPlus)">
+                                                    <i class="bi bi-star-fill me-1"></i>
+                                                    Upgrade to Pro+
+                                                </button>
+                                            </div>
+                                            <div class="mt-2">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-check-circle-fill text-success me-1"></i>
+                                                    Individual report notifications when generated
+                                                    <br>
+                                                    <i class="bi bi-check-circle-fill text-success me-1"></i>
+                                                    Weekly digest options
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
                             </div>
                         </div>
 
@@ -278,6 +390,13 @@
     private string emailUpdateMessage = "";
     private bool emailUpdateSuccess = false;
     private bool hasEmailChanged => preferredEmailInput != (userAccount?.PreferredEmail ?? "");
+    
+    // Email notification settings fields
+    private bool emailNotificationsEnabled = false;
+    private int selectedEmailFrequency = (int)EmailReportFrequency.Individual;
+    private bool isUpdatingEmailSettings = false;
+    private string emailSettingsMessage = "";
+    private bool emailSettingsSuccess = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -393,6 +512,10 @@
                 if (userAccount != null)
                 {
                     preferredEmailInput = userAccount.PreferredEmail ?? userInfo?.Email ?? "";
+                    
+                    // Initialize email notification settings
+                    emailNotificationsEnabled = userAccount.EmailNotificationsEnabled;
+                    selectedEmailFrequency = (int)userAccount.EmailFrequency;
                 }
             }
             else
@@ -518,6 +641,58 @@
         finally
         {
             isUpdatingEmail = false;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task UpdateEmailNotificationSettings()
+    {
+        try
+        {
+            isUpdatingEmailSettings = true;
+            emailSettingsMessage = "";
+            emailSettingsSuccess = false;
+            //if we just enabled it then change it to 1
+            if(emailNotificationsEnabled && selectedEmailFrequency == 0)
+            {
+                selectedEmailFrequency = 1;
+            }
+            StateHasChanged();
+
+            // Call the backend API to update email notification settings
+            var result = await UserManagementService.UpdateEmailNotificationSettingsAsync(
+                emailNotificationsEnabled, 
+                (EmailReportFrequency)selectedEmailFrequency);
+            
+            if (result.Success)
+            {
+                // Update the local UserAccount model to reflect the changes
+                if (userAccount != null)
+                {
+                    userAccount.EmailNotificationsEnabled = emailNotificationsEnabled;
+                    userAccount.EmailFrequency = (EmailReportFrequency)selectedEmailFrequency;
+                }
+                
+                emailSettingsMessage = "Email notification settings updated successfully!";
+                emailSettingsSuccess = true;
+                await ToastService.ShowToastAsync("Email notification settings updated!", ToastType.Success);
+            }
+            else
+            {
+                emailSettingsMessage = $"Failed to update email notification settings: {result.ErrorMessage}";
+                emailSettingsSuccess = false;
+                await ToastService.ShowToastAsync($"Failed to update email notification settings: {result.ErrorMessage}", ToastType.Danger);
+            }
+        }
+        catch (Exception ex)
+        {
+            emailSettingsMessage = $"Error updating email notification settings: {ex.Message}";
+            emailSettingsSuccess = false;
+            await ToastService.ShowToastAsync($"Error updating email notification settings: {ex.Message}", ToastType.Danger);
+        }
+        finally
+        {
+            isUpdatingEmailSettings = false;
             StateHasChanged();
         }
     }

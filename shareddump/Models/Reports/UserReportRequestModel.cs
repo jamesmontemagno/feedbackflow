@@ -1,6 +1,7 @@
 using System;
 using Azure;
 using Azure.Data.Tables;
+using SharedDump.Models.Account;
 
 namespace SharedDump.Models.Reports;
 
@@ -45,6 +46,11 @@ public class UserReportRequestModel : ITableEntity
     /// When this request was created
     /// </summary>
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    
+    /// <summary>
+    /// Whether email notifications are enabled for this specific report
+    /// </summary>
+    public bool EmailEnabled { get; set; } = false;
     
     /// <summary>
     /// Display name for the request (auto-generated)

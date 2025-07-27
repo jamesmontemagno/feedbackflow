@@ -21,6 +21,11 @@ public class UserAccountEntity : ITableEntity
     public int FeedQueriesUsed { get; set; }
     public int ActiveReports { get; set; }
     public string PreferredEmail { get; set; } = string.Empty;
+    
+    // Email notification settings
+    public bool EmailNotificationsEnabled { get; set; } = false;
+    public int EmailFrequency { get; set; } = (int)EmailReportFrequency.None;
+    public DateTime? LastEmailSent { get; set; }
 }
 
 public class UsageRecordEntity : ITableEntity

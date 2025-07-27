@@ -137,7 +137,8 @@ public class MockWebAppAccountService : IWebAppAccountService
                     "Multiple reports",
                     "Priority support",
                     "Export features",
-                    "Custom analysis prompts"
+                    "Custom analysis prompts",
+                    "📧 Email notifications"
                 },
                 Limits = new AccountLimits
                 {
@@ -161,7 +162,8 @@ public class MockWebAppAccountService : IWebAppAccountService
                     "Advanced export features",
                     "Custom analysis prompts",
                     "Team collaboration",
-                    "Advanced integrations"
+                    "Advanced integrations",
+                    "📧 Email notifications"
                 },
                 Limits = new AccountLimits
                 {

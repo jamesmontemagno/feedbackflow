@@ -230,6 +230,27 @@ public class ReportRequestFunctions
                 return validationResponse;
             }
 
+            // Validate email notification settings
+            if (request.EmailEnabled)
+            {
+                // Get user account to validate tier permissions
+                var userAccount = await _userAccountService.GetUserAccountAsync(user.UserId);
+                if (userAccount == null)
+                {
+                    var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+                    await errorResponse.WriteStringAsync("Unable to retrieve user account information");
+                    return errorResponse;
+                }
+
+                // Check if user's tier supports email notifications
+                if (!SharedDump.Utils.Account.AccountTierUtils.SupportsEmailNotifications(userAccount.Tier))
+                {
+                    var forbiddenResponse = req.CreateResponse(HttpStatusCode.Forbidden);
+                    await forbiddenResponse.WriteStringAsync("Email notifications are not available for your current account tier. Please upgrade to Pro or Pro+ to enable email notifications.");
+                    return forbiddenResponse;
+                }
+            }
+
             // Generate deterministic ID based on type and parameters
             var requestId = GenerateUserRequestId(request);
             request.Id = requestId;
@@ -475,6 +496,123 @@ public class ReportRequestFunctions
     }
 
     /// <summary>
+    /// Update email notification settings for a specific user report request
+    /// </summary>
+    [Function("UpdateUserReportRequestEmailSettings")]
+    [Authorize]
+    public async Task<HttpResponseData> UpdateUserReportRequestEmailSettings(
+        [HttpTrigger(AuthorizationLevel.Function, "put", Route = "userreportrequest/{id}/email-settings")] HttpRequestData req,
+        string id)
+    {
+        _logger.LogInformation("Updating email settings for user report request {RequestId}", id);
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
+
+        if (user == null)
+        {
+            var errorResponse = req.CreateResponse(HttpStatusCode.Unauthorized);
+            await errorResponse.WriteStringAsync("User authentication failed");
+            return errorResponse;
+        }
+
+        try
+        {
+            // Parse request body
+            var requestBody = await req.ReadAsStringAsync();
+            if (string.IsNullOrWhiteSpace(requestBody))
+            {
+                var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await badRequestResponse.WriteStringAsync("Request body is required");
+                return badRequestResponse;
+            }
+
+            var emailSettings = JsonSerializer.Deserialize<EmailSettingsUpdate>(requestBody, _jsonOptions);
+            if (emailSettings == null)
+            {
+                var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await badRequestResponse.WriteStringAsync("Invalid request body format");
+                return badRequestResponse;
+            }
+
+            var partitionKey = user.UserId;
+            var rowKey = id;
+
+            // Check if user request exists
+            var existingEntities = _userRequestsTableClient.QueryAsync<UserReportRequestModel>(
+                filter: $"PartitionKey eq '{partitionKey}' and RowKey eq '{rowKey}'",
+                maxPerPage: 1);
+
+            UserReportRequestModel? existingEntity = null;
+            await foreach (var entity in existingEntities)
+            {
+                existingEntity = entity;
+                break;
+            }
+            
+            if (existingEntity == null)
+            {
+                var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+                await notFoundResponse.WriteStringAsync($"Request with ID {id} not found for this user");
+                return notFoundResponse;
+            }
+
+            // Get user account to validate tier permissions
+            var userAccount = await _userAccountService.GetUserAccountAsync(user.UserId);
+            if (userAccount == null)
+            {
+                var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+                await errorResponse.WriteStringAsync("Unable to retrieve user account information");
+                return errorResponse;
+            }
+
+            // Validate email notification permissions (prevent Free tier users from enabling notifications)
+            var emailEnabled = emailSettings.EmailEnabled;
+            if (emailEnabled && !SharedDump.Utils.Account.AccountTierUtils.SupportsEmailNotifications(userAccount.Tier))
+            {
+                var forbiddenResponse = req.CreateResponse(HttpStatusCode.Forbidden);
+                await forbiddenResponse.WriteStringAsync("Email notifications are not available for your current account tier. Please upgrade to Pro or Pro+ to enable email notifications.");
+                return forbiddenResponse;
+            }
+
+            // Update the email settings
+            existingEntity.EmailEnabled = emailEnabled;
+
+            // Update the entity in table storage
+            await _userRequestsTableClient.UpdateEntityAsync(existingEntity, existingEntity.ETag);
+            
+            _logger.LogInformation("Updated email settings for user report request {RequestId} for user {UserId}: EmailEnabled={EmailEnabled}", 
+                id, user.UserId, emailEnabled);
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            await response.WriteStringAsync("Email settings updated successfully");
+            return response;
+        }
+        catch (Azure.RequestFailedException ex) when (ex.Status == 404)
+        {
+            var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+            await notFoundResponse.WriteStringAsync($"Request with ID {id} not found for this user");
+            return notFoundResponse;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Error parsing email settings update request");
+            var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await badRequestResponse.WriteStringAsync("Invalid request body format");
+            return badRequestResponse;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating email settings for user report request {RequestId}", id);
+            var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await errorResponse.WriteStringAsync($"Error updating email settings: {ex.Message}");
+            return errorResponse;
+        }
+    }
+
+    /// <summary>
     /// List all report requests for a specific user
     /// </summary>
     [Function("ListUserReportRequests")]
@@ -531,4 +669,11 @@ public class ReportRequestFunctions
         return $"{source}_{identifier}".Replace("/", "_");
     }
 
+    /// <summary>
+    /// Model for updating email notification settings for a specific report
+    /// </summary>
+    public class EmailSettingsUpdate
+    {
+        public bool EmailEnabled { get; set; }
+    }
 }
