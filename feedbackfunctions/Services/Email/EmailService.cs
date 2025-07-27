@@ -31,7 +31,7 @@ public class EmailService : IEmailService
             throw new InvalidOperationException("Azure Communication Services connection string not configured");
             
         _emailClient = new EmailClient(connectionString);
-        _senderEmail = configuration["AzureCommunicationServices:SenderEmail"] ?? "reports@feedbackflow.dev";
+        _senderEmail = configuration["AzureCommunicationServices:SenderEmail"] ?? "donotreply@feedbackflow.app";
         _senderName = configuration["Email:DefaultSenderName"] ?? "FeedbackFlow Reports";
     }
 
