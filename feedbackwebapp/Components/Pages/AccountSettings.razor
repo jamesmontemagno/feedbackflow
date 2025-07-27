@@ -652,6 +652,11 @@
             isUpdatingEmailSettings = true;
             emailSettingsMessage = "";
             emailSettingsSuccess = false;
+            //if we just enabled it then change it to 1
+            if(emailNotificationsEnabled && selectedEmailFrequency == 0)
+            {
+                selectedEmailFrequency = 1;
+            }
             StateHasChanged();
 
             // Call the backend API to update email notification settings

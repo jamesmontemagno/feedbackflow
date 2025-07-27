@@ -370,7 +370,10 @@ public class UserAccountService : IUserAccountService
             AnalysesUsed = model.AnalysesUsed,
             FeedQueriesUsed = model.FeedQueriesUsed,
             ActiveReports = model.ActiveReports,
-            PreferredEmail = model.PreferredEmail
+            PreferredEmail = model.PreferredEmail,
+            EmailFrequency = (int)model.EmailFrequency,
+            EmailNotificationsEnabled = model.EmailNotificationsEnabled,
+            LastEmailSent = model.LastEmailSent
         };
     }
 
