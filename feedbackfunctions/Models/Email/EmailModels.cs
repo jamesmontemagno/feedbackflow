@@ -26,6 +26,7 @@ public class ReportEmailRequest
     public string ReportSummary { get; set; } = string.Empty;
     public string ReportUrl { get; set; } = string.Empty;
     public string ReportType { get; set; } = string.Empty;
+    public string HtmlContent { get; set; } = string.Empty;
     public DateTime GeneratedAt { get; set; }
 }
 

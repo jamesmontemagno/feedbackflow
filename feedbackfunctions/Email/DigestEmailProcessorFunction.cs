@@ -172,6 +172,7 @@ public class DigestEmailProcessorFunction
                         _logger.LogDebug("No recent reports found for user request {RequestId}", userRequest.Id);
                         continue;
                     }
+                    
 
                     // Send individual email for each report
                     foreach (var report in reports)
@@ -185,7 +186,8 @@ public class DigestEmailProcessorFunction
                             ReportSummary = $"Your {report.Source} report has been generated",
                             ReportUrl = $"https://feedbackflow.app/reports/{report.Id}", // Adjust URL as needed
                             ReportType = report.Source,
-                            GeneratedAt = report.GeneratedAt.DateTime
+                            GeneratedAt = report.GeneratedAt.DateTime,
+                            HtmlContent = report.HtmlContent
                         };
 
                         var deliveryStatus = await _emailService.SendReportEmailAsync(emailRequest);
@@ -210,7 +212,7 @@ public class DigestEmailProcessorFunction
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error processing individual report email for user request {RequestId}", userRequest.Id);
+                    _logger.LogError(ex, "Error processing individual report email for user request {RequestId} - {ErrorMessage}", userRequest.Id, ex.Message);
                 }
             }
 
@@ -219,7 +221,7 @@ public class DigestEmailProcessorFunction
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in individual report email processing");
+            _logger.LogError(ex, "Error in individual report email processing: {ErrorMessage}", ex.Message);
         }
     }
 
