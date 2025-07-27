@@ -2,9 +2,13 @@
 @using FeedbackWebApp.Services
 @using FeedbackWebApp.Services.Authentication
 @using SharedDump.Models.Reports
+@using SharedDump.Models.Account
+@using SharedDump.Utils.Account
+@using FeedbackWebApp.Services.Account
 @inject NavigationManager NavigationManager
 @inject IAuthenticationService AuthService
 @inject IReportRequestService ReportRequestService
+@inject IAccountServiceProvider AccountServiceProvider
 
 <PageTitle>Manage Report Requests - FeedbackFlow</PageTitle>
 
@@ -82,47 +86,76 @@
                             <div class="list-group list-group-flush">
                                 @foreach (var request in reportRequests)
                                 {
-                                    <div class="list-group-item">
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <div class="flex-grow-1">
-                                                <div class="d-flex align-items-center gap-2 mb-2">
-                                                    @if (request.Type == "reddit")
-                                                    {
-                                                        <span class="badge bg-primary">
-                                                            <i class="bi bi-reddit me-1"></i>Reddit
-                                                        </span>
-                                                        <span class="fw-semibold">r/@request.Subreddit</span>
-                                                    }
-                                                    else if (request.Type == "github")
-                                                    {
-                                                        <span class="badge bg-dark">
-                                                            <i class="bi bi-github me-1"></i>GitHub
-                                                        </span>
-                                                        <span class="fw-semibold">@request.Owner/@request.Repo</span>
-                                                    }
-                                                </div>
-                                                <div class="text-muted small">
-                                                    <i class="bi bi-calendar me-1"></i>
-                                                    Created @GetFormattedDate(request.CreatedAt)
+                                            <div class="list-group-item">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div class="flex-grow-1">
+                                                        <div class="d-flex align-items-center gap-2 mb-2">
+                                                            @if (request.Type == "reddit")
+                                                            {
+                                                                <span class="badge bg-primary">
+                                                                    <i class="bi bi-reddit me-1"></i>Reddit
+                                                                </span>
+                                                                <span class="fw-semibold">r/@request.Subreddit</span>
+                                                            }
+                                                            else if (request.Type == "github")
+                                                            {
+                                                                <span class="badge bg-dark">
+                                                                    <i class="bi bi-github me-1"></i>GitHub
+                                                                </span>
+                                                                <span class="fw-semibold">@request.Owner/@request.Repo</span>
+                                                            }
+                                                            
+                                                            <!-- Email notification status -->
+                                                            @if (request.EmailNotificationEnabled)
+                                                            {
+                                                                <span class="badge bg-success" title="Email notifications enabled">
+                                                                    <i class="bi bi-envelope-check me-1"></i>
+                                                                    @(request.EmailFrequency == EmailReportFrequency.Individual ? "Individual" : "Weekly Digest")
+                                                                </span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="badge bg-secondary" title="Email notifications disabled">
+                                                                    <i class="bi bi-envelope-slash me-1"></i>No Email
+                                                                </span>
+                                                            }
+                                                        </div>
+                                                        <div class="text-muted small mb-2">
+                                                            <i class="bi bi-calendar me-1"></i>
+                                                            Created @GetFormattedDate(request.CreatedAt)
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex gap-2">
+                                                        <!-- Edit email notifications button -->
+                                                        @if (userAccount != null && AccountTierUtils.SupportsEmailNotifications(userAccount.Tier))
+                                                        {
+                                                            <button type="button" 
+                                                                    class="btn btn-outline-primary btn-sm" 
+                                                                    @onclick="() => EditEmailSettings(request)"
+                                                                    disabled="@(deletingRequests.Contains(request.Id))">
+                                                                <i class="bi bi-envelope-gear me-1"></i>
+                                                                <span>Email</span>
+                                                            </button>
+                                                        }
+                                                        
+                                                        <button type="button" 
+                                                                class="btn btn-outline-danger btn-sm" 
+                                                                @onclick="() => DeleteReportRequest(request.Id)"
+                                                                disabled="@(deletingRequests.Contains(request.Id))">
+                                                            @if (deletingRequests.Contains(request.Id))
+                                                            {
+                                                                <span class="spinner-border spinner-border-sm text-danger me-1" role="status" aria-hidden="true"></span>
+                                                                <span>Deleting...</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <i class="bi bi-trash me-1"></i>
+                                                                <span>Delete</span>
+                                                            }
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <button type="button" 
-                                                    class="btn btn-outline-danger btn-sm" 
-                                                    @onclick="() => DeleteReportRequest(request.Id)"
-                                                    disabled="@(deletingRequests.Contains(request.Id))">
-                                                @if (deletingRequests.Contains(request.Id))
-                                                {
-                                                    <span class="spinner-border spinner-border-sm text-danger me-1" role="status" aria-hidden="true"></span>
-                                                    <span>Deleting...</span>
-                                                }
-                                                else
-                                                {
-                                                    <i class="bi bi-trash me-1"></i>
-                                                    <span>Delete</span>
-                                                }
-                                            </button>
-                                        </div>
-                                    </div>
                                 }
                             </div>
                         </div>
@@ -154,6 +187,119 @@
                    IsVisibleChanged="OnCreateModalVisibilityChanged" 
                    OnReportCreated="OnReportCreated" />
 
+<!-- Email Settings Modal -->
+@if (editingEmailSettings != null)
+{
+    <div class="modal fade show" tabindex="-1" style="display: block;" aria-hidden="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-envelope-gear me-2"></i>
+                        Email Notification Settings
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseEmailSettingsModal" disabled="@isUpdatingEmailSettings"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <h6 class="text-primary">@editingEmailSettings.DisplayName</h6>
+                        @if (editingEmailSettings.Type == "reddit")
+                        {
+                            <span class="badge bg-primary">
+                                <i class="bi bi-reddit me-1"></i>Reddit
+                            </span>
+                        }
+                        else if (editingEmailSettings.Type == "github")
+                        {
+                            <span class="badge bg-dark">
+                                <i class="bi bi-github me-1"></i>GitHub
+                            </span>
+                        }
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="editEmailNotificationsEnabled"
+                                   @bind="editEmailEnabled"
+                                   disabled="@isUpdatingEmailSettings">
+                            <label class="form-check-label fw-bold" for="editEmailNotificationsEnabled">
+                                Enable email notifications for this report
+                            </label>
+                        </div>
+                    </div>
+                    
+                    @if (editEmailEnabled)
+                    {
+                        <div class="ms-3">
+                            <label class="form-label small text-muted">Notification preference:</label>
+                            <div class="form-check">
+                                <input class="form-check-input" 
+                                       type="radio" 
+                                       name="editEmailFrequency" 
+                                       id="editEmailIndividual"
+                                       value="@((int)EmailReportFrequency.Individual)"
+                                       @onchange="@((e) => OnEditEmailFrequencyChanged(e))"
+                                       checked="@(editEmailFrequency == EmailReportFrequency.Individual)"
+                                       disabled="@isUpdatingEmailSettings">
+                                <label class="form-check-label" for="editEmailIndividual">
+                                    <strong>Individual reports</strong> - Get email for each report (recommended)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" 
+                                       type="radio" 
+                                       name="editEmailFrequency" 
+                                       id="editEmailDigest"
+                                       value="@((int)EmailReportFrequency.WeeklyDigest)"
+                                       @onchange="@((e) => OnEditEmailFrequencyChanged(e))"
+                                       checked="@(editEmailFrequency == EmailReportFrequency.WeeklyDigest)"
+                                       disabled="@isUpdatingEmailSettings">
+                                <label class="form-check-label" for="editEmailDigest">
+                                    <strong>Weekly digest</strong> - Combine all reports into one email
+                                </label>
+                            </div>
+                        </div>
+                    }
+                    
+                    @if (!string.IsNullOrEmpty(emailUpdateMessage))
+                    {
+                        <div class="alert @(emailUpdateSuccess ? "alert-success" : "alert-danger") mt-3">
+                            <i class="@($"bi bi-{(emailUpdateSuccess ? "check-circle" : "exclamation-triangle")}-fill me-2")"></i>
+                            @emailUpdateMessage
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" 
+                            class="btn btn-outline-secondary" 
+                            @onclick="CloseEmailSettingsModal"
+                            disabled="@isUpdatingEmailSettings">
+                        Cancel
+                    </button>
+                    <button type="button" 
+                            class="btn btn-primary" 
+                            @onclick="SaveEmailSettings"
+                            disabled="@isUpdatingEmailSettings">
+                        @if (isUpdatingEmailSettings)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            <span>Saving...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-check-lg me-2"></i>
+                            <span>Save Changes</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
 @code {
     private bool isAuthenticated = false;
     private bool isLoading = true;
@@ -162,6 +308,17 @@
     private IEnumerable<UserReportRequestModel>? reportRequests;
     private readonly HashSet<string> deletingRequests = new();
     private bool showCreateModal = false;
+    
+    // User account for tier checking
+    private UserAccount? userAccount;
+    
+    // Email settings editing
+    private UserReportRequestModel? editingEmailSettings = null;
+    private bool editEmailEnabled = false;
+    private EmailReportFrequency editEmailFrequency = EmailReportFrequency.Individual;
+    private bool isUpdatingEmailSettings = false;
+    private string emailUpdateMessage = string.Empty;
+    private bool emailUpdateSuccess = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -178,6 +335,7 @@
             
             if (isAuthenticated)
             {
+                await LoadUserAccountAsync();
                 await LoadReportRequests();
             }
             else
@@ -185,6 +343,25 @@
                 isLoading = false;
             }
             StateHasChanged();
+        }
+    }
+
+    private async Task LoadUserAccountAsync()
+    {
+        try
+        {
+            var accountService = AccountServiceProvider.GetService();
+            var accountResult = await accountService.GetUserAccountAndLimitsAsync();
+            
+            if (accountResult.HasValue)
+            {
+                userAccount = accountResult.Value.account;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't show to user - email feature will just be disabled
+            Console.WriteLine($"Error loading user account: {ex.Message}");
         }
     }
 
@@ -285,5 +462,93 @@
         successMessage = "Report request created successfully! Reports are generated every Monday morning.";
         await LoadReportRequests();
         StateHasChanged();
+    }
+
+    private void EditEmailSettings(UserReportRequestModel request)
+    {
+        editingEmailSettings = request;
+        editEmailEnabled = request.EmailNotificationEnabled;
+        editEmailFrequency = request.EmailFrequency;
+        emailUpdateMessage = string.Empty;
+        emailUpdateSuccess = false;
+    }
+
+    private void CloseEmailSettingsModal()
+    {
+        editingEmailSettings = null;
+        editEmailEnabled = false;
+        editEmailFrequency = EmailReportFrequency.Individual;
+        emailUpdateMessage = string.Empty;
+        emailUpdateSuccess = false;
+        isUpdatingEmailSettings = false;
+    }
+
+    private void OnEditEmailFrequencyChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var frequency))
+        {
+            editEmailFrequency = (EmailReportFrequency)frequency;
+        }
+    }
+
+    private async Task SaveEmailSettings()
+    {
+        if (editingEmailSettings == null)
+            return;
+
+        try
+        {
+            isUpdatingEmailSettings = true;
+            emailUpdateMessage = string.Empty;
+
+            // Validate email notification permissions
+            var emailNotificationEnabled = editEmailEnabled;
+            if (emailNotificationEnabled && (userAccount == null || !AccountTierUtils.SupportsEmailNotifications(userAccount.Tier)))
+            {
+                emailNotificationEnabled = false; // Silently disable for Free tier users
+            }
+
+            // Create update object for backend
+            var updateData = new
+            {
+                emailNotificationEnabled = emailNotificationEnabled,
+                emailFrequency = editEmailFrequency
+            };
+
+            // Update via backend
+            var result = await ReportRequestService.UpdateReportRequestEmailSettingsAsync(editingEmailSettings.Id, updateData);
+            
+            if (result.Success)
+            {
+                emailUpdateMessage = "Email settings updated successfully!";
+                emailUpdateSuccess = true;
+                
+                // Update local model
+                editingEmailSettings.EmailNotificationEnabled = emailNotificationEnabled;
+                editingEmailSettings.EmailFrequency = editEmailFrequency;
+                
+                // Refresh the list to show updated badges
+                await LoadReportRequests();
+                
+                // Close modal after short delay
+                await Task.Delay(1500);
+                CloseEmailSettingsModal();
+            }
+            else
+            {
+                emailUpdateMessage = $"Failed to update email settings: {result.ErrorMessage ?? "Unknown error occurred"}";
+                emailUpdateSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            emailUpdateMessage = $"Failed to update email settings: {ex.Message}";
+            emailUpdateSuccess = false;
+        }
+        finally
+        {
+            isUpdatingEmailSettings = false;
+            StateHasChanged();
+        }
     }
 }

@@ -59,247 +59,316 @@ public class DigestEmailProcessorFunction
     }
 
     /// <summary>
-    /// Daily digest processor - runs every day at 9:00 AM UTC
+    /// Weekly email processor - runs every Monday at 12:00 PM UTC (after reports are generated at 11:00 AM)
+    /// Processes both individual report emails and weekly digest emails based on user preferences
     /// </summary>
-    [Function("DailyDigestProcessor")]
-    public async Task ProcessDailyDigests(
-        [TimerTrigger("0 0 9 * * *")] TimerInfo timer)
-    {
-        _logger.LogInformation("Starting daily digest processing at {Time}", DateTime.UtcNow);
-        await ProcessDigestEmails(EmailReportFrequency.Daily);
-    }
-
-    /// <summary>
-    /// Weekly digest processor - runs every Monday at 12:00 PM UTC (after reports are generated at 11:00 AM)
-    /// </summary>
-    [Function("WeeklyDigestProcessor")]
-    public async Task ProcessWeeklyDigests(
+    [Function("WeeklyEmailProcessor")]
+    public async Task ProcessWeeklyEmails(
         [TimerTrigger("0 0 12 * * 1")] TimerInfo timer)
     {
-        _logger.LogInformation("Starting weekly digest processing at {Time}", DateTime.UtcNow);
-        await ProcessDigestEmails(EmailReportFrequency.Weekly);
+        _logger.LogInformation("Starting weekly email processing at {Time}", DateTime.UtcNow);
+        
+        // Process individual report emails
+        await ProcessIndividualReportEmails();
+        
+        // Process weekly digest emails
+        await ProcessWeeklyDigestEmails();
     }
 
     /// <summary>
-    /// Manual trigger for digest processing (for testing)
+    /// Manual trigger for email processing (for testing)
     /// </summary>
-    [Function("TriggerDigestProcessing")]
-    public async Task<HttpResponseData> TriggerDigestProcessing(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "email/digest/{frequency}")] HttpRequestData req,
-        string frequency)
+    [Function("TriggerWeeklyEmailProcessing")]
+    public async Task<HttpResponseData> TriggerWeeklyEmailProcessing(
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "email/process-weekly")] HttpRequestData req)
     {
         try
         {
-            if (!Enum.TryParse<EmailReportFrequency>(frequency, true, out var emailFrequency) ||
-                emailFrequency == EmailReportFrequency.None || emailFrequency == EmailReportFrequency.Immediate)
-            {
-                var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await badRequestResponse.WriteStringAsync("Invalid frequency. Use 'Daily' or 'Weekly'.");
-                return badRequestResponse;
-            }
-
-            _logger.LogInformation("Manual trigger for {Frequency} digest processing", emailFrequency);
-            await ProcessDigestEmails(emailFrequency);
+            _logger.LogInformation("Manual trigger for weekly email processing");
+            
+            // Process individual report emails
+            await ProcessIndividualReportEmails();
+            
+            // Process weekly digest emails
+            await ProcessWeeklyDigestEmails();
 
             var response = req.CreateResponse(HttpStatusCode.OK);
-            await response.WriteAsJsonAsync(new { message = $"{emailFrequency} digest processing completed" });
+            await response.WriteAsJsonAsync(new { message = "Weekly email processing completed" });
             return response;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in manual digest processing trigger");
+            _logger.LogError(ex, "Error in manual weekly email processing trigger");
             var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await errorResponse.WriteStringAsync("Failed to process digest emails");
+            await errorResponse.WriteStringAsync("Failed to process weekly emails");
             return errorResponse;
         }
     }
 
     /// <summary>
-    /// Process digest emails for users with the specified frequency
+    /// Process individual report emails for users who want separate emails for each report
     /// </summary>
-    private async Task ProcessDigestEmails(EmailReportFrequency frequency)
+    private async Task ProcessIndividualReportEmails()
     {
         try
         {
-            var cutoffDate = frequency == EmailReportFrequency.Daily 
-                ? DateTime.UtcNow.AddDays(-1) 
-                : DateTime.UtcNow.AddDays(-7);
+            var cutoffDate = DateTime.UtcNow.AddDays(-7); // Only reports from the last week
+            _logger.LogInformation("Processing individual report emails for reports since {CutoffDate}", cutoffDate);
 
-            _logger.LogInformation("Processing {Frequency} digest emails for reports since {CutoffDate}", 
-                frequency, cutoffDate);
-
-            // Find users who want digest emails at this frequency
-            var filter = $"EmailFrequency eq {(int)frequency} and EmailNotificationsEnabled eq true";
-            var usersProcessed = 0;
+            // Find all user report requests with individual email notifications enabled
+            var filter = "EmailNotificationEnabled eq true and EmailFrequency eq 1"; // Individual = 1
             var emailsSent = 0;
+            var usersProcessed = 0;
 
-            await foreach (var userAccountEntity in _userAccountsTableClient.QueryAsync<UserAccountEntity>(filter))
+            await foreach (var userRequest in _userRequestsTableClient.QueryAsync<UserReportRequestModel>(filter))
             {
                 try
                 {
                     usersProcessed++;
-                    var userId = userAccountEntity.PartitionKey;
+                    var userId = userRequest.UserId;
+                    
+                    // Get user account to check tier and email address
+                    var userAccountEntity = await _userAccountsTableClient.GetEntityAsync<UserAccountEntity>(userId, userId);
                     
                     // Check if user's tier supports email notifications
-                    if (!AccountTierUtils.SupportsEmailNotifications((AccountTier)userAccountEntity.Tier))
+                    if (!AccountTierUtils.SupportsEmailNotifications((AccountTier)userAccountEntity.Value.Tier))
                     {
-                        _logger.LogDebug("Skipping digest for user {UserId} - tier {Tier} does not support email notifications", 
-                            userId, (AccountTier)userAccountEntity.Tier);
+                        _logger.LogDebug("Skipping individual emails for user {UserId} - tier {Tier} does not support email notifications", 
+                            userId, (AccountTier)userAccountEntity.Value.Tier);
                         continue;
                     }
                     
                     // Get user's email address
-                    var emailAddress = !string.IsNullOrEmpty(userAccountEntity.PreferredEmail) 
-                        ? userAccountEntity.PreferredEmail 
+                    var emailAddress = !string.IsNullOrEmpty(userAccountEntity.Value.PreferredEmail) 
+                        ? userAccountEntity.Value.PreferredEmail 
                         : userId;
 
                     // Validate email address
                     if (!_emailService.IsValidEmailAddress(emailAddress))
                     {
-                        _logger.LogWarning("Invalid email address for user {UserId}: {Email}", 
-                            userId, emailAddress);
+                        _logger.LogWarning("Invalid email address for user {UserId}: {Email}", userId, emailAddress);
                         continue;
                     }
 
-                    // Check if we should send digest (avoid sending too frequently)
-                    if (userAccountEntity.LastEmailSent.HasValue && frequency == EmailReportFrequency.Daily)
+                    // Find recent reports for this specific user request
+                    var reports = await GetRecentReportsForUserRequest(userRequest, cutoffDate);
+                    
+                    if (reports.Count == 0)
                     {
-                        var timeSinceLastEmail = DateTime.UtcNow - userAccountEntity.LastEmailSent.Value;
-                        if (timeSinceLastEmail < TimeSpan.FromHours(20)) // Don't send daily digest more than once per 20 hours
+                        _logger.LogDebug("No recent reports found for user request {RequestId}", userRequest.Id);
+                        continue;
+                    }
+
+                    // Send individual email for each report
+                    foreach (var report in reports)
+                    {
+                        var emailRequest = new FeedbackFunctions.Models.Email.ReportEmailRequest
                         {
-                            _logger.LogDebug("Skipping daily digest for {UserId} - last email sent {TimeSince} ago", 
-                                userId, timeSinceLastEmail);
-                            continue;
+                            RecipientEmail = emailAddress,
+                            RecipientName = "User", // Could enhance with actual user name
+                            ReportId = report.Id.ToString(),
+                            ReportTitle = $"{report.Source} Report - {report.SubSource}",
+                            ReportSummary = $"Your {report.Source} report has been generated",
+                            ReportUrl = $"https://feedbackflow.app/reports/{report.Id}", // Adjust URL as needed
+                            ReportType = report.Source,
+                            GeneratedAt = report.GeneratedAt.DateTime
+                        };
+
+                        var deliveryStatus = await _emailService.SendReportEmailAsync(emailRequest);
+
+                        if (deliveryStatus.Status == Azure.Communication.Email.EmailSendStatus.Succeeded || 
+                            deliveryStatus.Status == Azure.Communication.Email.EmailSendStatus.Running)
+                        {
+                            emailsSent++;
+                            _logger.LogInformation("Successfully sent individual report email to {Email} for report {ReportId}", 
+                                emailAddress, report.Id);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Failed to send individual report email to {Email} for report {ReportId}: {Error}", 
+                                emailAddress, report.Id, deliveryStatus.ErrorMessage);
                         }
                     }
 
-                    // Find recent reports for this user
-                    var userReports = await GetRecentReportsForUser(userId, cutoffDate);
+                    // Update last email sent timestamp
+                    userAccountEntity.Value.LastEmailSent = DateTime.UtcNow;
+                    await _userAccountsTableClient.UpdateEntityAsync(userAccountEntity.Value, userAccountEntity.Value.ETag);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing individual report email for user request {RequestId}", userRequest.Id);
+                }
+            }
+
+            _logger.LogInformation("Completed individual report email processing. Processed {UsersProcessed} user requests, sent {EmailsSent} emails", 
+                usersProcessed, emailsSent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in individual report email processing");
+        }
+    }
+
+    /// <summary>
+    /// Process weekly digest emails for users who want all their reports combined into one email
+    /// </summary>
+    private async Task ProcessWeeklyDigestEmails()
+    {
+        try
+        {
+            var cutoffDate = DateTime.UtcNow.AddDays(-7); // Only reports from the last week
+            _logger.LogInformation("Processing weekly digest emails for reports since {CutoffDate}", cutoffDate);
+
+            // Group user requests by user ID for digest emails
+            var digestRequests = new Dictionary<string, List<UserReportRequestModel>>();
+            var filter = "EmailNotificationEnabled eq true and EmailFrequency eq 2"; // WeeklyDigest = 2
+
+            await foreach (var userRequest in _userRequestsTableClient.QueryAsync<UserReportRequestModel>(filter))
+            {
+                if (!digestRequests.ContainsKey(userRequest.UserId))
+                {
+                    digestRequests[userRequest.UserId] = new List<UserReportRequestModel>();
+                }
+                digestRequests[userRequest.UserId].Add(userRequest);
+            }
+
+            var emailsSent = 0;
+            var usersProcessed = 0;
+
+            foreach (var userDigestGroup in digestRequests)
+            {
+                try
+                {
+                    usersProcessed++;
+                    var userId = userDigestGroup.Key;
+                    var userRequests = userDigestGroup.Value;
                     
-                    if (userReports.Count == 0)
+                    // Get user account to check tier and email address
+                    var userAccountEntity = await _userAccountsTableClient.GetEntityAsync<UserAccountEntity>(userId, userId);
+                    
+                    // Check if user's tier supports email notifications
+                    if (!AccountTierUtils.SupportsEmailNotifications((AccountTier)userAccountEntity.Value.Tier))
                     {
-                        _logger.LogDebug("No recent reports found for user {UserId}", userId);
+                        _logger.LogDebug("Skipping digest for user {UserId} - tier {Tier} does not support email notifications", 
+                            userId, (AccountTier)userAccountEntity.Value.Tier);
+                        continue;
+                    }
+                    
+                    // Get user's email address
+                    var emailAddress = !string.IsNullOrEmpty(userAccountEntity.Value.PreferredEmail) 
+                        ? userAccountEntity.Value.PreferredEmail 
+                        : userId;
+
+                    // Validate email address
+                    if (!_emailService.IsValidEmailAddress(emailAddress))
+                    {
+                        _logger.LogWarning("Invalid email address for user {UserId}: {Email}", userId, emailAddress);
                         continue;
                     }
 
-                    // Send digest email
+                    // Collect all reports for this user's digest
+                    var allReports = new List<ReportModel>();
+                    foreach (var userRequest in userRequests)
+                    {
+                        var reports = await GetRecentReportsForUserRequest(userRequest, cutoffDate);
+                        allReports.AddRange(reports);
+                    }
+                    
+                    if (allReports.Count == 0)
+                    {
+                        _logger.LogDebug("No recent reports found for user {UserId} digest", userId);
+                        continue;
+                    }
+
+                    // Sort and limit reports for digest
+                    allReports = allReports
+                        .OrderByDescending(r => r.GeneratedAt)
+                        .Take(10) // Limit to prevent huge emails
+                        .ToList();
+
+                    // Send weekly digest email
                     var deliveryStatus = await _emailService.SendWeeklyDigestAsync(
                         emailAddress, 
-                        "User", // We could enhance this with actual user name
-                        userReports);
+                        "User", // Could enhance with actual user name
+                        allReports);
 
                     if (deliveryStatus.Status == Azure.Communication.Email.EmailSendStatus.Succeeded || 
                         deliveryStatus.Status == Azure.Communication.Email.EmailSendStatus.Running)
                     {
                         emailsSent++;
-                        _logger.LogInformation("Successfully sent {Frequency} digest to {Email} with {ReportCount} reports", 
-                            frequency, emailAddress, userReports.Count);
+                        _logger.LogInformation("Successfully sent weekly digest to {Email} with {ReportCount} reports", 
+                            emailAddress, allReports.Count);
 
                         // Update last email sent timestamp
-                        userAccountEntity.LastEmailSent = DateTime.UtcNow;
-                        await _userAccountsTableClient.UpdateEntityAsync(userAccountEntity, userAccountEntity.ETag);
+                        userAccountEntity.Value.LastEmailSent = DateTime.UtcNow;
+                        await _userAccountsTableClient.UpdateEntityAsync(userAccountEntity.Value, userAccountEntity.Value.ETag);
                     }
                     else
                     {
-                        _logger.LogWarning("Failed to send {Frequency} digest to {Email}: {Error}", 
-                            frequency, emailAddress, deliveryStatus.ErrorMessage);
+                        _logger.LogWarning("Failed to send weekly digest to {Email}: {Error}", 
+                            emailAddress, deliveryStatus.ErrorMessage);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error processing digest email for user {UserId}", userAccountEntity.PartitionKey);
+                    _logger.LogError(ex, "Error processing weekly digest email for user {UserId}", userDigestGroup.Key);
                 }
             }
 
-            _logger.LogInformation("Completed {Frequency} digest processing. Processed {UsersProcessed} users, sent {EmailsSent} emails", 
-                frequency, usersProcessed, emailsSent);
+            _logger.LogInformation("Completed weekly digest email processing. Processed {UsersProcessed} users, sent {EmailsSent} digest emails", 
+                usersProcessed, emailsSent);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in {Frequency} digest email processing", frequency);
+            _logger.LogError(ex, "Error in weekly digest email processing");
         }
     }
 
     /// <summary>
-    /// Get recent reports for a specific user based on their report requests
+    /// Get recent reports for a specific user report request
     /// </summary>
-    private async Task<List<ReportModel>> GetRecentReportsForUser(string userId, DateTime cutoffDate)
+    private async Task<List<ReportModel>> GetRecentReportsForUserRequest(UserReportRequestModel userRequest, DateTime cutoffDate)
     {
         var reports = new List<ReportModel>();
         
         try
         {
-            // First, get all user requests for this user
-            var userRequestsFilter = $"PartitionKey eq '{userId}'";
-            var userRequests = new List<UserReportRequestModel>();
+            string source, subSource;
             
-            await foreach (var userRequest in _userRequestsTableClient.QueryAsync<UserReportRequestModel>(userRequestsFilter))
+            if (userRequest.Type == "reddit")
             {
-                userRequests.Add(userRequest);
+                source = "reddit";
+                subSource = userRequest.Subreddit ?? "";
             }
-            
-            if (userRequests.Count == 0)
+            else if (userRequest.Type == "github")
             {
-                _logger.LogDebug("No report requests found for user {UserId}", userId);
+                source = "github";
+                subSource = $"{userRequest.Owner}/{userRequest.Repo}";
+            }
+            else
+            {
+                _logger.LogWarning("Unknown request type {Type} for request {RequestId}", userRequest.Type, userRequest.Id);
                 return reports;
             }
             
-            // For each user request, find corresponding reports generated since cutoff date
-            foreach (var userRequest in userRequests)
-            {
-                try
-                {
-                    string source, subSource;
-                    
-                    if (userRequest.Type == "reddit")
-                    {
-                        source = "reddit";
-                        subSource = userRequest.Subreddit ?? "";
-                    }
-                    else if (userRequest.Type == "github")
-                    {
-                        source = "github";
-                        subSource = $"{userRequest.Owner}/{userRequest.Repo}";
-                    }
-                    else
-                    {
-                        continue; // Skip unknown types
-                    }
-                    
-                    // Get reports for this source/subsource combination
-                    var sourceReports = await _reportCacheService.GetReportsAsync(source, subSource);
-                    
-                    // Filter by cutoff date and add to results
-                    var recentReports = sourceReports
-                        .Where(r => r.GeneratedAt >= cutoffDate)
-                        .OrderByDescending(r => r.GeneratedAt)
-                        .Take(5) // Limit per source to prevent huge emails
-                        .ToList();
-                    
-                    reports.AddRange(recentReports);
-                    
-                    _logger.LogDebug("Found {ReportCount} recent reports for user {UserId} source {Source}/{SubSource}", 
-                        recentReports.Count, userId, source, subSource);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Error processing user request {RequestId} for user {UserId}", 
-                        userRequest.Id, userId);
-                }
-            }
+            // Get reports for this source/subsource combination
+            var sourceReports = await _reportCacheService.GetReportsAsync(source, subSource);
             
-            // Sort all reports by most recent first and limit total
-            reports = reports
+            // Filter by cutoff date and add to results
+            var recentReports = sourceReports
+                .Where(r => r.GeneratedAt >= cutoffDate)
                 .OrderByDescending(r => r.GeneratedAt)
-                .Take(10) // Overall limit for digest email
+                .Take(5) // Limit per source to prevent huge emails
                 .ToList();
             
-            _logger.LogDebug("Found {ReportCount} total recent reports for user {UserId} since {CutoffDate}", 
-                reports.Count, userId, cutoffDate);
+            reports.AddRange(recentReports);
+            
+            _logger.LogDebug("Found {ReportCount} recent reports for request {RequestId} ({Source}/{SubSource})", 
+                recentReports.Count, userRequest.Id, source, subSource);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting recent reports for user {UserId}", userId);
+            _logger.LogError(ex, "Error getting recent reports for user request {RequestId}", userRequest.Id);
         }
 
         return reports;

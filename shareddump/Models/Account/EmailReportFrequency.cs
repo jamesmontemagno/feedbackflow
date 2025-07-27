@@ -3,7 +3,6 @@ namespace SharedDump.Models.Account;
 public enum EmailReportFrequency
 {
     None = 0,
-    Immediate = 1,
-    Daily = 2,
-    Weekly = 3
+    Individual = 1,    // Send email for each report individually (default)
+    WeeklyDigest = 2   // Combine all reports into one weekly email
 }

@@ -27,6 +27,7 @@ public interface IReportRequestService
     Task<RequestResult> AddReportRequestAsync(object request);
     Task<RequestResult> RemoveReportRequestAsync(string id);
     Task<IEnumerable<UserReportRequestModel>> GetUserReportRequestsAsync();
+    Task<RequestResult> UpdateReportRequestEmailSettingsAsync(string id, object emailSettings);
 }
 
 public class ReportRequestService : IReportRequestService
@@ -180,6 +181,48 @@ public class ReportRequestService : IReportRequestService
             // Log error but don't throw - return empty collection to gracefully handle errors
             Console.WriteLine($"Error getting user report requests: {ex.Message}");
             return Enumerable.Empty<UserReportRequestModel>();
+        }
+    }
+
+    public async Task<RequestResult> UpdateReportRequestEmailSettingsAsync(string id, object emailSettings)
+    {
+        try
+        {
+            var baseUrl = _configuration["FeedbackApi:BaseUrl"] 
+                ?? throw new InvalidOperationException("API base URL not configured");
+            var code = _configuration["FeedbackApi:FunctionsKey"]
+                ?? throw new InvalidOperationException("Update report request code not configured");
+
+            var json = JsonSerializer.Serialize(emailSettings, _jsonOptions);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            // Create the request message to add authentication headers
+            var requestMessage = new HttpRequestMessage(HttpMethod.Put, $"{baseUrl}/api/userreportrequest/{Uri.EscapeDataString(id)}/email-settings?code={Uri.EscapeDataString(code)}")
+            {
+                Content = content
+            };
+
+            // Add authentication headers
+            await _authHeaderService.AddAuthenticationHeadersAsync(requestMessage);
+
+            var response = await _httpClient.SendAsync(requestMessage);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return RequestResult.CreateSuccess();
+            }
+            
+            var errorContent = await response.Content.ReadAsStringAsync();
+            var errorMessage = string.IsNullOrWhiteSpace(errorContent) 
+                ? $"Request failed with status {response.StatusCode}" 
+                : errorContent;
+            
+            return RequestResult.CreateError(errorMessage, response.StatusCode);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating email settings for report request {id}: {ex.Message}");
+            return RequestResult.CreateError($"Network error: {ex.Message}");
         }
     }
 

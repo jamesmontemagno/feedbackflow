@@ -533,19 +533,21 @@ public class ReportProcessorFunctions
                         continue;
                     }
 
-                    // For immediate notifications, send individual emails
-                    if (userAccount.EmailFrequency == EmailReportFrequency.Immediate)
+                    // For individual notifications, send separate emails for each report
+                    if (userAccount.EmailFrequency == EmailReportFrequency.Individual)
                     {
                         foreach (var report in userReports)
                         {
-                            await SendImmediateReportEmailAsync(emailAddress, report);
+                            await SendIndividualReportEmailAsync(emailAddress, report);
                         }
                     }
-                    // For daily/weekly notifications, we'll need a separate digest processor
-                    // For now, we'll queue them for later processing by creating digest entries
-                    else if (userAccount.EmailFrequency != EmailReportFrequency.None)
+                    // For weekly digest notifications, they'll be processed by the weekly digest processor
+                    // Individual report emails are already handled above
+                    else if (userAccount.EmailFrequency == EmailReportFrequency.WeeklyDigest)
                     {
-                        await QueueDigestEmailAsync(userId, emailAddress, userReports, userAccount.EmailFrequency);
+                        // Weekly digest emails are handled by the DigestEmailProcessorFunction
+                        // No immediate action needed here since reports are sent weekly after generation
+                        _logger.LogDebug("User {UserId} has weekly digest preference - will be processed by weekly digest function", userId);
                     }
                 }
                 catch (Exception ex)
@@ -565,7 +567,7 @@ public class ReportProcessorFunctions
     /// <summary>
     /// Send immediate email notification for a single report
     /// </summary>
-    private async Task SendImmediateReportEmailAsync(string emailAddress, ReportModel report)
+    private async Task SendIndividualReportEmailAsync(string emailAddress, ReportModel report)
     {
         try
         {
@@ -599,32 +601,6 @@ public class ReportProcessorFunctions
         {
             _logger.LogError(ex, "Error sending immediate email for report {ReportId} to {Email}", 
                 report.Id, emailAddress);
-        }
-    }
-
-    /// <summary>
-    /// Queue digest email for daily/weekly processing (placeholder implementation)
-    /// </summary>
-    private async Task QueueDigestEmailAsync(string userId, string emailAddress, List<ReportModel> reports, EmailReportFrequency frequency)
-    {
-        try
-        {
-            // For now, we'll just log that we would queue this
-            // In a full implementation, we'd store this in a queue or table for later processing
-            _logger.LogInformation("Would queue digest email for user {UserId} with {ReportCount} reports for {Frequency} delivery", 
-                userId, reports.Count, frequency);
-            
-            // TODO: Implement actual queueing mechanism for digest emails
-            // This could involve:
-            // 1. Storing digest entries in a table
-            // 2. Having separate timer functions for daily/weekly digest processing
-            // 3. Aggregating reports by user and frequency
-            
-            await Task.CompletedTask; // Placeholder for async operation
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error queueing digest email for user {UserId}", userId);
         }
     }
 }

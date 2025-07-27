@@ -186,9 +186,8 @@
                                                             @bind:event="onchange"
                                                             @bind:after="UpdateEmailNotificationSettings"
                                                             disabled="@isUpdatingEmailSettings">
-                                                        <option value="@((int)EmailReportFrequency.Immediate)">Immediately (when report is ready)</option>
-                                                        <option value="@((int)EmailReportFrequency.Daily)">Daily digest</option>
-                                                        <option value="@((int)EmailReportFrequency.Weekly)">Weekly digest</option>
+                                                        <option value="@((int)EmailReportFrequency.Individual)">Individual reports (send email for each report)</option>
+                                                        <option value="@((int)EmailReportFrequency.WeeklyDigest)">Weekly digest (combine all reports)</option>
                                                     </select>
                                                 </div>
                                             }
@@ -242,10 +241,10 @@
                                             <div class="mt-2">
                                                 <small class="text-muted">
                                                     <i class="bi bi-check-circle-fill text-success me-1"></i>
-                                                    Instant notifications when reports are generated
+                                                    Individual report notifications when generated
                                                     <br>
                                                     <i class="bi bi-check-circle-fill text-success me-1"></i>
-                                                    Daily and weekly digest options
+                                                    Weekly digest options
                                                 </small>
                                             </div>
                                         </div>
@@ -394,7 +393,7 @@
     
     // Email notification settings fields
     private bool emailNotificationsEnabled = false;
-    private int selectedEmailFrequency = (int)EmailReportFrequency.Immediate;
+    private int selectedEmailFrequency = (int)EmailReportFrequency.Individual;
     private bool isUpdatingEmailSettings = false;
     private string emailSettingsMessage = "";
     private bool emailSettingsSuccess = false;
