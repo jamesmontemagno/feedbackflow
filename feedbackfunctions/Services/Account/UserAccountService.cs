@@ -134,6 +134,13 @@ public class UserAccountService : IUserAccountService
                 FeedQueryLimit = 10000,
                 AnalysisRetentionDays = 3650 // 10 years
             },
+            AccountTier.Admin => new AccountLimits 
+            { 
+                AnalysisLimit = 10000,
+                ReportLimit = 10000,
+                FeedQueryLimit = 10000,
+                AnalysisRetentionDays = 3650 // 10 years
+            },
             _ => new AccountLimits { AnalysisLimit = 0, ReportLimit = 0, FeedQueryLimit = 0, AnalysisRetentionDays = 0 }
         };
     }

@@ -5,5 +5,6 @@ public enum AccountTier
     Free = 0,
     Pro = 1,
     ProPlus = 2,
-    SuperUser = 100
+    SuperUser = 100,
+    Admin = 225
 }
