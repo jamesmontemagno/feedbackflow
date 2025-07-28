@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Http;
 using SharedDump.Models.Authentication;
+using System.Net.Mail;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -367,7 +368,7 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
             });
             
             // Extract user details from claims
-            var email = userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Val;
+            var email = GetEmailFromClaims(userInfo.UserClaims, provider);
             
             var name = userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "name")?.Val ??
                       userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname")?.Val ??
@@ -803,6 +804,75 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
             CreatedAt = DateTime.UtcNow,
             LastLoginAt = DateTime.UtcNow
         };
+    }
+
+    /// <summary>
+    /// Extract email from claims based on provider-specific logic
+    /// </summary>
+    /// <param name="claims">User claims from Easy Auth</param>
+    /// <param name="provider">Authentication provider</param>
+    /// <returns>User email or null if not found</returns>
+    private static string? GetEmailFromClaims(EasyAuthClaim[]? claims, string provider)
+    {
+        if (claims == null) return null;
+
+        // Standard email claim types to check, in order of preference
+        var emailClaimTypes = new[]
+        {
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
+            "email",
+            "emails",
+            "preferred_username"
+        };
+
+        // Provider-specific email claim types
+        var providerSpecificClaims = provider switch
+        {
+            "GitHub" => new[] { "urn:github:email", "urn:github:primary_email" },
+            "Google" => new[] { "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn" },
+            "Microsoft" => new[] { "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn", "upn" },
+            _ => Array.Empty<string>()
+        };
+
+        // First, try provider-specific claims
+        foreach (var claimType in providerSpecificClaims)
+        {
+            var claim = claims.FirstOrDefault(c => string.Equals(c.Typ, claimType, StringComparison.OrdinalIgnoreCase));
+            if (claim?.Val != null && IsValidEmail(claim.Val))
+            {
+                return claim.Val;
+            }
+        }
+
+        // Then, try standard email claim types
+        foreach (var claimType in emailClaimTypes)
+        {
+            var claim = claims.FirstOrDefault(c => string.Equals(c.Typ, claimType, StringComparison.OrdinalIgnoreCase));
+            if (claim?.Val != null && IsValidEmail(claim.Val))
+            {
+                return claim.Val;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Simple email validation
+    /// </summary>
+    /// <param name="email">Email to validate</param>
+    /// <returns>True if email format is valid</returns>
+    private static bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     /// <summary>

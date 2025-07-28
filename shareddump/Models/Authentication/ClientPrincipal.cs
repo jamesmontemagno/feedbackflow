@@ -1,3 +1,4 @@
+using System.Net.Mail;
 using System.Text.Json.Serialization;
 
 namespace SharedDump.Models.Authentication;
@@ -83,8 +84,77 @@ public class ClientPrincipal
         if (!string.IsNullOrEmpty(UserDetails))
             return UserDetails;
 
-        // Try to get email from claims
-        return Claims?.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value ?? string.Empty;
+        // Try to get email from claims using enhanced logic
+        var email = GetEmailFromClaims(GetEffectiveIdentityProvider());
+        return email ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Get email from claims using provider-specific logic
+    /// </summary>
+    /// <param name="provider">Identity provider</param>
+    /// <returns>Email address or null if not found</returns>
+    public string? GetEmailFromClaims(string provider)
+    {
+        if (Claims == null) return null;
+
+        // Standard email claim types to check, in order of preference
+        var emailClaimTypes = new[]
+        {
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
+            "email",
+            "emails",
+            "preferred_username"
+        };
+
+        // Provider-specific email claim types
+        var providerSpecificClaims = provider switch
+        {
+            "github" => new[] { "urn:github:email", "urn:github:primary_email" },
+            "google" => new[] { "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn" },
+            "aad" => new[] { "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn", "upn" },
+            _ => Array.Empty<string>()
+        };
+
+        // First, try provider-specific claims
+        foreach (var claimType in providerSpecificClaims)
+        {
+            var claim = Claims.FirstOrDefault(c => string.Equals(c.Type, claimType, StringComparison.OrdinalIgnoreCase));
+            if (claim?.Value != null && IsValidEmail(claim.Value))
+            {
+                return claim.Value;
+            }
+        }
+
+        // Then, try standard email claim types
+        foreach (var claimType in emailClaimTypes)
+        {
+            var claim = Claims.FirstOrDefault(c => string.Equals(c.Type, claimType, StringComparison.OrdinalIgnoreCase));
+            if (claim?.Value != null && IsValidEmail(claim.Value))
+            {
+                return claim.Value;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Simple email validation
+    /// </summary>
+    /// <param name="email">Email to validate</param>
+    /// <returns>True if email format is valid</returns>
+    private static bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
 
