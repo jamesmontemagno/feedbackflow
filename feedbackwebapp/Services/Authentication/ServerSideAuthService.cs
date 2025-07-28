@@ -177,6 +177,12 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
             queryParams.Add("access_type=offline");
         }
         
+        // Add GitHub-specific scopes for email access
+        if (provider.ToLower() == "github")
+        {
+            queryParams.Add("scope=user:email");
+        }
+        
         // Append query parameters
         if (queryParams.Count > 0)
         {
@@ -369,6 +375,24 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
             
             // Extract user details from claims
             var email = GetEmailFromClaims(userInfo.UserClaims, provider);
+            
+            // For GitHub, if email is not found in claims and we have an access token, try the GitHub API
+            if (string.IsNullOrEmpty(email) && 
+                provider == "GitHub" && 
+                !string.IsNullOrEmpty(userInfo.AccessToken))
+            {
+                await _userSettingsService.LogAuthDebugAsync("Email not found in GitHub claims, attempting API fetch");
+                email = await GetEmailFromGitHubApiAsync(userInfo.AccessToken);
+                
+                if (!string.IsNullOrEmpty(email))
+                {
+                    await _userSettingsService.LogAuthDebugAsync("Successfully fetched email from GitHub API", new { email });
+                }
+                else
+                {
+                    await _userSettingsService.LogAuthDebugAsync("Failed to fetch email from GitHub API");
+                }
+            }
             
             var name = userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "name")?.Val ??
                       userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname")?.Val ??
@@ -855,6 +879,71 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Fetch user email from GitHub API using access token as fallback
+    /// </summary>
+    /// <param name="accessToken">GitHub access token from Easy Auth</param>
+    /// <returns>Primary email address or null if not accessible</returns>
+    private async Task<string?> GetEmailFromGitHubApiAsync(string accessToken)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/user/emails");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+            request.Headers.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("FeedbackFlow", "1.0"));
+
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Failed to fetch GitHub user emails via API. Status: {StatusCode}", response.StatusCode);
+                return null;
+            }
+
+            var emailsJson = await response.Content.ReadAsStringAsync();
+            using var document = JsonDocument.Parse(emailsJson);
+            
+            // Find the primary email
+            foreach (var emailElement in document.RootElement.EnumerateArray())
+            {
+                if (emailElement.TryGetProperty("primary", out var primaryProperty) && 
+                    primaryProperty.GetBoolean() &&
+                    emailElement.TryGetProperty("email", out var emailProperty))
+                {
+                    var email = emailProperty.GetString();
+                    if (!string.IsNullOrEmpty(email) && IsValidEmail(email))
+                    {
+                        _logger.LogDebug("Successfully fetched primary email from GitHub API");
+                        return email;
+                    }
+                }
+            }
+
+            // If no primary email found, try to get the first verified email
+            foreach (var emailElement in document.RootElement.EnumerateArray())
+            {
+                if (emailElement.TryGetProperty("verified", out var verifiedProperty) && 
+                    verifiedProperty.GetBoolean() &&
+                    emailElement.TryGetProperty("email", out var emailProperty))
+                {
+                    var email = emailProperty.GetString();
+                    if (!string.IsNullOrEmpty(email) && IsValidEmail(email))
+                    {
+                        _logger.LogDebug("Using first verified email from GitHub API as fallback");
+                        return email;
+                    }
+                }
+            }
+
+            _logger.LogDebug("No suitable email found in GitHub API response");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error fetching email from GitHub API");
+            return null;
+        }
     }
 
     /// <summary>

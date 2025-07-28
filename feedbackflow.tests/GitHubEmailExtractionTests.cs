@@ -1,5 +1,12 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharedDump.Models.Authentication;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
+using FeedbackWebApp.Services.Authentication;
+using FeedbackWebApp.Services;
+using NSubstitute;
 
 namespace FeedbackFlow.Tests;
 
@@ -184,5 +191,93 @@ public class GitHubEmailExtractionTests
 
         // Assert
         Assert.AreEqual("direct@example.com", email);
+    }
+
+    [TestMethod]
+    public void GetLoginUrl_ForGitHub_IncludesUserEmailScope()
+    {
+        // Arrange
+        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        var configuration = Substitute.For<IConfiguration>();
+        var httpClientFactory = Substitute.For<IHttpClientFactory>();
+        var serviceProvider = Substitute.For<IServiceProvider>();
+        var logger = Substitute.For<ILogger<ServerSideAuthService>>();
+        var jsRuntime = Substitute.For<IJSRuntime>();
+
+        // Create a real configuration that will work with UserSettingsService
+        var configDict = new Dictionary<string, string?>
+        {
+            { "Authentication:DEBUG", "false" }
+        };
+        var configBuilder = new ConfigurationBuilder().AddInMemoryCollection(configDict);
+        var realConfig = configBuilder.Build();
+
+        var userSettingsService = new UserSettingsService(jsRuntime, realConfig);
+
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Scheme = "https";
+        httpContext.Request.Host = new HostString("example.com");
+        httpContextAccessor.HttpContext.Returns(httpContext);
+
+        var authService = new ServerSideAuthService(
+            httpContextAccessor,
+            configuration,
+            httpClientFactory,
+            serviceProvider,
+            logger,
+            userSettingsService);
+
+        // Act
+        var loginUrl = authService.GetLoginUrl("GitHub", "https://example.com/callback");
+
+        // Assert
+        Assert.IsTrue(loginUrl.Contains("scope=user:email"), 
+            $"Expected GitHub login URL to contain 'scope=user:email', but got: {loginUrl}");
+        Assert.IsTrue(loginUrl.Contains("/.auth/login/github"), 
+            $"Expected GitHub login URL to contain '/.auth/login/github', but got: {loginUrl}");
+    }
+
+    [TestMethod]
+    public void GetLoginUrl_ForGoogle_DoesNotIncludeGitHubScope()
+    {
+        // Arrange
+        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        var configuration = Substitute.For<IConfiguration>();
+        var httpClientFactory = Substitute.For<IHttpClientFactory>();
+        var serviceProvider = Substitute.For<IServiceProvider>();
+        var logger = Substitute.For<ILogger<ServerSideAuthService>>();
+        var jsRuntime = Substitute.For<IJSRuntime>();
+
+        // Create a real configuration that will work with UserSettingsService
+        var configDict = new Dictionary<string, string?>
+        {
+            { "Authentication:DEBUG", "false" }
+        };
+        var configBuilder = new ConfigurationBuilder().AddInMemoryCollection(configDict);
+        var realConfig = configBuilder.Build();
+
+        var userSettingsService = new UserSettingsService(jsRuntime, realConfig);
+
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Scheme = "https";
+        httpContext.Request.Host = new HostString("example.com");
+        httpContextAccessor.HttpContext.Returns(httpContext);
+
+        var authService = new ServerSideAuthService(
+            httpContextAccessor,
+            configuration,
+            httpClientFactory,
+            serviceProvider,
+            logger,
+            userSettingsService);
+
+        // Act
+        var loginUrl = authService.GetLoginUrl("Google", "https://example.com/callback");
+
+        // Assert
+        Assert.IsFalse(loginUrl.Contains("scope=user:email"), 
+            $"Expected Google login URL to not contain GitHub scope, but got: {loginUrl}");
+        Assert.IsTrue(loginUrl.Contains("access_type=offline"), 
+            $"Expected Google login URL to contain 'access_type=offline', but got: {loginUrl}");
     }
 }
