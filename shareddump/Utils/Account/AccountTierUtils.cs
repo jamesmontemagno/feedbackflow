@@ -19,7 +19,7 @@ namespace SharedDump.Utils.Account
             AccountTier.Free => "Basic analysis, limited usage, no support.",
             AccountTier.Pro => "Priority processing, increased limits, basic support.",
             AccountTier.ProPlus => "Advanced analytics, email notifications, highest limits.",
-            AccountTier.SuperUser => "Internal administrative account with unlimited access.",
+            AccountTier.SuperUser => "Internal account with unlimited access.",
             AccountTier.Admin => "Internal administrative account with unlimited access.",
             _ => "Unknown tier."
         };
