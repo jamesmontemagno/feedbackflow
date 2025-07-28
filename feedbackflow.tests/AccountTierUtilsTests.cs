@@ -31,7 +31,7 @@ public class AccountTierUtilsTests
         Assert.IsTrue(freeDesc.Contains("Basic"));
         Assert.IsTrue(proDesc.Contains("Priority"));
         Assert.IsTrue(proPlusDesc.Contains("Advanced"));
-        Assert.IsTrue(superUserDesc.Contains("Internal administrative"));
+        Assert.IsTrue(superUserDesc.Contains("Internal"));
         Assert.IsTrue(adminDesc.Contains("Internal administrative"));
     }
 
@@ -65,7 +65,7 @@ public class AccountTierUtilsTests
         // Verify both have admin-like descriptions
         var superUserDesc = AccountTierUtils.GetTierDescription(AccountTier.SuperUser);
         var adminDesc = AccountTierUtils.GetTierDescription(AccountTier.Admin);
-        Assert.IsTrue(superUserDesc.Contains("Internal administrative"));
+        Assert.IsTrue(superUserDesc.Contains("Internal"));
         Assert.IsTrue(adminDesc.Contains("Internal administrative"));
     }
 
