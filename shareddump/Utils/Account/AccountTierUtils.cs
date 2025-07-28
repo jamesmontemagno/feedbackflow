@@ -9,6 +9,8 @@ namespace SharedDump.Utils.Account
             AccountTier.Free => "Free",
             AccountTier.Pro => "Pro",
             AccountTier.ProPlus => "Pro+",
+            AccountTier.SuperUser => "Super User",
+            AccountTier.Admin => "Admin",
             _ => "Unknown"
         };
 
@@ -17,6 +19,8 @@ namespace SharedDump.Utils.Account
             AccountTier.Free => "Basic analysis, limited usage, no support.",
             AccountTier.Pro => "Priority processing, increased limits, basic support.",
             AccountTier.ProPlus => "Advanced analytics, email notifications, highest limits.",
+            AccountTier.SuperUser => "Internal administrative account with unlimited access.",
+            AccountTier.Admin => "Internal administrative account with unlimited access.",
             _ => "Unknown tier."
         };
 
@@ -32,6 +36,7 @@ namespace SharedDump.Utils.Account
                 AccountTier.Pro => true,
                 AccountTier.ProPlus => true,
                 AccountTier.SuperUser => true,
+                AccountTier.Admin => true,
                 _ => false
             };
         }

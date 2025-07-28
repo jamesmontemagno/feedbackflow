@@ -53,6 +53,16 @@
                                         <p class="text-muted small mt-1 mb-0">Administrative Account</p>
                                     </div>
                                 }
+                                else if (userAccount?.Tier == AccountTier.Admin)
+                                {
+                                    <div class="mt-2">
+                                        <span class="badge bg-warning text-dark fs-6">
+                                            <i class="bi bi-star-fill me-1"></i>
+                                            Admin
+                                        </span>
+                                        <p class="text-muted small mt-1 mb-0">Administrative Account</p>
+                                    </div>
+                                }
                             </div>
                             <div class="col-md-8">
                                 <div class="mb-3">
@@ -64,6 +74,13 @@
                                             <span class="badge bg-warning text-dark ms-2">
                                                 <i class="bi bi-star-fill me-1"></i>
                                                 Super User
+                                            </span>
+                                        }
+                                        else if (userAccount?.Tier == AccountTier.Admin)
+                                        {
+                                            <span class="badge bg-warning text-dark ms-2">
+                                                <i class="bi bi-star-fill me-1"></i>
+                                                Admin
                                             </span>
                                         }
                                     </p>
