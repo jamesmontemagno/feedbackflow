@@ -85,6 +85,14 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
 
         try
         {
+            // Fast-track check: if user hasn't even attempted to log in, skip expensive OAuth checks
+            var hasLoginAttempt = await _userSettingsService.GetLoginAttemptAsync();
+            if (!hasLoginAttempt)
+            {
+                await _userSettingsService.LogAuthDebugAsync("No login attempt detected - user has not tried to log in");
+                return false;
+            }
+
             // Try to get user from cache first
             var cachedUser = GetCachedUser();
             if (cachedUser != null)
@@ -99,16 +107,9 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
             {
                 await _userSettingsService.LogAuthDebugAsync("IsAuthenticatedAsync result from Easy Auth", new { isAuthenticated = false, hasUserInfo = false });
                 
-                // Fast-track check: if no OAuth session AND no last login timestamp, user is definitely not logged in
-                var lastLogin = await _userSettingsService.GetLastLoginAtAsync();
-                if (!lastLogin.HasValue)
-                {
-                    await _userSettingsService.LogAuthDebugAsync("No OAuth session and no last login timestamp - user not authenticated");
-                    return false;
-                }
-                
-                // Clear last login since OAuth session is gone but timestamp existed
-                await _userSettingsService.LogAuthDebugAsync("OAuth session expired, clearing last login timestamp");
+                // Clear login attempt and last login since OAuth session is gone
+                await _userSettingsService.LogAuthDebugAsync("OAuth session expired, clearing login attempt and last login timestamp");
+                await _userSettingsService.ClearLoginAttemptAsync();
                 await _userSettingsService.RemoveFromLocalStorageAsync("feedbackflow_last_login");
                 return false;
             }
@@ -125,6 +126,9 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
                 // Check if user account exists in database
                 await EnsureUserIsRegisteredAsync(userInfo);
                 await _userSettingsService.LogAuthDebugAsync("User registration check completed successfully");
+                
+                // Clear login attempt flag since authentication is complete
+                await _userSettingsService.ClearLoginAttemptAsync();
                 return true;
             }
             catch (UserRegistrationException ex)
@@ -133,6 +137,9 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
                     error = ex.Message,
                     shouldLogout = ex.ShouldLogout
                 });
+                
+                // Clear login attempt flag on registration failure
+                await _userSettingsService.ClearLoginAttemptAsync();
                 
                 // Trigger registration error event for UI to handle
                 _registrationErrorService?.TriggerRegistrationError(ex.Message);
@@ -302,8 +309,9 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
         // Clear the cached user
         ClearUserCache();
 
-        // Clear the last login timestamp to ensure fast-track authentication check works
+        // Clear the last login timestamp and login attempt flag to ensure fast-track authentication check works
         await _userSettingsService.RemoveFromLocalStorageAsync("feedbackflow_last_login");
+        await _userSettingsService.ClearLoginAttemptAsync();
 
         // Trigger authentication state change
         AuthenticationStateChanged?.Invoke(this, false);

@@ -49,6 +49,15 @@ public class AuthenticationService : IAuthenticationService
             return true;
         }
 
+        // Fast-track check: if user hasn't even attempted to log in, skip expensive checks
+        var hasLoginAttempt = await _userSettingsService.GetLoginAttemptAsync();
+        if (!hasLoginAttempt)
+        {
+            await _userSettingsService.LogAuthDebugAsync("No login attempt detected - user has not tried to log in");
+            _isAuthenticated = false;
+            return false;
+        }
+
         // For non-development, this service shouldn't be used anymore
         // but we'll keep the logic for backward compatibility
         if (_isAuthenticated.HasValue)
@@ -159,6 +168,7 @@ public class AuthenticationService : IAuthenticationService
     public async Task LogoutAsync()
     {
         await SetAuthenticatedAsync(false);
+        await _userSettingsService.ClearLoginAttemptAsync(); // Clear login attempt flag
         _lastAuthenticationError = null; // Clear any authentication errors on logout
         AuthenticationStateChanged?.Invoke(this, false);
     }
