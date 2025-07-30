@@ -85,14 +85,6 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
 
         try
         {
-            // Fast-track check: if no last login timestamp exists, user is definitely not logged in
-            var lastLogin = await _userSettingsService.GetLastLoginAtAsync();
-            if (!lastLogin.HasValue)
-            {
-                await _userSettingsService.LogAuthDebugAsync("No last login timestamp found - user not authenticated");
-                return false;
-            }
-
             // Try to get user from cache first
             var cachedUser = GetCachedUser();
             if (cachedUser != null)
@@ -101,12 +93,22 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
                 return true;
             }
 
-            // If not in cache, check with Easy Auth
+            // Check with Easy Auth to see if user has an OAuth session
             var userInfo = await GetEasyAuthUserAsync();
             if (userInfo == null)
             {
                 await _userSettingsService.LogAuthDebugAsync("IsAuthenticatedAsync result from Easy Auth", new { isAuthenticated = false, hasUserInfo = false });
-                // Clear last login since OAuth session is gone
+                
+                // Fast-track check: if no OAuth session AND no last login timestamp, user is definitely not logged in
+                var lastLogin = await _userSettingsService.GetLastLoginAtAsync();
+                if (!lastLogin.HasValue)
+                {
+                    await _userSettingsService.LogAuthDebugAsync("No OAuth session and no last login timestamp - user not authenticated");
+                    return false;
+                }
+                
+                // Clear last login since OAuth session is gone but timestamp existed
+                await _userSettingsService.LogAuthDebugAsync("OAuth session expired, clearing last login timestamp");
                 await _userSettingsService.RemoveFromLocalStorageAsync("feedbackflow_last_login");
                 return false;
             }
@@ -114,7 +116,8 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
             // User is authenticated via OAuth, now check if they're registered in our database
             await _userSettingsService.LogAuthDebugAsync("User authenticated via OAuth, checking database registration", new { 
                 provider = userInfo.AuthProvider,
-                userId = userInfo.UserId
+                userId = userInfo.UserId,
+                email = userInfo.Email
             });
 
             try
