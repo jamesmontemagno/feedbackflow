@@ -249,243 +249,243 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
 
             try
             {
-            var baseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}";
-            await _userSettingsService.LogAuthDebugAsync("Authentication check starting", new { baseUrl });
-            
-            // Check if we should refresh the token (if it's been over 2 hours since last login)
-            var lastLogin = await _userSettingsService.GetLastLoginAtAsync();
-            if (lastLogin.HasValue && DateTime.UtcNow.Subtract(lastLogin.Value).TotalHours > 2)
-            {
-                await _userSettingsService.LogAuthDebugAsync("Token refresh needed", new { 
-                    lastLogin, 
-                    hoursSinceLogin = DateTime.UtcNow.Subtract(lastLogin.Value).TotalHours 
-                });
-                _logger.LogDebug("Last login was over 2 hours ago, attempting token refresh");
-                await TryRefreshTokenAsync(baseUrl, httpContext);
-            }
-            else
-            {
-                await _userSettingsService.LogAuthDebugAsync("Token refresh not needed", new { 
-                    lastLogin, 
-                    hoursSinceLogin = lastLogin.HasValue ? DateTime.UtcNow.Subtract(lastLogin.Value).TotalHours : (double?)null
-                });
-            }
-            
-            // Create request to /.auth/me with forwarded cookies
-            var authMeUrl = $"{baseUrl}/.auth/me";
-            HttpResponseMessage response;
-            bool retryAttempted = false;
-            
-            // First attempt
-            var request = new HttpRequestMessage(HttpMethod.Get, authMeUrl);
-            
-            // Forward all cookies from the current request
-            var hasCookies = httpContext.Request.Headers.ContainsKey("Cookie");
-            if (hasCookies)
-            {
-                request.Headers.Add("Cookie", httpContext.Request.Headers["Cookie"].ToString());
-            }
-            await _userSettingsService.LogAuthDebugAsync("Making /.auth/me request (first attempt)", new { authMeUrl, hasCookies });
-
-            // Add cache control to ensure fresh data
-            request.Headers.Add("Cache-Control", "no-cache");
-
-            response = await _httpClient.SendAsync(request);
-            await _userSettingsService.LogAuthDebugAsync("/.auth/me response received (first attempt)", new { 
-                statusCode = response.StatusCode, 
-                isSuccess = response.IsSuccessStatusCode 
-            });
-            
-            // If first attempt fails, try refreshing token and retry once
-            if (!response.IsSuccessStatusCode && !retryAttempted)
-            {
-                await _userSettingsService.LogAuthDebugAsync("First /.auth/me attempt failed, trying token refresh", new { statusCode = response.StatusCode });
-                _logger.LogDebug("First authentication check failed with status: {StatusCode}, attempting token refresh", response.StatusCode);
+                var baseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}";
+                await _userSettingsService.LogAuthDebugAsync("Authentication check starting", new { baseUrl });
                 
-                // Attempt token refresh
-                await TryRefreshTokenAsync(baseUrl, httpContext);
-                retryAttempted = true;
-                
-                // Dispose the failed response
-                response.Dispose();
-                
-                // Retry the request with fresh cookies
-                var retryRequest = new HttpRequestMessage(HttpMethod.Get, authMeUrl);
-                
-                // Forward cookies again (they may have been updated by refresh)
-                if (httpContext.Request.Headers.ContainsKey("Cookie"))
+                // Check if we should refresh the token (if it's been over 2 hours since last login)
+                var lastLogin = await _userSettingsService.GetLastLoginAtAsync();
+                if (lastLogin.HasValue && DateTime.UtcNow.Subtract(lastLogin.Value).TotalHours > 2)
                 {
-                    retryRequest.Headers.Add("Cookie", httpContext.Request.Headers["Cookie"].ToString());
+                    await _userSettingsService.LogAuthDebugAsync("Token refresh needed", new { 
+                        lastLogin, 
+                        hoursSinceLogin = DateTime.UtcNow.Subtract(lastLogin.Value).TotalHours 
+                    });
+                    _logger.LogDebug("Last login was over 2 hours ago, attempting token refresh");
+                    await TryRefreshTokenAsync(baseUrl, httpContext);
                 }
-                retryRequest.Headers.Add("Cache-Control", "no-cache");
+                else
+                {
+                    await _userSettingsService.LogAuthDebugAsync("Token refresh not needed", new { 
+                        lastLogin, 
+                        hoursSinceLogin = lastLogin.HasValue ? DateTime.UtcNow.Subtract(lastLogin.Value).TotalHours : (double?)null
+                    });
+                }
                 
-                await _userSettingsService.LogAuthDebugAsync("Making /.auth/me request (retry after refresh)", new { authMeUrl });
-                response = await _httpClient.SendAsync(retryRequest);
+                // Create request to /.auth/me with forwarded cookies
+                var authMeUrl = $"{baseUrl}/.auth/me";
+                HttpResponseMessage response;
+                bool retryAttempted = false;
                 
-                await _userSettingsService.LogAuthDebugAsync("/.auth/me response received (retry attempt)", new { 
+                // First attempt
+                var request = new HttpRequestMessage(HttpMethod.Get, authMeUrl);
+                
+                // Forward all cookies from the current request
+                var hasCookies = httpContext.Request.Headers.ContainsKey("Cookie");
+                if (hasCookies)
+                {
+                    request.Headers.Add("Cookie", httpContext.Request.Headers["Cookie"].ToString());
+                }
+                await _userSettingsService.LogAuthDebugAsync("Making /.auth/me request (first attempt)", new { authMeUrl, hasCookies });
+
+                // Add cache control to ensure fresh data
+                request.Headers.Add("Cache-Control", "no-cache");
+
+                response = await _httpClient.SendAsync(request);
+                await _userSettingsService.LogAuthDebugAsync("/.auth/me response received (first attempt)", new { 
                     statusCode = response.StatusCode, 
                     isSuccess = response.IsSuccessStatusCode 
                 });
-            }
-            
-            // If still failing after retry, return null
-            if (!response.IsSuccessStatusCode)
-            {
-                var attemptType = retryAttempted ? "after token refresh retry" : "on first attempt";
-                await _userSettingsService.LogAuthWarnAsync($"Authentication check failed {attemptType}", new { statusCode = response.StatusCode, retryAttempted });
-                _logger.LogDebug("Authentication check failed {AttemptType} with status: {StatusCode}", attemptType, response.StatusCode);
                 
-                return null;
-            }
+                // If first attempt fails, try refreshing token and retry once
+                if (!response.IsSuccessStatusCode && !retryAttempted)
+                {
+                    await _userSettingsService.LogAuthDebugAsync("First /.auth/me attempt failed, trying token refresh", new { statusCode = response.StatusCode });
+                    _logger.LogDebug("First authentication check failed with status: {StatusCode}, attempting token refresh", response.StatusCode);
+                    
+                    // Attempt token refresh
+                    await TryRefreshTokenAsync(baseUrl, httpContext);
+                    retryAttempted = true;
+                    
+                    // Dispose the failed response
+                    response.Dispose();
+                    
+                    // Retry the request with fresh cookies
+                    var retryRequest = new HttpRequestMessage(HttpMethod.Get, authMeUrl);
+                    
+                    // Forward cookies again (they may have been updated by refresh)
+                    if (httpContext.Request.Headers.ContainsKey("Cookie"))
+                    {
+                        retryRequest.Headers.Add("Cookie", httpContext.Request.Headers["Cookie"].ToString());
+                    }
+                    retryRequest.Headers.Add("Cache-Control", "no-cache");
+                    
+                    await _userSettingsService.LogAuthDebugAsync("Making /.auth/me request (retry after refresh)", new { authMeUrl });
+                    response = await _httpClient.SendAsync(retryRequest);
+                    
+                    await _userSettingsService.LogAuthDebugAsync("/.auth/me response received (retry attempt)", new { 
+                        statusCode = response.StatusCode, 
+                        isSuccess = response.IsSuccessStatusCode 
+                    });
+                }
+                
+                // If still failing after retry, return null
+                if (!response.IsSuccessStatusCode)
+                {
+                    var attemptType = retryAttempted ? "after token refresh retry" : "on first attempt";
+                    await _userSettingsService.LogAuthWarnAsync($"Authentication check failed {attemptType}", new { statusCode = response.StatusCode, retryAttempted });
+                    _logger.LogDebug("Authentication check failed {AttemptType} with status: {StatusCode}", attemptType, response.StatusCode);
+                    
+                    return null;
+                }
 
-            var responseContent = await response.Content.ReadAsStringAsync();
-            await _userSettingsService.LogAuthDebugAsync("/.auth/me response content", new { 
-                contentLength = responseContent?.Length ?? 0,
-                isEmpty = string.IsNullOrEmpty(responseContent),
-                isEmptyArray = responseContent?.Trim() == "[]"
-            });
-            
-            if (string.IsNullOrEmpty(responseContent) || responseContent.Trim() == "[]")
-            {
-                await _userSettingsService.LogAuthDebugAsync("No authenticated user found in response");
-                _logger.LogDebug("No authenticated user found");
-                return null;
-            }
-
-            // Parse the Easy Auth response
-            var userArray = JsonSerializer.Deserialize<EasyAuthUser[]>(responseContent);
-            if (userArray == null || userArray.Length == 0)
-            {
-                await _userSettingsService.LogAuthWarnAsync("Failed to parse user array or empty array", new { 
-                    isNull = userArray == null, 
-                    length = userArray?.Length ?? 0 
+                var responseContent = await response.Content.ReadAsStringAsync();
+                await _userSettingsService.LogAuthDebugAsync("/.auth/me response content", new { 
+                    contentLength = responseContent?.Length ?? 0,
+                    isEmpty = string.IsNullOrEmpty(responseContent),
+                    isEmptyArray = responseContent?.Trim() == "[]"
                 });
-                _logger.LogDebug("Empty user array from Easy Auth");
+                
+                if (string.IsNullOrEmpty(responseContent) || responseContent.Trim() == "[]")
+                {
+                    await _userSettingsService.LogAuthDebugAsync("No authenticated user found in response");
+                    _logger.LogDebug("No authenticated user found");
+                    return null;
+                }
+
+                // Parse the Easy Auth response
+                var userArray = JsonSerializer.Deserialize<EasyAuthUser[]>(responseContent);
+                if (userArray == null || userArray.Length == 0)
+                {
+                    await _userSettingsService.LogAuthWarnAsync("Failed to parse user array or empty array", new { 
+                        isNull = userArray == null, 
+                        length = userArray?.Length ?? 0 
+                    });
+                    _logger.LogDebug("Empty user array from Easy Auth");
+                    return null;
+                }
+
+                var userInfo = userArray[0];
+                var provider = GetProviderFromIdentityProvider(userInfo.ProviderName);
+                await _userSettingsService.LogAuthDebugAsync("Parsed Easy Auth user", new { 
+                    userId = userInfo.UserId,
+                    providerName = userInfo.ProviderName,
+                    mappedProvider = provider,
+                    claimsCount = userInfo.UserClaims?.Length ?? 0
+                });
+                
+                // Extract user details from claims
+                var email = GetEmailFromClaims(userInfo.UserClaims, provider);
+                
+                // For GitHub, if email is not found in claims and we have an access token, try the GitHub API
+                if (string.IsNullOrEmpty(email) && 
+                    provider == "GitHub" && 
+                    !string.IsNullOrEmpty(userInfo.AccessToken))
+                {
+                    await _userSettingsService.LogAuthDebugAsync("Email not found in GitHub claims, attempting API fetch");
+                    email = await GetEmailFromGitHubApiAsync(userInfo.AccessToken);
+                    
+                    if (!string.IsNullOrEmpty(email))
+                    {
+                        await _userSettingsService.LogAuthDebugAsync("Successfully fetched email from GitHub API", new { email });
+                    }
+                    else
+                    {
+                        await _userSettingsService.LogAuthDebugAsync("Failed to fetch email from GitHub API");
+                    }
+                }
+                
+                var name = userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "name")?.Val ??
+                        userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname")?.Val ??
+                        userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name")?.Val ??
+                        userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "given_name")?.Val ??
+                        userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "preferred_username")?.Val;
+                
+                // Provider-specific fallbacks for name
+                if (string.IsNullOrEmpty(name))
+                {
+                    name = provider switch
+                    {
+                        "GitHub" => userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "urn:github:login")?.Val,
+                        _ => null
+                    };
+                }
+                        
+                // Final fallbacks for name
+                if (string.IsNullOrEmpty(name))
+                {
+                    if (!string.IsNullOrEmpty(email) && email.Contains('@'))
+                    {
+                        name = email.Split('@')[0];
+                    }
+                    else
+                    {
+                        name = userInfo.UserId ?? "User";
+                    }
+                }
+                
+                var profileImageUrl = GetProfileImageUrl(userInfo.ProviderName, userInfo.UserClaims);
+                
+                await _userSettingsService.LogAuthDebugAsync("Extracted user details", new { 
+                    email, 
+                    name, 
+                    profileImageUrl, 
+                    provider 
+                });
+                        
+                var authenticatedUser = new AuthenticatedUser
+                {
+                    UserId = userInfo.UserId ?? string.Empty,
+                    Email = email ?? string.Empty,
+                    Name = name,
+                    AuthProvider = provider,
+                    ProviderUserId = userInfo.UserId ?? string.Empty,
+                    ProfileImageUrl = profileImageUrl,
+                    CreatedAt = DateTime.UtcNow,
+                    LastLoginAt = DateTime.UtcNow
+                };
+                
+                // Update last login time in user settings
+                await _userSettingsService.UpdateLastLoginAtAsync();
+                await _userSettingsService.LogAuthDebugAsync("Updated last login time and created authenticated user", new { 
+                    userId = authenticatedUser.UserId,
+                    email = authenticatedUser.Email,
+                    provider = authenticatedUser.AuthProvider
+                });
+                
+                // Cache the authenticated user
+                SetCachedUser(authenticatedUser);
+                
+                _logger.LogDebug("Successfully authenticated user: {Email}", email);
+                return authenticatedUser;
+            }
+            catch (HttpRequestException ex)
+            {
+                await _userSettingsService.LogAuthErrorAsync("Network error during authentication check", new { 
+                    error = ex.Message, 
+                    innerException = ex.InnerException?.Message 
+                });
+                _logger.LogWarning(ex, "Network error during authentication check");
                 return null;
             }
-
-            var userInfo = userArray[0];
-            var provider = GetProviderFromIdentityProvider(userInfo.ProviderName);
-            await _userSettingsService.LogAuthDebugAsync("Parsed Easy Auth user", new { 
-                userId = userInfo.UserId,
-                providerName = userInfo.ProviderName,
-                mappedProvider = provider,
-                claimsCount = userInfo.UserClaims?.Length ?? 0
-            });
-            
-            // Extract user details from claims
-            var email = GetEmailFromClaims(userInfo.UserClaims, provider);
-            
-            // For GitHub, if email is not found in claims and we have an access token, try the GitHub API
-            if (string.IsNullOrEmpty(email) && 
-                provider == "GitHub" && 
-                !string.IsNullOrEmpty(userInfo.AccessToken))
+            catch (JsonException ex)
             {
-                await _userSettingsService.LogAuthDebugAsync("Email not found in GitHub claims, attempting API fetch");
-                email = await GetEmailFromGitHubApiAsync(userInfo.AccessToken);
-                
-                if (!string.IsNullOrEmpty(email))
-                {
-                    await _userSettingsService.LogAuthDebugAsync("Successfully fetched email from GitHub API", new { email });
-                }
-                else
-                {
-                    await _userSettingsService.LogAuthDebugAsync("Failed to fetch email from GitHub API");
-                }
+                await _userSettingsService.LogAuthErrorAsync("Failed to parse Easy Auth response", new { 
+                    error = ex.Message, 
+                    path = ex.Path 
+                });
+                _logger.LogError(ex, "Failed to parse Easy Auth response");
+                return null;
             }
-            
-            var name = userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "name")?.Val ??
-                      userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname")?.Val ??
-                      userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name")?.Val ??
-                      userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "given_name")?.Val ??
-                      userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "preferred_username")?.Val;
-            
-            // Provider-specific fallbacks for name
-            if (string.IsNullOrEmpty(name))
+            catch (Exception ex)
             {
-                name = provider switch
-                {
-                    "GitHub" => userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "urn:github:login")?.Val,
-                    _ => null
-                };
+                await _userSettingsService.LogAuthErrorAsync("Unexpected error during authentication check", new { 
+                    error = ex.Message, 
+                    type = ex.GetType().Name,
+                    stackTrace = ex.StackTrace
+                });
+                _logger.LogError(ex, "Unexpected error during authentication check");
+                return null;
             }
-                      
-            // Final fallbacks for name
-            if (string.IsNullOrEmpty(name))
-            {
-                if (!string.IsNullOrEmpty(email) && email.Contains('@'))
-                {
-                    name = email.Split('@')[0];
-                }
-                else
-                {
-                    name = userInfo.UserId ?? "User";
-                }
-            }
-            
-            var profileImageUrl = GetProfileImageUrl(userInfo.ProviderName, userInfo.UserClaims);
-            
-            await _userSettingsService.LogAuthDebugAsync("Extracted user details", new { 
-                email, 
-                name, 
-                profileImageUrl, 
-                provider 
-            });
-                      
-            var authenticatedUser = new AuthenticatedUser
-            {
-                UserId = userInfo.UserId ?? string.Empty,
-                Email = email ?? string.Empty,
-                Name = name,
-                AuthProvider = provider,
-                ProviderUserId = userInfo.UserId ?? string.Empty,
-                ProfileImageUrl = profileImageUrl,
-                CreatedAt = DateTime.UtcNow,
-                LastLoginAt = DateTime.UtcNow
-            };
-            
-            // Update last login time in user settings
-            await _userSettingsService.UpdateLastLoginAtAsync();
-            await _userSettingsService.LogAuthDebugAsync("Updated last login time and created authenticated user", new { 
-                userId = authenticatedUser.UserId,
-                email = authenticatedUser.Email,
-                provider = authenticatedUser.AuthProvider
-            });
-            
-            // Cache the authenticated user
-            SetCachedUser(authenticatedUser);
-            
-            _logger.LogDebug("Successfully authenticated user: {Email}", email);
-            return authenticatedUser;
-        }
-        catch (HttpRequestException ex)
-        {
-            await _userSettingsService.LogAuthErrorAsync("Network error during authentication check", new { 
-                error = ex.Message, 
-                innerException = ex.InnerException?.Message 
-            });
-            _logger.LogWarning(ex, "Network error during authentication check");
-            return null;
-        }
-        catch (JsonException ex)
-        {
-            await _userSettingsService.LogAuthErrorAsync("Failed to parse Easy Auth response", new { 
-                error = ex.Message, 
-                path = ex.Path 
-            });
-            _logger.LogError(ex, "Failed to parse Easy Auth response");
-            return null;
-        }
-        catch (Exception ex)
-        {
-            await _userSettingsService.LogAuthErrorAsync("Unexpected error during authentication check", new { 
-                error = ex.Message, 
-                type = ex.GetType().Name,
-                stackTrace = ex.StackTrace
-            });
-            _logger.LogError(ex, "Unexpected error during authentication check");
-            return null;
-        }
         }
         finally
         {
