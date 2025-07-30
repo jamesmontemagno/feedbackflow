@@ -39,6 +39,15 @@
                     }
                     else if (userInfo != null)
                     {
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-warning" role="alert">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                <strong>Loading Issue:</strong> @errorMessage
+                                <br><small>Account information displayed below may be from cached authentication data.</small>
+                            </div>
+                        }
+                        
                         <!-- Account Information -->
                         <div class="row mb-4">
                             <div class="col-md-4">
@@ -456,6 +465,8 @@
                         CreatedAt = currentUser.CreatedAt,
                         LastLoginAt = currentUser.LastLoginAt ?? DateTime.UtcNow
                     };
+                    
+                    errorMessage = "Backend service unavailable. Displaying authentication data only.";
                 }
                 else
                 {
@@ -465,9 +476,7 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error loading account information: {ex.Message}";
-            
-            // Try fallback approach
+            // Try fallback approach when backend fails
             try
             {
                 var currentUser = await AuthService.GetCurrentUserAsync();
@@ -484,12 +493,17 @@
                         CreatedAt = currentUser.CreatedAt,
                         LastLoginAt = currentUser.LastLoginAt ?? DateTime.UtcNow
                     };
-                    errorMessage = ""; // Clear error if fallback works
+                    
+                    errorMessage = $"Backend service error: {ex.Message}. Displaying authentication data only.";
+                }
+                else
+                {
+                    errorMessage = $"Failed to load account information: {ex.Message}";
                 }
             }
             catch (Exception fallbackEx)
             {
-                errorMessage = $"Error loading account information: {fallbackEx.Message}";
+                errorMessage = $"Critical error loading account information: {fallbackEx.Message}. Please contact support.";
             }
         }
         finally

@@ -463,22 +463,11 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
                 // Extract user details from claims
                 var email = GetEmailFromClaims(userInfo.UserClaims, provider);
                 
-                // For GitHub, if email is not found in claims and we have an access token, try the GitHub API
-                if (string.IsNullOrEmpty(email) && 
-                    provider == "GitHub" && 
-                    !string.IsNullOrEmpty(userInfo.AccessToken))
+                // For GitHub users without email, we'll try to get it from API during registration process
+                // For now, continue with what we have from claims
+                if (string.IsNullOrEmpty(email) && provider == "GitHub")
                 {
-                    await _userSettingsService.LogAuthDebugAsync("Email not found in GitHub claims, attempting API fetch");
-                    email = await GetEmailFromGitHubApiAsync(userInfo.AccessToken);
-                    
-                    if (!string.IsNullOrEmpty(email))
-                    {
-                        await _userSettingsService.LogAuthDebugAsync("Successfully fetched email from GitHub API", new { email });
-                    }
-                    else
-                    {
-                        await _userSettingsService.LogAuthDebugAsync("Failed to fetch email from GitHub API");
-                    }
+                    await _userSettingsService.LogAuthDebugAsync("GitHub user has no email in claims, will attempt API fetch during registration if needed");
                 }
                 
                 var name = userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "name")?.Val ??
@@ -785,6 +774,12 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
                         provider = user.AuthProvider
                     });
                     
+                    // For GitHub users without email, try to get it from API before registration
+                    if (user.AuthProvider == "GitHub" && string.IsNullOrEmpty(user.Email))
+                    {
+                        await TryEnhanceGitHubUserEmailAsync(user);
+                    }
+                    
                     // User doesn't exist, attempt auto-registration
                     var userManagementService = scope.ServiceProvider.GetService<IUserManagementService>();
                     if (userManagementService != null)
@@ -1049,6 +1044,89 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Try to enhance GitHub user with email from API during registration
+    /// </summary>
+    /// <param name="user">User to enhance</param>
+    private async Task TryEnhanceGitHubUserEmailAsync(AuthenticatedUser user)
+    {
+        try
+        {
+            await _userSettingsService.LogAuthDebugAsync("Attempting to enhance GitHub user email during registration", new { 
+                userId = user.UserId,
+                hasEmail = !string.IsNullOrEmpty(user.Email)
+            });
+
+            // We need to get the access token from the current Easy Auth session
+            var easyAuthUser = await GetCurrentEasyAuthUserInfoAsync();
+            if (easyAuthUser?.AccessToken == null)
+            {
+                await _userSettingsService.LogAuthDebugAsync("No access token available for GitHub email enhancement");
+                return;
+            }
+
+            var githubEmail = await GetEmailFromGitHubApiAsync(easyAuthUser.AccessToken);
+            if (!string.IsNullOrEmpty(githubEmail))
+            {
+                user.Email = githubEmail;
+                await _userSettingsService.LogAuthDebugAsync("Successfully enhanced GitHub user with email from API", new { 
+                    email = githubEmail 
+                });
+                _logger.LogInformation("Enhanced GitHub user {UserId} with email {Email} from API during registration", 
+                    user.UserId, githubEmail);
+            }
+            else
+            {
+                await _userSettingsService.LogAuthDebugAsync("Could not retrieve email from GitHub API during registration");
+            }
+        }
+        catch (Exception ex)
+        {
+            await _userSettingsService.LogAuthErrorAsync("Error enhancing GitHub user email during registration", new { 
+                error = ex.Message,
+                userId = user.UserId
+            });
+            _logger.LogWarning(ex, "Failed to enhance GitHub user email during registration for user {UserId}", user.UserId);
+        }
+    }
+
+    /// <summary>
+    /// Get current Easy Auth user info with access token
+    /// </summary>
+    private async Task<EasyAuthUser?> GetCurrentEasyAuthUserInfoAsync()
+    {
+        try
+        {
+            var httpContext = _httpContextAccessor.HttpContext;
+            if (httpContext == null) return null;
+
+            var baseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}";
+            var authMeUrl = $"{baseUrl}/.auth/me";
+
+            var request = new HttpRequestMessage(HttpMethod.Get, authMeUrl);
+            
+            // Forward cookies
+            if (httpContext.Request.Headers.ContainsKey("Cookie"))
+            {
+                request.Headers.Add("Cookie", httpContext.Request.Headers["Cookie"].ToString());
+            }
+
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode) return null;
+
+            var responseContent = await response.Content.ReadAsStringAsync();
+            if (string.IsNullOrEmpty(responseContent) || responseContent.Trim() == "[]") return null;
+
+            var userArray = JsonSerializer.Deserialize<EasyAuthUser[]>(responseContent);
+            return userArray?.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get current Easy Auth user info");
+            return null;
+        }
     }
 
     /// <summary>
