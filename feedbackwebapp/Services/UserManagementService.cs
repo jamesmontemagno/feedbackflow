@@ -102,6 +102,13 @@ public class UserManagementService : IUserManagementService
                 var requestBody = new { PreferredEmail = preferredEmail };
                 var jsonContent = JsonSerializer.Serialize(requestBody);
                 requestMessage.Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+                
+                Console.WriteLine($"Sending registration request with preferred email: {preferredEmail}");
+                Console.WriteLine($"Request body JSON: {jsonContent}");
+            }
+            else
+            {
+                Console.WriteLine("No preferred email provided - sending request without body");
             }
 
             var response = await _httpClient.SendAsync(requestMessage);

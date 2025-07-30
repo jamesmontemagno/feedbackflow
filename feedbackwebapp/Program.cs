@@ -41,19 +41,21 @@ builder.Services.AddHttpClient("DefaultClient")
 builder.Services.AddScoped<FeedbackServiceProvider>();
 builder.Services.AddScoped<ContentFeedServiceProvider>();
 
-// Register authentication service based on configuration
-var useEasyAuth = builder.Configuration.GetValue<bool>("Authentication:UseEasyAuth", false);
-if (useEasyAuth)
+// Register authentication service based on environment
+var bypassAuth = builder.Configuration.GetValue<bool>("Authentication:BypassInDevelopment", false);
+var isDevelopment = builder.Environment.IsDevelopment();
+
+if (bypassAuth && isDevelopment)
 {
-    // Use server-side authentication service for better security
-    builder.Services.AddScoped<IAuthenticationService, ServerSideAuthService>();
-    builder.Services.AddScoped<IAuthenticationHeaderService, ServerSideAuthenticationHeaderService>();
+    // Use debug authentication service for local development
+    builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
+    builder.Services.AddScoped<IAuthenticationHeaderService, AuthenticationHeaderService>();
 }
 else
 {
-    // Fallback to old authentication service
-    builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
-    builder.Services.AddScoped<IAuthenticationHeaderService, AuthenticationHeaderService>();
+    // Use OAuth authentication service for production/staging
+    builder.Services.AddScoped<IAuthenticationService, ServerSideAuthService>();
+    builder.Services.AddScoped<IAuthenticationHeaderService, ServerSideAuthenticationHeaderService>();
 }
 
 // Register registration error service

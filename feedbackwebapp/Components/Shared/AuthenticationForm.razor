@@ -10,66 +10,42 @@
     ErrorMessage="@registrationErrorMessage" 
     OnClose="@CloseRegistrationErrorDialog" />
 
-@if (!useMockMode && !isAuthenticated && !isLoading)
+@if (!isAuthenticated && !isLoading)
 {
     <div class="card shadow-sm">
         <div class="card-body">
             <h5 class="card-title">Authentication Required</h5>
             
-            @* Password Authentication (if OAuth providers are not enabled) *@
-            @if (!enabledProviders.Any())
-            {
-                <div class="form-floating mb-3">
-                    <input type="password" class="form-control" id="password" @bind="password" @onkeyup="HandleKeyPress" placeholder="Enter password" />
-                    <label for="password">Password</label>
-                </div>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-primary" @onclick="AuthenticateHandler" disabled="@isAuthenticating">
-                        @if (isAuthenticating)
-                        {
-                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                            <span>Authenticating...</span>
-                        }
-                        else
-                        {
-                            <span>Login</span>
-                        }
-                    </button>
-                </div>
-            }
-            else
-            {
-                <p class="text-muted mb-3">Please log in to access this feature</p>
-                <div class="d-flex flex-column gap-2">
+            <p class="text-muted mb-3">Please log in to access this feature</p>
+            <div class="d-flex flex-column gap-2">
 
-                @if (enabledProviders.Contains("Microsoft"))
-                {
-                    <button class="btn btn-primary d-flex align-items-center justify-content-center gap-2" 
-                            @onclick="@(async () => await LoginWithProvider("Microsoft"))">
-                        <i class="bi bi-microsoft"></i>
-                            Login with Microsoft
-                    </button>
-                }
-                
-                @if (enabledProviders.Contains("Google"))
-                {
-                    <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
-                            @onclick="@(async () => await LoginWithProvider("Google"))">
-                        <i class="bi bi-google"></i>
-                        Login with Google
-                    </button>
-                }
-                
-                @if (enabledProviders.Contains("GitHub"))
-                {
-                    <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
-                            @onclick="@(async () => await LoginWithProvider("GitHub"))">
-                        <i class="bi bi-github"></i>
-                        Login with GitHub
-                    </button>
-                }
-                </div>
+            @if (enabledProviders.Contains("Microsoft"))
+            {
+                <button class="btn btn-primary d-flex align-items-center justify-content-center gap-2" 
+                        @onclick="@(async () => await LoginWithProvider("Microsoft"))">
+                    <i class="bi bi-microsoft"></i>
+                        Login with Microsoft
+                </button>
             }
+            
+            @if (enabledProviders.Contains("Google"))
+            {
+                <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
+                        @onclick="@(async () => await LoginWithProvider("Google"))">
+                    <i class="bi bi-google"></i>
+                    Login with Google
+                </button>
+            }
+            
+            @if (enabledProviders.Contains("GitHub"))
+            {
+                <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
+                        @onclick="@(async () => await LoginWithProvider("GitHub"))">
+                    <i class="bi bi-github"></i>
+                    Login with GitHub
+                </button>
+            }
+            </div>
             
             <!-- Account Creation Notice -->
             <div class="alert alert-info mt-3" role="alert">
@@ -174,12 +150,9 @@ else
 }
 
 @code {
-    private string password = "";
     private string authError = "";
-    private bool useMockMode;
     private bool isAuthenticated;
     private bool isLoading = true;
-    private bool isAuthenticating = false;
     private List<string> enabledProviders = new();
     private bool showRegistrationError = false;
     private string? registrationErrorMessage = null;
@@ -219,8 +192,6 @@ else
             StateHasChanged();
             await Task.Delay(200);
             
-            useMockMode = Configuration.GetValue<bool>("FeedbackApi:UseMocks");
-            
             // Load enabled providers
             enabledProviders.Clear();
             if(Configuration.GetValue<bool>("Authentication:Providers:Microsoft:Enabled", false))
@@ -240,16 +211,10 @@ else
 
             // Step 3: Check authentication status
             loadingStatus = "Checking status...";
-            loadingSubStatus = useMockMode ? "Mock mode detected - auto-authenticating" : "Verifying current authentication";
+            loadingSubStatus = "Verifying current authentication";
             loadingStep = 3;
             StateHasChanged();
             await Task.Delay(200);
-
-            if (useMockMode)
-            {
-                await HandleAuthenticated(true, false); // Already authenticated (mock mode)
-                return;
-            }
 
             // Check if already authenticated
             isAuthenticated = await AuthService.IsAuthenticatedAsync();
@@ -326,49 +291,6 @@ else
         if (OnAuthenticatedWithDetails.HasDelegate)
         {
             await OnAuthenticatedWithDetails.InvokeAsync((success, justLoggedIn));
-        }
-    }
-
-    private async Task HandleKeyPress(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter")
-        {
-            await AuthenticateHandler();
-        }
-    }
-
-    private async Task AuthenticateHandler()
-    {
-        if (isAuthenticating) return;
-
-        try
-        {
-            isAuthenticating = true;
-            authError = "";
-            StateHasChanged();
-
-            var isAuthenticated = await ((AuthenticationService)AuthService).AuthenticateAsync(password);
-            if (isAuthenticated)
-            {
-                await HandleAuthenticated(true, true); // Fresh login
-            }
-            else
-            {
-                // Check if there's a specific error message
-                var errorMsg = ((AuthenticationService)AuthService).LastAuthenticationError;
-                authError = errorMsg ?? "Authentication failed";
-                password = "";
-            }
-        }
-        catch (Exception ex)
-        {
-            authError = $"System error: {ex.Message}";
-            password = "";
-        }
-        finally
-        {
-            isAuthenticating = false;
-            StateHasChanged();
         }
     }
 

@@ -58,16 +58,33 @@ public class AuthUserManagement
                     using var reader = new StreamReader(req.Body);
                     var requestBody = await reader.ReadToEndAsync();
                     
+                    _logger.LogInformation("Raw request body received: {RequestBody}", requestBody);
+                    
                     if (!string.IsNullOrWhiteSpace(requestBody))
                     {
-                        var registrationRequest = JsonSerializer.Deserialize<RegisterUserRequest>(requestBody);
+                        var registrationRequest = JsonSerializer.Deserialize<RegisterUserRequest>(requestBody, FeedbackJsonContext.Default.RegisterUserRequest);
                         preferredEmail = registrationRequest?.PreferredEmail;
+                        
+                        _logger.LogInformation("Deserialized registration request - PreferredEmail: {PreferredEmail}", preferredEmail);
                         
                         if (!string.IsNullOrEmpty(preferredEmail))
                         {
                             _logger.LogInformation("Preferred email provided in registration request: {Email}", preferredEmail);
                         }
+                        else
+                        {
+                            _logger.LogInformation("No preferred email found in registration request");
+                        }
                     }
+                    else
+                    {
+                        _logger.LogInformation("Request body is empty or whitespace");
+                    }
+                }
+                else
+                {
+                    _logger.LogInformation("Request body cannot be read or has zero length - CanRead: {CanRead}, Length: {Length}", 
+                        req.Body.CanRead, req.Body.Length);
                 }
             }
             catch (Exception ex)

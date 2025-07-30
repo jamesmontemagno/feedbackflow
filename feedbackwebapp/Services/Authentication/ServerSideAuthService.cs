@@ -85,6 +85,14 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
 
         try
         {
+            // Fast-track check: if no last login timestamp exists, user is definitely not logged in
+            var lastLogin = await _userSettingsService.GetLastLoginAtAsync();
+            if (!lastLogin.HasValue)
+            {
+                await _userSettingsService.LogAuthDebugAsync("No last login timestamp found - user not authenticated");
+                return false;
+            }
+
             // Try to get user from cache first
             var cachedUser = GetCachedUser();
             if (cachedUser != null)
@@ -98,6 +106,8 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
             if (userInfo == null)
             {
                 await _userSettingsService.LogAuthDebugAsync("IsAuthenticatedAsync result from Easy Auth", new { isAuthenticated = false, hasUserInfo = false });
+                // Clear last login since OAuth session is gone
+                await _userSettingsService.RemoveFromLocalStorageAsync("feedbackflow_last_login");
                 return false;
             }
 
@@ -288,6 +298,9 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
 
         // Clear the cached user
         ClearUserCache();
+
+        // Clear the last login timestamp to ensure fast-track authentication check works
+        await _userSettingsService.RemoveFromLocalStorageAsync("feedbackflow_last_login");
 
         // Trigger authentication state change
         AuthenticationStateChanged?.Invoke(this, false);
@@ -806,6 +819,9 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
                         });
                         _logger.LogInformation("Successfully auto-registered user {UserId} from {Provider} provider", 
                             user.UserId, user.AuthProvider);
+                        
+                        // Set last login timestamp after successful registration
+                        await _userSettingsService.UpdateLastLoginAtAsync();
                     }
                     else
                     {
@@ -818,6 +834,9 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
                         userId = user.UserId,
                         tier = accountResult.Value.account?.Tier.ToString()
                     });
+                    
+                    // Set last login timestamp for existing user
+                    await _userSettingsService.UpdateLastLoginAtAsync();
                 }
             }
             else
