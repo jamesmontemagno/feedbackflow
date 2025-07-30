@@ -148,18 +148,6 @@ public class UserSettingsService
         return !string.IsNullOrEmpty(stored) && stored == "true";
     }
 
-    public async Task SetLoginAttemptAsync(bool attempting)
-    {
-        if (attempting)
-        {
-            await SaveStringToLocalStorageAsync(LOGIN_ATTEMPT_KEY, "true");
-        }
-        else
-        {
-            await RemoveFromLocalStorageAsync(LOGIN_ATTEMPT_KEY);
-        }
-    }
-
     public async Task ClearLoginAttemptAsync()
     {
         await RemoveFromLocalStorageAsync(LOGIN_ATTEMPT_KEY);

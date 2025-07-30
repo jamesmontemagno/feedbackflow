@@ -127,8 +127,6 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
                 await EnsureUserIsRegisteredAsync(userInfo);
                 await _userSettingsService.LogAuthDebugAsync("User registration check completed successfully");
                 
-                // Clear login attempt flag since authentication is complete
-                await _userSettingsService.ClearLoginAttemptAsync();
                 return true;
             }
             catch (UserRegistrationException ex)
