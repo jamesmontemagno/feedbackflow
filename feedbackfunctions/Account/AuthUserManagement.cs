@@ -48,6 +48,33 @@ public class AuthUserManagement
         {
             _logger.LogInformation("RegisterUser function triggered");
 
+            // Try to read preferred email from request body if provided
+            string? preferredEmail = null;
+            try
+            {
+                if (req.Body.CanRead && req.Body.Length > 0)
+                {
+                    req.Body.Position = 0; // Reset stream position
+                    using var reader = new StreamReader(req.Body);
+                    var requestBody = await reader.ReadToEndAsync();
+                    
+                    if (!string.IsNullOrWhiteSpace(requestBody))
+                    {
+                        var registrationRequest = JsonSerializer.Deserialize<RegisterUserRequest>(requestBody);
+                        preferredEmail = registrationRequest?.PreferredEmail;
+                        
+                        if (!string.IsNullOrEmpty(preferredEmail))
+                        {
+                            _logger.LogInformation("Preferred email provided in registration request: {Email}", preferredEmail);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse registration request body, continuing without preferred email");
+            }
+
             // Create or get authenticated user from middleware
             var authenticatedUser = await _authMiddleware.CreateUserAsync(req);
             if (authenticatedUser == null)
@@ -57,6 +84,11 @@ public class AuthUserManagement
                 await unauthorizedResponse.WriteStringAsync("User authentication or registration failed");
                 return unauthorizedResponse;
             }
+
+            // Use preferred email if provided, otherwise fall back to authenticated user email
+            var finalEmail = !string.IsNullOrEmpty(preferredEmail) ? preferredEmail : authenticatedUser.Email;
+            _logger.LogInformation("Using email for registration - Preferred: {PreferredEmail}, Auth: {AuthEmail}, Final: {FinalEmail}", 
+                preferredEmail, authenticatedUser.Email, finalEmail);
 
             // User is created by the middleware
             _logger.LogInformation("User registered successfully: {UserId}", authenticatedUser.UserId);
@@ -82,15 +114,19 @@ public class AuthUserManagement
                         AnalysesUsed = 0,
                         FeedQueriesUsed = 0,
                         ActiveReports = 0,
-                        PreferredEmail = authenticatedUser.Email ?? string.Empty
+                        PreferredEmail = finalEmail ?? string.Empty
                     };
                     await _userAccountService.UpsertUserAccountAsync(userAccount);
                 }
                 else
                 {
                     // Update existing account with latest email if needed
-                    existingUserAccount.PreferredEmail = authenticatedUser.Email ?? string.Empty;
-                    await _userAccountService.UpsertUserAccountAsync(existingUserAccount);
+                    if (!string.IsNullOrEmpty(finalEmail))
+                    {
+                        existingUserAccount.PreferredEmail = finalEmail;
+                        await _userAccountService.UpsertUserAccountAsync(existingUserAccount);
+                        _logger.LogInformation("Updated existing UserAccount with preferred email: {Email}", finalEmail);
+                    }
                 }
 
                 _logger.LogInformation("Successfully created UserAccount record for user {UserId} with Free tier", authenticatedUser.UserId);

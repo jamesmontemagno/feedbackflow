@@ -775,30 +775,34 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
                     });
                     
                     // For GitHub users without email, try to get it from API before registration
+                    var enhancedEmail = user.Email;
                     if (user.AuthProvider == "GitHub" && string.IsNullOrEmpty(user.Email))
                     {
                         await TryEnhanceGitHubUserEmailAsync(user);
+                        enhancedEmail = user.Email; // Use the enhanced email from GitHub API
                     }
                     
                     // User doesn't exist, attempt auto-registration
                     var userManagementService = scope.ServiceProvider.GetService<IUserManagementService>();
                     if (userManagementService != null)
                     {
-                        var registrationResult = await userManagementService.RegisterCurrentUserAsync();
+                        var registrationResult = await userManagementService.RegisterCurrentUserAsync(enhancedEmail);
                         
                         if (!registrationResult.Success)
                         {
                             var errorMessage = $"Failed to register user: {registrationResult.ErrorMessage}";
                             await _userSettingsService.LogAuthErrorAsync("Auto-registration failed", new { 
                                 error = registrationResult.ErrorMessage,
-                                statusCode = registrationResult.StatusCode
+                                statusCode = registrationResult.StatusCode,
+                                enhancedEmail = enhancedEmail
                             });
                             
                             throw new UserRegistrationException(errorMessage, shouldLogout: true);
                         }
                         
                         await _userSettingsService.LogAuthDebugAsync("Auto-registration completed successfully", new { 
-                            userId = user.UserId
+                            userId = user.UserId,
+                            enhancedEmail = enhancedEmail
                         });
                         _logger.LogInformation("Successfully auto-registered user {UserId} from {Provider} provider", 
                             user.UserId, user.AuthProvider);

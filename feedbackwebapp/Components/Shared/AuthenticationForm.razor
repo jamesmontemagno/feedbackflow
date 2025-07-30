@@ -146,8 +146,29 @@ else
 { 
     <div class="card shadow-sm">
         <div class="card-body">
-            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-            <span>Loading...</span>
+            <div class="d-flex align-items-center mb-3">
+                <span class="spinner-border spinner-border-sm me-3" role="status" aria-hidden="true"></span>
+                <div>
+                    <h6 class="mb-1">@loadingStatus</h6>
+                    <small class="text-muted">@loadingSubStatus</small>
+                </div>
+            </div>
+            
+            <!-- Loading Progress Steps -->
+            <div class="loading-steps">
+                <div class="loading-step @(loadingStep >= 1 ? "completed" : "")">
+                    <i class="bi @(loadingStep >= 1 ? "bi-check-circle-fill" : "bi-circle")"></i>
+                    <span>Initializing authentication system</span>
+                </div>
+                <div class="loading-step @(loadingStep >= 2 ? "completed" : "")">
+                    <i class="bi @(loadingStep >= 2 ? "bi-check-circle-fill" : "bi-circle")"></i>
+                    <span>Loading authentication providers</span>
+                </div>
+                <div class="loading-step @(loadingStep >= 3 ? "completed" : "")">
+                    <i class="bi @(loadingStep >= 3 ? "bi-check-circle-fill" : "bi-circle")"></i>
+                    <span>Checking authentication status</span>
+                </div>
+            </div>
         </div>
     </div>
 }
@@ -162,6 +183,11 @@ else
     private List<string> enabledProviders = new();
     private bool showRegistrationError = false;
     private string? registrationErrorMessage = null;
+    
+    // Enhanced loading status
+    private string loadingStatus = "Starting up...";
+    private string loadingSubStatus = "Initializing FeedbackFlow authentication";
+    private int loadingStep = 0;
 
     [Parameter]
     public EventCallback<bool> OnAuthenticated { get; set; }
@@ -174,11 +200,25 @@ else
         if(!firstRender) 
             return;
         
-        // Subscribe to registration error events
-        RegistrationErrorService.RegistrationErrorOccurred += OnRegistrationErrorOccurred;
-        
         try
         {
+            // Step 1: Initialize authentication system
+            loadingStatus = "Initializing...";
+            loadingSubStatus = "Setting up authentication system";
+            loadingStep = 1;
+            StateHasChanged();
+            await Task.Delay(200); // Small delay to show progress
+            
+            // Subscribe to registration error events
+            RegistrationErrorService.RegistrationErrorOccurred += OnRegistrationErrorOccurred;
+            
+            // Step 2: Load configuration and providers
+            loadingStatus = "Loading providers...";
+            loadingSubStatus = "Configuring authentication options";
+            loadingStep = 2;
+            StateHasChanged();
+            await Task.Delay(200);
+            
             useMockMode = Configuration.GetValue<bool>("FeedbackApi:UseMocks");
             
             // Load enabled providers
@@ -198,6 +238,13 @@ else
                 enabledProviders.Add("GitHub");
             }
 
+            // Step 3: Check authentication status
+            loadingStatus = "Checking status...";
+            loadingSubStatus = useMockMode ? "Mock mode detected - auto-authenticating" : "Verifying current authentication";
+            loadingStep = 3;
+            StateHasChanged();
+            await Task.Delay(200);
+
             if (useMockMode)
             {
                 await HandleAuthenticated(true, false); // Already authenticated (mock mode)
@@ -208,13 +255,24 @@ else
             isAuthenticated = await AuthService.IsAuthenticatedAsync();
             if (isAuthenticated)
             {
+                loadingSubStatus = "Already authenticated - redirecting";
+                StateHasChanged();
+                await Task.Delay(300);
                 await HandleAuthenticated(true, false); // Already authenticated
                 return;
             }
+            
+            // Completed loading - show login form
+            loadingStatus = "Ready";
+            loadingSubStatus = "Authentication options loaded";
+            StateHasChanged();
+            await Task.Delay(300);
         }
         catch (Exception ex)
         {
             authError = $"System error: {ex.Message}";
+            loadingStatus = "Error";
+            loadingSubStatus = "Failed to initialize authentication system";
         }
         finally
         {
