@@ -28,6 +28,8 @@
 @inject UserSettingsService UserSettings
 @inject IHistoryService HistoryService
 @inject IAuthenticationService AuthService
+@inject IRegistrationErrorService RegistrationErrorService
+@implements IDisposable
 
 <PageTitle>Feedback Analysis - FeedbackFlow</PageTitle>
 
@@ -41,6 +43,11 @@
     UsageError="@usageLimitError" 
     IsVisible="@showUsageLimitDialog" 
     OnClose="@CloseUsageLimitDialog" />
+
+<RegistrationErrorDialog 
+    IsVisible="@showRegistrationError" 
+    ErrorMessage="@registrationErrorMessage" 
+    OnClose="@CloseRegistrationErrorDialog" />
 
 <div class="container">
     @if (!isAuthenticated)
@@ -149,6 +156,8 @@
     private bool isAuthenticated = false;
     private bool showNewFeaturesDialog = false;
     private bool showUsageLimitDialog = false;
+    private bool showRegistrationError = false;
+    private string? registrationErrorMessage = null;
     private UsageValidationResult? usageLimitError;
     private List<FeedbackSourceData>? feedbackSources;
     private object? currentAdditionalData;
@@ -405,6 +414,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Subscribe to registration error events
+        RegistrationErrorService.RegistrationErrorOccurred += OnRegistrationErrorOccurred;
+        
         var uri = new Uri(NavigationManager.Uri);
         var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
 
@@ -506,5 +518,33 @@
                 StateHasChanged();
             }
         }
+    }
+
+    private void OnRegistrationErrorOccurred(object? sender, string errorMessage)
+    {
+        InvokeAsync(() =>
+        {
+            registrationErrorMessage = errorMessage;
+            showRegistrationError = true;
+            isAuthenticated = false;
+            StateHasChanged();
+        });
+    }
+
+    private async Task CloseRegistrationErrorDialog()
+    {
+        showRegistrationError = false;
+        registrationErrorMessage = null;
+        StateHasChanged();
+        
+        // Refresh the page to restart the authentication flow
+        await Task.Delay(100); // Small delay to allow UI to update
+        NavigationManager.NavigateTo("/", forceLoad: true);
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe from registration error events
+        RegistrationErrorService.RegistrationErrorOccurred -= OnRegistrationErrorOccurred;
     }
 }

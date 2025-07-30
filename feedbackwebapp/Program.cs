@@ -56,6 +56,9 @@ else
     builder.Services.AddScoped<IAuthenticationHeaderService, AuthenticationHeaderService>();
 }
 
+// Register registration error service
+builder.Services.AddScoped<IRegistrationErrorService, RegistrationErrorService>();
+
 // Register user management service
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 

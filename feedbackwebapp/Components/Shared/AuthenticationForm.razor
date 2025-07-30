@@ -2,6 +2,13 @@
 @inject IAuthenticationService AuthService
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
+@inject IRegistrationErrorService RegistrationErrorService
+@implements IDisposable
+
+<RegistrationErrorDialog 
+    IsVisible="@showRegistrationError" 
+    ErrorMessage="@registrationErrorMessage" 
+    OnClose="@CloseRegistrationErrorDialog" />
 
 @if (!useMockMode && !isAuthenticated && !isLoading)
 {
@@ -153,6 +160,8 @@ else
     private bool isLoading = true;
     private bool isAuthenticating = false;
     private List<string> enabledProviders = new();
+    private bool showRegistrationError = false;
+    private string? registrationErrorMessage = null;
 
     [Parameter]
     public EventCallback<bool> OnAuthenticated { get; set; }
@@ -164,6 +173,10 @@ else
     {
         if(!firstRender) 
             return;
+        
+        // Subscribe to registration error events
+        RegistrationErrorService.RegistrationErrorOccurred += OnRegistrationErrorOccurred;
+        
         try
         {
             useMockMode = Configuration.GetValue<bool>("FeedbackApi:UseMocks");
@@ -208,6 +221,17 @@ else
             isLoading = false;
             StateHasChanged();
         }
+    }
+
+    private void OnRegistrationErrorOccurred(object? sender, string errorMessage)
+    {
+        InvokeAsync(() =>
+        {
+            registrationErrorMessage = errorMessage;
+            showRegistrationError = true;
+            isAuthenticated = false;
+            StateHasChanged();
+        });
     }
 
     private async Task LoginWithProvider(string provider)
@@ -288,5 +312,22 @@ else
             isAuthenticating = false;
             StateHasChanged();
         }
+    }
+
+    private async Task CloseRegistrationErrorDialog()
+    {
+        showRegistrationError = false;
+        registrationErrorMessage = null;
+        StateHasChanged();
+        
+        // Refresh the page to restart the authentication flow
+        await Task.Delay(100); // Small delay to allow UI to update
+        Navigation.NavigateTo("/", forceLoad: true);
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe from registration error events
+        RegistrationErrorService.RegistrationErrorOccurred -= OnRegistrationErrorOccurred;
     }
 }

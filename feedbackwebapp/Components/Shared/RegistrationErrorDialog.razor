@@ -1,0 +1,99 @@
+@namespace FeedbackWebApp.Components.Shared
+@if (IsVisible)
+{
+    <div class="modal show d-block" tabindex="-1" role="dialog" style="backdrop-filter: blur(3px); background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title d-flex align-items-center">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Account Registration Error
+                    </h5>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-danger border-0 mb-3">
+                        <div class="d-flex align-items-start">
+                            <i class="bi bi-x-circle-fill me-2 mt-1 flex-shrink-0"></i>
+                            <div>
+                                <h6 class="alert-heading mb-2">Registration Failed</h6>
+                                <p class="mb-1">
+                                    We were unable to create your account in our system. This may be due to a temporary server issue or a configuration problem.
+                                </p>
+                                @if (!string.IsNullOrEmpty(ErrorMessage))
+                                {
+                                    <details class="mt-2">
+                                        <summary class="text-muted small" style="cursor: pointer;">
+                                            <i class="bi bi-info-circle me-1"></i>
+                                            Technical Details
+                                        </summary>
+                                        <div class="mt-2 p-2 bg-light rounded small">
+                                            <code>@ErrorMessage</code>
+                                        </div>
+                                    </details>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info border-0 mb-3">
+                        <div class="d-flex align-items-start">
+                            <i class="bi bi-lightbulb-fill me-2 mt-1 flex-shrink-0"></i>
+                            <div>
+                                <h6 class="alert-heading mb-2">What to try next:</h6>
+                                <ul class="mb-0 small">
+                                    <li>Wait a few minutes and try logging in again</li>
+                                    <li>Clear your browser cache and cookies for this site</li>
+                                    <li>Try logging in with a different browser or device</li>
+                                    <li>Contact support if the problem persists</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning border-0">
+                        <div class="d-flex align-items-start">
+                            <i class="bi bi-shield-exclamation me-2 mt-1 flex-shrink-0"></i>
+                            <div class="small">
+                                <strong>Security Notice:</strong> You have been automatically logged out as a security precaution. 
+                                Your authentication session has been cleared.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" 
+                            class="btn btn-primary d-flex align-items-center gap-2" 
+                            @onclick="OnClose">
+                        <i class="bi bi-arrow-clockwise"></i>
+                        Try Again
+                    </button>
+                    <button type="button" 
+                            class="btn btn-outline-secondary d-flex align-items-center gap-2" 
+                            @onclick="GoToHome">
+                        <i class="bi bi-house"></i>
+                        Go to Home
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+    
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+    
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+    
+    [Inject]
+    public NavigationManager NavigationManager { get; set; } = default!;
+    
+    private void GoToHome()
+    {
+        NavigationManager.NavigateTo("/", forceLoad: true);
+    }
+}

@@ -4,8 +4,27 @@ using SharedDump.Models.Authentication;
 using System.Net.Mail;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using FeedbackWebApp.Services.Account;
 
 namespace FeedbackWebApp.Services.Authentication;
+
+/// <summary>
+/// Exception thrown when user registration fails
+/// </summary>
+public class UserRegistrationException : Exception
+{
+    public bool ShouldLogout { get; }
+    
+    public UserRegistrationException(string message, bool shouldLogout = false) : base(message)
+    {
+        ShouldLogout = shouldLogout;
+    }
+    
+    public UserRegistrationException(string message, Exception innerException, bool shouldLogout = false) : base(message, innerException)
+    {
+        ShouldLogout = shouldLogout;
+    }
+}
 
 /// <summary>
 /// Server-side Azure Easy Auth implementation that uses HttpContext and cookies
@@ -18,6 +37,7 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ServerSideAuthService> _logger;
     private readonly UserSettingsService _userSettingsService;
+    private readonly IRegistrationErrorService? _registrationErrorService;
 
     // Cache for authenticated user to reduce .auth/me calls
     private AuthenticatedUser? _cachedUser;
@@ -36,7 +56,8 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
         IHttpClientFactory httpClientFactory,
         IServiceProvider serviceProvider,
         ILogger<ServerSideAuthService> logger,
-        UserSettingsService userSettingsService)
+        UserSettingsService userSettingsService,
+        IRegistrationErrorService? registrationErrorService = null)
     {
         _httpContextAccessor = httpContextAccessor;
         _configuration = configuration;
@@ -44,6 +65,7 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
         _serviceProvider = serviceProvider;
         _logger = logger;
         _userSettingsService = userSettingsService;
+        _registrationErrorService = registrationErrorService;
     }
 
     /// <inheritdoc />
@@ -73,9 +95,43 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
 
             // If not in cache, check with Easy Auth
             var userInfo = await GetEasyAuthUserAsync();
-            var isAuthenticated = userInfo != null;
-            await _userSettingsService.LogAuthDebugAsync("IsAuthenticatedAsync result from Easy Auth", new { isAuthenticated, hasUserInfo = userInfo != null });
-            return isAuthenticated;
+            if (userInfo == null)
+            {
+                await _userSettingsService.LogAuthDebugAsync("IsAuthenticatedAsync result from Easy Auth", new { isAuthenticated = false, hasUserInfo = false });
+                return false;
+            }
+
+            // User is authenticated via OAuth, now check if they're registered in our database
+            await _userSettingsService.LogAuthDebugAsync("User authenticated via OAuth, checking database registration", new { 
+                provider = userInfo.AuthProvider,
+                userId = userInfo.UserId
+            });
+
+            try
+            {
+                // Check if user account exists in database
+                await EnsureUserIsRegisteredAsync(userInfo);
+                await _userSettingsService.LogAuthDebugAsync("User registration check completed successfully");
+                return true;
+            }
+            catch (UserRegistrationException ex)
+            {
+                await _userSettingsService.LogAuthErrorAsync("User registration check failed", new { 
+                    error = ex.Message,
+                    shouldLogout = ex.ShouldLogout
+                });
+                
+                // Trigger registration error event for UI to handle
+                _registrationErrorService?.TriggerRegistrationError(ex.Message);
+                
+                // If user registration failed and we should log them out, do so
+                if (ex.ShouldLogout)
+                {
+                    _logger.LogWarning("User registration failed, logging out: {Message}", ex.Message);
+                    await LogoutAsync();
+                }
+                return false;
+            }
         }
         catch (Exception ex)
         {
@@ -117,8 +173,39 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
                 return cachedUser;
             }
 
-            // If not in cache, get from Easy Auth and cache the result
+            // If not in cache, get from Easy Auth
             var user = await GetEasyAuthUserAsync();
+            if (user != null)
+            {
+                try
+                {
+                    // Ensure user is registered in database
+                    await EnsureUserIsRegisteredAsync(user);
+                    await _userSettingsService.LogAuthDebugAsync("GetCurrentUserAsync: User registration check passed", new { 
+                        userId = user.UserId,
+                        provider = user.AuthProvider
+                    });
+                }
+                catch (UserRegistrationException ex)
+                {
+                    await _userSettingsService.LogAuthErrorAsync("GetCurrentUserAsync: User registration check failed", new { 
+                        error = ex.Message,
+                        shouldLogout = ex.ShouldLogout
+                    });
+                    
+                    // Trigger registration error event for UI to handle
+                    _registrationErrorService?.TriggerRegistrationError(ex.Message);
+                    
+                    // If user registration failed and we should log them out, clear user and return null
+                    if (ex.ShouldLogout)
+                    {
+                        _logger.LogWarning("User registration failed in GetCurrentUserAsync, clearing authentication: {Message}", ex.Message);
+                        await LogoutAsync();
+                        return null;
+                    }
+                }
+            }
+            
             await _userSettingsService.LogAuthDebugAsync("GetCurrentUserAsync result from Easy Auth", new { 
                 hasUser = user != null, 
                 userId = user?.UserId, 
@@ -669,6 +756,89 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
                 type = ex.GetType().Name 
             });
             _logger.LogWarning(ex, "Error applying Set-Cookie headers from refresh response");
+        }
+    }
+
+    /// <summary>
+    /// Ensure the user is registered in our database. If not, attempt auto-registration.
+    /// </summary>
+    /// <param name="user">Authenticated user information</param>
+    /// <exception cref="UserRegistrationException">Thrown when registration fails</exception>
+    private async Task EnsureUserIsRegisteredAsync(AuthenticatedUser user)
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var accountServiceProvider = scope.ServiceProvider.GetService<IAccountServiceProvider>();
+            
+            if (accountServiceProvider != null)
+            {
+                var webAppAccountService = accountServiceProvider.GetService();
+                
+                // Try to get user account to see if they're registered
+                var accountResult = await webAppAccountService.GetUserAccountAndLimitsAsync();
+                
+                if (accountResult == null)
+                {
+                    await _userSettingsService.LogAuthDebugAsync("User account not found, attempting auto-registration", new { 
+                        userId = user.UserId,
+                        provider = user.AuthProvider
+                    });
+                    
+                    // User doesn't exist, attempt auto-registration
+                    var userManagementService = scope.ServiceProvider.GetService<IUserManagementService>();
+                    if (userManagementService != null)
+                    {
+                        var registrationResult = await userManagementService.RegisterCurrentUserAsync();
+                        
+                        if (!registrationResult.Success)
+                        {
+                            var errorMessage = $"Failed to register user: {registrationResult.ErrorMessage}";
+                            await _userSettingsService.LogAuthErrorAsync("Auto-registration failed", new { 
+                                error = registrationResult.ErrorMessage,
+                                statusCode = registrationResult.StatusCode
+                            });
+                            
+                            throw new UserRegistrationException(errorMessage, shouldLogout: true);
+                        }
+                        
+                        await _userSettingsService.LogAuthDebugAsync("Auto-registration completed successfully", new { 
+                            userId = user.UserId
+                        });
+                        _logger.LogInformation("Successfully auto-registered user {UserId} from {Provider} provider", 
+                            user.UserId, user.AuthProvider);
+                    }
+                    else
+                    {
+                        throw new UserRegistrationException("User management service not available", shouldLogout: true);
+                    }
+                }
+                else
+                {
+                    await _userSettingsService.LogAuthDebugAsync("User account found in database", new { 
+                        userId = user.UserId,
+                        tier = accountResult.Value.account?.Tier.ToString()
+                    });
+                }
+            }
+            else
+            {
+                throw new UserRegistrationException("Account service not available", shouldLogout: true);
+            }
+        }
+        catch (UserRegistrationException)
+        {
+            // Re-throw user registration exceptions without wrapping
+            throw;
+        }
+        catch (Exception ex)
+        {
+            await _userSettingsService.LogAuthErrorAsync("Unexpected error during user registration check", new { 
+                error = ex.Message, 
+                type = ex.GetType().Name
+            });
+            _logger.LogError(ex, "Unexpected error during user registration check for user {UserId}", user.UserId);
+            throw new UserRegistrationException($"Registration check failed: {ex.Message}", shouldLogout: true);
         }
     }
 
