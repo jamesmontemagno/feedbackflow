@@ -159,51 +159,35 @@
 
     private async Task HandleAuthenticatedWithDetails((bool success, bool justLoggedIn) details)
     {
+        Console.WriteLine($"[Home] HandleAuthenticatedWithDetails: success={details.success}, justLoggedIn={details.justLoggedIn}");
+        
         isAuthenticated = details.success;
         StateHasChanged();
 
         if (details.success)
         {
-            // Only handle post-login registration if the user just logged in
-            // This avoids unnecessary backend calls when user was already authenticated
-            if (details.justLoggedIn)
-            {
-                try
-                {
-                    await AuthService.HandlePostLoginRegistrationAsync();
-                }
-                catch (Exception ex)
-                {
-                    // Log but don't fail the authentication flow if registration has issues
-                    Console.WriteLine($"Post-login registration warning: {ex.Message}");
-                }
-            }
-
+            // Registration is now handled in AuthenticationForm, so we just need to handle navigation
+            Console.WriteLine($"[Home] User authenticated successfully, handling navigation");
             await HandleQueryNav();
             //await CheckForNewFeatures();
+        }
+        else
+        {
+            Console.WriteLine($"[Home] Authentication failed");
         }
     }
 
     private async Task HandleAuthenticated(bool success)
     {
+        Console.WriteLine($"[Home] HandleAuthenticated (legacy): success={success}");
+        
         isAuthenticated = success;
         StateHasChanged();
 
         if (success)
         {
-            // Handle post-login registration for OAuth providers (GitHub, Google, etc.)
-            // This ensures users are properly registered in the backend after OAuth login
-            // With caching enabled, this won't make excessive API calls
-            try
-            {
-                await AuthService.HandlePostLoginRegistrationAsync();
-            }
-            catch (Exception ex)
-            {
-                // Log but don't fail the authentication flow if registration has issues
-                Console.WriteLine($"Post-login registration warning: {ex.Message}");
-            }
-
+            // This is a fallback handler - registration should be handled elsewhere
+            Console.WriteLine($"[Home] Legacy authentication handler - handling navigation only");
             await HandleQueryNav();
             //await CheckForNewFeatures();
         }
@@ -405,6 +389,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        Console.WriteLine($"[Home] OnInitializedAsync started");
+        
         var uri = new Uri(NavigationManager.Uri);
         var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
 
@@ -413,10 +399,13 @@
                              !string.IsNullOrEmpty(query["state"]) ||
                              uri.AbsolutePath.Contains("/.auth/login/");
 
+        Console.WriteLine($"[Home] OAuth redirect detected: {isOAuthRedirect}");
+
         // Store auth status for later processing in OnAfterRenderAsync
         var authStatus = query["auth"];
         if (authStatus == "failed" || authStatus == "error")
         {
+            Console.WriteLine($"[Home] Auth status from query: {authStatus}");
             // Store the auth error status to handle in OnAfterRenderAsync
             await Task.CompletedTask; // Placeholder - will handle in OnAfterRenderAsync
         }
@@ -432,25 +421,71 @@
             initialId = url;
         }
 
-        // If this is an OAuth redirect, check authentication and handle post-login registration
-        if (isOAuthRedirect)
+        // Check current authentication status
+        try
         {
-            try
+            var currentAuthStatus = await AuthService.IsAuthenticatedAsync();
+            Console.WriteLine($"[Home] Current authentication status: {currentAuthStatus}");
+            
+            // If this is an OAuth redirect, handle post-login registration
+            if (isOAuthRedirect)
             {
+                Console.WriteLine($"[Home] Processing OAuth redirect...");
+                
                 // Give time for OAuth tokens to settle
                 await Task.Delay(500);
                 
-                var isAuthenticated = await AuthService.IsAuthenticatedAsync();
-                if (isAuthenticated)
+                var authStatusAfterDelay = await AuthService.IsAuthenticatedAsync();
+                Console.WriteLine($"[Home] Auth status after delay: {authStatusAfterDelay}");
+                
+                if (authStatusAfterDelay)
                 {
-                    // This is a fresh OAuth login, handle post-login registration
-                    await HandleAuthenticatedWithDetails((true, true));
+                    Console.WriteLine($"[Home] OAuth login detected - handling post-login registration");
+                    
+                    // This is a fresh OAuth login, ensure user is registered
+                    try
+                    {
+                        var registrationSuccess = await AuthService.HandlePostLoginRegistrationAsync();
+                        Console.WriteLine($"[Home] OAuth registration result: {registrationSuccess}");
+                        
+                        if (registrationSuccess)
+                        {
+                            // This is a fresh OAuth login with successful registration
+                            await HandleAuthenticatedWithDetails((true, true));
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[Home] OAuth registration failed - logging user out");
+                            await AuthService.LogoutAsync();
+                            isAuthenticated = false;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[Home] OAuth registration exception: {ex.Message}");
+                        await AuthService.LogoutAsync();
+                        isAuthenticated = false;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"[Home] OAuth redirect but user not authenticated");
                 }
             }
-            catch (Exception ex)
+            else if (currentAuthStatus)
             {
-                Console.WriteLine($"OAuth redirect handling error: {ex.Message}");
+                // User was already authenticated (page refresh or direct navigation)
+                Console.WriteLine($"[Home] User already authenticated - no registration needed");
+                await HandleAuthenticatedWithDetails((true, false));
             }
+            else
+            {
+                Console.WriteLine($"[Home] User not authenticated");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Home] Exception in OnInitializedAsync: {ex.Message}");
         }
 
         await base.OnInitializedAsync();

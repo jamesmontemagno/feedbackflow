@@ -177,11 +177,27 @@ public class AuthenticationService : IAuthenticationService
     }
 
     /// <inheritdoc />
-    public Task<bool> HandlePostLoginRegistrationAsync()
+    public async Task<bool> HandlePostLoginRegistrationAsync()
     {
-        // Password auth handles registration during AuthenticateAsync, not post-login
-        // This is already handled in the AuthenticateAsync method
-        return Task.FromResult(true);
+        // For password auth, we should also handle registration here as a backup
+        // in case it wasn't handled during AuthenticateAsync or needs to be retried
+        try
+        {
+            var registrationResult = await AutoRegisterUserAsync();
+            if (!registrationResult.Success)
+            {
+                await _userSettingsService.LogAuthErrorAsync("Post-login registration failed for password auth", registrationResult.ErrorMessage);
+                return false;
+            }
+            
+            await _userSettingsService.LogAuthDebugAsync("Post-login registration completed successfully for password auth");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await _userSettingsService.LogAuthErrorAsync("Exception during post-login registration for password auth", ex.Message);
+            return false;
+        }
     }
 
     /// <summary>

@@ -730,14 +730,8 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
             // Update last login time in user settings
             await _userSettingsService.UpdateLastLoginAtAsync();
 
-            // Only auto-register for OAuth providers (GitHub, Google, Microsoft), not for password auth
-            if (user.AuthProvider == "Password" || user.AuthProvider == "Development")
-            {
-                await _userSettingsService.LogAuthDebugAsync("Skipping auto-registration for auth provider", new { provider = user.AuthProvider });
-                _logger.LogDebug("Skipping auto-registration for {AuthProvider} provider", user.AuthProvider);
-                return true;
-            }
-
+            // Auto-register for all auth providers including password auth
+            // This ensures users are registered regardless of authentication method
             await _userSettingsService.LogAuthDebugAsync("Performing auto-registration", new { provider = user.AuthProvider });
             _logger.LogInformation("Performing post-login registration for user from {AuthProvider} provider", user.AuthProvider);
 

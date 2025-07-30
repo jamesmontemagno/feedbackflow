@@ -166,7 +166,10 @@ else
             return;
         try
         {
+            Console.WriteLine($"[AuthForm] OnAfterRenderAsync starting");
+            
             useMockMode = Configuration.GetValue<bool>("FeedbackApi:UseMocks");
+            Console.WriteLine($"[AuthForm] Mock mode: {useMockMode}");
             
             // Load enabled providers
             enabledProviders.Clear();
@@ -184,23 +187,35 @@ else
             {
                 enabledProviders.Add("GitHub");
             }
+            
+            Console.WriteLine($"[AuthForm] Enabled providers: {string.Join(", ", enabledProviders)}");
 
             if (useMockMode)
             {
+                Console.WriteLine($"[AuthForm] Mock mode - auto-authenticating");
                 await HandleAuthenticated(true, false); // Already authenticated (mock mode)
                 return;
             }
 
             // Check if already authenticated
+            Console.WriteLine($"[AuthForm] Checking current authentication status");
             isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            Console.WriteLine($"[AuthForm] Current authentication status: {isAuthenticated}");
+            
             if (isAuthenticated)
             {
+                Console.WriteLine($"[AuthForm] User already authenticated");
                 await HandleAuthenticated(true, false); // Already authenticated
                 return;
+            }
+            else
+            {
+                Console.WriteLine($"[AuthForm] User not authenticated - showing auth form");
             }
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[AuthForm] Exception in OnAfterRenderAsync: {ex.Message}");
             authError = $"System error: {ex.Message}";
         }
         finally
@@ -233,6 +248,43 @@ else
 
     private async Task HandleAuthenticated(bool success, bool justLoggedIn = false)
     {
+        Console.WriteLine($"[AuthForm] HandleAuthenticated called: success={success}, justLoggedIn={justLoggedIn}");
+        
+        if (success && justLoggedIn)
+        {
+            // For fresh logins, ensure user is registered in the backend before considering them fully authenticated
+            try
+            {
+                Console.WriteLine($"[AuthForm] Attempting post-login registration...");
+                var registrationSuccess = await AuthService.HandlePostLoginRegistrationAsync();
+                
+                if (!registrationSuccess)
+                {
+                    Console.WriteLine($"[AuthForm] Registration failed - logging user out");
+                    authError = "Registration failed. Please try logging in again.";
+                    
+                    // Log the user out since registration failed
+                    await AuthService.LogoutAsync();
+                    success = false;
+                    StateHasChanged();
+                    return;
+                }
+                
+                Console.WriteLine($"[AuthForm] Registration successful");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AuthForm] Registration exception: {ex.Message}");
+                authError = $"Registration error: {ex.Message}";
+                
+                // Log the user out since registration failed
+                await AuthService.LogoutAsync();
+                success = false;
+                StateHasChanged();
+                return;
+            }
+        }
+        
         isAuthenticated = success;
         
         // Call both callbacks if they are provided
@@ -261,13 +313,17 @@ else
 
         try
         {
+            Console.WriteLine($"[AuthForm] Starting password authentication");
             isAuthenticating = true;
             authError = "";
             StateHasChanged();
 
             var isAuthenticated = await ((AuthenticationService)AuthService).AuthenticateAsync(password);
+            Console.WriteLine($"[AuthForm] Password authentication result: {isAuthenticated}");
+            
             if (isAuthenticated)
             {
+                Console.WriteLine($"[AuthForm] Password authentication successful");
                 await HandleAuthenticated(true, true); // Fresh login
             }
             else
@@ -275,11 +331,13 @@ else
                 // Check if there's a specific error message
                 var errorMsg = ((AuthenticationService)AuthService).LastAuthenticationError;
                 authError = errorMsg ?? "Authentication failed";
+                Console.WriteLine($"[AuthForm] Password authentication failed: {authError}");
                 password = "";
             }
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[AuthForm] Password authentication exception: {ex.Message}");
             authError = $"System error: {ex.Message}";
             password = "";
         }
