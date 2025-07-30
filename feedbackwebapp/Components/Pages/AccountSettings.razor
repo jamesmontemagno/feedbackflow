@@ -94,10 +94,13 @@
                                         }
                                     </p>
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Email</label>
-                                    <p class="form-control-plaintext">@userInfo.Email</p>
-                                </div>
+                                @if (!string.IsNullOrEmpty(userInfo.Email))
+                                {
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Email</label>
+                                        <p class="form-control-plaintext">@userInfo.Email</p>
+                                    </div>
+                                }
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Authentication Provider</label>
                                     <p class="form-control-plaintext">
