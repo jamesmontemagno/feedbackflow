@@ -59,7 +59,7 @@ public class UserAccountService : IUserAccountService
             if (!entity.HasValue)
                 return false;
 
-            await _userAccountsTable.DeleteEntityAsync(userId, userId);
+            await _userAccountsTable.DeleteEntityAsync(entity.Value);
             _logger?.LogInformation("User account {UserId} deleted permanently", userId);
             return true;
         }

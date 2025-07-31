@@ -14,6 +14,7 @@ using Azure.Storage.Blobs;
 using Azure.Data.Tables;
 using FeedbackFunctions.Models;
 using SharedDump.Models.Reports;
+using SharedDump.Models;
 
 namespace FeedbackFunctions.Account;
 
@@ -263,7 +264,7 @@ public class AuthUserManagement
     }
 
     /// <summary>
-    /// Delete all shared analyses created by the user from blob storage
+    /// Delete all shared analyses created by the user from blob storage and table storage
     /// </summary>
     /// <param name="userId">User ID to delete shared analyses for</param>
     private async Task DeleteUserSharedAnalysesAsync(string userId)
@@ -273,35 +274,54 @@ public class AuthUserManagement
             _logger.LogInformation("Deleting shared analyses for user {UserId}", userId);
             
             var containerClient = _blobServiceClient.GetBlobContainerClient("shared-analyses");
-            var exists = await containerClient.ExistsAsync();
+            var sharedAnalysesTableClient = _tableServiceClient.GetTableClient("SharedAnalyses");
             
-            if (!exists)
+            var containerExists = await containerClient.ExistsAsync();
+            
+            var deletedBlobCount = 0;
+            var deletedTableCount = 0;
+            
+            // Query SharedAnalyses table to find all analyses owned by this user
+            try
             {
-                _logger.LogInformation("Shared analyses container does not exist, skipping");
-                return;
+                _logger.LogInformation("Querying SharedAnalyses table for user {UserId}", userId);
+                
+                await foreach (var entity in sharedAnalysesTableClient.QueryAsync<SharedAnalysisEntity>(
+                    filter: $"PartitionKey eq '{userId}'"))
+                {
+                    try
+                    {
+                        // Delete the corresponding blob
+                        if (containerExists)
+                        {
+                            var blobClient = containerClient.GetBlobClient($"{entity.Id}.json");
+                            var blobExists = await blobClient.ExistsAsync();
+                            if (blobExists)
+                            {
+                                await blobClient.DeleteAsync();
+                                deletedBlobCount++;
+                                _logger.LogDebug("Deleted shared analysis blob: {BlobName}", entity.Id);
+                            }
+                        }
+                        
+                        // Delete the table entity
+                        await sharedAnalysesTableClient.DeleteEntityAsync(entity.PartitionKey, entity.RowKey);
+                        deletedTableCount++;
+                        _logger.LogDebug("Deleted shared analysis table entry: {AnalysisId}", entity.Id);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error deleting shared analysis {AnalysisId} for user {UserId}", entity.Id, userId);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInformation("Could not query SharedAnalyses table (may not exist): {Message}", ex.Message);
             }
 
-            var deletedCount = 0;
-            
-            // Get all blobs and check if they belong to this user
-            // Note: We would need to store user ownership metadata on blobs to do this efficiently
-            // For now, this is a placeholder - in production you'd want to track user ownership
-            await foreach (var blobItem in containerClient.GetBlobsAsync())
-            {
-                try
-                {
-                    // In a real implementation, you'd have user metadata on blobs
-                    // For now, we'll skip this as we don't have user tracking on shared analyses
-                    // This would require a design change to track ownership
-                    _logger.LogDebug("Found shared analysis blob: {BlobName}", blobItem.Name);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Error processing shared analysis blob {BlobName}", blobItem.Name);
-                }
-            }
-
-            _logger.LogInformation("Processed shared analyses cleanup for user {UserId}, deleted {Count} items", userId, deletedCount);
+            _logger.LogInformation("Completed shared analyses cleanup for user {UserId}, deleted {BlobCount} blobs and {TableCount} table entries", 
+                userId, deletedBlobCount, deletedTableCount);
         }
         catch (Exception ex)
         {
