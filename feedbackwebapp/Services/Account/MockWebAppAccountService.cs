@@ -20,7 +20,6 @@ public class MockWebAppAccountService : IWebAppAccountService
         CreatedAt = DateTime.UtcNow.AddDays(-30),
         LastResetDate = DateTime.UtcNow.AddDays(-5),
         SubscriptionStart = DateTime.UtcNow.AddDays(-30),
-        IsActive = true,
         PreferredEmail = "mock@example.com"
     };
 

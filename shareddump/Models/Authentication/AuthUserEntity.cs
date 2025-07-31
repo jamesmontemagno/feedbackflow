@@ -64,11 +64,6 @@ public class AuthUserEntity : ITableEntity
     public DateTime? LastLoginAt { get; set; }
 
     /// <summary>
-    /// Whether the user is active
-    /// </summary>
-    public bool IsActive { get; set; }
-
-    /// <summary>
     /// URL to the user's profile image
     /// </summary>
     public string? ProfileImageUrl { get; set; }
@@ -101,6 +96,5 @@ public class AuthUserEntity : ITableEntity
         Name = name;
         CreatedAt = DateTime.UtcNow;
         LastLoginAt = DateTime.UtcNow;
-        IsActive = true;
     }
 }
