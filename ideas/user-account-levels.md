@@ -38,7 +38,6 @@ public class UserAccount
     public AccountTier Tier { get; set; } = AccountTier.Free;
     public DateTime SubscriptionStart { get; set; }
     public DateTime? SubscriptionEnd { get; set; }
-    public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; }
     public DateTime LastResetDate { get; set; }
     
@@ -284,7 +283,6 @@ Properties:
 - Tier (int)
 - SubscriptionStart (DateTime)
 - SubscriptionEnd (DateTime?)
-- IsActive (bool)
 - LastResetDate (DateTime)
 - AnalysesUsed (int)
 - FeedQueriesUsed (int)
