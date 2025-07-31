@@ -55,7 +55,7 @@ public class UserAccountService : IUserAccountService
     {
         try
         {
-            var entity = await _userAccountsTable.GetEntityIfExistsAsync<UserAccountEntity>(userId, userId);
+            var entity = await _userAccountsTable.GetEntityIfExistsAsync<UserAccountEntity>(userId, "account");
             if (!entity.HasValue)
                 return false;
 
