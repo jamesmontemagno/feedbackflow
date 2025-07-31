@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using FeedbackFunctions.Services.Authentication;
 using FeedbackFunctions.Middleware;
 using SharedDump.Models.Authentication;
@@ -33,15 +34,19 @@ public class AuthUserManagement
         FeedbackFunctions.Middleware.AuthenticationMiddleware authMiddleware,
         IAuthUserTableService userService,
         IUserAccountService userAccountService,
-        BlobServiceClient blobServiceClient,
-        TableServiceClient tableServiceClient)
+        IConfiguration configuration)
     {
         _logger = logger;
         _authMiddleware = authMiddleware;
         _userService = userService;
         _userAccountService = userAccountService;
-        _blobServiceClient = blobServiceClient;
-        _tableServiceClient = tableServiceClient;
+        
+        // Create storage clients using connection string, following the pattern from other services
+        var storageConnection = configuration["ProductionStorage"] ??
+                              throw new InvalidOperationException("No storage connection string configured");
+        
+        _blobServiceClient = new BlobServiceClient(storageConnection);
+        _tableServiceClient = new TableServiceClient(storageConnection);
     }
 
     /// <summary>
