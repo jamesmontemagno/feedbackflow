@@ -1,6 +1,7 @@
 using System;
 using Azure;
 using Azure.Data.Tables;
+using System.Text.Json.Serialization;
 
 namespace SharedDump.Models.Account;
 
@@ -14,6 +15,13 @@ public class UserAccountEntity : ITableEntity
     public int Tier { get; set; }
     public DateTime SubscriptionStart { get; set; }
     public DateTime? SubscriptionEnd { get; set; }
+    
+    /// <summary>
+    /// Whether the account is active (deprecated - kept for backward compatibility only)
+    /// </summary>
+    [JsonIgnore]
+    public bool IsActive { get; set; } = true;
+    
     public DateTime CreatedAt { get; set; }
     public DateTime LastResetDate { get; set; }
     public int AnalysesUsed { get; set; }

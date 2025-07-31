@@ -1,5 +1,6 @@
 using Azure;
 using Azure.Data.Tables;
+using System.Text.Json.Serialization;
 
 namespace SharedDump.Models.Authentication;
 
@@ -62,6 +63,12 @@ public class AuthUserEntity : ITableEntity
     /// When the user last logged in
     /// </summary>
     public DateTime? LastLoginAt { get; set; }
+
+    /// <summary>
+    /// Whether the user is active (deprecated - kept for backward compatibility only)
+    /// </summary>
+    [JsonIgnore]
+    public bool IsActive { get; set; } = true;
 
     /// <summary>
     /// URL to the user's profile image
