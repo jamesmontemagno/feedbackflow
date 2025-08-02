@@ -15,6 +15,7 @@ using Azure.Data.Tables;
 using FeedbackFunctions.Models;
 using SharedDump.Models.Reports;
 using SharedDump.Models;
+using FeedbackFunctions.Extensions;
 
 namespace FeedbackFunctions.Account;
 
@@ -169,6 +170,21 @@ public class AuthUserManagement
                 _logger.LogError(ex, "Failed to create UserAccount record for user {UserId}, but user registration was successful", authenticatedUser.UserId);
             }
 
+            // Track usage for registration, outputting user info (excluding email) in resourceId
+            try
+            {
+                var resourceId = $"userId={authenticatedUser.UserId};name={authenticatedUser.Name};authProvider={authenticatedUser.AuthProvider};providerUserId={authenticatedUser.ProviderUserId};createdAt={authenticatedUser.CreatedAt:O};lastLoginAt={authenticatedUser.LastLoginAt:O}";
+                await authenticatedUser.TrackUsageAsync(
+                    SharedDump.Models.Account.UsageType.Registration,
+                    _userAccountService,
+                    _logger,
+                    resourceId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to track usage for user registration");
+            }
+
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(new
             {
@@ -235,6 +251,21 @@ public class AuthUserManagement
 
             // 4. Delete the auth user permanently
             var success = await _userService.DeleteUserAsync(userId);
+
+            // Track usage for deletion, outputting user info (excluding email) in resourceId
+            try
+            {
+                var resourceId = $"userId={authenticatedUser.UserId};name={authenticatedUser.Name};authProvider={authenticatedUser.AuthProvider};providerUserId={authenticatedUser.ProviderUserId};createdAt={authenticatedUser.CreatedAt:O};lastLoginAt={authenticatedUser.LastLoginAt:O}";
+                await authenticatedUser.TrackUsageAsync(
+                    SharedDump.Models.Account.UsageType.Deletion,
+                    _userAccountService,
+                    _logger,
+                    resourceId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to track usage for user deletion");
+            }
 
             if (!success)
             {
