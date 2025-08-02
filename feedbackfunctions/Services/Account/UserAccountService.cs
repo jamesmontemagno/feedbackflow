@@ -51,6 +51,25 @@ public class UserAccountService : IUserAccountService
         await _userAccountsTable.UpsertEntityAsync(entity);
     }
 
+    public async Task<bool> DeleteUserAccountAsync(string userId)
+    {
+        try
+        {
+            var entity = await _userAccountsTable.GetEntityIfExistsAsync<UserAccountEntity>(userId, "account");
+            if (!entity.HasValue)
+                return false;
+
+            await _userAccountsTable.DeleteEntityAsync(entity.Value);
+            _logger?.LogInformation("User account {UserId} deleted permanently", userId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error deleting user account for {UserId}", userId);
+            return false;
+        }
+    }
+
     public async Task<Dictionary<string, SharedDump.Models.Account.AccountTier>> GetAllUserTiersAsync()
     {
         var userTiers = new Dictionary<string, SharedDump.Models.Account.AccountTier>(StringComparer.OrdinalIgnoreCase);
@@ -352,7 +371,6 @@ public class UserAccountService : IUserAccountService
             Tier = (AccountTier)entity.Tier,
             SubscriptionStart = entity.SubscriptionStart,
             SubscriptionEnd = entity.SubscriptionEnd,
-            IsActive = entity.IsActive,
             CreatedAt = entity.CreatedAt,
             LastResetDate = entity.LastResetDate,
             AnalysesUsed = entity.AnalysesUsed,
@@ -374,7 +392,6 @@ public class UserAccountService : IUserAccountService
             Tier = (int)model.Tier,
             SubscriptionStart = model.SubscriptionStart,
             SubscriptionEnd = model.SubscriptionEnd,
-            IsActive = model.IsActive,
             CreatedAt = model.CreatedAt,
             LastResetDate = model.LastResetDate,
             AnalysesUsed = model.AnalysesUsed,

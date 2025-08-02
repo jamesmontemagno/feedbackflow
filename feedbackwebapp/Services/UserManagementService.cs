@@ -12,8 +12,9 @@ public interface IUserManagementService
     /// <summary>
     /// Register or update the current user in the system
     /// </summary>
+    /// <param name="preferredEmail">Optional preferred email address to use for registration</param>
     /// <returns>Result of the registration operation</returns>
-    Task<RequestResult> RegisterCurrentUserAsync();
+    Task<RequestResult> RegisterCurrentUserAsync(string? preferredEmail = null);
     
     /// <summary>
     /// Delete the current user's account (deactivates the account for data integrity)
@@ -80,7 +81,7 @@ public class UserManagementService : IUserManagementService
     }
 
     /// <inheritdoc />
-    public async Task<RequestResult> RegisterCurrentUserAsync()
+    public async Task<RequestResult> RegisterCurrentUserAsync(string? preferredEmail = null)
     {
         try
         {
@@ -94,6 +95,21 @@ public class UserManagementService : IUserManagementService
 
             // Add authentication headers
             await _authHeaderService.AddAuthenticationHeadersAsync(requestMessage);
+
+            // Add preferred email in request body if provided
+            if (!string.IsNullOrEmpty(preferredEmail))
+            {
+                var requestBody = new { PreferredEmail = preferredEmail };
+                var jsonContent = JsonSerializer.Serialize(requestBody);
+                requestMessage.Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+                
+                Console.WriteLine($"Sending registration request with preferred email: {preferredEmail}");
+                Console.WriteLine($"Request body JSON: {jsonContent}");
+            }
+            else
+            {
+                Console.WriteLine("No preferred email provided - sending request without body");
+            }
 
             var response = await _httpClient.SendAsync(requestMessage);
             

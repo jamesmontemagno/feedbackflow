@@ -215,3 +215,68 @@
         gap: 1rem;
     }
 }
+
+/* Loading Steps Styling */
+.loading-steps {
+    margin-top: 1rem;
+}
+
+.loading-step {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    transition: all 0.3s ease;
+    color: var(--bs-text-muted);
+}
+
+.loading-step i {
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.loading-step.completed {
+    color: var(--bs-success);
+}
+
+.loading-step.completed i {
+    color: var(--bs-success);
+}
+
+.loading-step:not(.completed) i {
+    color: var(--bs-text-muted);
+    opacity: 0.5;
+}
+
+/* Dark theme support for loading steps */
+[data-theme="dark"] .loading-step {
+    color: var(--bs-text-muted);
+}
+
+[data-theme="dark"] .loading-step.completed {
+    color: var(--bs-success);
+}
+
+[data-theme="dark"] .loading-step:not(.completed) i {
+    color: var(--bs-text-muted);
+    opacity: 0.6;
+}
+
+/* Animation for step completion */
+.loading-step.completed i {
+    animation: checkMark 0.3s ease-in-out;
+}
+
+@keyframes checkMark {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.7;
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}

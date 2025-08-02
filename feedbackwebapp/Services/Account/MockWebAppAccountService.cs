@@ -20,7 +20,6 @@ public class MockWebAppAccountService : IWebAppAccountService
         CreatedAt = DateTime.UtcNow.AddDays(-30),
         LastResetDate = DateTime.UtcNow.AddDays(-5),
         SubscriptionStart = DateTime.UtcNow.AddDays(-30),
-        IsActive = true,
         PreferredEmail = "mock@example.com"
     };
 
@@ -138,7 +137,8 @@ public class MockWebAppAccountService : IWebAppAccountService
                     "Priority support",
                     "Export features",
                     "Custom analysis prompts",
-                    "📧 Email notifications"
+                    "📧 Email notifications",
+                    "🐦 Twitter/X access"
                 },
                 Limits = new AccountLimits
                 {
@@ -163,7 +163,8 @@ public class MockWebAppAccountService : IWebAppAccountService
                     "Custom analysis prompts",
                     "Team collaboration",
                     "Advanced integrations",
-                    "📧 Email notifications"
+                    "📧 Email notifications",
+                    "🐦 Twitter/X access"
                 },
                 Limits = new AccountLimits
                 {

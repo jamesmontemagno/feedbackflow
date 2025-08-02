@@ -10,6 +10,7 @@
 @using FeedbackWebApp.Services.Interfaces
 @using FeedbackWebApp.Services.Feedback
 @using FeedbackWebApp.Services.Authentication
+@using FeedbackWebApp.Services
 @using FeedbackWebApp.Components.Shared
 @using SharedDump.Models
 @using SharedDump.Models.Account
@@ -28,6 +29,9 @@
 @inject UserSettingsService UserSettings
 @inject IHistoryService HistoryService
 @inject IAuthenticationService AuthService
+@inject IRegistrationErrorService RegistrationErrorService
+@inject ITwitterAccessService TwitterAccessService
+@implements IDisposable
 
 <PageTitle>Feedback Analysis - FeedbackFlow</PageTitle>
 
@@ -41,6 +45,11 @@
     UsageError="@usageLimitError" 
     IsVisible="@showUsageLimitDialog" 
     OnClose="@CloseUsageLimitDialog" />
+
+<RegistrationErrorDialog 
+    IsVisible="@showRegistrationError" 
+    ErrorMessage="@registrationErrorMessage" 
+    OnClose="@CloseRegistrationErrorDialog" />
 
 <div class="container">
     @if (!isAuthenticated)
@@ -149,6 +158,8 @@
     private bool isAuthenticated = false;
     private bool showNewFeaturesDialog = false;
     private bool showUsageLimitDialog = false;
+    private bool showRegistrationError = false;
+    private string? registrationErrorMessage = null;
     private UsageValidationResult? usageLimitError;
     private List<FeedbackSourceData>? feedbackSources;
     private object? currentAdditionalData;
@@ -351,6 +362,19 @@
             currentStatus = FeedbackProcessStatus.GatheringComments;
             currentStatusMessage = "Starting analysis...";
 
+            // For Auto source, check Twitter access before submitting
+            if (selectedSource == "Auto")
+            {
+                var urls = autoDataSourceForm?.GetUrls() ?? new List<string>();
+                var (hasAccess, accessError) = await TwitterAccessService.CheckTwitterAccessAsync(urls);
+                
+                if (!hasAccess && !string.IsNullOrEmpty(accessError))
+                {
+                    error = accessError;
+                    return;
+                }
+            }
+
             IFeedbackService service = selectedSource switch
             {
                 "Auto" or "auto" => ServiceProvider.CreateAutoDataSourceService(
@@ -405,6 +429,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Subscribe to registration error events
+        RegistrationErrorService.RegistrationErrorOccurred += OnRegistrationErrorOccurred;
+        
         var uri = new Uri(NavigationManager.Uri);
         var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
 
@@ -506,5 +533,33 @@
                 StateHasChanged();
             }
         }
+    }
+
+    private void OnRegistrationErrorOccurred(object? sender, string errorMessage)
+    {
+        InvokeAsync(() =>
+        {
+            registrationErrorMessage = errorMessage;
+            showRegistrationError = true;
+            isAuthenticated = false;
+            StateHasChanged();
+        });
+    }
+
+    private async Task CloseRegistrationErrorDialog()
+    {
+        showRegistrationError = false;
+        registrationErrorMessage = null;
+        StateHasChanged();
+        
+        // Refresh the page to restart the authentication flow
+        await Task.Delay(100); // Small delay to allow UI to update
+        NavigationManager.NavigateTo("/", forceLoad: true);
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe from registration error events
+        RegistrationErrorService.RegistrationErrorOccurred -= OnRegistrationErrorOccurred;
     }
 }

@@ -11,6 +11,7 @@ public class UserSettingsService
     private readonly bool _authDebugEnabled;
     private const string SETTINGS_KEY = "feedbackflow_settings_v2";
     private const string LAST_LOGIN_KEY = "feedbackflow_last_login";
+    private const string LOGIN_ATTEMPT_KEY = "feedbackflow_loginattempt";
     private UserSettings? _cachedSettings;
     public class UserSettings
     {
@@ -139,6 +140,17 @@ public class UserSettingsService
     {
         var now = DateTime.UtcNow;
         await SaveToLocalStorageAsync(LAST_LOGIN_KEY, now);
+    }
+
+    public async Task<bool> GetLoginAttemptAsync()
+    {
+        var stored = await GetStringFromLocalStorageAsync(LOGIN_ATTEMPT_KEY);
+        return !string.IsNullOrEmpty(stored) && stored == "true";
+    }
+
+    public async Task ClearLoginAttemptAsync()
+    {
+        await RemoveFromLocalStorageAsync(LOGIN_ATTEMPT_KEY);
     }
 
     // Generic localStorage helpers

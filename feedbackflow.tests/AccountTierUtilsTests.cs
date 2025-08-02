@@ -28,11 +28,11 @@ public class AccountTierUtilsTests
         var superUserDesc = AccountTierUtils.GetTierDescription(AccountTier.SuperUser);
         var adminDesc = AccountTierUtils.GetTierDescription(AccountTier.Admin);
 
-        Assert.IsTrue(freeDesc.Contains("Basic"));
-        Assert.IsTrue(proDesc.Contains("Priority"));
-        Assert.IsTrue(proPlusDesc.Contains("Advanced"));
-        Assert.IsTrue(superUserDesc.Contains("Internal"));
-        Assert.IsTrue(adminDesc.Contains("Internal administrative"));
+    Assert.IsTrue(freeDesc.Contains("Basic analysis"));
+    Assert.IsTrue(proDesc.Contains("Priority processing"));
+    Assert.IsTrue(proPlusDesc.Contains("highest limits"));
+    Assert.IsTrue(superUserDesc.Contains("Internal account with unlimited access"));
+    Assert.IsTrue(adminDesc.Contains("Internal administrative account with unlimited access"));
     }
 
     [TestMethod]
@@ -62,11 +62,11 @@ public class AccountTierUtilsTests
             AccountTierUtils.SupportsEmailNotifications(AccountTier.SuperUser), 
             AccountTierUtils.SupportsEmailNotifications(AccountTier.Admin));
         
-        // Verify both have admin-like descriptions
-        var superUserDesc = AccountTierUtils.GetTierDescription(AccountTier.SuperUser);
-        var adminDesc = AccountTierUtils.GetTierDescription(AccountTier.Admin);
-        Assert.IsTrue(superUserDesc.Contains("Internal"));
-        Assert.IsTrue(adminDesc.Contains("Internal administrative"));
+    // Verify both have admin-like descriptions
+    var superUserDesc = AccountTierUtils.GetTierDescription(AccountTier.SuperUser);
+    var adminDesc = AccountTierUtils.GetTierDescription(AccountTier.Admin);
+    Assert.IsTrue(superUserDesc.Contains("Internal account with unlimited access"));
+    Assert.IsTrue(adminDesc.Contains("Internal administrative account with unlimited access"));
     }
 
     [TestMethod]
@@ -74,5 +74,23 @@ public class AccountTierUtilsTests
     public void GetMinimumTierForEmailNotifications_ShouldReturnPro()
     {
         Assert.AreEqual(AccountTier.Pro, AccountTierUtils.GetMinimumTierForEmailNotifications());
+    }
+
+    [TestMethod]
+    [TestCategory("Account")]
+    public void SupportsTwitterAccess_ShouldReturnCorrectSupport()
+    {
+        Assert.IsFalse(AccountTierUtils.SupportsTwitterAccess(AccountTier.Free));
+        Assert.IsTrue(AccountTierUtils.SupportsTwitterAccess(AccountTier.Pro));
+        Assert.IsTrue(AccountTierUtils.SupportsTwitterAccess(AccountTier.ProPlus));
+        Assert.IsTrue(AccountTierUtils.SupportsTwitterAccess(AccountTier.SuperUser));
+        Assert.IsTrue(AccountTierUtils.SupportsTwitterAccess(AccountTier.Admin));
+    }
+
+    [TestMethod]
+    [TestCategory("Account")]
+    public void GetMinimumTierForTwitterAccess_ShouldReturnPro()
+    {
+        Assert.AreEqual(AccountTier.Pro, AccountTierUtils.GetMinimumTierForTwitterAccess());
     }
 }

@@ -4,6 +4,7 @@
 @using FeedbackWebApp.Services.Interfaces
 @using FeedbackWebApp.Components.Account
 @using FeedbackWebApp.Services.Account
+@using FeedbackWebApp.Components.Shared
 @using SharedDump.Models.Account
 @using SharedDump.Utils.Account
 @using Microsoft.JSInterop
@@ -39,6 +40,15 @@
                     }
                     else if (userInfo != null)
                     {
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-warning" role="alert">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                <strong>Loading Issue:</strong> @errorMessage
+                                <br><small>Account information displayed below may be from cached authentication data.</small>
+                            </div>
+                        }
+                        
                         <!-- Account Information -->
                         <div class="row mb-4">
                             <div class="col-md-4">
@@ -85,10 +95,13 @@
                                         }
                                     </p>
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Email</label>
-                                    <p class="form-control-plaintext">@userInfo.Email</p>
-                                </div>
+                                @if (!string.IsNullOrEmpty(userInfo.Email))
+                                {
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Email</label>
+                                        <p class="form-control-plaintext">@userInfo.Email</p>
+                                    </div>
+                                }
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Authentication Provider</label>
                                     <p class="form-control-plaintext">
@@ -350,13 +363,13 @@
                                     <div class="alert alert-danger" role="alert">
                                         <h6 class="alert-heading">Delete Account</h6>
                                         <p class="mb-3">
-                                            Permanently deactivate your account. This action cannot be undone. 
-                                            Your account will be deactivated but your data will be preserved for audit purposes.
+                                            Permanently delete your account and all associated data. This action cannot be undone.
                                         </p>
                                         <ul class="mb-3">
-                                            <li>Your account will be deactivated and you will be logged out</li>
-                                            <li>You will no longer be able to access your reports</li>
-                                            <li>Your data will be preserved for audit and compliance purposes</li>
+                                            <li>Your account will be permanently deleted and you will be logged out</li>
+                                            <li>All shared analyses will be removed from our system</li>
+                                            <li>All report requests and generated reports will be deleted</li>
+                                            <li>Your usage history for audit and compliance purposes will be retained</li>
                                         </ul>
                                         <button class="btn btn-danger" 
                                                 @onclick="ShowDeleteConfirmation" 
@@ -364,7 +377,7 @@
                                             @if (isDeleting)
                                             {
                                                 <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                                                <span>Deleting Account...</span>
+                                                <span>Deleting Account and Data...</span>
                                             }
                                             else
                                             {
@@ -390,6 +403,12 @@
     </div>
 </div>
 
+@* Account Deleted Success Dialog *@
+@if (showAccountDeletedDialog)
+{
+    <AccountDeletedDialog OnLogoutNow="@HandleLogoutNow" />
+}
+
 @code {
     private UserInfo? userInfo;
     private UserAccount? userAccount;
@@ -399,6 +418,7 @@
     private bool isLoading = true;
     private bool isLoadingUsage = true;
     private bool isDeleting = false;
+    private bool showAccountDeletedDialog = false;
     private string errorMessage = "";
     
     // Email preferences fields
@@ -456,6 +476,8 @@
                         CreatedAt = currentUser.CreatedAt,
                         LastLoginAt = currentUser.LastLoginAt ?? DateTime.UtcNow
                     };
+                    
+                    errorMessage = "Backend service unavailable. Displaying authentication data only.";
                 }
                 else
                 {
@@ -465,9 +487,7 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error loading account information: {ex.Message}";
-            
-            // Try fallback approach
+            // Try fallback approach when backend fails
             try
             {
                 var currentUser = await AuthService.GetCurrentUserAsync();
@@ -484,12 +504,17 @@
                         CreatedAt = currentUser.CreatedAt,
                         LastLoginAt = currentUser.LastLoginAt ?? DateTime.UtcNow
                     };
-                    errorMessage = ""; // Clear error if fallback works
+                    
+                    errorMessage = $"Backend service error: {ex.Message}. Displaying authentication data only.";
+                }
+                else
+                {
+                    errorMessage = $"Failed to load account information: {ex.Message}";
                 }
             }
             catch (Exception fallbackEx)
             {
-                errorMessage = $"Error loading account information: {fallbackEx.Message}";
+                errorMessage = $"Critical error loading account information: {fallbackEx.Message}. Please contact support.";
             }
         }
         finally
@@ -602,27 +627,48 @@
             
             if (result.Success)
             {
-                await ToastService.ShowToastAsync("Your account has been deleted successfully. You will be logged out.", ToastType.Success);
+                // Show success dialog
+                showAccountDeletedDialog = true;
+                isDeleting = false;
+                StateHasChanged();
                 
-                // Wait a moment for the toast to be visible
-                await Task.Delay(2000);
-                
-                // Log out the user
-                await AuthService.LogoutAsync();
+                // Auto-logout after 5 seconds
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(5000);
+                    await InvokeAsync(async () =>
+                    {
+                        await HandleLogoutNow();
+                    });
+                });
             }
             else
             {
                 await ToastService.ShowToastAsync($"Failed to delete account: {result.ErrorMessage}", ToastType.Danger);
+                isDeleting = false;
+                StateHasChanged();
             }
         }
         catch (Exception ex)
         {
             await ToastService.ShowToastAsync($"Error deleting account: {ex.Message}", ToastType.Danger);
-        }
-        finally
-        {
             isDeleting = false;
             StateHasChanged();
+        }
+    }
+
+    private async Task HandleLogoutNow()
+    {
+        try
+        {
+            showAccountDeletedDialog = false;
+            await AuthService.LogoutAsync();
+            Navigation.NavigateTo("/", true);
+        }
+        catch (Exception ex)
+        {
+            await ToastService.ShowToastAsync($"Error during logout: {ex.Message}", ToastType.Danger);
+            Navigation.NavigateTo("/", true);
         }
     }
 

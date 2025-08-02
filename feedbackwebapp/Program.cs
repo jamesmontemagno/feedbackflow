@@ -41,20 +41,25 @@ builder.Services.AddHttpClient("DefaultClient")
 builder.Services.AddScoped<FeedbackServiceProvider>();
 builder.Services.AddScoped<ContentFeedServiceProvider>();
 
-// Register authentication service based on configuration
-var useEasyAuth = builder.Configuration.GetValue<bool>("Authentication:UseEasyAuth", false);
-if (useEasyAuth)
+// Register authentication service based on environment
+var bypassAuth = builder.Configuration.GetValue<bool>("Authentication:BypassInDevelopment", false);
+var isDevelopment = builder.Environment.IsDevelopment();
+
+if (bypassAuth && isDevelopment)
 {
-    // Use server-side authentication service for better security
-    builder.Services.AddScoped<IAuthenticationService, ServerSideAuthService>();
-    builder.Services.AddScoped<IAuthenticationHeaderService, ServerSideAuthenticationHeaderService>();
-}
-else
-{
-    // Fallback to old authentication service
+    // Use debug authentication service for local development
     builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
     builder.Services.AddScoped<IAuthenticationHeaderService, AuthenticationHeaderService>();
 }
+else
+{
+    // Use OAuth authentication service for production/staging
+    builder.Services.AddScoped<IAuthenticationService, ServerSideAuthService>();
+    builder.Services.AddScoped<IAuthenticationHeaderService, ServerSideAuthenticationHeaderService>();
+}
+
+// Register registration error service
+builder.Services.AddScoped<IRegistrationErrorService, RegistrationErrorService>();
 
 // Register user management service
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
@@ -76,6 +81,7 @@ builder.Services.AddScoped<IReportRequestService, ReportRequestService>();
 builder.Services.AddScoped<IHistoryService, HistoryService>();
 builder.Services.AddScoped<ISharedHistoryServiceProvider, SharedHistoryServiceProvider>();
 builder.Services.AddScoped<IExportService, ExportService>();
+builder.Services.AddScoped<ITwitterAccessService, TwitterAccessService>();
 
 var app = builder.Build();
 

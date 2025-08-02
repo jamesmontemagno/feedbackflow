@@ -40,15 +40,15 @@ public interface IAuthUserTableService
     Task<AuthUserEntity> CreateOrUpdateUserAsync(AuthUserEntity user);
 
     /// <summary>
-    /// Deactivate a user by setting IsActive to false
+    /// Delete a user permanently from the table
     /// </summary>
     /// <param name="userId">Internal unique user ID</param>
     /// <returns>True if successful, false if user not found</returns>
-    Task<bool> DeactivateUserAsync(string userId);
+    Task<bool> DeleteUserAsync(string userId);
 
     /// <summary>
-    /// Get all active users (for admin purposes)
+    /// Get all users (for admin purposes)
     /// </summary>
-    /// <returns>Collection of active users</returns>
-    Task<IEnumerable<AuthUserEntity>> GetActiveUsersAsync();
+    /// <returns>Collection of users</returns>
+    Task<IEnumerable<AuthUserEntity>> GetAllUsersAsync();
 }

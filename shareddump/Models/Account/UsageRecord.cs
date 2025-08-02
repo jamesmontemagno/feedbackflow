@@ -13,9 +13,14 @@ namespace SharedDump.Models.Account
 
     public enum UsageType
     {
+        // Feedback/Analysis
         Analysis,
         FeedQuery,
         ReportCreated,
-        ReportDeleted
+        ReportDeleted,
+
+        // Account actions
+        Registration,
+        Deletion
     }
 }

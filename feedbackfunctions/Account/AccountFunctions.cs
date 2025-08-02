@@ -342,17 +342,17 @@ namespace FeedbackFunctions.Account
                     new { 
                         Tier = AccountTier.Pro,
                         Name = "Pro",
-                        Description = "Priority processing, increased limits, basic support",
+                        Description = "Priority processing, email notifications, increased limits, X access, basic support",
                         Price = "$9.99/month",
-                        Features = new[] { "Priority processing", "Increased limits", "Email support", "Advanced features", "📧 Email notifications" },
+                        Features = new[] { "Priority processing", "Increased limits", "Email support", "Advanced features", "📧 Email notifications", "🐦 Twitter/X access" },
                         Limits = _userAccountService.GetLimitsForTier(AccountTier.Pro)
                     },
                     new { 
                         Tier = AccountTier.ProPlus,
                         Name = "Pro+",
-                        Description = "Advanced analytics, email notifications, highest limits",
+                        Description = "Pro features with highest limits.",
                         Price = "$29.99/month",
-                        Features = new[] { "Advanced analytics", "📧 Email notifications", "Highest limits", "Priority support", "Custom integrations" },
+                        Features = new[] { "Advanced analytics", "📧 Email notifications", "🐦 Twitter/X access", "Highest limits", "Priority support" },
                         Limits = _userAccountService.GetLimitsForTier(AccountTier.ProPlus)
                     }
                 };

@@ -23,7 +23,6 @@ public class AuthUserTableService : IAuthUserTableService
     public AuthUserTableService(IConfiguration configuration, ILogger<AuthUserTableService> logger)
     {
         var connectionString = configuration["ProductionStorage"] ??
-                             configuration["AzureWebJobsStorage"] ??
                              throw new InvalidOperationException("No storage connection string configured");
 
         _tableServiceClient = new TableServiceClient(connectionString);
@@ -109,7 +108,7 @@ public class AuthUserTableService : IAuthUserTableService
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeactivateUserAsync(string userId)
+    public async Task<bool> DeleteUserAsync(string userId)
     {
         try
         {
@@ -117,34 +116,33 @@ public class AuthUserTableService : IAuthUserTableService
             if (user == null)
                 return false;
 
-            user.IsActive = false;
-            await CreateOrUpdateUserAsync(user);
-            _logger.LogInformation("User {UserId} deactivated", userId);
+            await _userTableClient.DeleteEntityAsync(user.PartitionKey, user.RowKey);
+            _logger.LogInformation("User {UserId} deleted permanently", userId);
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deactivating user {UserId}", userId);
+            _logger.LogError(ex, "Error deleting user {UserId}", userId);
             return false;
         }
     }
 
     /// <inheritdoc />
-    public async Task<IEnumerable<AuthUserEntity>> GetActiveUsersAsync()
+    public async Task<IEnumerable<AuthUserEntity>> GetAllUsersAsync()
     {
-        var activeUsers = new List<AuthUserEntity>();
+        var users = new List<AuthUserEntity>();
         try
         {
-            var query = _userTableClient.QueryAsync<AuthUserEntity>(filter: "IsActive eq true");
+            var query = _userTableClient.QueryAsync<AuthUserEntity>();
             await foreach (var user in query)
             {
-                activeUsers.Add(user);
+                users.Add(user);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting active users");
+            _logger.LogError(ex, "Error getting all users");
         }
-        return activeUsers;
+        return users;
     }
 }

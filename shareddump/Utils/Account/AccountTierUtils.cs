@@ -17,8 +17,8 @@ namespace SharedDump.Utils.Account
         public static string GetTierDescription(AccountTier tier) => tier switch
         {
             AccountTier.Free => "Basic analysis, limited usage, no support.",
-            AccountTier.Pro => "Priority processing, increased limits, basic support.",
-            AccountTier.ProPlus => "Advanced analytics, email notifications, highest limits.",
+            AccountTier.Pro => "Priority processing, email notifications, increased limits, X access, basic support.",
+            AccountTier.ProPlus => "Pro features with highest limits.",
             AccountTier.SuperUser => "Internal account with unlimited access.",
             AccountTier.Admin => "Internal administrative account with unlimited access.",
             _ => "Unknown tier."
@@ -46,6 +46,32 @@ namespace SharedDump.Utils.Account
         /// </summary>
         /// <returns>The minimum account tier that supports email notifications</returns>
         public static AccountTier GetMinimumTierForEmailNotifications()
+        {
+            return AccountTier.Pro;
+        }
+
+        /// <summary>
+        /// Checks if the account tier supports Twitter/X access
+        /// </summary>
+        /// <param name="tier">The account tier to check</param>
+        /// <returns>True if the tier supports Twitter/X access, false otherwise</returns>
+        public static bool SupportsTwitterAccess(AccountTier tier)
+        {
+            return tier switch
+            {
+                AccountTier.Pro => true,
+                AccountTier.ProPlus => true,
+                AccountTier.SuperUser => true,
+                AccountTier.Admin => true,
+                _ => false
+            };
+        }
+
+        /// <summary>
+        /// Gets the minimum tier required for Twitter/X access
+        /// </summary>
+        /// <returns>The minimum account tier that supports Twitter/X access</returns>
+        public static AccountTier GetMinimumTierForTwitterAccess()
         {
             return AccountTier.Pro;
         }

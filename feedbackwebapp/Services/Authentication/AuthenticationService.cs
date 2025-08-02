@@ -36,8 +36,30 @@ public class AuthenticationService : IAuthenticationService
 
     public async Task<bool> IsAuthenticatedAsync()
     {
-        await _userSettingsService.LogAuthDebugAsync("Password auth: IsAuthenticatedAsync called");
+        await _userSettingsService.LogAuthDebugAsync("Local debug auth: IsAuthenticatedAsync called");
         
+        // Check if we're in local debug mode - if so, assume authenticated
+        var bypassAuth = _configuration.GetValue<bool>("Authentication:BypassInDevelopment", false);
+        var isDevelopment = _configuration.GetValue<string>("ASPNETCORE_ENVIRONMENT") == "Development";
+        
+        if (bypassAuth && isDevelopment)
+        {
+            await _userSettingsService.LogAuthDebugAsync("Local debug auth: Bypassing authentication for development");
+            _isAuthenticated = true;
+            return true;
+        }
+
+        // Fast-track check: if user hasn't even attempted to log in, skip expensive checks
+        var hasLoginAttempt = await _userSettingsService.GetLoginAttemptAsync();
+        if (!hasLoginAttempt)
+        {
+            await _userSettingsService.LogAuthDebugAsync("No login attempt detected - user has not tried to log in");
+            _isAuthenticated = false;
+            return false;
+        }
+
+        // For non-development, this service shouldn't be used anymore
+        // but we'll keep the logic for backward compatibility
         if (_isAuthenticated.HasValue)
         {
             await _userSettingsService.LogAuthDebugAsync("Password auth: Returning cached result", new { isAuthenticated = _isAuthenticated.Value });
@@ -146,12 +168,32 @@ public class AuthenticationService : IAuthenticationService
     public async Task LogoutAsync()
     {
         await SetAuthenticatedAsync(false);
+        await _userSettingsService.ClearLoginAttemptAsync(); // Clear login attempt flag
         _lastAuthenticationError = null; // Clear any authentication errors on logout
         AuthenticationStateChanged?.Invoke(this, false);
     }
 
     public async Task<AuthenticatedUser?> GetCurrentUserAsync()
     {
+        // Check if we're in local debug mode first
+        var bypassAuth = _configuration.GetValue<bool>("Authentication:BypassInDevelopment", false);
+        var isDevelopment = _configuration.GetValue<string>("ASPNETCORE_ENVIRONMENT") == "Development";
+        
+        if (bypassAuth && isDevelopment)
+        {
+            // Return a debug user for local development
+            return new AuthenticatedUser
+            {
+                UserId = "debug-user-12345",
+                Email = "debug@feedbackflow.local",
+                Name = "Debug User",
+                AuthProvider = "Debug",
+                ProviderUserId = "debug-user-local",
+                CreatedAt = DateTime.UtcNow,
+                LastLoginAt = DateTime.UtcNow
+            };
+        }
+
         var isAuthenticated = await IsAuthenticatedAsync();
         if (!isAuthenticated)
             return null;

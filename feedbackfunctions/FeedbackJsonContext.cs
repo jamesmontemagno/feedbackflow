@@ -16,4 +16,5 @@ namespace FeedbackFunctions;
 [JsonSerializable(typeof(AnalyzeCommentsRequest))]
 [JsonSerializable(typeof(SaveAnalysisRequest))]
 [JsonSerializable(typeof(UpdateVisibilityRequest))]
+[JsonSerializable(typeof(RegisterUserRequest))]
 public partial class FeedbackJsonContext : JsonSerializerContext { }

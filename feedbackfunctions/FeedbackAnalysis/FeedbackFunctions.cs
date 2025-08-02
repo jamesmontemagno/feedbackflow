@@ -394,8 +394,18 @@ public class FeedbackFunctions
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(outputVideos);
             
-            // Track usage on successful completion
-            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, $"Videos: {allVideoIds.Count}");
+            // Track usage on successful completion - include original parameters and processed video IDs
+            var trackingInfo = new List<string>();
+            if (videoIds != null && videoIds.Length > 0)
+                trackingInfo.Add($"videos={string.Join(",", videoIds)}");
+            if (!string.IsNullOrEmpty(channelId))
+                trackingInfo.Add($"channel={channelId}");
+            if (playlistIds != null && playlistIds.Length > 0)
+                trackingInfo.Add($"playlists={string.Join(",", playlistIds)}");
+            if (allVideoIds.Count > 0)
+                trackingInfo.Add($"processed_videos={string.Join(",", allVideoIds)}");
+            
+            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, string.Join("; ", trackingInfo));
             
             return response;
         }
@@ -462,8 +472,8 @@ public class FeedbackFunctions
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(threadResults);
             
-            // Track usage on successful completion
-            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, $"Threads: {threadResults.Count}");
+            // Track usage on successful completion - include original thread IDs
+            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, $"threads={string.Join(",", threadIds)}");
             
             return response;
         }
@@ -616,6 +626,22 @@ public class FeedbackFunctions
         var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
         if (authErrorResponse != null)
             return authErrorResponse;
+
+        // Check if user's tier supports Twitter/X access
+        var userAccount = await _userAccountService.GetUserAccountAsync(user!.UserId);
+        if (userAccount != null && !SharedDump.Utils.Account.AccountTierUtils.SupportsTwitterAccess(userAccount.Tier))
+        {
+            var tierResponse = req.CreateResponse(HttpStatusCode.Forbidden);
+            await tierResponse.WriteAsJsonAsync(new
+            {
+                ErrorCode = "TWITTER_ACCESS_DENIED",
+                Message = "Twitter/X access is available for Pro, Pro+, and Admin users only. Please upgrade your account to access this feature.",
+                RequiredTier = "Pro",
+                CurrentTier = userAccount.Tier.ToString(),
+                UpgradeUrl = "/account-settings"
+            });
+            return tierResponse;
+        }
 
         // Validate usage limits
         var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.FeedQuery, _userAccountService, _logger);

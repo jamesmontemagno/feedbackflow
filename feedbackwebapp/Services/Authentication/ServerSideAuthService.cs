@@ -4,8 +4,27 @@ using SharedDump.Models.Authentication;
 using System.Net.Mail;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using FeedbackWebApp.Services.Account;
 
 namespace FeedbackWebApp.Services.Authentication;
+
+/// <summary>
+/// Exception thrown when user registration fails
+/// </summary>
+public class UserRegistrationException : Exception
+{
+    public bool ShouldLogout { get; }
+    
+    public UserRegistrationException(string message, bool shouldLogout = false) : base(message)
+    {
+        ShouldLogout = shouldLogout;
+    }
+    
+    public UserRegistrationException(string message, Exception innerException, bool shouldLogout = false) : base(message, innerException)
+    {
+        ShouldLogout = shouldLogout;
+    }
+}
 
 /// <summary>
 /// Server-side Azure Easy Auth implementation that uses HttpContext and cookies
@@ -18,6 +37,7 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ServerSideAuthService> _logger;
     private readonly UserSettingsService _userSettingsService;
+    private readonly IRegistrationErrorService? _registrationErrorService;
 
     // Cache for authenticated user to reduce .auth/me calls
     private AuthenticatedUser? _cachedUser;
@@ -36,7 +56,8 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
         IHttpClientFactory httpClientFactory,
         IServiceProvider serviceProvider,
         ILogger<ServerSideAuthService> logger,
-        UserSettingsService userSettingsService)
+        UserSettingsService userSettingsService,
+        IRegistrationErrorService? registrationErrorService = null)
     {
         _httpContextAccessor = httpContextAccessor;
         _configuration = configuration;
@@ -44,6 +65,7 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
         _serviceProvider = serviceProvider;
         _logger = logger;
         _userSettingsService = userSettingsService;
+        _registrationErrorService = registrationErrorService;
     }
 
     /// <inheritdoc />
@@ -63,6 +85,14 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
 
         try
         {
+            // Fast-track check: if user hasn't even attempted to log in, skip expensive OAuth checks
+            var hasLoginAttempt = await _userSettingsService.GetLoginAttemptAsync();
+            if (!hasLoginAttempt)
+            {
+                await _userSettingsService.LogAuthDebugAsync("No login attempt detected - user has not tried to log in");
+                return false;
+            }
+
             // Try to get user from cache first
             var cachedUser = GetCachedUser();
             if (cachedUser != null)
@@ -71,11 +101,55 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
                 return true;
             }
 
-            // If not in cache, check with Easy Auth
+            // Check with Easy Auth to see if user has an OAuth session
             var userInfo = await GetEasyAuthUserAsync();
-            var isAuthenticated = userInfo != null;
-            await _userSettingsService.LogAuthDebugAsync("IsAuthenticatedAsync result from Easy Auth", new { isAuthenticated, hasUserInfo = userInfo != null });
-            return isAuthenticated;
+            if (userInfo == null)
+            {
+                await _userSettingsService.LogAuthDebugAsync("IsAuthenticatedAsync result from Easy Auth", new { isAuthenticated = false, hasUserInfo = false });
+                
+                // Clear login attempt and last login since OAuth session is gone
+                await _userSettingsService.LogAuthDebugAsync("OAuth session expired, clearing login attempt and last login timestamp");
+                await _userSettingsService.ClearLoginAttemptAsync();
+                await _userSettingsService.RemoveFromLocalStorageAsync("feedbackflow_last_login");
+                return false;
+            }
+
+            // User is authenticated via OAuth, now check if they're registered in our database
+            await _userSettingsService.LogAuthDebugAsync("User authenticated via OAuth, checking database registration", new { 
+                provider = userInfo.AuthProvider,
+                userId = userInfo.UserId,
+                email = userInfo.Email
+            });
+
+            try
+            {
+                // Check if user account exists in database
+                await EnsureUserIsRegisteredAsync(userInfo);
+                await _userSettingsService.LogAuthDebugAsync("User registration check completed successfully");
+                
+                return true;
+            }
+            catch (UserRegistrationException ex)
+            {
+                await _userSettingsService.LogAuthErrorAsync("User registration check failed", new { 
+                    error = ex.Message,
+                    shouldLogout = ex.ShouldLogout
+                });
+                
+                // Clear login attempt flag on registration failure
+                await _userSettingsService.ClearLoginAttemptAsync();
+                
+                // Trigger registration error event for UI to handle
+                _registrationErrorService?.TriggerRegistrationError(ex.Message);
+                
+                // If user registration failed and we should log them out, do so
+                if (ex.ShouldLogout)
+                {
+                    _logger.LogWarning("User registration failed, logging out: {Message}", ex.Message);
+                    await LogoutAsync();
+                }
+                return false;
+            }
         }
         catch (Exception ex)
         {
@@ -117,8 +191,39 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
                 return cachedUser;
             }
 
-            // If not in cache, get from Easy Auth and cache the result
+            // If not in cache, get from Easy Auth
             var user = await GetEasyAuthUserAsync();
+            if (user != null)
+            {
+                try
+                {
+                    // Ensure user is registered in database
+                    await EnsureUserIsRegisteredAsync(user);
+                    await _userSettingsService.LogAuthDebugAsync("GetCurrentUserAsync: User registration check passed", new { 
+                        userId = user.UserId,
+                        provider = user.AuthProvider
+                    });
+                }
+                catch (UserRegistrationException ex)
+                {
+                    await _userSettingsService.LogAuthErrorAsync("GetCurrentUserAsync: User registration check failed", new { 
+                        error = ex.Message,
+                        shouldLogout = ex.ShouldLogout
+                    });
+                    
+                    // Trigger registration error event for UI to handle
+                    _registrationErrorService?.TriggerRegistrationError(ex.Message);
+                    
+                    // If user registration failed and we should log them out, clear user and return null
+                    if (ex.ShouldLogout)
+                    {
+                        _logger.LogWarning("User registration failed in GetCurrentUserAsync, clearing authentication: {Message}", ex.Message);
+                        await LogoutAsync();
+                        return null;
+                    }
+                }
+            }
+            
             await _userSettingsService.LogAuthDebugAsync("GetCurrentUserAsync result from Easy Auth", new { 
                 hasUser = user != null, 
                 userId = user?.UserId, 
@@ -201,6 +306,10 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
 
         // Clear the cached user
         ClearUserCache();
+
+        // Clear the last login timestamp and login attempt flag to ensure fast-track authentication check works
+        await _userSettingsService.RemoveFromLocalStorageAsync("feedbackflow_last_login");
+        await _userSettingsService.ClearLoginAttemptAsync();
 
         // Trigger authentication state change
         AuthenticationStateChanged?.Invoke(this, false);
@@ -376,22 +485,11 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
                 // Extract user details from claims
                 var email = GetEmailFromClaims(userInfo.UserClaims, provider);
                 
-                // For GitHub, if email is not found in claims and we have an access token, try the GitHub API
-                if (string.IsNullOrEmpty(email) && 
-                    provider == "GitHub" && 
-                    !string.IsNullOrEmpty(userInfo.AccessToken))
+                // For GitHub users without email, we'll try to get it from API during registration process
+                // For now, continue with what we have from claims
+                if (string.IsNullOrEmpty(email) && provider == "GitHub")
                 {
-                    await _userSettingsService.LogAuthDebugAsync("Email not found in GitHub claims, attempting API fetch");
-                    email = await GetEmailFromGitHubApiAsync(userInfo.AccessToken);
-                    
-                    if (!string.IsNullOrEmpty(email))
-                    {
-                        await _userSettingsService.LogAuthDebugAsync("Successfully fetched email from GitHub API", new { email });
-                    }
-                    else
-                    {
-                        await _userSettingsService.LogAuthDebugAsync("Failed to fetch email from GitHub API");
-                    }
+                    await _userSettingsService.LogAuthDebugAsync("GitHub user has no email in claims, will attempt API fetch during registration if needed");
                 }
                 
                 var name = userInfo.UserClaims?.FirstOrDefault(c => c.Typ == "name")?.Val ??
@@ -673,6 +771,105 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
     }
 
     /// <summary>
+    /// Ensure the user is registered in our database. If not, attempt auto-registration.
+    /// </summary>
+    /// <param name="user">Authenticated user information</param>
+    /// <exception cref="UserRegistrationException">Thrown when registration fails</exception>
+    private async Task EnsureUserIsRegisteredAsync(AuthenticatedUser user)
+    {
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var accountServiceProvider = scope.ServiceProvider.GetService<IAccountServiceProvider>();
+            
+            if (accountServiceProvider != null)
+            {
+                var webAppAccountService = accountServiceProvider.GetService();
+                
+                // Try to get user account to see if they're registered
+                var accountResult = await webAppAccountService.GetUserAccountAndLimitsAsync();
+                
+                if (accountResult == null)
+                {
+                    await _userSettingsService.LogAuthDebugAsync("User account not found, attempting auto-registration", new { 
+                        userId = user.UserId,
+                        provider = user.AuthProvider
+                    });
+                    
+                    // For GitHub users without email, try to get it from API before registration
+                    var enhancedEmail = user.Email;
+                    if (user.AuthProvider == "GitHub" && string.IsNullOrEmpty(user.Email))
+                    {
+                        await TryEnhanceGitHubUserEmailAsync(user);
+                        enhancedEmail = user.Email; // Use the enhanced email from GitHub API
+                    }
+                    
+                    // User doesn't exist, attempt auto-registration
+                    var userManagementService = scope.ServiceProvider.GetService<IUserManagementService>();
+                    if (userManagementService != null)
+                    {
+                        var registrationResult = await userManagementService.RegisterCurrentUserAsync(enhancedEmail);
+                        
+                        if (!registrationResult.Success)
+                        {
+                            var errorMessage = $"Failed to register user: {registrationResult.ErrorMessage}";
+                            await _userSettingsService.LogAuthErrorAsync("Auto-registration failed", new { 
+                                error = registrationResult.ErrorMessage,
+                                statusCode = registrationResult.StatusCode,
+                                enhancedEmail = enhancedEmail
+                            });
+                            
+                            throw new UserRegistrationException(errorMessage, shouldLogout: true);
+                        }
+                        
+                        await _userSettingsService.LogAuthDebugAsync("Auto-registration completed successfully", new { 
+                            userId = user.UserId,
+                            enhancedEmail = enhancedEmail
+                        });
+                        _logger.LogInformation("Successfully auto-registered user {UserId} from {Provider} provider", 
+                            user.UserId, user.AuthProvider);
+                        
+                        // Set last login timestamp after successful registration
+                        await _userSettingsService.UpdateLastLoginAtAsync();
+                    }
+                    else
+                    {
+                        throw new UserRegistrationException("User management service not available", shouldLogout: true);
+                    }
+                }
+                else
+                {
+                    await _userSettingsService.LogAuthDebugAsync("User account found in database", new { 
+                        userId = user.UserId,
+                        tier = accountResult.Value.account?.Tier.ToString()
+                    });
+                    
+                    // Set last login timestamp for existing user
+                    await _userSettingsService.UpdateLastLoginAtAsync();
+                }
+            }
+            else
+            {
+                throw new UserRegistrationException("Account service not available", shouldLogout: true);
+            }
+        }
+        catch (UserRegistrationException)
+        {
+            // Re-throw user registration exceptions without wrapping
+            throw;
+        }
+        catch (Exception ex)
+        {
+            await _userSettingsService.LogAuthErrorAsync("Unexpected error during user registration check", new { 
+                error = ex.Message, 
+                type = ex.GetType().Name
+            });
+            _logger.LogError(ex, "Unexpected error during user registration check for user {UserId}", user.UserId);
+            throw new UserRegistrationException($"Registration check failed: {ex.Message}", shouldLogout: true);
+        }
+    }
+
+    /// <summary>
     /// Auto-register the current user in the backend system
     /// </summary>
     private async Task AutoRegisterUserAsync()
@@ -879,6 +1076,89 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Try to enhance GitHub user with email from API during registration
+    /// </summary>
+    /// <param name="user">User to enhance</param>
+    private async Task TryEnhanceGitHubUserEmailAsync(AuthenticatedUser user)
+    {
+        try
+        {
+            await _userSettingsService.LogAuthDebugAsync("Attempting to enhance GitHub user email during registration", new { 
+                userId = user.UserId,
+                hasEmail = !string.IsNullOrEmpty(user.Email)
+            });
+
+            // We need to get the access token from the current Easy Auth session
+            var easyAuthUser = await GetCurrentEasyAuthUserInfoAsync();
+            if (easyAuthUser?.AccessToken == null)
+            {
+                await _userSettingsService.LogAuthDebugAsync("No access token available for GitHub email enhancement");
+                return;
+            }
+
+            var githubEmail = await GetEmailFromGitHubApiAsync(easyAuthUser.AccessToken);
+            if (!string.IsNullOrEmpty(githubEmail))
+            {
+                user.Email = githubEmail;
+                await _userSettingsService.LogAuthDebugAsync("Successfully enhanced GitHub user with email from API", new { 
+                    email = githubEmail 
+                });
+                _logger.LogInformation("Enhanced GitHub user {UserId} with email {Email} from API during registration", 
+                    user.UserId, githubEmail);
+            }
+            else
+            {
+                await _userSettingsService.LogAuthDebugAsync("Could not retrieve email from GitHub API during registration");
+            }
+        }
+        catch (Exception ex)
+        {
+            await _userSettingsService.LogAuthErrorAsync("Error enhancing GitHub user email during registration", new { 
+                error = ex.Message,
+                userId = user.UserId
+            });
+            _logger.LogWarning(ex, "Failed to enhance GitHub user email during registration for user {UserId}", user.UserId);
+        }
+    }
+
+    /// <summary>
+    /// Get current Easy Auth user info with access token
+    /// </summary>
+    private async Task<EasyAuthUser?> GetCurrentEasyAuthUserInfoAsync()
+    {
+        try
+        {
+            var httpContext = _httpContextAccessor.HttpContext;
+            if (httpContext == null) return null;
+
+            var baseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}";
+            var authMeUrl = $"{baseUrl}/.auth/me";
+
+            var request = new HttpRequestMessage(HttpMethod.Get, authMeUrl);
+            
+            // Forward cookies
+            if (httpContext.Request.Headers.ContainsKey("Cookie"))
+            {
+                request.Headers.Add("Cookie", httpContext.Request.Headers["Cookie"].ToString());
+            }
+
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode) return null;
+
+            var responseContent = await response.Content.ReadAsStringAsync();
+            if (string.IsNullOrEmpty(responseContent) || responseContent.Trim() == "[]") return null;
+
+            var userArray = JsonSerializer.Deserialize<EasyAuthUser[]>(responseContent);
+            return userArray?.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get current Easy Auth user info");
+            return null;
+        }
     }
 
     /// <summary>

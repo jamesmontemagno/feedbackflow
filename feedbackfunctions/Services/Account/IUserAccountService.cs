@@ -13,6 +13,7 @@ public interface IUserAccountService
     // User Account Management
     Task<UserAccount?> GetUserAccountAsync(string userId);
     Task UpsertUserAccountAsync(UserAccount userAccount);
+    Task<bool> DeleteUserAccountAsync(string userId);
     Task<int> ResetAllMonthlyUsageAsync();
 
     // Limits and Validation
