@@ -75,4 +75,22 @@ public class AccountTierUtilsTests
     {
         Assert.AreEqual(AccountTier.Pro, AccountTierUtils.GetMinimumTierForEmailNotifications());
     }
+
+    [TestMethod]
+    [TestCategory("Account")]
+    public void SupportsTwitterAccess_ShouldReturnCorrectSupport()
+    {
+        Assert.IsFalse(AccountTierUtils.SupportsTwitterAccess(AccountTier.Free));
+        Assert.IsTrue(AccountTierUtils.SupportsTwitterAccess(AccountTier.Pro));
+        Assert.IsTrue(AccountTierUtils.SupportsTwitterAccess(AccountTier.ProPlus));
+        Assert.IsTrue(AccountTierUtils.SupportsTwitterAccess(AccountTier.SuperUser));
+        Assert.IsTrue(AccountTierUtils.SupportsTwitterAccess(AccountTier.Admin));
+    }
+
+    [TestMethod]
+    [TestCategory("Account")]
+    public void GetMinimumTierForTwitterAccess_ShouldReturnPro()
+    {
+        Assert.AreEqual(AccountTier.Pro, AccountTierUtils.GetMinimumTierForTwitterAccess());
+    }
 }

@@ -627,6 +627,22 @@ public class FeedbackFunctions
         if (authErrorResponse != null)
             return authErrorResponse;
 
+        // Check if user's tier supports Twitter/X access
+        var userAccount = await _userAccountService.GetUserAccountAsync(user!.UserId);
+        if (userAccount != null && !SharedDump.Utils.Account.AccountTierUtils.SupportsTwitterAccess(userAccount.Tier))
+        {
+            var tierResponse = req.CreateResponse(HttpStatusCode.Forbidden);
+            await tierResponse.WriteAsJsonAsync(new
+            {
+                ErrorCode = "TWITTER_ACCESS_DENIED",
+                Message = "Twitter/X access is available for Pro, Pro+, and Admin users only. Please upgrade your account to access this feature.",
+                RequiredTier = "Pro",
+                CurrentTier = userAccount.Tier.ToString(),
+                UpgradeUrl = "/account-settings"
+            });
+            return tierResponse;
+        }
+
         // Validate usage limits
         var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.FeedQuery, _userAccountService, _logger);
         if (usageValidationResponse != null)

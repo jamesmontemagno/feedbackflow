@@ -49,5 +49,31 @@ namespace SharedDump.Utils.Account
         {
             return AccountTier.Pro;
         }
+
+        /// <summary>
+        /// Checks if the account tier supports Twitter/X access
+        /// </summary>
+        /// <param name="tier">The account tier to check</param>
+        /// <returns>True if the tier supports Twitter/X access, false otherwise</returns>
+        public static bool SupportsTwitterAccess(AccountTier tier)
+        {
+            return tier switch
+            {
+                AccountTier.Pro => true,
+                AccountTier.ProPlus => true,
+                AccountTier.SuperUser => true,
+                AccountTier.Admin => true,
+                _ => false
+            };
+        }
+
+        /// <summary>
+        /// Gets the minimum tier required for Twitter/X access
+        /// </summary>
+        /// <returns>The minimum account tier that supports Twitter/X access</returns>
+        public static AccountTier GetMinimumTierForTwitterAccess()
+        {
+            return AccountTier.Pro;
+        }
     }
 }

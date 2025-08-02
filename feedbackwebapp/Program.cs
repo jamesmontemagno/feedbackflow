@@ -81,6 +81,7 @@ builder.Services.AddScoped<IReportRequestService, ReportRequestService>();
 builder.Services.AddScoped<IHistoryService, HistoryService>();
 builder.Services.AddScoped<ISharedHistoryServiceProvider, SharedHistoryServiceProvider>();
 builder.Services.AddScoped<IExportService, ExportService>();
+builder.Services.AddScoped<ITwitterAccessService, TwitterAccessService>();
 
 var app = builder.Build();
 

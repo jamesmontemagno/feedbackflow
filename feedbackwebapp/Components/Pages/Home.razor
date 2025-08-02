@@ -10,6 +10,7 @@
 @using FeedbackWebApp.Services.Interfaces
 @using FeedbackWebApp.Services.Feedback
 @using FeedbackWebApp.Services.Authentication
+@using FeedbackWebApp.Services
 @using FeedbackWebApp.Components.Shared
 @using SharedDump.Models
 @using SharedDump.Models.Account
@@ -29,6 +30,7 @@
 @inject IHistoryService HistoryService
 @inject IAuthenticationService AuthService
 @inject IRegistrationErrorService RegistrationErrorService
+@inject ITwitterAccessService TwitterAccessService
 @implements IDisposable
 
 <PageTitle>Feedback Analysis - FeedbackFlow</PageTitle>
@@ -359,6 +361,19 @@
             isLoading = true;
             currentStatus = FeedbackProcessStatus.GatheringComments;
             currentStatusMessage = "Starting analysis...";
+
+            // For Auto source, check Twitter access before submitting
+            if (selectedSource == "Auto")
+            {
+                var urls = autoDataSourceForm?.GetUrls() ?? new List<string>();
+                var (hasAccess, accessError) = await TwitterAccessService.CheckTwitterAccessAsync(urls);
+                
+                if (!hasAccess && !string.IsNullOrEmpty(accessError))
+                {
+                    error = accessError;
+                    return;
+                }
+            }
 
             IFeedbackService service = selectedSource switch
             {
