@@ -17,8 +17,8 @@ namespace SharedDump.Utils.Account
         public static string GetTierDescription(AccountTier tier) => tier switch
         {
             AccountTier.Free => "Basic analysis, limited usage, no support.",
-            AccountTier.Pro => "Priority processing, increased limits, basic support.",
-            AccountTier.ProPlus => "Advanced analytics, email notifications, highest limits.",
+            AccountTier.Pro => "Priority processing, email notifications, increased limits, X access, basic support.",
+            AccountTier.ProPlus => "Pro features with highest limits.",
             AccountTier.SuperUser => "Internal account with unlimited access.",
             AccountTier.Admin => "Internal administrative account with unlimited access.",
             _ => "Unknown tier."
