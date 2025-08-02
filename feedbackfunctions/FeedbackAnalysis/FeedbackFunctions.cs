@@ -394,8 +394,18 @@ public class FeedbackFunctions
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(outputVideos);
             
-            // Track usage on successful completion
-            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, $"Videos: {allVideoIds.Count}");
+            // Track usage on successful completion - include original parameters and processed video IDs
+            var trackingInfo = new List<string>();
+            if (videoIds != null && videoIds.Length > 0)
+                trackingInfo.Add($"videos={string.Join(",", videoIds)}");
+            if (!string.IsNullOrEmpty(channelId))
+                trackingInfo.Add($"channel={channelId}");
+            if (playlistIds != null && playlistIds.Length > 0)
+                trackingInfo.Add($"playlists={string.Join(",", playlistIds)}");
+            if (allVideoIds.Count > 0)
+                trackingInfo.Add($"processed_videos={string.Join(",", allVideoIds)}");
+            
+            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, string.Join("; ", trackingInfo));
             
             return response;
         }
@@ -462,8 +472,8 @@ public class FeedbackFunctions
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(threadResults);
             
-            // Track usage on successful completion
-            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, $"Threads: {threadResults.Count}");
+            // Track usage on successful completion - include original thread IDs
+            await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, $"threads={string.Join(",", threadIds)}");
             
             return response;
         }

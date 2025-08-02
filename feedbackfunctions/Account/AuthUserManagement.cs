@@ -340,45 +340,133 @@ public class AuthUserManagement
         {
             _logger.LogInformation("Deleting report requests for user {UserId}", userId);
             
-            var tableClient = _tableServiceClient.GetTableClient("ReportRequests");
+            var globalTableClient = _tableServiceClient.GetTableClient("reportrequests");
+            var userTableClient = _tableServiceClient.GetTableClient("userreportrequests");
             
-            // Try to ensure table exists, but continue if it doesn't
+            // Try to ensure tables exist, but continue if they don't
             try
             {
-                await tableClient.CreateIfNotExistsAsync();
+                await globalTableClient.CreateIfNotExistsAsync();
+                await userTableClient.CreateIfNotExistsAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Could not verify ReportRequests table existence, proceeding anyway");
+                _logger.LogWarning(ex, "Could not verify table existence, proceeding anyway");
             }
 
-            var deletedCount = 0;
+            var deletedUserRequestsCount = 0;
+            var updatedGlobalRequestsCount = 0;
+            var deletedGlobalRequestsCount = 0;
             
-            // Query for all report requests by this user
-            var query = tableClient.QueryAsync<ReportRequestModel>(
-                filter: $"CreatedBy eq '{userId}'");
+            // First, get all user report requests to track which global requests need updating
+            var userRequestsToDelete = new List<UserReportRequestModel>();
+            
+            try
+            {
+                // Query for all user report requests by this user
+                var userQuery = userTableClient.QueryAsync<UserReportRequestModel>(
+                    filter: $"PartitionKey eq '{userId}'");
 
-            await foreach (var reportRequest in query)
+                await foreach (var userRequest in userQuery)
+                {
+                    userRequestsToDelete.Add(userRequest);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error querying user report requests for user {UserId}", userId);
+            }
+
+            // Delete user requests and update corresponding global requests
+            foreach (var userRequest in userRequestsToDelete)
             {
                 try
                 {
-                    await tableClient.DeleteEntityAsync(reportRequest.PartitionKey, reportRequest.RowKey);
-                    deletedCount++;
-                    _logger.LogDebug("Deleted report request {RequestId} for user {UserId}", reportRequest.RowKey, userId);
+                    // Delete the user request
+                    await userTableClient.DeleteEntityAsync(userRequest.PartitionKey, userRequest.RowKey);
+                    deletedUserRequestsCount++;
+                    _logger.LogDebug("Deleted user report request {RequestId} for user {UserId}", userRequest.RowKey, userId);
+
+                    // Find and update the corresponding global request
+                    var globalRequestId = GenerateRequestId(new ReportRequestModel
+                    {
+                        Type = userRequest.Type,
+                        Subreddit = userRequest.Subreddit,
+                        Owner = userRequest.Owner,
+                        Repo = userRequest.Repo
+                    });
+
+                    var globalPartitionKey = userRequest.Type.ToLowerInvariant();
+                    
+                    try
+                    {
+                        // Query for the corresponding global request
+                        var globalQuery = globalTableClient.QueryAsync<ReportRequestModel>(
+                            filter: $"PartitionKey eq '{globalPartitionKey}' and RowKey eq '{globalRequestId}'",
+                            maxPerPage: 1);
+
+                        ReportRequestModel? globalRequest = null;
+                        await foreach (var entity in globalQuery)
+                        {
+                            globalRequest = entity;
+                            break;
+                        }
+
+                        if (globalRequest != null)
+                        {
+                            if (globalRequest.SubscriberCount > 1)
+                            {
+                                // Decrement subscriber count
+                                globalRequest.SubscriberCount--;
+                                await globalTableClient.UpdateEntityAsync(globalRequest, globalRequest.ETag);
+                                updatedGlobalRequestsCount++;
+                                _logger.LogDebug("Decremented subscriber count for global request {RequestId} to {Count}", globalRequestId, globalRequest.SubscriberCount);
+                            }
+                            else
+                            {
+                                // Delete global request if no more subscribers
+                                await globalTableClient.DeleteEntityAsync(globalRequest.PartitionKey, globalRequest.RowKey);
+                                deletedGlobalRequestsCount++;
+                                _logger.LogDebug("Deleted global request {RequestId} (no remaining subscribers)", globalRequestId);
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Could not find corresponding global request {RequestId} for user request", globalRequestId);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error updating global request {RequestId} for user {UserId}", globalRequestId, userId);
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Error deleting report request {RequestId} for user {UserId}", reportRequest.RowKey, userId);
+                    _logger.LogWarning(ex, "Error deleting user report request {RequestId} for user {UserId}", userRequest.RowKey, userId);
                 }
             }
 
-            _logger.LogInformation("Deleted {Count} report requests for user {UserId}", deletedCount, userId);
+            _logger.LogInformation("Completed report request cleanup for user {UserId}: deleted {UserCount} user requests, updated {UpdatedCount} global requests, deleted {DeletedCount} global requests", 
+                userId, deletedUserRequestsCount, updatedGlobalRequestsCount, deletedGlobalRequestsCount);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting report requests for user {UserId}", userId);
             // Don't throw - continue with other cleanup operations
         }
+    }
+
+    /// <summary>
+    /// Generate request ID based on request type and parameters (matches ReportRequestFunctions.cs logic)
+    /// </summary>
+    private static string GenerateRequestId(ReportRequestModel request)
+    {
+        var source = request.Type.ToLowerInvariant();
+        var identifier = request.Type == "reddit"
+            ? request.Subreddit?.ToLowerInvariant()
+            : $"{request.Owner?.ToLowerInvariant()}/{request.Repo?.ToLowerInvariant()}";
+
+        return $"{source}_{identifier}".Replace("/", "_");
     }
 
     /// <summary>
