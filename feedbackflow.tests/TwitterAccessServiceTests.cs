@@ -10,10 +10,10 @@ namespace FeedbackFlow.Tests;
 [TestClass]
 public class TwitterAccessServiceTests
 {
-    private ITwitterAccessService _twitterAccessService;
-    private IHttpClientFactory _httpClientFactory;
-    private IConfiguration _configuration;
-    private IAuthenticationHeaderService _authHeaderService;
+    private ITwitterAccessService? _twitterAccessService;
+    private IHttpClientFactory? _httpClientFactory;
+    private IConfiguration? _configuration;
+    private IAuthenticationHeaderService? _authHeaderService;
 
     [TestInitialize]
     public void Initialize()
@@ -23,9 +23,9 @@ public class TwitterAccessServiceTests
         _authHeaderService = Substitute.For<IAuthenticationHeaderService>();
 
         _twitterAccessService = new TwitterAccessService(
-            _httpClientFactory,
-            _configuration,
-            _authHeaderService);
+            _httpClientFactory!,
+            _configuration!,
+            _authHeaderService!);
     }
 
     [TestMethod]
@@ -36,7 +36,7 @@ public class TwitterAccessServiceTests
         var urls = new[] { "https://youtube.com/watch?v=123", "https://github.com/user/repo" };
 
         // Act
-        var (hasAccess, errorMessage) = await _twitterAccessService.CheckTwitterAccessAsync(urls);
+    var (hasAccess, errorMessage) = await _twitterAccessService!.CheckTwitterAccessAsync(urls);
 
         // Assert
         Assert.IsTrue(hasAccess);
@@ -51,10 +51,10 @@ public class TwitterAccessServiceTests
         var urls = new[] { "https://twitter.com/user/status/123456789", "https://youtube.com/watch?v=123" };
         
         // Mock configuration to return null for API calls, which should result in allowing access
-        _configuration["FeedbackApi:BaseUrl"].Returns((string?)null);
+    _configuration!["FeedbackApi:BaseUrl"].Returns((string?)null);
 
         // Act
-        var (hasAccess, errorMessage) = await _twitterAccessService.CheckTwitterAccessAsync(urls);
+    var (hasAccess, errorMessage) = await _twitterAccessService!.CheckTwitterAccessAsync(urls);
 
         // Assert
         // Should return true when configuration is not available (fallback behavior)
@@ -70,10 +70,10 @@ public class TwitterAccessServiceTests
         var urls = new[] { "https://x.com/user/status/123456789" };
         
         // Mock configuration to return null for API calls, which should result in allowing access
-        _configuration["FeedbackApi:BaseUrl"].Returns((string?)null);
+    _configuration!["FeedbackApi:BaseUrl"].Returns((string?)null);
 
         // Act
-        var (hasAccess, errorMessage) = await _twitterAccessService.CheckTwitterAccessAsync(urls);
+    var (hasAccess, errorMessage) = await _twitterAccessService!.CheckTwitterAccessAsync(urls);
 
         // Assert
         // Should return true when configuration is not available (fallback behavior)
@@ -89,7 +89,7 @@ public class TwitterAccessServiceTests
         var urls = Array.Empty<string>();
 
         // Act
-        var (hasAccess, errorMessage) = await _twitterAccessService.CheckTwitterAccessAsync(urls);
+    var (hasAccess, errorMessage) = await _twitterAccessService!.CheckTwitterAccessAsync(urls);
 
         // Assert
         Assert.IsTrue(hasAccess);
@@ -104,7 +104,7 @@ public class TwitterAccessServiceTests
         var urls = new[] { "", null, "   " };
 
         // Act
-        var (hasAccess, errorMessage) = await _twitterAccessService.CheckTwitterAccessAsync(urls!);
+    var (hasAccess, errorMessage) = await _twitterAccessService!.CheckTwitterAccessAsync(urls!);
 
         // Assert
         Assert.IsTrue(hasAccess);

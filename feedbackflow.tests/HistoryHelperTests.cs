@@ -7,7 +7,7 @@ namespace FeedbackFlow.Tests;
 [TestClass]
 public class HistoryHelperTests
 {
-    private HistoryHelper _historyHelper;
+    private HistoryHelper? _historyHelper;
 
     [TestInitialize]
     public void Setup()
@@ -23,7 +23,7 @@ public class HistoryHelperTests
 ###### Sixth Level Header";
 
         // Act
-        var result = _historyHelper.ConvertMarkdownToHtml(markdown);
+    var result = _historyHelper!.ConvertMarkdownToHtml(markdown);
 
         // Assert
         Assert.IsFalse(result.Contains("<h7>"), "Should not create H7 tags");
@@ -34,9 +34,9 @@ public class HistoryHelperTests
     public void ConvertMarkdownToHtml_ShouldHandleEmptyOrNullMarkdown()
     {
         // Arrange & Act
-        var result1 = _historyHelper.ConvertMarkdownToHtml(null);
-        var result2 = _historyHelper.ConvertMarkdownToHtml("");
-        var result3 = _historyHelper.ConvertMarkdownToHtml("   ");
+    var result1 = _historyHelper!.ConvertMarkdownToHtml(null);
+    var result2 = _historyHelper!.ConvertMarkdownToHtml("");
+    var result3 = _historyHelper!.ConvertMarkdownToHtml("   ");
 
         // Assert
         Assert.AreEqual("", result1);
