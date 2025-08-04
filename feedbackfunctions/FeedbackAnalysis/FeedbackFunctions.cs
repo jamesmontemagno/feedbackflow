@@ -737,4 +737,384 @@ public class FeedbackFunctions
             return response;
         }
     }
+
+    /// <summary>
+    /// Automatically analyzes feedback from any supported platform based on a single URL
+    /// </summary>
+    /// <param name="req">HTTP request containing the URL to analyze</param>
+    /// <returns>HTTP response with markdown-formatted analysis</returns>
+    /// <remarks>
+    /// Parameters:
+    /// - url: Required. URL from any supported platform (GitHub, YouTube, Reddit, DevBlogs, Twitter, BlueSky, HackerNews)
+    /// - maxComments: Optional. Maximum number of comments to analyze (default: 100)
+    /// - customPrompt: Optional. Custom analysis prompt to use
+    /// 
+    /// Example usage:
+    /// GET /api/AutoAnalyze?url=https://github.com/dotnet/maui/issues/123&maxComments=50
+    /// GET /api/AutoAnalyze?url=https://www.youtube.com/watch?v=VIDEO_ID
+    /// GET /api/AutoAnalyze?url=https://www.reddit.com/r/programming/comments/POST_ID/
+    /// </remarks>
+    [Function("AutoAnalyze")]
+    public async Task<HttpResponseData> AutoAnalyze(
+        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+    {
+        _logger.LogInformation("Processing auto-analyze request");
+
+        var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
+        var url = queryParams["url"];
+        var maxCommentsStr = queryParams["maxComments"];
+        var customPrompt = queryParams["customPrompt"];
+
+        if (string.IsNullOrEmpty(url))
+        {
+            var response = req.CreateResponse(HttpStatusCode.BadRequest);
+            await response.WriteStringAsync("'url' parameter is required");
+            return response;
+        }
+
+        var maxComments = int.TryParse(maxCommentsStr, out var max) ? max : 1000;
+
+        try
+        {
+            string serviceType;
+            object platformData;
+            string commentsText;
+
+            // Determine platform and get data
+            if (SharedDump.Utils.UrlParsing.IsGitHubUrl(url))
+            {
+                serviceType = "github";
+                platformData = await GetGitHubDataForAnalysis(url, maxComments);
+                commentsText = ConvertGitHubDataToCommentsText(platformData);
+            }
+            else if (SharedDump.Utils.UrlParsing.IsYouTubeUrl(url))
+            {
+                serviceType = "youtube";
+                platformData = await GetYouTubeDataForAnalysis(url, maxComments);
+                commentsText = ConvertYouTubeDataToCommentsText(platformData);
+            }
+            else if (SharedDump.Utils.UrlParsing.IsRedditUrl(url))
+            {
+                serviceType = "reddit";
+                platformData = await GetRedditDataForAnalysis(url, maxComments);
+                commentsText = ConvertRedditDataToCommentsText(platformData);
+            }
+            else if (SharedDump.Utils.UrlParsing.IsDevBlogsUrl(url))
+            {
+                serviceType = "devblogs";
+                platformData = await GetDevBlogsDataForAnalysis(url, maxComments);
+                commentsText = ConvertDevBlogsDataToCommentsText(platformData);
+            }
+            else if (SharedDump.Utils.UrlParsing.IsTwitterUrl(url))
+            {
+                serviceType = "twitter";
+                
+                platformData = await GetTwitterDataForAnalysis(url, maxComments);
+                commentsText = ConvertTwitterDataToCommentsText(platformData);
+            }
+            else if (SharedDump.Utils.UrlParsing.IsBlueSkyUrl(url))
+            {
+                serviceType = "bluesky";
+                platformData = await GetBlueSkyDataForAnalysis(url, maxComments);
+                commentsText = ConvertBlueSkyDataToCommentsText(platformData);
+            }
+            else if (SharedDump.Utils.UrlParsing.IsHackerNewsUrl(url))
+            {
+                serviceType = "hackernews";
+                var hackerNewsId = SharedDump.Utils.UrlParsing.ExtractHackerNewsId(url);
+                if (string.IsNullOrEmpty(hackerNewsId))
+                {
+                    var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await badResponse.WriteStringAsync("Could not extract Hacker News ID from URL");
+                    return badResponse;
+                }
+                platformData = await GetHackerNewsDataForAnalysis(hackerNewsId, maxComments);
+                commentsText = ConvertHackerNewsDataToCommentsText(platformData);
+            }
+            else
+            {
+                var response = req.CreateResponse(HttpStatusCode.BadRequest);
+                await response.WriteStringAsync("Unsupported URL format. Supported platforms: GitHub, YouTube, Reddit, DevBlogs, Twitter/X, BlueSky, Hacker News");
+                return response;
+            }
+
+            // Perform analysis using the AnalyzeComments logic
+            if (string.IsNullOrEmpty(commentsText))
+            {
+                var noCommentsResponse = req.CreateResponse(HttpStatusCode.OK);
+                await noCommentsResponse.WriteStringAsync("## No Comments Available\n\nThere are no comments to analyze at this time.");
+                return noCommentsResponse;
+            }
+
+            var analysisBuilder = new System.Text.StringBuilder();
+            await foreach (var update in _analyzerService.GetStreamingAnalysisAsync(
+                serviceType, 
+                commentsText,
+                customPrompt))
+            {
+                analysisBuilder.Append(update);
+            }
+
+            var successResponse = req.CreateResponse(HttpStatusCode.OK);
+            await successResponse.WriteStringAsync(analysisBuilder.ToString());
+            
+            return successResponse;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing auto-analyze request for URL: {Url}", url);
+            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await response.WriteStringAsync("An error occurred processing the request");
+            return response;
+        }
+    }
+
+    #region Helper Methods for AutoAnalyze
+
+    private async Task<object> GetGitHubDataForAnalysis(string url, int maxComments)
+    {
+        var urlInfo = SharedDump.Utils.GitHubUrlParser.ParseGitHubUrl(url);
+        if (urlInfo == null)
+            throw new InvalidOperationException("Invalid GitHub URL provided");
+
+        if (!await _githubService.CheckRepositoryValid(urlInfo.Owner, urlInfo.Repository))
+            throw new InvalidOperationException("Invalid repository");
+
+        object? result = urlInfo.Type switch
+        {
+            SharedDump.Utils.GitHubUrlType.Issue when urlInfo.Number.HasValue => 
+                await _githubService.GetIssueWithCommentsAsync(urlInfo.Owner, urlInfo.Repository, urlInfo.Number.Value),
+            SharedDump.Utils.GitHubUrlType.PullRequest when urlInfo.Number.HasValue => 
+                await _githubService.GetPullRequestWithCommentsAsync(urlInfo.Owner, urlInfo.Repository, urlInfo.Number.Value),
+            SharedDump.Utils.GitHubUrlType.Discussion when urlInfo.Number.HasValue => 
+                await _githubService.GetDiscussionWithCommentsAsync(urlInfo.Owner, urlInfo.Repository, urlInfo.Number.Value),
+            _ => throw new InvalidOperationException("URL must be a specific GitHub issue, pull request, or discussion")
+        };
+
+        if (result == null)
+            throw new InvalidOperationException("GitHub content not found");
+
+        return result;
+    }
+
+    private async Task<object> GetYouTubeDataForAnalysis(string url, int maxComments)
+    {
+        var videoId = SharedDump.Utils.UrlParsing.ExtractVideoId(url);
+        if (string.IsNullOrEmpty(videoId))
+            throw new InvalidOperationException("Could not extract YouTube video ID from URL");
+
+        var video = await _ytService.ProcessVideo(videoId);
+        if (video == null)
+            throw new InvalidOperationException("No YouTube video found");
+
+        // Limit comments to maxComments
+        if (video.Comments.Count > maxComments)
+        {
+            video.Comments = video.Comments.Take(maxComments).ToList();
+        }
+
+        return new List<YouTubeOutputVideo> { video };
+    }
+
+    private async Task<object> GetRedditDataForAnalysis(string url, int maxComments)
+    {
+        var threadId = SharedDump.Utils.UrlParsing.ExtractRedditId(url);
+        if (string.IsNullOrEmpty(threadId))
+            throw new InvalidOperationException("Could not extract Reddit thread ID from URL");
+
+        if (SharedDump.Utils.RedditUrlParser.IsRedditShortUrl(threadId))
+        {
+            var resolvedId = await SharedDump.Utils.RedditUrlParser.GetShortlinkIdAsync(threadId);
+            if (string.IsNullOrWhiteSpace(resolvedId))
+                throw new InvalidOperationException("Could not resolve Reddit short URL");
+            
+            threadId = resolvedId;
+        }
+
+        var thread = await _redditService.GetThreadWithComments(threadId);
+        if (thread == null)
+            throw new InvalidOperationException("No Reddit thread found");
+
+        return thread;
+    }
+
+    private async Task<object> GetDevBlogsDataForAnalysis(string url, int maxComments)
+    {
+        var article = await _devBlogsService.FetchArticleWithCommentsAsync(url);
+        if (article == null)
+            throw new InvalidOperationException("Could not fetch DevBlogs article or comments");
+
+        return article;
+    }
+
+    private async Task<object> GetTwitterDataForAnalysis(string url, int maxComments)
+    {
+        var result = await _twitterService.GetTwitterThreadAsync(url);
+        if (result == null)
+            throw new InvalidOperationException("Could not fetch Twitter/X feedback");
+
+        return result;
+    }
+
+    private async Task<object> GetBlueSkyDataForAnalysis(string url, int maxComments)
+    {
+        var result = await _blueSkyService.GetBlueSkyPostAsync(url);
+        if (result == null)
+            throw new InvalidOperationException("Could not fetch BlueSky feedback");
+
+        return result;
+    }
+
+    private async Task<object> GetHackerNewsDataForAnalysis(string storyId, int maxComments)
+    {
+        if (!int.TryParse(storyId, out var id))
+            throw new InvalidOperationException("Invalid Hacker News story ID");
+
+        var items = _hnService.GetItemWithComments(id);
+        var itemsList = new List<HackerNewsItem>();
+        await foreach (var item in items)
+        {
+            itemsList.Add(item);
+        }
+        
+        if (!itemsList.Any())
+            throw new InvalidOperationException("No Hacker News story found");
+
+        return itemsList;
+    }
+
+    private string ConvertGitHubDataToCommentsText(object data)
+    {
+        return data switch
+        {
+            GithubIssueModel issue => ConvertGitHubIssuesToCommentsText(new[] { issue }),
+            GithubDiscussionModel discussion => ConvertGitHubDiscussionsToCommentsText(new[] { discussion }),
+            _ => JsonSerializer.Serialize(data)
+        };
+    }
+
+    private string ConvertGitHubIssuesToCommentsText(GithubIssueModel[] issues)
+    {
+        var threads = SharedDump.Services.CommentDataConverter.ConvertGitHubIssues(issues.ToList());
+        return ConvertCommentThreadsToText(threads);
+    }
+
+    private string ConvertGitHubDiscussionsToCommentsText(GithubDiscussionModel[] discussions)
+    {
+        var threads = SharedDump.Services.CommentDataConverter.ConvertGitHubDiscussions(discussions.ToList());
+        return ConvertCommentThreadsToText(threads);
+    }
+
+    private string ConvertYouTubeDataToCommentsText(object data)
+    {
+        if (data is List<YouTubeOutputVideo> videos)
+        {
+            var threads = SharedDump.Services.CommentDataConverter.ConvertYouTube(videos);
+            return ConvertCommentThreadsToText(threads);
+        }
+        return JsonSerializer.Serialize(data);
+    }
+
+    private string ConvertRedditDataToCommentsText(object data)
+    {
+        if (data is RedditThreadModel thread)
+        {
+            var threads = SharedDump.Services.CommentDataConverter.ConvertReddit(new List<RedditThreadModel> { thread });
+            return ConvertCommentThreadsToText(threads);
+        }
+        return JsonSerializer.Serialize(data);
+    }
+
+    private string ConvertDevBlogsDataToCommentsText(object data)
+    {
+        if (data is DevBlogsArticleModel article)
+        {
+            var threads = SharedDump.Services.CommentDataConverter.ConvertDevBlogs(article);
+            return ConvertCommentThreadsToText(threads);
+        }
+        return JsonSerializer.Serialize(data);
+    }
+
+    private string ConvertTwitterDataToCommentsText(object data)
+    {
+        // For Twitter, we'll serialize the data since it has a specific structure expected by the analyzer
+        return JsonSerializer.Serialize(data);
+    }
+
+    private string ConvertBlueSkyDataToCommentsText(object data)
+    {
+        if (data is BlueSkyFeedbackResponse response)
+        {
+            var threads = SharedDump.Services.CommentDataConverter.ConvertBlueSky(response);
+            return ConvertCommentThreadsToText(threads);
+        }
+        return JsonSerializer.Serialize(data);
+    }
+
+    private string ConvertHackerNewsDataToCommentsText(object data)
+    {
+        if (data is List<HackerNewsItem> items)
+        {
+            var threads = SharedDump.Services.CommentDataConverter.ConvertHackerNews(items);
+            return ConvertCommentThreadsToText(threads);
+        }
+        return JsonSerializer.Serialize(data);
+    }
+
+    private string ConvertCommentThreadsToText(List<CommentThread> threads)
+    {
+        if (!threads.Any())
+            return string.Empty;
+
+        var result = new System.Text.StringBuilder();
+
+        foreach (var thread in threads)
+        {
+            result.AppendLine($"# {thread.Title}");
+            if (!string.IsNullOrEmpty(thread.Description))
+            {
+                result.AppendLine($"Description: {thread.Description}");
+            }
+            result.AppendLine($"Author: {thread.Author}");
+            result.AppendLine($"Created: {thread.CreatedAt:yyyy-MM-dd HH:mm:ss}");
+            result.AppendLine($"Source: {thread.SourceType}");
+            if (!string.IsNullOrEmpty(thread.Url))
+            {
+                result.AppendLine($"URL: {thread.Url}");
+            }
+            result.AppendLine();
+
+            if (thread.Comments.Any())
+            {
+                result.AppendLine("## Comments");
+                AppendCommentsToText(result, thread.Comments, 0);
+            }
+
+            result.AppendLine("---");
+        }
+
+        return result.ToString();
+    }
+
+    private void AppendCommentsToText(System.Text.StringBuilder result, List<CommentData> comments, int depth)
+    {
+        foreach (var comment in comments)
+        {
+            var indent = new string(' ', depth * 2);
+            result.AppendLine($"{indent}**{comment.Author}** ({comment.CreatedAt:yyyy-MM-dd HH:mm:ss}):");
+            result.AppendLine($"{indent}{comment.Content}");
+            if (comment.Score.HasValue)
+            {
+                result.AppendLine($"{indent}Score: {comment.Score}");
+            }
+            result.AppendLine();
+
+            if (comment.Replies.Any())
+            {
+                AppendCommentsToText(result, comment.Replies, depth + 1);
+            }
+        }
+    }
+
+    #endregion
 }
