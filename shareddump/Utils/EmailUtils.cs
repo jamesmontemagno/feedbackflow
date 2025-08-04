@@ -258,4 +258,184 @@ public static class EmailUtils
 
         return emailBuilder.ToString();
     }
+
+    /// <summary>
+    /// Generates a concise Reddit report summary with stats, top posts, and weekly summary only
+    /// </summary>
+    public static string GenerateRedditReportSummary(
+        string subreddit, 
+        DateTimeOffset cutoffDate, 
+        string weeklyAnalysis, 
+        List<(RedditThreadModel Thread, string Analysis)> threadAnalyses,
+        string reportId,
+        RedditSubredditInfo subredditInfo,
+        int newThreadsCount,
+        int totalCommentsCount,
+        int totalUpvotes,
+        string fullReportUrl)
+    {
+        var emailBuilder = new StringBuilder();
+        emailBuilder.AppendLine(@"<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>r/" + subreddit + @" Summary Report</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #FF4500; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+        .section { margin-bottom: 30px; }
+        .analysis { background-color: #fff; padding: 15px; border-left: 4px solid #FF4500; margin: 10px 0; }
+        .top-posts { background-color: #fff3e0; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .feedback-button { 
+            display: inline-block; 
+            background-color: #0366d6; 
+            color: white; 
+            padding: 8px 16px; 
+            border-radius: 4px; 
+            text-decoration: none; 
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        .feedback-button:hover {
+            background-color: #0255b3;
+        }
+        .stats-section { 
+            background-color: #f8f9fa; 
+            padding: 20px; 
+            border-radius: 5px; 
+            margin: 20px 0; 
+            border-left: 4px solid #FF4500; 
+        }
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 15px; 
+            margin-top: 15px; 
+        }
+        .stat-item { 
+            background-color: white; 
+            padding: 15px; 
+            border-radius: 5px; 
+            text-align: center; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        .stat-number { 
+            font-size: 2em; 
+            font-weight: bold; 
+            color: #FF4500; 
+            display: block; 
+        }
+        .stat-label { 
+            color: #666; 
+            font-size: 0.9em; 
+            margin-top: 5px; 
+        }
+        .full-report-cta {
+            background-color: #e8f4fd;
+            border: 2px solid #0366d6;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 30px 0;
+        }
+        .full-report-button {
+            display: inline-block;
+            background-color: #0366d6;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-top: 10px;
+        }
+        .full-report-button:hover {
+            background-color: #0255b3;
+        }
+    </style>
+</head>
+<body>");
+
+        // Header
+        emailBuilder.AppendFormat(@"    <div class='header'>
+        <h1>📊 r/<a href='https://reddit.com/r/{0}' style='color: white; text-decoration: none;'>{0}</a> Summary</h1>
+        <p>Quick insights for {1:MMMM dd, yyyy} - {2:MMMM dd, yyyy} • {4:n0} total members</p>
+        <div style='margin-top: 15px;'>
+            <a href='{5}' class='feedback-button' style='background-color: white; color: #FF4500;'>📖 View Full Report</a>
+        </div>
+    </div>", subreddit, cutoffDate, DateTimeOffset.UtcNow, reportId, subredditInfo.Subscribers, fullReportUrl);
+
+        // Subreddit Stats Section
+        emailBuilder.AppendFormat(@"
+    <div class='stats-section'>
+        <h2>📊 r/{0} Statistics</h2>
+        <div class='stats-grid'>
+            <div class='stat-item'>
+                <span class='stat-number'>{1:n0}</span>
+                <div class='stat-label'>📝 New Threads (7 days)</div>
+            </div>
+            <div class='stat-item'>
+                <span class='stat-number'>{2:n0}</span>
+                <div class='stat-label'>💬 Total Comments</div>
+            </div>
+            <div class='stat-item'>
+                <span class='stat-number'>{3:n0}</span>
+                <div class='stat-label'>⬆️ Total Upvotes</div>
+            </div>
+        </div>
+        <p style='margin-top: 15px; color: #666; font-size: 0.9em;'><strong>{4}</strong> - {5}</p>
+    </div>", 
+            subreddit, newThreadsCount, totalCommentsCount, totalUpvotes, 
+            subredditInfo.Title, subredditInfo.PublicDescription);
+
+        // Top Posts Quick Links
+        emailBuilder.AppendLine(@"
+    <div class='top-posts'>
+        <h2>🔝 Top Posts This Week</h2>
+        <ul>");
+        foreach (var (thread, _) in threadAnalyses)
+        {
+            emailBuilder.AppendFormat(@"
+            <li><a href='{0}'>{1}</a> ({2:n0} points, {3:n0} comments)</li>",
+                thread.Url,
+                thread.Title,
+                thread.Score,
+                thread.NumComments);
+        }
+        emailBuilder.AppendLine(@"
+        </ul>
+    </div>");
+
+        // Weekly Analysis Section
+        emailBuilder.AppendLine(@"
+    <div class='section' id='weekly-summary'>
+        <h2>📝 Weekly Summary</h2>
+        <div class='analysis'>");
+        emailBuilder.AppendLine(ConvertMarkdownToHtml(weeklyAnalysis));
+        emailBuilder.AppendLine(@"
+        </div>
+    </div>");
+
+        // Full Report CTA
+        emailBuilder.AppendFormat(@"
+    <div class='full-report-cta'>
+        <h3>🔍 Want More Details?</h3>
+        <p>This is a summary report. For detailed analysis including top comments and full thread discussions, check out the complete report.</p>
+        <a href='{0}' class='full-report-button'>View Full Report</a>
+    </div>", fullReportUrl);
+
+        // Footer
+        emailBuilder.AppendFormat(@"
+    <div style='text-align: center; color: #7c7c7c; font-size: 0.9em; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;'>
+        <div style='margin-bottom: 15px;'>
+            <a href='{0}' class='feedback-button' style='background-color: #0366d6; color: white;'>📖 View Full Report</a>
+        </div>
+        <p>Generated by FeedbackFlow 🥰</p>
+    </div>
+</body>
+</html>", fullReportUrl);
+
+        return emailBuilder.ToString();
+    }
 }

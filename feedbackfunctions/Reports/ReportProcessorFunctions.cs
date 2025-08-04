@@ -75,9 +75,7 @@ public class ReportProcessorFunctions
         _serviceClient = new BlobServiceClient(storageConnection);
 
         // Initialize report generator
-        var reportsContainerClient = _serviceClient.GetBlobContainerClient("reports");
-        reportsContainerClient.CreateIfNotExists();
-        _reportGenerator = new ReportGenerator(_logger, redditService, githubService, analyzerService, reportsContainerClient, _cacheService);
+        _reportGenerator = new ReportGenerator(_logger, redditService, githubService, analyzerService, _serviceClient, _cacheService);
     }
 
     /// <summary>
@@ -293,6 +291,89 @@ public class ReportProcessorFunctions
                 repoOwner, repoName, DateTime.UtcNow - startTime);
             var response = req.CreateResponse(HttpStatusCode.InternalServerError);
             await response.WriteStringAsync($"Error processing report: {ex.Message}");
+            return response;
+        }
+    }
+
+    /// <summary>
+    /// Generates a summary version of a Reddit report with stats, top posts, and weekly summary only
+    /// </summary>
+    /// <param name="req">HTTP request with query parameters</param>
+    /// <returns>HTTP response with a summary HTML-formatted report</returns>
+    /// <remarks>
+    /// Query parameters:
+    /// - subreddit: Required. The name of the subreddit to analyze
+    /// - force: Optional. If true, bypasses cache and forces new report generation (default: false)
+    /// 
+    /// The function fetches a recent summary report (within last 24 hours) or generates a new one.
+    /// Summary reports contain only essential information: statistics, top posts, and weekly summary.
+    /// </remarks>
+    /// <example>
+    /// GET /api/RedditReportSummary?subreddit=dotnet&amp;force=true
+    /// </example>
+    [Function("RedditReportSummary")]
+    public async Task<HttpResponseData> RedditReportSummary(
+        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+    {
+        var startTime = DateTime.UtcNow;
+        _logger.LogInformation("Starting Reddit Summary Report processing for URL {RequestUrl}", req.Url);
+
+        var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
+        var subreddit = queryParams["subreddit"];
+        var forceParam = queryParams["force"];
+        var force = bool.TryParse(forceParam, out var parsedForce) && parsedForce;
+
+        if (string.IsNullOrEmpty(subreddit))
+        {
+            _logger.LogWarning("Reddit Summary Report request rejected - missing subreddit parameter");
+            var response = req.CreateResponse(HttpStatusCode.BadRequest);
+            await response.WriteStringAsync("Subreddit parameter is required");
+            return response;
+        }
+
+        try
+        {
+            // First, check if we have a recent summary report (last 24 hours) unless forced
+            var recentSummaryReport = force ? null : await _reportGenerator.GetRecentSummaryReportAsync("reddit", subreddit);
+            ReportModel summaryReport;
+
+            if (recentSummaryReport != null)
+            {
+                _logger.LogInformation("Using existing summary report {ReportId} for r/{Subreddit} generated {TimeSinceGeneration} ago", 
+                    recentSummaryReport.Id, subreddit, DateTime.UtcNow - recentSummaryReport.GeneratedAt);
+                summaryReport = recentSummaryReport;
+            }
+            else
+            {
+                var logMessage = force 
+                    ? "Force parameter specified, generating new summary report for r/{Subreddit}" 
+                    : "No recent summary report found for r/{Subreddit}, generating new summary report";
+                _logger.LogInformation(logMessage, subreddit);
+                
+                // Generate a full report which will automatically create a summary report
+                var cutoffDate = DateTimeOffset.UtcNow.AddDays(-7);
+                var fullReport = await _reportGenerator.GenerateRedditReportAsync(subreddit, cutoffDate, storeToBlob: true);
+                
+                // Get the summary report that was just created
+                summaryReport = await _reportGenerator.GetRecentSummaryReportAsync("reddit", subreddit) ?? 
+                    throw new InvalidOperationException("Summary report was not created as expected");
+            }
+
+            var processingTime = DateTime.UtcNow - startTime;
+            _logger.LogInformation("Reddit Summary Report processing completed for r/{Subreddit} in {ProcessingTime:c}", 
+                subreddit, processingTime);
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            response.Headers.Add("Content-Type", "text/html; charset=utf-8");
+            await response.WriteStringAsync(summaryReport.HtmlContent ?? string.Empty);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing Reddit summary report for r/{Subreddit}. Processing time: {ProcessingTime:c}", 
+                subreddit, DateTime.UtcNow - startTime);
+            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await response.WriteStringAsync($"Error processing summary report: {ex.Message}");
             return response;
         }
     }

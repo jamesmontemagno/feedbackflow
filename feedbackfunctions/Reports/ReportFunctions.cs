@@ -89,7 +89,7 @@ public class ReportingFunctions
         _containerClient.CreateIfNotExists();
 
         // Initialize report generator
-        _reportGenerator = new ReportGenerator(_logger, _redditService, _githubService, _analyzerService, _containerClient, _cacheService);
+        _reportGenerator = new ReportGenerator(_logger, _redditService, _githubService, _analyzerService, serviceClient, _cacheService);
     }
 
   
