@@ -18,10 +18,10 @@ namespace FeedbackFunctions.Reports;
 /// All endpoints require admin-level authentication and authorization.
 /// 
 /// Routes:
-/// - GET    /api/admin/get-reports        - Get all admin report configurations
-/// - POST   /api/admin/create-report      - Create a new admin report configuration
-/// - PUT    /api/admin/update-report/{id} - Update an existing admin report configuration
-/// - DELETE /api/admin/delete-report/{id} - Delete an admin report configuration
+/// - GET    /api/GetAdminReportConfigs               - Get all admin report configurations
+/// - POST   /api/CreateAdminReportConfig             - Create a new admin report configuration
+/// - PUT    /api/UpdateAdminReportConfig?id={id}     - Update an existing admin report configuration
+/// - DELETE /api/DeleteAdminReportConfig?id={id}     - Delete an admin report configuration
 /// </summary>
 public class AdminReportConfigFunctions
 {
@@ -44,12 +44,12 @@ public class AdminReportConfigFunctions
 
     /// <summary>
     /// Get all admin report configurations (Admin only)
-    /// GET /api/admin/get-reports
+    /// GET /api/GetAdminReportConfigs
     /// </summary>
     [Function("GetAdminReportConfigs")]
     [Authorize]
     public async Task<HttpResponseData> GetAdminReportConfigsAsync(
-        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "admin/get-reports")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
         try
         {
@@ -90,12 +90,12 @@ public class AdminReportConfigFunctions
 
     /// <summary>
     /// Create a new admin report configuration (Admin only)
-    /// POST /api/admin/create-report
+    /// POST /api/CreateAdminReportConfig
     /// </summary>
     [Function("CreateAdminReportConfig")]
     [Authorize]
     public async Task<HttpResponseData> CreateAdminReportConfigAsync(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "admin/create-report")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
         try
         {
@@ -180,16 +180,27 @@ public class AdminReportConfigFunctions
 
     /// <summary>
     /// Update an existing admin report configuration (Admin only)
-    /// PUT /api/admin/update-report/{id}
+    /// PUT /api/UpdateAdminReportConfig?id={id}
     /// </summary>
     [Function("UpdateAdminReportConfig")]
     [Authorize]
     public async Task<HttpResponseData> UpdateAdminReportConfigAsync(
-        [HttpTrigger(AuthorizationLevel.Function, "put", Route = "admin/update-report/{id}")] HttpRequestData req,
-        string id)
+        [HttpTrigger(AuthorizationLevel.Function, "put")] HttpRequestData req)
     {
+        string? id = null;
         try
         {
+            // Get ID from query string
+            var query = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
+            id = query["id"];
+            
+            if (string.IsNullOrEmpty(id))
+            {
+                var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await badRequestResponse.WriteStringAsync("ID parameter is required in query string");
+                return badRequestResponse;
+            }
+
             _logger.LogInformation("UpdateAdminReportConfig function triggered for ID {Id}", id);
 
             // Get authenticated user and verify admin access
@@ -261,16 +272,27 @@ public class AdminReportConfigFunctions
 
     /// <summary>
     /// Delete an admin report configuration (Admin only)
-    /// DELETE /api/admin/delete-report/{id}
+    /// DELETE /api/DeleteAdminReportConfig?id={id}
     /// </summary>
     [Function("DeleteAdminReportConfig")]
     [Authorize]
     public async Task<HttpResponseData> DeleteAdminReportConfigAsync(
-        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "admin/delete-report/{id}")] HttpRequestData req,
-        string id)
+        [HttpTrigger(AuthorizationLevel.Function, "delete")] HttpRequestData req)
     {
+        string? id = null;
         try
         {
+            // Get ID from query string
+            var query = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
+            id = query["id"];
+            
+            if (string.IsNullOrEmpty(id))
+            {
+                var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await badRequestResponse.WriteStringAsync("ID parameter is required in query string");
+                return badRequestResponse;
+            }
+
             _logger.LogInformation("DeleteAdminReportConfig function triggered for ID {Id}", id);
 
             // Get authenticated user and verify admin access

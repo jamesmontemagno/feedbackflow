@@ -18,10 +18,10 @@ namespace FeedbackWebApp.Services;
 /// - JSON serialization/deserialization
 /// 
 /// API Endpoints:
-/// - GET    /api/admin/get-reports        - Get all admin report configurations
-/// - POST   /api/admin/create-report      - Create a new admin report configuration
-/// - PUT    /api/admin/update-report/{id} - Update an existing admin report configuration
-/// - DELETE /api/admin/delete-report/{id} - Delete an admin report configuration
+/// - GET    /api/GetAdminReportConfigs               - Get all admin report configurations
+/// - POST   /api/CreateAdminReportConfig             - Create a new admin report configuration
+/// - PUT    /api/UpdateAdminReportConfig?id={id}     - Update an existing admin report configuration
+/// - DELETE /api/DeleteAdminReportConfig?id={id}     - Delete an admin report configuration
 /// </summary>
 
 public class AdminReportConfigService : IAdminReportConfigService
@@ -59,7 +59,7 @@ public class AdminReportConfigService : IAdminReportConfigService
         try
         {
             var request = new HttpRequestMessage(HttpMethod.Get, 
-                $"{_baseUrl}/api/admin/get-reports?code={Uri.EscapeDataString(_functionsKey)}");
+                $"{_baseUrl}/api/GetAdminReportConfigs?code={Uri.EscapeDataString(_functionsKey)}");
             await _headerService.AddAuthenticationHeadersAsync(request);
             
             var response = await _httpClient.SendAsync(request);
@@ -99,7 +99,7 @@ public class AdminReportConfigService : IAdminReportConfigService
             var content = new StringContent(json, Encoding.UTF8, MediaTypeNames.Application.Json);
             
             var request = new HttpRequestMessage(HttpMethod.Post, 
-                $"{_baseUrl}/api/admin/create-report?code={Uri.EscapeDataString(_functionsKey)}")
+                $"{_baseUrl}/api/CreateAdminReportConfig?code={Uri.EscapeDataString(_functionsKey)}")
             {
                 Content = content
             };
@@ -144,7 +144,7 @@ public class AdminReportConfigService : IAdminReportConfigService
             var content = new StringContent(json, Encoding.UTF8, MediaTypeNames.Application.Json);
             
             var request = new HttpRequestMessage(HttpMethod.Put, 
-                $"{_baseUrl}/api/admin/update-report/{Uri.EscapeDataString(config.Id)}?code={Uri.EscapeDataString(_functionsKey)}")
+                $"{_baseUrl}/api/UpdateAdminReportConfig?id={Uri.EscapeDataString(config.Id)}&code={Uri.EscapeDataString(_functionsKey)}")
             {
                 Content = content
             };
@@ -187,7 +187,7 @@ public class AdminReportConfigService : IAdminReportConfigService
         try
         {
             var request = new HttpRequestMessage(HttpMethod.Delete, 
-                $"{_baseUrl}/api/admin/delete-report/{Uri.EscapeDataString(id)}?code={Uri.EscapeDataString(_functionsKey)}");
+                $"{_baseUrl}/api/DeleteAdminReportConfig?id={Uri.EscapeDataString(id)}&code={Uri.EscapeDataString(_functionsKey)}");
             await _headerService.AddAuthenticationHeadersAsync(request);
             
             var response = await _httpClient.SendAsync(request);
