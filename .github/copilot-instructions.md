@@ -278,6 +278,92 @@ else
 }
 ```
 
+### New Service Creation Pattern
+When creating new services that communicate with Azure Functions, follow this pattern:
+
+**1. Service Interface & Implementation:**
+```csharp
+public class MyService : IMyService
+{
+    private readonly HttpClient _httpClient;
+    private readonly IAuthenticationHeaderService _headerService;
+    private readonly ILogger<MyService> _logger;
+    private readonly string _baseUrl;
+    private readonly string _functionsKey;
+
+    public MyService(
+        HttpClient httpClient,
+        IAuthenticationHeaderService headerService,
+        ILogger<MyService> logger,
+        IConfiguration configuration)
+    {
+        _httpClient = httpClient;
+        _headerService = headerService;
+        _logger = logger;
+        _baseUrl = configuration["FeedbackApi:BaseUrl"]
+            ?? throw new InvalidOperationException("FeedbackApi:BaseUrl not configured");
+        _functionsKey = configuration["FeedbackApi:FunctionsKey"]
+            ?? throw new InvalidOperationException("FeedbackApi:FunctionsKey not configured");
+    }
+}
+```
+
+**2. API Calls with Authentication:**
+```csharp
+var request = new HttpRequestMessage(HttpMethod.Get, 
+    $"{_baseUrl}/api/MyEndpoint?code={Uri.EscapeDataString(_functionsKey)}");
+await _headerService.AddAuthenticationHeadersAsync(request);
+var response = await _httpClient.SendAsync(request);
+```
+
+**3. Mock Service Implementation:**
+```csharp
+public class MockMyService : IMyService
+{
+    private readonly ILogger<MockMyService> _logger;
+    
+    public MockMyService(ILogger<MockMyService> logger)
+    {
+        _logger = logger;
+    }
+    
+    public async Task<SomeModel> GetDataAsync()
+    {
+        await Task.Delay(200); // Simulate network delay
+        _logger.LogInformation("Mock: Returning sample data");
+        return new SomeModel(); // Return mock data
+    }
+}
+```
+
+**4. Service Registration in Program.cs:**
+```csharp
+builder.Services.AddScoped<IMyService>(serviceProvider =>
+{
+    if (useMocks)
+    {
+        var logger = serviceProvider.GetRequiredService<ILogger<MockMyService>>();
+        return new MockMyService(logger);
+    }
+    else
+    {
+        var httpClient = serviceProvider.GetRequiredService<IHttpClientFactory>().CreateClient("DefaultClient");
+        var headerService = serviceProvider.GetRequiredService<IAuthenticationHeaderService>();
+        var logger = serviceProvider.GetRequiredService<ILogger<MyService>>();
+        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+        return new MyService(httpClient, headerService, logger, configuration);
+    }
+});
+```
+
+**Key Requirements:**
+- Always use `Configuration["FeedbackApi:BaseUrl"]` for base URL
+- Always use `Configuration["FeedbackApi:FunctionsKey"]` and add as `?code=` query parameter
+- Always add authentication headers via `IAuthenticationHeaderService`
+- Always use the "DefaultClient" HttpClient from factory
+- Always create corresponding mock service for development
+- Always register both real and mock services conditionally based on `useMocks`
+
 ### Blazor Component Structure
 - **Page Components**: Located in `Components/Pages/`, include `@namespace` declarations
 - **Shared Components**: In `Components/Shared/`, reusable across pages
