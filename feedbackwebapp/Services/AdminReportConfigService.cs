@@ -11,15 +11,23 @@ public class AdminReportConfigService : IAdminReportConfigService
     private readonly IAuthenticationHeaderService _headerService;
     private readonly ILogger<AdminReportConfigService> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly string _baseUrl;
+    private readonly string _functionsKey;
 
     public AdminReportConfigService(
         HttpClient httpClient, 
         IAuthenticationHeaderService headerService,
-        ILogger<AdminReportConfigService> logger)
+        ILogger<AdminReportConfigService> logger,
+        IConfiguration configuration)
     {
         _httpClient = httpClient;
         _headerService = headerService;
         _logger = logger;
+        _baseUrl = configuration["FeedbackApi:BaseUrl"]
+            ?? throw new InvalidOperationException("FeedbackApi:BaseUrl not configured");
+        _functionsKey = configuration["FeedbackApi:FunctionsKey"]
+            ?? throw new InvalidOperationException("FeedbackApi:FunctionsKey not configured");
+        
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
@@ -31,7 +39,7 @@ public class AdminReportConfigService : IAdminReportConfigService
     {
         try
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, "api/GetAdminReportConfigs");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/api/GetAdminReportConfigs?code={Uri.EscapeDataString(_functionsKey)}");
             await _headerService.AddAuthenticationHeadersAsync(request);
 
             var response = await _httpClient.SendAsync(request);
@@ -67,7 +75,7 @@ public class AdminReportConfigService : IAdminReportConfigService
             var json = JsonSerializer.Serialize(config, _jsonOptions);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var request = new HttpRequestMessage(HttpMethod.Post, "api/CreateAdminReportConfig")
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/api/CreateAdminReportConfig?code={Uri.EscapeDataString(_functionsKey)}")
             {
                 Content = content
             };
@@ -103,7 +111,7 @@ public class AdminReportConfigService : IAdminReportConfigService
             var json = JsonSerializer.Serialize(config, _jsonOptions);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var request = new HttpRequestMessage(HttpMethod.Put, $"api/admin-report-configs/{config.Id}")
+            var request = new HttpRequestMessage(HttpMethod.Put, $"{_baseUrl}/api/admin-report-configs/{config.Id}?code={Uri.EscapeDataString(_functionsKey)}")
             {
                 Content = content
             };
@@ -136,7 +144,7 @@ public class AdminReportConfigService : IAdminReportConfigService
     {
         try
         {
-            var request = new HttpRequestMessage(HttpMethod.Delete, $"api/admin-report-configs/{id}");
+            var request = new HttpRequestMessage(HttpMethod.Delete, $"{_baseUrl}/api/admin-report-configs/{id}?code={Uri.EscapeDataString(_functionsKey)}");
             await _headerService.AddAuthenticationHeadersAsync(request);
 
             var response = await _httpClient.SendAsync(request);

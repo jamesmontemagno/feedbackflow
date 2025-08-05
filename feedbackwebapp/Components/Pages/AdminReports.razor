@@ -193,6 +193,10 @@
                                 <label class="form-label">Subreddit <span class="text-danger">*</span></label>
                                 <InputText @bind-Value="currentConfig.Subreddit" class="form-control" placeholder="e.g., dotnet" />
                                 <div class="form-text">Enter the subreddit name without the "r/" prefix</div>
+                                @if (string.IsNullOrWhiteSpace(currentConfig.Subreddit))
+                                {
+                                    <div class="text-danger">Subreddit is required for Reddit reports</div>
+                                }
                             </div>
                         }
                         else if (currentConfig.Type == "github")
@@ -201,10 +205,18 @@
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Owner <span class="text-danger">*</span></label>
                                     <InputText @bind-Value="currentConfig.Owner" class="form-control" placeholder="e.g., microsoft" />
+                                    @if (string.IsNullOrWhiteSpace(currentConfig.Owner))
+                                    {
+                                        <div class="text-danger">Owner is required for GitHub reports</div>
+                                    }
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Repository <span class="text-danger">*</span></label>
                                     <InputText @bind-Value="currentConfig.Repo" class="form-control" placeholder="e.g., dotnet" />
+                                    @if (string.IsNullOrWhiteSpace(currentConfig.Repo))
+                                    {
+                                        <div class="text-danger">Repository is required for GitHub reports</div>
+                                    }
                                 </div>
                             </div>
                         }
@@ -364,12 +376,50 @@
             isSaving = true;
             errorMessage = string.Empty;
 
+            // Basic validation
+            if (string.IsNullOrWhiteSpace(currentConfig.Name))
+            {
+                errorMessage = "Report name is required.";
+                await ToastService.ShowErrorAsync("Report name is required");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(currentConfig.Type))
+            {
+                errorMessage = "Report type is required.";
+                await ToastService.ShowErrorAsync("Report type is required");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(currentConfig.EmailRecipient))
+            {
+                errorMessage = "Email recipient is required.";
+                await ToastService.ShowErrorAsync("Email recipient is required");
+                return;
+            }
+
+            // Type-specific validation
+            if (currentConfig.Type == "reddit" && string.IsNullOrWhiteSpace(currentConfig.Subreddit))
+            {
+                errorMessage = "Subreddit is required for Reddit reports.";
+                await ToastService.ShowErrorAsync("Subreddit is required for Reddit reports");
+                return;
+            }
+
+            if (currentConfig.Type == "github" && 
+                (string.IsNullOrWhiteSpace(currentConfig.Owner) || string.IsNullOrWhiteSpace(currentConfig.Repo)))
+            {
+                errorMessage = "Owner and Repository are required for GitHub reports.";
+                await ToastService.ShowErrorAsync("Owner and Repository are required for GitHub reports");
+                return;
+            }
+
             if (editingConfig == null)
             {
                 // Create new config
                 var createdConfig = await AdminReportConfigService.CreateConfigAsync(currentConfig);
                 configs.Add(createdConfig);
-                ToastService.ShowSuccessAsync("Report configuration created successfully!");
+                await ToastService.ShowSuccessAsync("Report configuration created successfully!");
             }
             else
             {
@@ -380,15 +430,19 @@
                 {
                     configs[index] = updatedConfig;
                 }
-                ToastService.ShowSuccessAsync("Report configuration updated successfully!");
+                await ToastService.ShowSuccessAsync("Report configuration updated successfully!");
             }
 
             HideModal();
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error saving report configuration: {ex.Message}";
-            ToastService.ShowErrorAsync("Failed to save report configuration");
+            var detailedError = ex.InnerException?.Message ?? ex.Message;
+            errorMessage = $"Error saving report configuration: {detailedError}";
+            await ToastService.ShowErrorAsync($"Failed to save: {detailedError}");
+            
+            // Log to console for debugging
+            Console.WriteLine($"SaveConfig Error: {ex}");
         }
         finally
         {
@@ -409,18 +463,18 @@
                 if (success)
                 {
                     configs.Remove(config);
-                    ToastService.ShowSuccessAsync("Report configuration deleted successfully!");
+                    await ToastService.ShowSuccessAsync("Report configuration deleted successfully!");
                 }
                 else
                 {
-                    ToastService.ShowErrorAsync("Failed to delete report configuration");
+                    await ToastService.ShowErrorAsync("Failed to delete report configuration");
                 }
             }
         }
         catch (Exception ex)
         {
             errorMessage = $"Error deleting report configuration: {ex.Message}";
-            ToastService.ShowErrorAsync("Failed to delete report configuration");
+            await ToastService.ShowErrorAsync("Failed to delete report configuration");
         }
     }
 }

@@ -80,10 +80,19 @@ builder.Services.AddScoped<IReportServiceProvider, ReportServiceProvider>();
 builder.Services.AddScoped<IReportRequestService, ReportRequestService>();
 builder.Services.AddScoped<FeedbackWebApp.Services.IAdminReportConfigService>(serviceProvider =>
 {
-    var httpClient = serviceProvider.GetRequiredService<IHttpClientFactory>().CreateClient("DefaultClient");
-    var headerService = serviceProvider.GetRequiredService<IAuthenticationHeaderService>();
-    var logger = serviceProvider.GetRequiredService<ILogger<AdminReportConfigService>>();
-    return new AdminReportConfigService(httpClient, headerService, logger);
+    if (useMocks)
+    {
+        var logger = serviceProvider.GetRequiredService<ILogger<FeedbackWebApp.Services.Mock.MockAdminReportConfigService>>();
+        return new FeedbackWebApp.Services.Mock.MockAdminReportConfigService(logger);
+    }
+    else
+    {
+        var httpClient = serviceProvider.GetRequiredService<IHttpClientFactory>().CreateClient("DefaultClient");
+        var headerService = serviceProvider.GetRequiredService<IAuthenticationHeaderService>();
+        var logger = serviceProvider.GetRequiredService<ILogger<AdminReportConfigService>>();
+        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+        return new AdminReportConfigService(httpClient, headerService, logger, configuration);
+    }
 });
 builder.Services.AddScoped<IHistoryService, HistoryService>();
 builder.Services.AddScoped<ISharedHistoryServiceProvider, SharedHistoryServiceProvider>();
