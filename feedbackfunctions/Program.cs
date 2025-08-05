@@ -63,6 +63,9 @@ builder.Services.AddSingleton<IReportCacheService>(serviceProvider =>
     return new ReportCacheService(logger, containerClient);
 });
 
+// Register admin report config service
+builder.Services.AddScoped<IAdminReportConfigService, AdminReportConfigService>();
+
 // Register services based on UseMocks setting
 if (useMocks)
 {
