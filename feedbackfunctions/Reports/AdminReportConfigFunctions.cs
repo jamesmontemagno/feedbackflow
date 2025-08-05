@@ -18,10 +18,10 @@ namespace FeedbackFunctions.Reports;
 /// All endpoints require admin-level authentication and authorization.
 /// 
 /// Routes:
-/// - GET    /api/admin/reports           - Get all admin report configurations
-/// - POST   /api/admin/reports           - Create a new admin report configuration
-/// - PUT    /api/admin/reports/{id}      - Update an existing admin report configuration
-/// - DELETE /api/admin/reports/{id}      - Delete an admin report configuration
+/// - GET    /api/admin/get-reports        - Get all admin report configurations
+/// - POST   /api/admin/create-report      - Create a new admin report configuration
+/// - PUT    /api/admin/update-report/{id} - Update an existing admin report configuration
+/// - DELETE /api/admin/delete-report/{id} - Delete an admin report configuration
 /// </summary>
 public class AdminReportConfigFunctions
 {
@@ -44,12 +44,12 @@ public class AdminReportConfigFunctions
 
     /// <summary>
     /// Get all admin report configurations (Admin only)
-    /// GET /api/admin/reports
+    /// GET /api/admin/get-reports
     /// </summary>
     [Function("GetAdminReportConfigs")]
     [Authorize]
     public async Task<HttpResponseData> GetAdminReportConfigsAsync(
-        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "admin/reports")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "admin/get-reports")] HttpRequestData req)
     {
         try
         {
@@ -90,12 +90,12 @@ public class AdminReportConfigFunctions
 
     /// <summary>
     /// Create a new admin report configuration (Admin only)
-    /// POST /api/admin/reports
+    /// POST /api/admin/create-report
     /// </summary>
     [Function("CreateAdminReportConfig")]
     [Authorize]
     public async Task<HttpResponseData> CreateAdminReportConfigAsync(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "admin/reports")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "admin/create-report")] HttpRequestData req)
     {
         try
         {
@@ -180,12 +180,12 @@ public class AdminReportConfigFunctions
 
     /// <summary>
     /// Update an existing admin report configuration (Admin only)
-    /// PUT /api/admin/reports/{id}
+    /// PUT /api/admin/update-report/{id}
     /// </summary>
     [Function("UpdateAdminReportConfig")]
     [Authorize]
     public async Task<HttpResponseData> UpdateAdminReportConfigAsync(
-        [HttpTrigger(AuthorizationLevel.Function, "put", Route = "admin/reports/{id}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Function, "put", Route = "admin/update-report/{id}")] HttpRequestData req,
         string id)
     {
         try
@@ -261,12 +261,12 @@ public class AdminReportConfigFunctions
 
     /// <summary>
     /// Delete an admin report configuration (Admin only)
-    /// DELETE /api/admin/reports/{id}
+    /// DELETE /api/admin/delete-report/{id}
     /// </summary>
     [Function("DeleteAdminReportConfig")]
     [Authorize]
     public async Task<HttpResponseData> DeleteAdminReportConfigAsync(
-        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "admin/reports/{id}")] HttpRequestData req,
+        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "admin/delete-report/{id}")] HttpRequestData req,
         string id)
     {
         try
