@@ -59,109 +59,120 @@
             </div>
         }
 
-        @if (configs.Any())
-        {
-            <div class="table-container">
-                <table class="table admin-reports-table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Type</th>
-                            <th>Source</th>
-                            <th class="mobile-hide">Email Recipient</th>
-                            <th>Status</th>
-                            <th class="mobile-hide">Created</th>
-                            <th class="mobile-hide">Last Processed</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var config in configs)
-                        {
-                            <tr>
-                                <td>
-                                    <div class="report-name">@config.Name</div>
-                                </td>
-                                <td>
-                                    <span class="report-type-badge report-type-@(config.Type.ToLower())">@config.Type</span>
-                                </td>
-                                <td>
-                                    @if (config.Type == "reddit")
-                                    {
-                                        <div class="report-source">
-                                            <i class="bi bi-reddit reddit-icon"></i>
-                                            <span>r/@config.Subreddit</span>
-                                        </div>
-                                    }
-                                    else if (config.Type == "github")
-                                    {
-                                        <div class="report-source">
-                                            <i class="bi bi-github github-icon"></i>
-                                            <span>@config.Owner/@config.Repo</span>
-                                        </div>
-                                    }
-                                </td>
-                                <td class="mobile-hide">
-                                    <div class="report-email">@config.EmailRecipient</div>
-                                </td>
-                                <td>
-                                    @if (config.IsActive)
-                                    {
-                                        <span class="status-badge status-active">
-                                            <i class="bi bi-check-circle"></i>
-                                            Active
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="status-badge status-inactive">
-                                            <i class="bi bi-pause-circle"></i>
-                                            Inactive
-                                        </span>
-                                    }
-                                </td>
-                                <td class="mobile-hide">
-                                    <div class="report-date">@config.CreatedAt.ToString("MMM dd, yyyy")</div>
-                                </td>
-                                <td class="mobile-hide">
-                                    @if (config.LastProcessedAt.HasValue)
-                                    {
-                                        <div class="report-date">@config.LastProcessedAt.Value.ToString("MMM dd, yyyy")</div>
-                                    }
-                                    else
-                                    {
-                                        <div class="report-date report-date-never">Never</div>
-                                    }
-                                </td>
-                                <td>
-                                    <div class="action-buttons">
-                                        <button class="btn action-btn action-btn-edit" @onclick="() => EditConfig(config)" title="Edit Configuration">
-                                            <i class="bi bi-pencil"></i>
-                                        </button>
-                                        <button class="btn action-btn action-btn-delete" @onclick="() => DeleteConfig(config)" title="Delete Configuration">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-gear-fill me-1"></i>
+                        Admin Report Configurations
+                    </div>
+                </div>
             </div>
-        }
-        else
-        {
-            <div class="empty-state">
-                <i class="bi bi-inbox empty-state-icon"></i>
-                <h4>No Admin Reports Configured</h4>
-                <p>Create your first automated report configuration to get started.</p>
-                <button class="btn btn-primary btn-create-report" @onclick="ShowCreateModal">
-                    <i class="bi bi-plus-circle me-2"></i>
-                    Create First Report Config
-                </button>
+            <div class="card-body">
+                @if (configs.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle admin-reports-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Type</th>
+                                    <th scope="col">Source</th>
+                                    <th scope="col" class="d-none d-md-table-cell">Email</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col" class="d-none d-lg-table-cell">Created</th>
+                                    <th scope="col" class="d-none d-xl-table-cell">Last Run</th>
+                                    <th scope="col" class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var config in configs)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="report-name">@config.Name</div>
+                                        </td>
+                                        <td>
+                                            <span class="source-badge @config.Type.ToLowerInvariant()">
+                                                <i class="bi @(config.Type == "reddit" ? "bi-reddit" : "bi-github") me-1"></i>
+                                                @config.Type
+                                            </span>
+                                        </td>
+                                        <td>
+                                            @if (config.Type == "reddit")
+                                            {
+                                                <span class="report-sub-source">r/@config.Subreddit</span>
+                                            }
+                                            else if (config.Type == "github")
+                                            {
+                                                <span class="report-sub-source">@config.Owner/@config.Repo</span>
+                                            }
+                                        </td>
+                                        <td class="d-none d-md-table-cell">
+                                            <span class="report-email">@config.EmailRecipient</span>
+                                        </td>
+                                        <td>
+                                            @if (config.IsActive)
+                                            {
+                                                <span class="status-badge status-active">
+                                                    <i class="bi bi-check-circle me-1"></i>
+                                                    Active
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="status-badge status-inactive">
+                                                    <i class="bi bi-pause-circle me-1"></i>
+                                                    Inactive
+                                                </span>
+                                            }
+                                        </td>
+                                        <td class="d-none d-lg-table-cell">
+                                            <span class="report-date">
+                                                <i class="bi bi-calendar me-1"></i>
+                                                @config.CreatedAt.ToString("MMM d")
+                                            </span>
+                                        </td>
+                                        <td class="d-none d-xl-table-cell">
+                                            @if (config.LastProcessedAt.HasValue)
+                                            {
+                                                <span class="report-date">
+                                                    <i class="bi bi-clock me-1"></i>
+                                                    @config.LastProcessedAt.Value.ToString("MMM d")
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="report-date-never">Never</span>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="action-buttons">
+                                                <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => EditConfig(config)" title="Edit Configuration">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteConfig(config)" title="Delete Configuration">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        No admin report configurations found. <button type="button" class="btn btn-link p-0 alert-link" @onclick="ShowCreateModal">Create your first configuration</button> to get started.
+                    </div>
+                }
             </div>
-        }
+        </div>
     }
+}
 </div>
 
 <!-- Create/Edit Modal -->
