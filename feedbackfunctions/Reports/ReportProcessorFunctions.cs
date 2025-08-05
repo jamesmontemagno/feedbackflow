@@ -9,6 +9,7 @@ using SharedDump.Utils.Account;
 using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using SharedDump.Services.Interfaces;
 using SharedDump.AI;
 using FeedbackFunctions.Utils;
@@ -138,10 +139,16 @@ public class ReportProcessorFunctions
     /// </example>
     [Function("RedditReport")]
     public async Task<HttpResponseData> RedditReport(
-        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
     {
         var startTime = DateTime.UtcNow;
         _logger.LogInformation("Starting Reddit Report processing for URL {RequestUrl}", req.Url);
+
+        // Validate API key
+        var apiKeyService = req.FunctionContext.InstanceServices.GetRequiredService<IApiKeyService>();
+        var (isValid, errorResponse) = await ApiKeyValidationHelper.ValidateApiKeyAsync(req, apiKeyService, _logger);
+        if (!isValid)
+            return errorResponse!;
 
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var subreddit = queryParams["subreddit"];
@@ -219,10 +226,16 @@ public class ReportProcessorFunctions
     /// </example>
     [Function("GitHubIssuesReport")]
     public async Task<HttpResponseData> GitHubIssuesReport(
-        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
     {
         var startTime = DateTime.UtcNow;
         _logger.LogInformation("Starting GitHub Issues Report processing for URL {RequestUrl}", req.Url);
+
+        // Validate API key
+        var apiKeyService = req.FunctionContext.InstanceServices.GetRequiredService<IApiKeyService>();
+        var (isValid, errorResponse) = await ApiKeyValidationHelper.ValidateApiKeyAsync(req, apiKeyService, _logger);
+        if (!isValid)
+            return errorResponse!;
 
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var repo = queryParams["repo"];
@@ -318,10 +331,16 @@ public class ReportProcessorFunctions
     /// </example>
     [Function("RedditReportSummary")]
     public async Task<HttpResponseData> RedditReportSummary(
-        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
     {
         var startTime = DateTime.UtcNow;
         _logger.LogInformation("Starting Reddit Summary Report processing for URL {RequestUrl}", req.Url);
+
+        // Validate API key
+        var apiKeyService = req.FunctionContext.InstanceServices.GetRequiredService<IApiKeyService>();
+        var (isValid, errorResponse) = await ApiKeyValidationHelper.ValidateApiKeyAsync(req, apiKeyService, _logger);
+        if (!isValid)
+            return errorResponse!;
 
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var subreddit = queryParams["subreddit"];

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharedDump.Models;
 using SharedDump.Models.GitHub;
@@ -22,6 +23,7 @@ using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
 using FeedbackFunctions.Services.Account;
+using FeedbackFunctions.Utils;
 using SharedDump.Models.Account;
 
 namespace FeedbackFunctions.FeedbackAnalysis;
@@ -756,9 +758,15 @@ public class FeedbackFunctions
     /// </remarks>
     [Function("AutoAnalyze")]
     public async Task<HttpResponseData> AutoAnalyze(
-        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
     {
         _logger.LogInformation("Processing auto-analyze request");
+
+        // Validate API key
+        var (isValid, errorResponse) = await ApiKeyValidationHelper.ValidateApiKeyAsync(req, 
+            req.FunctionContext.InstanceServices.GetRequiredService<IApiKeyService>(), _logger);
+        if (!isValid)
+            return errorResponse!;
 
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var url = queryParams["url"];
