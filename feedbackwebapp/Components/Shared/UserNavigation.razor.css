@@ -171,3 +171,21 @@
         transform: translateY(0);
     }
 }
+
+/* Admin menu item styling */
+.admin-menu-item {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 193, 7, 0.05) 100%);
+    border-left: 3px solid var(--warning-color, #ffc107);
+}
+
+.admin-menu-item:hover,
+.admin-menu-item:focus {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 193, 7, 0.08) 100%);
+    color: var(--text-primary);
+}
+
+.admin-menu-item .badge {
+    font-size: 0.65rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+}
