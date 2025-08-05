@@ -156,6 +156,9 @@ public class ReportProcessorFunctions
             return response;
         }
 
+        // Normalize to lowercase for consistent processing
+        subreddit = subreddit.ToLowerInvariant();
+
         try
         {
             // First, check if we have a recent report (last 24 hours) unless forced
@@ -245,13 +248,15 @@ public class ReportProcessorFunctions
             return invalidFormatResponse;
         }
 
-        var repoOwner = repoParts[0];
-        var repoName = repoParts[1];
+        // Normalize to lowercase for consistent processing
+        var repoOwner = repoParts[0].ToLowerInvariant();
+        var repoName = repoParts[1].ToLowerInvariant();
+        var normalizedRepo = $"{repoOwner}/{repoName}";
 
         try
         {
             // First, check if we have a recent report (last 24 hours) unless forced
-            var recentReport = force ? null : await GetRecentReportAsync("github", repo);
+            var recentReport = force ? null : await GetRecentReportAsync("github", normalizedRepo);
             ReportModel report;
 
             if (recentReport != null)
@@ -330,6 +335,9 @@ public class ReportProcessorFunctions
             await response.WriteStringAsync("Subreddit parameter is required");
             return response;
         }
+
+        // Normalize to lowercase for consistent processing
+        subreddit = subreddit.ToLowerInvariant();
 
         try
         {

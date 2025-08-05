@@ -155,6 +155,28 @@ public class ReportRequestFunctions
                 return validationResponse;
             }
 
+            // Normalize input values for consistent processing
+            if (request.Type == "reddit")
+            {
+                // Lowercase subreddit name for consistent processing
+                if (!string.IsNullOrEmpty(request.Subreddit))
+                {
+                    request.Subreddit = request.Subreddit.ToLowerInvariant();
+                }
+            }
+            else if (request.Type == "github")
+            {
+                // Lowercase GitHub owner and repo names for consistent processing
+                if (!string.IsNullOrEmpty(request.Owner))
+                {
+                    request.Owner = request.Owner.ToLowerInvariant();
+                }
+                if (!string.IsNullOrEmpty(request.Repo))
+                {
+                    request.Repo = request.Repo.ToLowerInvariant();
+                }
+            }
+
             // Validate fields based on type
             if (request.Type == "reddit")
             {
