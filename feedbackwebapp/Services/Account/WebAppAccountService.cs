@@ -146,6 +146,109 @@ public class WebAppAccountService : IWebAppAccountService
         }
     }
 
+    public async Task<ApiKey?> GetApiKeyAsync()
+    {
+        try
+        {
+            var url = $"{_baseUrl}/api/GetUserApiKey?code={Uri.EscapeDataString(_functionsKey)}";
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            await _authHeaderService.AddAuthenticationHeadersAsync(request);
+
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound ||
+                    response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    // User doesn't have an API key or doesn't have permission
+                    return null;
+                }
+                
+                _logger.LogWarning("Failed to get API key: {StatusCode}", response.StatusCode);
+                return null;
+            }
+
+            var jsonContent = await response.Content.ReadAsStringAsync();
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse<ApiKey>>(jsonContent, new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true 
+            });
+
+            return apiResponse?.Data;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting API key");
+            return null;
+        }
+    }
+
+    public async Task<ApiKey?> CreateApiKeyAsync(string? name = null)
+    {
+        try
+        {
+            var url = $"{_baseUrl}/api/CreateUserApiKey?code={Uri.EscapeDataString(_functionsKey)}";
+            var request = new HttpRequestMessage(HttpMethod.Post, url);
+            await _authHeaderService.AddAuthenticationHeadersAsync(request);
+
+            if (!string.IsNullOrEmpty(name))
+            {
+                var requestBody = JsonSerializer.Serialize(new { Name = name });
+                request.Content = new StringContent(requestBody, System.Text.Encoding.UTF8, "application/json");
+            }
+
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Failed to create API key: {StatusCode}", response.StatusCode);
+                return null;
+            }
+
+            var jsonContent = await response.Content.ReadAsStringAsync();
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse<ApiKey>>(jsonContent, new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true 
+            });
+
+            return apiResponse?.Data;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating API key");
+            return null;
+        }
+    }
+
+    public async Task<bool> DeleteApiKeyAsync()
+    {
+        try
+        {
+            var url = $"{_baseUrl}/api/DeleteUserApiKey?code={Uri.EscapeDataString(_functionsKey)}";
+            var request = new HttpRequestMessage(HttpMethod.Delete, url);
+            await _authHeaderService.AddAuthenticationHeadersAsync(request);
+
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Failed to delete API key: {StatusCode}", response.StatusCode);
+                return false;
+            }
+
+            var jsonContent = await response.Content.ReadAsStringAsync();
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse<object>>(jsonContent, new JsonSerializerOptions 
+            { 
+                PropertyNameCaseInsensitive = true 
+            });
+
+            return apiResponse?.Success ?? false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting API key");
+            return false;
+        }
+    }
+
     private static AccountLimits GetDefaultLimits()
     {
         return new AccountLimits
