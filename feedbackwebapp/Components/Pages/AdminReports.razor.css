@@ -6,9 +6,23 @@
 }
 
 .feedbackflow-title {
-    color: var(--text-primary);
-    font-weight: 700;
-    font-size: 2rem;
+    font-size: 2.25rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    position: relative;
+    display: inline-block;
+}
+
+.feedbackflow-title::after {
+    content: '';
+    position: absolute;
+    bottom: -0.5rem;
+    left: 0;
+    width: 50%;
+    height: 3px;
+    background: var(--primary-gradient);
+    border-radius: 3px;
 }
 
 .admin-header .text-muted {
@@ -39,16 +53,18 @@
 .admin-reports-table {
     width: 100%;
     margin-bottom: 0;
+    background: var(--card-bg);
 }
 
 .admin-reports-table th,
 .admin-reports-table td {
     vertical-align: middle;
     padding: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .admin-reports-table th {
-    background: var(--card-bg);
+    background: rgba(var(--bg-secondary-rgb), 0.8);
     color: var(--text-primary);
     font-weight: 600;
     text-transform: uppercase;
@@ -59,7 +75,6 @@
 }
 
 .admin-reports-table td {
-    border-bottom: 1px solid var(--border-color);
     background: var(--card-bg);
     transition: background-color 0.3s ease;
 }
@@ -193,15 +208,11 @@
 }
 
 /* Modal Styling */
-.admin-modal .modal-backdrop {
-    background-color: var(--modal-backdrop-bg);
-}
-
 .admin-modal .modal-content {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-lg);
-    box-shadow: var(--modal-shadow);
+    box-shadow: var(--card-shadow);
 }
 
 .admin-modal .modal-header {
@@ -299,43 +310,4 @@
         font-size: 0.7rem !important;
         padding: 0.2rem 0.4rem !important;
     }
-}
-
-/* Dark theme adjustments */
-[data-theme="dark"] .admin-reports-table th {
-    background: var(--card-bg-dark, #2d3748);
-    color: var(--text-primary-dark, #f7fafc);
-    border-bottom-color: var(--border-color-dark, #4a5568);
-}
-
-[data-theme="dark"] .admin-reports-table td {
-    background: var(--card-bg-dark, #2d3748);
-    border-bottom-color: var(--border-color-dark, #4a5568);
-}
-
-[data-theme="dark"] .admin-reports-table tbody tr:hover td {
-    background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.08) 0%, rgba(var(--primary-color-rgb), 0.15) 100%);
-}
-
-[data-theme="dark"] .report-name {
-    color: var(--text-primary-dark, #f7fafc);
-}
-
-[data-theme="dark"] .report-sub-source,
-[data-theme="dark"] .report-email,
-[data-theme="dark"] .report-date {
-    color: var(--text-secondary-dark, #a0aec0);
-}
-
-[data-theme="dark"] .admin-modal .modal-content {
-    background: var(--card-bg-dark, #2d3748);
-    border-color: var(--border-color-dark, #4a5568);
-}
-
-[data-theme="dark"] .admin-modal .form-label {
-    color: var(--text-primary-dark, #f7fafc);
-}
-
-[data-theme="dark"] .admin-modal .form-text {
-    color: var(--text-secondary-dark, #a0aec0);
 }
