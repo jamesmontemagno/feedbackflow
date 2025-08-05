@@ -1,7 +1,10 @@
 @implements IDisposable
 @using FeedbackWebApp.Services.Authentication
+@using FeedbackWebApp.Services.Account
 @using SharedDump.Models.Authentication
+@using SharedDump.Models.Account
 @inject IAuthenticationService AuthService
+@inject IAccountServiceProvider AccountServiceProvider
 
 @inject NavigationManager Navigation
 
@@ -47,6 +50,17 @@
                     </div>
                 </li>
                 <li><hr class="dropdown-divider"></li>
+                @if (isAdmin)
+                {
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center admin-menu-item" href="/admin/reports">
+                            <i class="bi bi-gear-fill me-2"></i>
+                            <span>Admin Reports</span>
+                            <span class="badge bg-warning text-dark ms-auto">Admin</span>
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                }
                 <li>
                     <a class="dropdown-item d-flex align-items-center" href="/account-settings">
                         <i class="bi bi-person-gear me-2"></i>
@@ -75,6 +89,7 @@
 @code {
     private bool isLoading = true;
     private bool isAuthenticated = false;
+    private bool isAdmin = false;
     private AuthenticatedUser? currentUser;
 
     protected override async Task OnInitializedAsync()
@@ -96,6 +111,11 @@
             if (isAuthenticated)
             {
                 currentUser = await AuthService.GetCurrentUserAsync();
+                await CheckAdminStatusAsync();
+            }
+            else
+            {
+                isAdmin = false;
             }
         }
         catch (Exception ex)
@@ -103,11 +123,34 @@
             Console.WriteLine($"Error checking authentication: {ex.Message}");
             isAuthenticated = false;
             currentUser = null;
+            isAdmin = false;
         }
         finally
         {
             isLoading = false;
             StateHasChanged();
+        }
+    }
+
+    private async Task CheckAdminStatusAsync()
+    {
+        try
+        {
+            var accountService = AccountServiceProvider.GetService();
+            var accountResult = await accountService.GetUserAccountAndLimitsAsync();
+            if (accountResult.HasValue)
+            {
+                isAdmin = accountResult.Value.account?.Tier == AccountTier.Admin;
+            }
+            else
+            {
+                isAdmin = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error checking admin status: {ex.Message}");
+            isAdmin = false;
         }
     }
 

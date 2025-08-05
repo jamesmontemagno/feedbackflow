@@ -157,10 +157,12 @@
             "/whats-new" => "What's New",
             "/account-settings" => "Account",
             "/history-local" => "Local History",
+            "/admin/reports" => "Admin Reports",
             var p when p.StartsWith("/reports/") => "Reports",
             var p when p.StartsWith("/report/") => "Report Details",
             var p when p.StartsWith("/analysis/") => "Analysis",
             var p when p.StartsWith("/shared/") => "Shared Analysis",
+            var p when p.StartsWith("/admin/") => "Admin",
             _ => "FeedbackFlow"
         };
     }

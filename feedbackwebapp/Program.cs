@@ -78,6 +78,13 @@ builder.Services.AddScoped<IAccountServiceProvider, AccountServiceProvider>();
 builder.Services.AddScoped<UserSettingsService>();
 builder.Services.AddScoped<IReportServiceProvider, ReportServiceProvider>();
 builder.Services.AddScoped<IReportRequestService, ReportRequestService>();
+builder.Services.AddScoped<FeedbackWebApp.Services.IAdminReportConfigService>(serviceProvider =>
+{
+    var httpClient = serviceProvider.GetRequiredService<IHttpClientFactory>().CreateClient("DefaultClient");
+    var headerService = serviceProvider.GetRequiredService<IAuthenticationHeaderService>();
+    var logger = serviceProvider.GetRequiredService<ILogger<AdminReportConfigService>>();
+    return new AdminReportConfigService(httpClient, headerService, logger);
+});
 builder.Services.AddScoped<IHistoryService, HistoryService>();
 builder.Services.AddScoped<ISharedHistoryServiceProvider, SharedHistoryServiceProvider>();
 builder.Services.AddScoped<IExportService, ExportService>();
