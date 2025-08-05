@@ -762,7 +762,7 @@
                     // Load API key if user supports it
                     if (AccountTierUtils.SupportsApiKeyGeneration(userAccount.Tier))
                     {
-                        _ = Task.Run(async () => await LoadApiKeyAsync());
+                        await LoadApiKeyAsync();
                     }
                     else
                     {
