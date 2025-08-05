@@ -81,7 +81,7 @@ public class ReportRequestFunctions
         _serviceClient = new BlobServiceClient(storageConnection);
 
         // Initialize report generator
-        _reportGenerator = new ReportGenerator(_logger, redditService, githubService, analyzerService, _serviceClient, _cacheService);
+        _reportGenerator = new ReportGenerator(_logger, redditService, githubService, analyzerService, _serviceClient, _configuration, _cacheService);
     }
 
     private static string GenerateRequestId(ReportRequestModel request)

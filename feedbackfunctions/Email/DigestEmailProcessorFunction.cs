@@ -11,6 +11,7 @@ using Microsoft.Extensions.Configuration;
 using FeedbackFunctions.Services.Email;
 using FeedbackFunctions.Services.Account;
 using FeedbackFunctions.Services.Reports;
+using FeedbackFunctions.Utils;
 using System.Text.Json;
 
 namespace FeedbackFunctions.Email;
@@ -184,7 +185,7 @@ public class DigestEmailProcessorFunction
                             ReportId = report.Id.ToString(),
                             ReportTitle = $"{report.Source} Report - {report.SubSource}",
                             ReportSummary = $"Your {report.Source} report has been generated",
-                            ReportUrl = $"https://feedbackflow.app/reports/{report.Id}", // Adjust URL as needed
+                            ReportUrl = WebUrlHelper.BuildReportUrl(_configuration, report.Id), // Adjust URL as needed
                             ReportType = report.Source,
                             GeneratedAt = report.GeneratedAt.DateTime,
                             HtmlContent = report.HtmlContent

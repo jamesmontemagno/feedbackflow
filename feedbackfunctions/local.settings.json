@@ -36,7 +36,7 @@
     },
     "AzureCommunicationServices": {
       "ConnectionString": "",
-      "SenderEmail": "reports@feedbackflow.dev"
+      "SenderEmail": "noreply@feedbackflow.app"
     },
     "Email": {
       "EnableEmailNotifications": true,
@@ -70,8 +70,9 @@
     },
     "Development": {
       "UserId": "dev-user-demo",
-      "Email": "demo@feedbackflow.dev",
+      "Email": "noreply@feedbackflow.app",
       "Name": "Demo Development User"
-    }
+    },
+    "WebUrl": "https://www.feedbackflow.app"
   }
 }

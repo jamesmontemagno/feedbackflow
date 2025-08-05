@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Azure.Storage.Blobs;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SharedDump.AI;
 using SharedDump.Models.Reddit;
@@ -25,6 +26,7 @@ public class ReportGenerator
     private readonly BlobContainerClient _containerClient;
     private readonly BlobContainerClient _summaryContainerClient;
     private readonly IReportCacheService? _cacheService;
+    private readonly IConfiguration _configuration;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public ReportGenerator(
@@ -33,12 +35,14 @@ public class ReportGenerator
         IGitHubService githubService,
         IFeedbackAnalyzerService analyzerService,
         BlobServiceClient blobServiceClient,
+        IConfiguration configuration,
         IReportCacheService? cacheService = null)
     {
         _logger = logger;
         _redditService = redditService;
         _githubService = githubService;
         _analyzerService = analyzerService;
+        _configuration = configuration;
         _cacheService = cacheService;
         
         // Initialize both blob container clients
@@ -202,7 +206,7 @@ Keep each section very brief and focused. Total analysis should be no more than 
                     GeneratedAt = report.GeneratedAt
                 };
 
-                var fullReportUrl = $"https://www.feedbackflow.app/report/{report.Id}";
+                var fullReportUrl = WebUrlHelper.BuildReportUrl(_configuration, report.Id);
                 var summaryHtml = EmailUtils.GenerateRedditReportSummary(
                     subreddit, 
                     actualCutoffDate, 

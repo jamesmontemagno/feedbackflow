@@ -75,7 +75,7 @@ public class ReportProcessorFunctions
         _serviceClient = new BlobServiceClient(storageConnection);
 
         // Initialize report generator
-        _reportGenerator = new ReportGenerator(_logger, redditService, githubService, analyzerService, _serviceClient, _cacheService);
+        _reportGenerator = new ReportGenerator(_logger, redditService, githubService, analyzerService, _serviceClient, _configuration, _cacheService);
     }
 
     /// <summary>
@@ -659,7 +659,7 @@ public class ReportProcessorFunctions
                 ReportId = report.Id.ToString(),
                 ReportTitle = $"{report.Source} Report - {report.SubSource}",
                 ReportSummary = $"Generated report with {report.ThreadCount} threads and {report.CommentCount} comments",
-                ReportUrl = $"https://www.feedbackflow.app/?source=email&id={report.Id}",
+                ReportUrl = WebUrlHelper.BuildReportQueryUrl(_configuration, report.Id, "email"),
                 ReportType = report.Source,
                 GeneratedAt = report.GeneratedAt.DateTime
             };

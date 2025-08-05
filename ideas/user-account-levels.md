@@ -108,7 +108,7 @@ public enum UsageType
   },
   "Development": {
     "UserId": "dev-user-demo",
-    "Email": "demo@feedbackflow.dev",
+    "Email": "noreply@feedbackflow.app",
     "Name": "Demo Development User"
   }
 }
