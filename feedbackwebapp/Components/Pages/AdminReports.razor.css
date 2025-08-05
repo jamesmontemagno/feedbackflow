@@ -1,113 +1,266 @@
 /* Admin Reports Page Styles */
+
+/* Header Styling */
+.admin-header {
+    margin-bottom: 2rem;
+}
+
 .feedbackflow-title {
-    color: var(--primary-color);
+    color: var(--bs-body-color);
     font-weight: 700;
+    font-size: 2rem;
 }
 
-.card {
-    border: none;
-    border-radius: var(--border-radius);
-    box-shadow: var(--card-shadow);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+.admin-header .text-muted {
+    font-size: 1.125rem;
 }
 
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-}
-
-/* Modal z-index fixes */
-.modal {
-    z-index: 1055 !important;
-}
-
-.modal-backdrop {
-    z-index: 1050 !important;
-}
-
-.modal-dialog {
-    z-index: 1060 !important;
-}
-
-.card-header {
-    background: var(--primary-gradient);
-    color: white;
-    border-bottom: none;
-    border-radius: var(--border-radius) var(--border-radius) 0 0;
-}
-
-.btn-primary {
-    background: var(--primary-gradient);
-    border: none;
-    border-radius: var(--border-radius);
+/* Create Button Enhancement */
+.btn-create-report {
     font-weight: 600;
-    transition: all 0.3s ease;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+    background: var(--primary-gradient);
+    border: none;
 }
 
-.btn-primary:hover {
+.btn-create-report:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
 }
 
-.btn-outline-primary {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-    transition: all 0.2s ease;
-    background-color: rgba(102, 126, 234, 0.1);
-    border-width: 2px;
+/* Table Container */
+.table-container {
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
 }
 
-.btn-outline-primary:hover {
-    background: var(--primary-color);
-    border-color: var(--primary-color);
+/* Admin Reports Table Styling */
+.admin-reports-table {
+    margin-bottom: 0;
+    background: var(--bs-body-bg);
+}
+
+.admin-reports-table th {
+    background: var(--primary-gradient);
     color: white;
-    transform: scale(1.05);
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-}
-
-.btn-outline-danger {
-    border-color: var(--danger-color);
-    color: var(--danger-color);
-    transition: all 0.2s ease;
-    background-color: rgba(220, 53, 69, 0.1);
-    border-width: 2px;
-}
-
-.btn-outline-danger:hover {
-    background: var(--danger-color);
-    border-color: var(--danger-color);
-    color: white;
-    transform: scale(1.05);
-    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
-}
-
-/* Make buttons more prominent on card headers */
-.card-header .btn-sm {
-    padding: 0.5rem 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
     font-size: 0.875rem;
-    min-width: 2.5rem;
-    height: 2.5rem;
+    letter-spacing: 0.5px;
+    padding: 1rem 0.75rem;
+    border: none;
+    position: relative;
+    white-space: nowrap;
+}
+
+.admin-reports-table th:first-child {
+    padding-left: 1.5rem;
+}
+
+.admin-reports-table th:last-child {
+    padding-right: 1.5rem;
+}
+
+.admin-reports-table td {
+    padding: 1rem 0.75rem;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+    transition: background-color 0.2s ease;
+}
+
+.admin-reports-table td:first-child {
+    padding-left: 1.5rem;
+}
+
+.admin-reports-table td:last-child {
+    padding-right: 1.5rem;
+}
+
+.admin-reports-table tbody tr:hover td {
+    background: var(--bs-secondary-bg);
+}
+
+.admin-reports-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Enhanced Typography */
+.report-name {
+    font-weight: 600;
+    color: var(--bs-body-color);
+    font-size: 1rem;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.report-type-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+}
+
+.report-type-reddit {
+    background: rgba(255, 69, 0, 0.1);
+    color: #ff4500;
+    border: 1px solid rgba(255, 69, 0, 0.2);
+}
+
+.report-type-github {
+    background: rgba(36, 41, 47, 0.1);
+    color: #24292f;
+    border: 1px solid rgba(36, 41, 47, 0.2);
+}
+
+.report-source {
     display: flex;
     align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+
+.report-source i {
+    font-size: 1.125rem;
+    flex-shrink: 0;
+}
+
+.reddit-icon {
+    color: #ff4500 !important;
+}
+
+.github-icon {
+    color: #24292f !important;
+}
+
+.report-email {
+    font-size: 0.875rem;
+    color: var(--bs-secondary-color);
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+    word-break: break-word;
+}
+
+.status-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.375rem 0.75rem;
+    border-radius: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    white-space: nowrap;
+}
+
+.status-active {
+    background: rgba(25, 135, 84, 0.1);
+    color: #198754;
+    border: 1px solid rgba(25, 135, 84, 0.2);
+}
+
+.status-inactive {
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+    border: 1px solid rgba(108, 117, 125, 0.2);
+}
+
+.report-date {
+    font-size: 0.875rem;
+    color: var(--bs-secondary-color);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.report-date-never {
+    color: var(--bs-secondary-color);
+    font-style: italic;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: 0.375rem;
     justify-content: center;
 }
 
-.card-header .btn-sm i {
-    font-size: 1rem;
+.action-btn {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    border-width: 2px;
 }
 
-.badge {
-    font-size: 0.75rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--border-radius);
+.action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-.badge.bg-success {
-    background: var(--success-color) !important;
+.action-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
 }
 
-.badge.bg-secondary {
-    background: var(--secondary-color) !important;
+.action-btn-edit {
+    color: #0d6efd;
+    border-color: #0d6efd;
+    background: rgba(13, 110, 253, 0.05);
+}
+
+.action-btn-edit:hover {
+    background: #0d6efd;
+    color: white;
+}
+
+.action-btn-delete {
+    color: #dc3545;
+    border-color: #dc3545;
+    background: rgba(220, 53, 69, 0.05);
+}
+
+.action-btn-delete:hover {
+    background: #dc3545;
+    color: white;
+}
+
+/* Enhanced Modal Styling */
+.admin-modal .modal-header {
+    background: var(--primary-gradient);
+    color: white;
+    border-bottom: none;
+    padding: 1.5rem 2rem;
+}
+
+.admin-modal .modal-header .btn-close {
+    filter: brightness(0) invert(1);
+    opacity: 0.8;
+}
+
+.admin-modal .modal-header .btn-close:hover {
+    opacity: 1;
+}
+
+.admin-modal .modal-body {
+    padding: 2rem;
+}
+
+.admin-modal .modal-footer {
+    padding: 1.5rem 2rem;
+    border-top: 1px solid var(--bs-border-color);
+    background: var(--bs-secondary-bg);
 }
 
 .modal-content {
@@ -116,19 +269,8 @@
     box-shadow: 0 10px 40px rgba(0,0,0,0.2);
 }
 
-.modal-header {
-    background: var(--primary-gradient);
-    color: white;
-    border-bottom: none;
-    border-radius: var(--border-radius) var(--border-radius) 0 0;
-}
-
-.btn-close {
-    filter: brightness(0) invert(1);
-}
-
 .form-control, .form-select {
-    border: 2px solid var(--border-color);
+    border: 2px solid var(--bs-border-color);
     border-radius: var(--border-radius);
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
@@ -138,6 +280,35 @@
     box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
 }
 
+/* Empty State */
+.empty-state {
+    padding: 4rem 2rem;
+    text-align: center;
+}
+
+.empty-state-icon {
+    font-size: 4rem;
+    color: var(--bs-secondary-color);
+    margin-bottom: 1.5rem;
+    opacity: 0.5;
+}
+
+.empty-state h4 {
+    color: var(--bs-secondary-color);
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.empty-state p {
+    color: var(--bs-secondary-color);
+    font-size: 1.125rem;
+    margin-bottom: 2rem;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Alert Styling */
 .alert {
     border: none;
     border-radius: var(--border-radius);
@@ -154,108 +325,150 @@
     background-color: rgba(255, 193, 7, 0.1);
 }
 
-.spinner-border {
-    color: var(--primary-color);
+/* Modal z-index fixes */
+.modal {
+    z-index: 1055 !important;
 }
 
-/* Empty state styling */
-.text-center .display-4 {
-    opacity: 0.6;
+.modal-backdrop {
+    z-index: 1050 !important;
 }
 
-/* Responsive adjustments */
+.modal-dialog {
+    z-index: 1060 !important;
+}
+
+/* Responsive Adjustments */
 @media (max-width: 768px) {
+    .admin-reports-table th,
+    .admin-reports-table td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .admin-reports-table th:first-child,
+    .admin-reports-table td:first-child {
+        padding-left: 1rem;
+    }
+    
+    .admin-reports-table th:last-child,
+    .admin-reports-table td:last-child {
+        padding-right: 1rem;
+    }
+    
+    .report-name {
+        font-size: 0.875rem;
+    }
+    
+    .action-btn {
+        width: 2rem;
+        height: 2rem;
+        font-size: 0.75rem;
+    }
+    
+    /* Hide certain columns on mobile */
+    .mobile-hide {
+        display: none;
+    }
+    
+    .report-source {
+        font-size: 0.8rem;
+    }
+    
     .modal-lg {
         max-width: 95%;
         margin: 1rem auto;
     }
-    
-    .card-header .d-flex {
-        flex-direction: column;
-        align-items: flex-start !important;
-        gap: 0.5rem;
+}
+
+@media (max-width: 576px) {
+    .admin-reports-table {
+        font-size: 0.8rem;
     }
     
-    .btn-group {
-        margin-top: 0.5rem;
+    .admin-modal .modal-body,
+    .admin-modal .modal-header,
+    .admin-modal .modal-footer {
+        padding: 1rem;
+    }
+    
+    .empty-state {
+        padding: 2rem 1rem;
+    }
+    
+    .empty-state-icon {
+        font-size: 3rem;
     }
 }
 
-/* Dark theme support */
-[data-theme="dark"] .card {
-    background-color: var(--dark-card-bg);
-    color: var(--dark-text-color);
+/* Dark theme specific adjustments */
+[data-theme="dark"] .table-container {
+    background: var(--bs-dark);
+    border-color: var(--bs-border-color);
+}
+
+[data-theme="dark"] .admin-reports-table {
+    background: var(--bs-dark);
+}
+
+[data-theme="dark"] .admin-reports-table td {
+    background: var(--bs-dark);
+    border-bottom-color: var(--bs-border-color);
+}
+
+[data-theme="dark"] .admin-reports-table tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .report-type-github {
+    background: rgba(240, 246, 252, 0.1);
+    color: #f0f6fc;
+    border: 1px solid rgba(240, 246, 252, 0.2);
+}
+
+[data-theme="dark"] .github-icon {
+    color: #f0f6fc !important;
+}
+
+[data-theme="dark"] .action-btn-edit {
+    background: rgba(13, 110, 253, 0.1);
+}
+
+[data-theme="dark"] .action-btn-delete {
+    background: rgba(220, 53, 69, 0.1);
+}
+
+[data-theme="dark"] .status-active {
+    background: rgba(25, 135, 84, 0.15);
+}
+
+[data-theme="dark"] .status-inactive {
+    background: rgba(108, 117, 125, 0.15);
+}
+
+[data-theme="dark"] .report-type-reddit {
+    background: rgba(255, 69, 0, 0.15);
 }
 
 [data-theme="dark"] .modal-content {
-    background-color: var(--dark-card-bg);
-    color: var(--dark-text-color);
+    background-color: var(--bs-dark);
+    color: var(--bs-body-color);
 }
 
 [data-theme="dark"] .form-control,
 [data-theme="dark"] .form-select {
-    background-color: var(--dark-input-bg);
-    border-color: var(--dark-border-color);
-    color: var(--dark-text-color);
+    background-color: var(--bs-secondary-bg);
+    border-color: var(--bs-border-color);
+    color: var(--bs-body-color);
 }
 
 [data-theme="dark"] .form-control:focus,
 [data-theme="dark"] .form-select:focus {
-    background-color: var(--dark-input-bg);
+    background-color: var(--bs-secondary-bg);
     border-color: var(--primary-color);
-    color: var(--dark-text-color);
+    color: var(--bs-body-color);
 }
 
 [data-theme="dark"] .text-muted {
-    color: var(--dark-text-muted) !important;
-}
-
-/* Dark theme button improvements */
-[data-theme="dark"] .btn-outline-primary {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-    background-color: rgba(102, 126, 234, 0.15);
-}
-
-[data-theme="dark"] .btn-outline-primary:hover {
-    background: var(--primary-color);
-    border-color: var(--primary-color);
-    color: white;
-}
-
-[data-theme="dark"] .btn-outline-danger {
-    border-color: var(--danger-color);
-    color: var(--danger-color);
-    background-color: rgba(220, 53, 69, 0.15);
-}
-
-[data-theme="dark"] .btn-outline-danger:hover {
-    background: var(--danger-color);
-    border-color: var(--danger-color);
-    color: white;
-}
-
-/* Ensure buttons are visible on dark card headers */
-[data-theme="dark"] .card-header {
-    background: var(--primary-gradient);
-    color: white;
-}
-
-[data-theme="dark"] .card-header .btn-outline-primary,
-[data-theme="dark"] .card-header .btn-outline-danger {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.5);
-    color: white;
-}
-
-[data-theme="dark"] .card-header .btn-outline-primary:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-    border-color: white;
-    color: white;
-}
-
-[data-theme="dark"] .card-header .btn-outline-danger:hover {
-    background-color: rgba(220, 53, 69, 0.8);
-    border-color: var(--danger-color);
-    color: white;
+    color: var(--bs-secondary-color) !important;
 }

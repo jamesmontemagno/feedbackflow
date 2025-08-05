@@ -5,6 +5,8 @@
 @using SharedDump.Models.Reports
 @using SharedDump.Models.Account
 @using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
 @inject FeedbackWebApp.Services.IAdminReportConfigService AdminReportConfigService
 @inject IAuthenticationService AuthService
 @inject IAccountServiceProvider AccountServiceProvider
@@ -35,7 +37,7 @@
     }
     else
     {
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-4 admin-header">
             <div>
                 <h1 class="feedbackflow-title mb-2">
                     <i class="bi bi-gear-fill me-2"></i>
@@ -43,7 +45,7 @@
                 </h1>
                 <p class="text-muted mb-0">Manage automated report configurations for administrators</p>
             </div>
-            <button class="btn btn-primary" @onclick="ShowCreateModal">
+            <button class="btn btn-primary btn-create-report" @onclick="ShowCreateModal">
                 <i class="bi bi-plus-circle me-2"></i>
                 New Report Config
             </button>
@@ -59,17 +61,17 @@
 
         @if (configs.Any())
         {
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-light">
+            <div class="table-container">
+                <table class="table admin-reports-table">
+                    <thead>
                         <tr>
                             <th>Name</th>
                             <th>Type</th>
                             <th>Source</th>
-                            <th>Email Recipient</th>
+                            <th class="mobile-hide">Email Recipient</th>
                             <th>Status</th>
-                            <th>Created</th>
-                            <th>Last Processed</th>
+                            <th class="mobile-hide">Created</th>
+                            <th class="mobile-hide">Last Processed</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -78,53 +80,65 @@
                         {
                             <tr>
                                 <td>
-                                    <strong>@config.Name</strong>
+                                    <div class="report-name">@config.Name</div>
                                 </td>
                                 <td>
-                                    <span class="badge bg-secondary">@config.Type.ToUpper()</span>
+                                    <span class="report-type-badge report-type-@(config.Type.ToLower())">@config.Type</span>
                                 </td>
                                 <td>
                                     @if (config.Type == "reddit")
                                     {
-                                        <span><i class="bi bi-reddit text-danger me-1"></i>r/@config.Subreddit</span>
+                                        <div class="report-source">
+                                            <i class="bi bi-reddit reddit-icon"></i>
+                                            <span>r/@config.Subreddit</span>
+                                        </div>
                                     }
                                     else if (config.Type == "github")
                                     {
-                                        <span><i class="bi bi-github text-dark me-1"></i>@config.Owner/@config.Repo</span>
+                                        <div class="report-source">
+                                            <i class="bi bi-github github-icon"></i>
+                                            <span>@config.Owner/@config.Repo</span>
+                                        </div>
                                     }
                                 </td>
-                                <td>
-                                    <small class="text-muted">@config.EmailRecipient</small>
+                                <td class="mobile-hide">
+                                    <div class="report-email">@config.EmailRecipient</div>
                                 </td>
                                 <td>
                                     @if (config.IsActive)
                                     {
-                                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Active</span>
+                                        <span class="status-badge status-active">
+                                            <i class="bi bi-check-circle"></i>
+                                            Active
+                                        </span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-secondary"><i class="bi bi-pause-circle me-1"></i>Inactive</span>
+                                        <span class="status-badge status-inactive">
+                                            <i class="bi bi-pause-circle"></i>
+                                            Inactive
+                                        </span>
                                     }
                                 </td>
-                                <td>
-                                    <small class="text-muted">@config.CreatedAt.ToString("MMM dd, yyyy")</small>
+                                <td class="mobile-hide">
+                                    <div class="report-date">@config.CreatedAt.ToString("MMM dd, yyyy")</div>
                                 </td>
-                                <td>
+                                <td class="mobile-hide">
                                     @if (config.LastProcessedAt.HasValue)
                                     {
-                                        <small class="text-muted">@config.LastProcessedAt.Value.ToString("MMM dd, yyyy")</small>
+                                        <div class="report-date">@config.LastProcessedAt.Value.ToString("MMM dd, yyyy")</div>
                                     }
                                     else
                                     {
-                                        <small class="text-muted">Never</small>
+                                        <div class="report-date report-date-never">Never</div>
                                     }
                                 </td>
                                 <td>
-                                    <div class="d-flex gap-1">
-                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => EditConfig(config)" title="Edit">
+                                    <div class="action-buttons">
+                                        <button class="btn action-btn action-btn-edit" @onclick="() => EditConfig(config)" title="Edit Configuration">
                                             <i class="bi bi-pencil"></i>
                                         </button>
-                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteConfig(config)" title="Delete">
+                                        <button class="btn action-btn action-btn-delete" @onclick="() => DeleteConfig(config)" title="Delete Configuration">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </div>
@@ -137,11 +151,11 @@
         }
         else
         {
-            <div class="text-center py-5">
-                <i class="bi bi-inbox display-4 text-muted"></i>
-                <h4 class="mt-3 text-muted">No Admin Reports Configured</h4>
-                <p class="text-muted">Create your first automated report configuration to get started.</p>
-                <button class="btn btn-primary" @onclick="ShowCreateModal">
+            <div class="empty-state">
+                <i class="bi bi-inbox empty-state-icon"></i>
+                <h4>No Admin Reports Configured</h4>
+                <p>Create your first automated report configuration to get started.</p>
+                <button class="btn btn-primary btn-create-report" @onclick="ShowCreateModal">
                     <i class="bi bi-plus-circle me-2"></i>
                     Create First Report Config
                 </button>
@@ -153,7 +167,7 @@
 <!-- Create/Edit Modal -->
 @if (showModal)
 {
-    <div class="modal fade show" style="display: block;" tabindex="-1">
+    <div class="modal fade show admin-modal" style="display: block;" tabindex="-1">
         <div class="modal-backdrop fade show"></div>
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -171,7 +185,7 @@
                     <button type="button" class="btn-close" @onclick="HideModal"></button>
                 </div>
                 <div class="modal-body">
-                    <EditForm Model="@currentConfig" OnValidSubmit="@SaveConfig">
+                    <EditForm Model="@currentConfig" OnValidSubmit="SaveConfig">
                         <DataAnnotationsValidator />
                         <ValidationSummary class="text-danger" />
 
