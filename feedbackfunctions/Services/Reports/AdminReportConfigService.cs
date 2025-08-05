@@ -117,7 +117,8 @@ public class AdminReportConfigService : IAdminReportConfigService
             config.PartitionKey = "AdminReports";
             config.RowKey = config.Id;
 
-            await _tableClient.UpdateEntityAsync(config, config.ETag);
+            // Use UpsertEntity with Replace mode to avoid ETag issues during development
+            await _tableClient.UpsertEntityAsync(config, TableUpdateMode.Replace);
             _logger.LogInformation("Updated admin report config {Id}", config.Id);
             return config;
         }
@@ -132,7 +133,15 @@ public class AdminReportConfigService : IAdminReportConfigService
     {
         try
         {
-            await _tableClient.DeleteEntityAsync("AdminReports", id);
+            // Get the entity first to ensure it exists and get the ETag
+            var existingConfig = await GetConfigAsync(id);
+            if (existingConfig == null)
+            {
+                _logger.LogWarning("Attempted to delete non-existent admin report config {Id}", id);
+                return false;
+            }
+
+            await _tableClient.DeleteEntityAsync("AdminReports", id, existingConfig.ETag);
             _logger.LogInformation("Deleted admin report config {Id}", id);
             return true;
         }

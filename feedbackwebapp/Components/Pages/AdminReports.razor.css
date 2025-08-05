@@ -53,24 +53,47 @@
     border-color: var(--primary-color);
     color: var(--primary-color);
     transition: all 0.2s ease;
+    background-color: rgba(102, 126, 234, 0.1);
+    border-width: 2px;
 }
 
 .btn-outline-primary:hover {
     background: var(--primary-color);
     border-color: var(--primary-color);
+    color: white;
     transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
 .btn-outline-danger {
     border-color: var(--danger-color);
     color: var(--danger-color);
     transition: all 0.2s ease;
+    background-color: rgba(220, 53, 69, 0.1);
+    border-width: 2px;
 }
 
 .btn-outline-danger:hover {
     background: var(--danger-color);
     border-color: var(--danger-color);
+    color: white;
     transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+/* Make buttons more prominent on card headers */
+.card-header .btn-sm {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    min-width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-header .btn-sm i {
+    font-size: 1rem;
 }
 
 .badge {
@@ -185,4 +208,54 @@
 
 [data-theme="dark"] .text-muted {
     color: var(--dark-text-muted) !important;
+}
+
+/* Dark theme button improvements */
+[data-theme="dark"] .btn-outline-primary {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background-color: rgba(102, 126, 234, 0.15);
+}
+
+[data-theme="dark"] .btn-outline-primary:hover {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+[data-theme="dark"] .btn-outline-danger {
+    border-color: var(--danger-color);
+    color: var(--danger-color);
+    background-color: rgba(220, 53, 69, 0.15);
+}
+
+[data-theme="dark"] .btn-outline-danger:hover {
+    background: var(--danger-color);
+    border-color: var(--danger-color);
+    color: white;
+}
+
+/* Ensure buttons are visible on dark card headers */
+[data-theme="dark"] .card-header {
+    background: var(--primary-gradient);
+    color: white;
+}
+
+[data-theme="dark"] .card-header .btn-outline-primary,
+[data-theme="dark"] .card-header .btn-outline-danger {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: white;
+}
+
+[data-theme="dark"] .card-header .btn-outline-primary:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: white;
+    color: white;
+}
+
+[data-theme="dark"] .card-header .btn-outline-danger:hover {
+    background-color: rgba(220, 53, 69, 0.8);
+    border-color: var(--danger-color);
+    color: white;
 }

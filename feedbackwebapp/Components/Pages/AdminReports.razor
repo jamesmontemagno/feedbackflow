@@ -441,8 +441,15 @@
             errorMessage = $"Error saving report configuration: {detailedError}";
             await ToastService.ShowErrorAsync($"Failed to save: {detailedError}");
             
-            // Log to console for debugging
-            Console.WriteLine($"SaveConfig Error: {ex}");
+            // Log detailed error information to console for debugging
+            Console.WriteLine($"SaveConfig Error Details:");
+            Console.WriteLine($"  Message: {ex.Message}");
+            Console.WriteLine($"  InnerException: {ex.InnerException?.Message}");
+            Console.WriteLine($"  StackTrace: {ex.StackTrace}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"  InnerException StackTrace: {ex.InnerException.StackTrace}");
+            }
         }
         finally
         {
@@ -475,6 +482,16 @@
         {
             errorMessage = $"Error deleting report configuration: {ex.Message}";
             await ToastService.ShowErrorAsync("Failed to delete report configuration");
+            
+            // Log detailed error information to console for debugging
+            Console.WriteLine($"DeleteConfig Error Details:");
+            Console.WriteLine($"  Message: {ex.Message}");
+            Console.WriteLine($"  InnerException: {ex.InnerException?.Message}");
+            Console.WriteLine($"  StackTrace: {ex.StackTrace}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"  InnerException StackTrace: {ex.InnerException.StackTrace}");
+            }
         }
     }
 }
