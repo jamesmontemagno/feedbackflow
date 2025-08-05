@@ -3,10 +3,6 @@ using Microsoft.Extensions.Logging;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-var defaultPW = new GenerateParameterDefault{MinLength = 8};
-var frontendPassword = ParameterResourceBuilderExtensions.CreateGeneratedParameter(builder, "password", secret: true, defaultPW);
-builder.AddResource(frontendPassword);
-
 var storage = builder.AddAzureStorage("ff-storage")
         .RunAsEmulator( (ctx) =>
         {
@@ -18,6 +14,9 @@ var blobs = storage.AddBlobs("ff-blobs");
 blobs.AddBlobContainer("shared-analyses");
 blobs.AddBlobContainer("reports");
 blobs.AddBlobContainer("hackernews-cache");
+
+var tables = storage.AddTables("ff-tables");
+
 
 var feedbackFunctionsProject = builder.AddAzureFunctionsProject<Projects.Functions>("feedback-functions")
         .WithHostStorage(storage)
@@ -70,9 +69,13 @@ builder.Eventing.Subscribe<BeforeResourceStartedEvent>(feedbackFunctionsProject.
 
 
 
-builder.AddProject<Projects.WebApp>("feedback-webapp")
+var webApp = builder.AddProject<Projects.WebApp>("feedback-webapp")
         .WithEnvironment("FeedbackApi__BaseUrl", feedbackFunctionsProject.GetEndpoint("http"))
         .WithEnvironment("FeedbackApi__UseMocks", "false")
-        .WithEnvironment("FeedbackApp__AccessPassword", frontendPassword);
+        .WithEnvironment("Authentication__UseEasyAuth", "false")
+        .WithEnvironment("Authentication__BypassInDevelopment", "true"); // Use real auth in development too
+
+// Update functions to know the webapp URL
+feedbackFunctionsProject.WithEnvironment("WebUrl", webApp.GetEndpoint("http"));
 
 builder.Build().Run();

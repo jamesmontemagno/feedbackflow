@@ -1,3 +1,15 @@
+
+# Project Root Namespaces
+
+Each project in this solution uses the following RootNamespace (from the .csproj):
+
+- **feedbackwebapp**: `FeedbackWebApp`
+- **feedbackfunctions**: `FeedbackFunctions`
+- **shareddump**: `SharedDump`
+- **FeedbackFlow.AppHost**: `FeedbackFlow.AppHost`
+- **FeedbackFlow.ServiceDefaults**: `FeedbackFlow.ServiceDefaults`
+- **feedbackflow.tests**: `FeedbackFlow.Tests`
+
 # Copilot Instructions
 
 The github repo is jamesmontemagno/feedbackflow and the primary branch that I work off of is main
@@ -12,7 +24,8 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 - **Restore dependencies**: `dotnet restore FeedbackFlow.slnx`
 
 ### Development Workflow
-- **Run full application** (recommended): `cd FeedbackFlow.AppHost && dotnet run`
+- **Run full application with the aspire CLI** (recommended): `aspire run`
+- **Run web app only**: `dotnet run --project feedbackwebapp/WebApp.csproj`
 - **Build functions only**: Available as VS Code task "build (functions)"
 - **Run functions standalone**: Available as VS Code task with func host
 - **Clean build**: Available as VS Code task "clean (functions)"
@@ -73,6 +86,8 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 - Test all components in both light and dark themes before committing
 - Use rgba(var(--primary-color-rgb), opacity) for transparent colors
 - Apply color transitions with `transition: color 0.3s ease, background-color 0.3s ease`
+- **Bootstrap Override Classes**: When using Bootstrap alert/button classes, override with CSS variables for dark theme support (e.g., .alert-warning, .btn-secondary)
+- **Modal Close Buttons**: Ensure .btn-close works in dark theme by applying appropriate filter properties
 
 ### Icons & UI Elements
 - Use Bootstrap Icons (bi bi-*) with consistent sizing and spacing
@@ -132,6 +147,7 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 - Implement proper error boundaries
 - Display user-friendly error messages
 - Log errors appropriately
+- **Usage Limit Errors**: Check for JSON error responses with "USAGE_LIMIT_EXCEEDED" ErrorCode and display UsageLimitDialog instead of raw error messages
 
 ## Performance
 - Implement proper component lifecycle methods
@@ -223,6 +239,27 @@ catch (Exception ex)
 }
 ```
 
+### Usage Limit Error Pattern
+Use the shared `UsageLimitErrorHelper.TryParseUsageLimitError()` method for consistent error handling:
+```csharp
+catch (Exception ex)
+{
+    // Check if this is a usage limit error
+    if (UsageLimitErrorHelper.TryParseUsageLimitError(ex.Message, out var limitError))
+    {
+        usageLimitError = limitError;
+        showUsageLimitDialog = true;
+    }
+    else
+    {
+        // Handle regular errors
+        error = $"An error occurred: {ex.Message}";
+    }
+}
+```
+
+Add required using directive: `@using SharedDump.Utils`
+
 ### Service Registration Pattern
 Services are registered conditionally based on `UseMocks` configuration:
 ```csharp
@@ -246,6 +283,7 @@ else
 - **Shared Components**: In `Components/Shared/`, reusable across pages
 - **Form Components**: In `Components/Feedback/Forms/`, handle user input and validation
 - **Result Components**: In `Components/Feedback/Results/`, display analysis results
+- **Error Dialogs**: Use `UsageLimitDialog` for usage limit exceeded errors, ensure dark theme compatibility
 
 ### JSON Serialization Context
 Uses source-generated JSON serialization contexts for better performance:

@@ -1,11 +1,13 @@
 :root {
     /* Light theme (default) - Darker Pastel Purple Theme */
     --bg-primary: #f7f4ff;
-    --bg-secondary: #ffffff;    --bg-secondary-rgb: 255, 255, 255;
+    --bg-secondary: #ffffff;
+    --bg-secondary-rgb: 255, 255, 255;
     --text-primary: #2d2649;
     --text-secondary: #5d5777;
     --text-secondary-rgb: 93, 87, 119;
     --border-color: #d5cbe9;
+    --border-color-rgb: 213, 203, 233;
     --dark-border-color: #b3a5d4;
     --hover-bg: rgba(142, 115, 200, 0.08);
     --card-shadow: 0 0.25rem 1rem rgba(121, 91, 170, 0.12);
@@ -15,14 +17,17 @@
     --primary-hover: #7758b8;
     --success-color: #9cdbca;
     --success-color-rgb: 156, 219, 202;
+    --success-bg: rgba(156, 219, 202, 0.1);
     --danger-color: #f3a5b1;
     --danger-color-rgb: 243, 165, 177;
+    --danger-bg: rgba(243, 165, 177, 0.1);
     --warning-color: #f8d3a5;
     --github-color: #24292e;
     --warning-color-rgb: 248, 211, 165;
     --info-color: #a2c1f3;
     --info-color-rgb: 162, 193, 243;
     --code-bg: rgba(142, 115, 200, 0.12);
+    --code-color: #6c4a7d;
     --bs-secondary: #5d5777;
     --border-radius: 16px;
     --border-radius-sm: 12px;
@@ -31,15 +36,27 @@
     --platform-pill-bg: var(--bg-secondary);
     --platform-pill-border: var(--border-color);
     --platform-pill-text: var(--text-secondary);
+    
+    /* Additional variables for components */
+    --card-bg: var(--bg-secondary);
+    --card-bg-rgb: var(--bg-secondary-rgb);
+    --surface-color: var(--bg-secondary);
+    --secondary-bg: #f1ebff;
+    --secondary-bg-rgb: 241, 235, 255;
+    --input-bg: var(--bg-secondary);
+    --link-color: var(--primary-color);
+    --link-hover-color: var(--primary-hover);
 }
 
 [data-theme="dark"] {
     --bg-primary: #16121f;
     --bg-secondary: #201729;
-    --bg-secondary-rgb: 32, 23, 41;    --text-primary: #f5f3ff;
+    --bg-secondary-rgb: 32, 23, 41;
+    --text-primary: #f5f3ff;
     --text-secondary: #c8c0e7;
     --text-secondary-rgb: 200, 192, 231;
     --border-color: #3e3363;
+    --border-color-rgb: 62, 51, 99;
     --dark-border-color: #4d3f77;
     --hover-bg: rgba(167, 140, 218, 0.12);
     --card-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.25);
@@ -49,18 +66,31 @@
     --primary-hover: #bca4e6;
     --success-color: #7cc3b0;
     --success-color-rgb: 124, 195, 176;
+    --success-bg: rgba(124, 195, 176, 0.1);
     --danger-color: #e78795;
     --danger-color-rgb: 231, 135, 149;
+    --danger-bg: rgba(231, 135, 149, 0.1);
     --warning-color: #e7bf85;
     --warning-color-rgb: 231, 191, 133;
     --github-color: #c9d1d9;
     --info-color: #85a5e7;
     --info-color-rgb: 133, 165, 231;
     --code-bg: rgba(165, 139, 216, 0.15);
+    --code-color: #c8b5e8;
     --bs-secondary: #c8c0e7;
     --platform-pill-bg: var(--bg-secondary);
     --platform-pill-border: var(--border-color);
     --platform-pill-text: var(--text-secondary);
+    
+    /* Additional variables for components */
+    --card-bg: var(--bg-secondary);
+    --card-bg-rgb: var(--bg-secondary-rgb);
+    --surface-color: var(--bg-secondary);
+    --secondary-bg: #2a1e35;
+    --secondary-bg-rgb: 42, 30, 53;
+    --input-bg: var(--bg-secondary);
+    --link-color: var(--primary-color);
+    --link-hover-color: var(--primary-hover);
 }
 
 /* Base styles */
@@ -124,6 +154,48 @@ h1:focus {
 /* Bootstrap Overrides - Consolidated in one place */
 /* Place all Bootstrap overrides here to avoid conflicts */
 
+/* Card styling - ensures all cards use theme colors */
+.card {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.card-body {
+    color: var(--text-primary);
+}
+
+.card-header {
+    background-color: rgba(var(--bg-secondary-rgb), 0.8);
+    border-bottom-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.card-footer {
+    background-color: rgba(var(--bg-secondary-rgb), 0.8);
+    border-top-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+/* Text color overrides */
+.text-muted {
+    color: var(--text-secondary) !important;
+}
+
+.text-primary {
+    color: var(--primary-color) !important;
+}
+
+/* Spinner color - ensure all spinners use primary color */
+.spinner-border {
+    color: var(--primary-color);
+}
+
+.spinner-border.text-primary {
+    color: var(--primary-color) !important;
+}
+
 /* Buttons */
 .btn {
     border-radius: var(--border-radius-sm);
@@ -161,6 +233,24 @@ h1:focus {
     background-color: var(--hover-bg);
     border-color: var(--border-color);
     color: var(--text-primary);
+}
+
+/* Close button for modals and alerts - Dark theme support */
+.btn-close {
+    transition: opacity 0.3s ease, transform 0.2s ease;
+}
+
+/* Dark theme specific close button styling */
+[data-theme="dark"] .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+[data-theme="dark"] .btn-close:hover {
+    transform: scale(1.1);
+}
+
+[data-theme="dark"] .btn-close:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
 }
 
 /* Forms */
@@ -302,6 +392,44 @@ h1:focus {
     color: var(--text-primary);
     padding: 1rem 1.25rem;
     box-shadow: 0 0.25rem 0.75rem rgba(var(--primary-color-rgb), 0.1);
+    transition: all 0.3s ease;
+}
+
+/* Bootstrap Alert Variants with Dark Theme Support */
+.alert-danger {
+    background-color: var(--danger-bg);
+    border: 1px solid var(--danger-color);
+    color: var(--danger-color);
+}
+
+.alert-warning {
+    background-color: rgba(var(--warning-color-rgb), 0.1);
+    border: 1px solid var(--warning-color);
+    color: var(--warning-color);
+}
+
+.alert-success {
+    background-color: var(--success-bg);
+    border: 1px solid var(--success-color);
+    color: var(--success-color);
+}
+
+.alert-info {
+    background-color: rgba(var(--info-color-rgb), 0.1);
+    border: 1px solid var(--info-color);
+    color: var(--info-color);
+}
+
+.alert-primary {
+    background-color: rgba(var(--primary-color-rgb), 0.1);
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+}
+
+.alert-secondary {
+    background-color: rgba(var(--text-secondary-rgb), 0.1);
+    border: 1px solid var(--text-secondary);
+    color: var(--text-secondary);
 }
 
 /* Navbar */
@@ -419,6 +547,76 @@ h1:focus {
     60% {
         transform: translateY(-10px);
     }
+}
+
+/* 
+=================================
+BLAZOR RECONNECTION UI DARK MODE
+=================================
+Override Blazor's built-in reconnection UI for dark mode support
+*/
+
+/* Blazor reconnection modal overlay */
+#components-reconnect-modal {
+    background: rgba(0, 0, 0, 0.8) !important;
+    backdrop-filter: blur(4px);
+}
+
+/* Blazor reconnection modal content */
+#components-reconnect-modal .components-reconnect-modal {
+    background: var(--card-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--border-radius) !important;
+    box-shadow: var(--card-shadow) !important;
+    color: var(--text-primary) !important;
+    padding: 1.5rem !important;
+    max-width: 400px !important;
+    margin: 0 auto !important;
+}
+
+/* Blazor reconnection modal text */
+#components-reconnect-modal .components-reconnect-modal h5,
+#components-reconnect-modal .components-reconnect-modal p {
+    color: var(--text-primary) !important;
+    margin-bottom: 1rem !important;
+}
+
+/* Blazor reconnection modal buttons */
+#components-reconnect-modal .components-reconnect-modal button {
+    background: var(--primary-gradient) !important;
+    border: none !important;
+    border-radius: var(--border-radius-sm) !important;
+    color: white !important;
+    padding: 0.5rem 1rem !important;
+    margin: 0.25rem !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+#components-reconnect-modal .components-reconnect-modal button:hover {
+    filter: brightness(1.1) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Blazor reconnection modal failed state */
+#components-reconnect-modal .components-reconnect-modal.components-reconnect-failed {
+    border-color: var(--danger-color) !important;
+}
+
+#components-reconnect-modal .components-reconnect-modal.components-reconnect-failed h5 {
+    color: var(--danger-color) !important;
+}
+
+/* Dark theme specific overrides */
+[data-theme="dark"] #components-reconnect-modal .components-reconnect-modal {
+    background: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] #components-reconnect-modal .components-reconnect-modal h5,
+[data-theme="dark"] #components-reconnect-modal .components-reconnect-modal p {
+    color: var(--text-primary) !important;
 }
 
 /* 

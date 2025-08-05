@@ -1,4 +1,5 @@
 using FeedbackWebApp.Services.Interfaces;
+using FeedbackWebApp.Services.Authentication;
 using SharedDump.Models.BlueSkyFeedback;
 using System.Text.Json;
 
@@ -15,9 +16,10 @@ public class BlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackService
         IHttpClientFactory http,
         IConfiguration configuration,
         UserSettingsService userSettings,
+        IAuthenticationHeaderService authHeaderService,
         string postUrlOrId,
         FeedbackStatusUpdate? onStatusUpdate = null)
-        : base(http, configuration, userSettings, onStatusUpdate)
+        : base(http, configuration, userSettings, authHeaderService, onStatusUpdate)
     {
         _postUrlOrId = postUrlOrId;
     }
@@ -34,8 +36,7 @@ public class BlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackService
 
         var maxComments = await GetMaxCommentsToAnalyze();
         var getFeedbackUrl = $"{BaseUrl}/api/GetBlueSkyFeedback?code={Uri.EscapeDataString(blueSkyCode)}&post={Uri.EscapeDataString(_postUrlOrId)}&maxComments={maxComments}";
-        var feedbackResponse = await Http.GetAsync(getFeedbackUrl);
-        feedbackResponse.EnsureSuccessStatusCode();
+        var feedbackResponse = await SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod.Get, getFeedbackUrl);
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
         
         var feedback = JsonSerializer.Deserialize<BlueSkyFeedbackResponse>(responseContent);

@@ -1,4 +1,5 @@
 using FeedbackWebApp.Services.Feedback;
+using FeedbackWebApp.Services.Authentication;
 using SharedDump.Models.BlueSkyFeedback;
 using SharedDump.Services.Mock;
 using FeedbackWebApp.Services.Interfaces;
@@ -14,8 +15,9 @@ public class MockBlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackServi
         IHttpClientFactory http,
         IConfiguration configuration,
         UserSettingsService userSettings,
+        IAuthenticationHeaderService authenticationHeaderService,
         FeedbackStatusUpdate? onStatusUpdate = null)
-        : base(http, configuration, userSettings, onStatusUpdate)
+        : base(http, configuration, userSettings, authenticationHeaderService, onStatusUpdate)
     {
     }
 

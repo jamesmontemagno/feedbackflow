@@ -1,0 +1,176 @@
+@implements IDisposable
+@using FeedbackWebApp.Services.Authentication
+@using SharedDump.Models.Authentication
+@inject IAuthenticationService AuthService
+
+@inject NavigationManager Navigation
+
+<div class="user-navigation d-flex align-items-center">
+    @if (isLoading)
+    {
+        <div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div>
+    }
+    else if (isAuthenticated && currentUser != null)
+    {
+        <!-- User dropdown -->
+        <div class="dropdown">
+            <button class="btn btn-link dropdown-toggle user-dropdown-toggle d-flex align-items-center p-0" 
+                    type="button" 
+                    data-bs-toggle="dropdown" 
+                    aria-expanded="false">
+                <div class="d-flex align-items-center gap-2">
+                    @if (!string.IsNullOrEmpty(currentUser.ProfileImageUrl))
+                    {
+                        <img src="@currentUser.ProfileImageUrl" 
+                             alt="@currentUser.Name" 
+                             class="user-avatar rounded-circle" 
+                             width="32" 
+                             height="32" />
+                    }
+                    else
+                    {
+                        <div class="user-avatar-placeholder rounded-circle d-flex align-items-center justify-content-center">
+                            <i class="bi bi-person-fill"></i>
+                        </div>
+                    }
+                    <span class="user-name d-none d-md-inline">@GetDisplayName()</span>
+                </div>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end user-dropdown-menu">
+                <li class="dropdown-header">
+                    <div class="user-info">
+                        <div class="user-display-name">@currentUser.Name</div>
+                        <div class="user-email text-muted">@currentUser.Email</div>
+                        <div class="user-provider text-muted">
+                            <small>Signed in with @currentUser.AuthProvider</small>
+                        </div>
+                    </div>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item d-flex align-items-center" href="/account-settings">
+                        <i class="bi bi-person-gear me-2"></i>
+                        <span>Account Settings</span>
+                    </a>
+                </li>
+                <li>
+                    <button class="dropdown-item d-flex align-items-center" @onclick="LogoutAsync">
+                        <i class="bi bi-box-arrow-right me-2"></i>
+                        <span>Log Out</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+    }
+    else
+    {
+        <!-- Login button -->
+        <button class="btn btn-outline-light d-flex align-items-center" @onclick="NavigateToLogin">
+            <i class="bi bi-box-arrow-in-right me-2"></i>
+            <span class="d-none d-md-inline">Login</span>
+        </button>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private bool isAuthenticated = false;
+    private AuthenticatedUser? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check authentication status
+        await CheckAuthenticationAsync();
+        
+        // Subscribe to authentication state changes from both services
+        AuthService.AuthenticationStateChanged += OnAuthenticationStateChanged;
+
+    }
+
+    private async Task CheckAuthenticationAsync()
+    {
+        try
+        {
+            isLoading = true;
+            isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (isAuthenticated)
+            {
+                currentUser = await AuthService.GetCurrentUserAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error checking authentication: {ex.Message}");
+            isAuthenticated = false;
+            currentUser = null;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnAuthenticationStateChanged(object? sender, bool isAuth)
+    {
+        InvokeAsync(async () =>
+        {
+            await CheckAuthenticationAsync();
+        });
+    }
+
+    private void OnTokenRefreshStateChanged(object? sender, bool isAuth)
+    {
+        InvokeAsync(async () =>
+        {
+            await CheckAuthenticationAsync();
+        });
+    }
+
+    private string GetDisplayName()
+    {
+        if (currentUser == null) return "";
+        
+        if (!string.IsNullOrEmpty(currentUser.Name))
+        {
+            var firstName = currentUser.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            return firstName ?? currentUser.Name;
+        }
+            
+        if (!string.IsNullOrEmpty(currentUser.Email))
+        {
+            var atIndex = currentUser.Email.IndexOf('@');
+            return atIndex > 0 ? currentUser.Email.Substring(0, atIndex) : currentUser.Email;
+        }
+        
+        return "User";
+    }
+
+    private void NavigateToLogin()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private async Task LogoutAsync()
+    {
+        try
+        {
+            await AuthService.LogoutAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error during logout: {ex.Message}");
+            // Force navigation to logout endpoint with post-logout redirect
+            var baseUrl = $"{Navigation.BaseUri.TrimEnd('/')}";
+            var homeRedirect = Uri.EscapeDataString($"{baseUrl}/");
+            var logoutUrl = $"/.auth/logout?post_logout_redirect_uri={homeRedirect}";
+            Navigation.NavigateTo(logoutUrl, forceLoad: true);
+        }
+    }
+
+    public void Dispose()
+    {
+        AuthService.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+
+    }
+}

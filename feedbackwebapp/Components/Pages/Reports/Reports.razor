@@ -6,7 +6,7 @@
 @inject IReportServiceProvider ReportServiceProvider
 @inject IReportRequestService ReportRequestService
 @inject NavigationManager NavigationManager
-@inject AuthenticationService AuthService
+@inject IAuthenticationService AuthService
 @inject IHistoryHelper HistoryHelper
 @inject IJSRuntime JSRuntime
 
@@ -15,7 +15,12 @@
 <div class="container px-4">
     @if (!isAuthenticated)
     {
-        <AuthenticationForm OnAuthenticated="HandleAuthenticated" />
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <span>Loading...</span>
+            </div>
+        </div>
     }
     else
     {
@@ -25,10 +30,7 @@
                 <p class="text-muted mb-0">Reports are generated Monday morning for select communities</p>
             </div>
             <div class="d-flex gap-2">
-                <a href="/reports/create" class="btn btn-primary">
-                    <i class="bi bi-plus-lg me-2"></i>Create Report
-                </a>
-                <a href="/reports/manage" class="btn btn-outline-primary">
+                <a href="/reports/manage" class="btn btn-primary">
                     <i class="bi bi-gear me-2"></i>Manage
                 </a>
             </div>
@@ -197,7 +199,7 @@
                     {
                         <div class="alert alert-info">
                             <i class="bi bi-info-circle me-2"></i>
-                            No reports found for your requests. <a href="/reports/create" class="alert-link">Create a report request</a> to see reports here.
+                            No reports found for your requests. <a href="/reports/manage" class="alert-link">Create a report request</a> to see reports here.
                         </div>
                     }
                 }
@@ -321,15 +323,15 @@
             loading = true;
             errorMessage = null;
             
-            // Get user's report requests from IndexedDB
-            var userRequests = await JSRuntime.InvokeAsync<object[]>("window.indexedDbModule.getAllReportRequests") ?? Array.Empty<object>();
+            // Get user's report requests from server and filter reports accordingly
+            var userRequests = await ReportRequestService.GetUserReportRequestsAsync();
             hasUserRequests = userRequests.Any();
             
             if (hasUserRequests)
             {
-                // Filter reports based on user requests and sort by latest first
-                var filteredReports = await ReportRequestService.FilterReportsAsync(userRequests);
-                reports = filteredReports.OrderByDescending(r => r.GeneratedAt);
+                // Get reports for the authenticated user and sort by latest first
+                var userReports = await ReportRequestService.GetUserReportsAsync();
+                reports = userReports.OrderByDescending(r => r.GeneratedAt);
             }
             else
             {
@@ -355,6 +357,14 @@
         if (firstRender)
         {
             isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            
+            if (!isAuthenticated)
+            {
+                // Redirect to home page for login
+                NavigationManager.NavigateTo("/");
+                return;
+            }
+            
             if (isAuthenticated)
             {
                 await LoadReports();

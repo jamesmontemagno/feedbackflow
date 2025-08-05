@@ -1,0 +1,230 @@
+/* Analysis styles */
+
+/* Note: Shared styles for state elements, service icons,
+   action buttons, and user input have been moved to app.css */
+
+.content-wrapper {
+    border-radius: var(--border-radius-sm);
+    overflow: hidden;
+}
+
+/* Simplified header layout */
+.analysis-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.header-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 0; /* Allow text to wrap */
+}
+
+.service-icons-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.created-date {
+    font-size: 0.85rem;
+}
+
+.copy-btn {
+    flex-shrink: 0;
+    min-width: auto;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease-in-out;
+}
+
+.copy-btn i {
+    font-size: 1rem;
+    transition: transform 0.2s ease;
+}
+
+.copy-btn:hover:not(:disabled) i {
+    transform: scale(1.1);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 576px) {
+    .analysis-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+    
+    .header-info {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .service-icons-group {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .created-date {
+        white-space: nowrap;
+        font-size: 0.8rem;
+    }
+    
+    .copy-btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .copy-btn .btn-text {
+        display: inline;
+    }
+}
+
+@media (min-width: 577px) and (max-width: 768px) {
+    .copy-btn .btn-text {
+        display: none;
+    }
+    
+    .copy-btn {
+        padding: 0.375rem 0.5rem;
+        min-width: 36px;
+    }
+}
+
+/* Additional mobile optimizations */
+@media (max-width: 576px) {
+    /* Reduce card padding on mobile */
+    .card-body {
+        padding: 0.75rem;
+    }
+    
+    /* Optimize user input section */
+    .user-input {
+        margin-bottom: 1rem !important;
+    }
+    
+    .user-input strong {
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+}
+
+.analysis-badge {
+    background-color: var(--warning-color);
+    color: var(--text-primary);
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: var(--border-radius-pill);
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.markdown-content {
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+.markdown-content :deep(h1), 
+.markdown-content :deep(h2), 
+.markdown-content :deep(h3), 
+.markdown-content :deep(h4), 
+.markdown-content :deep(h5), 
+.markdown-content :deep(h6) {
+    color: var(--text-primary);
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    font-weight: 700;
+}
+
+.markdown-content :deep(h1) {
+    font-size: 1.8rem;
+}
+
+.markdown-content :deep(h2) {
+    font-size: 1.5rem;
+}
+
+.markdown-content :deep(h3) {
+    font-size: 1.3rem;
+}
+
+.markdown-content :deep(ul), 
+.markdown-content :deep(ol) {
+    padding-left: 2rem;
+    margin-bottom: 1rem;
+}
+
+.markdown-content :deep(p) {
+    margin-bottom: 1rem;
+}
+
+.markdown-content :deep(pre) {
+    background-color: var(--code-bg);
+    padding: 1rem;
+    border-radius: var(--border-radius-sm);
+    margin-bottom: 1rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.markdown-content :deep(code) {
+    background-color: var(--code-bg);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+.markdown-content :deep(blockquote) {
+    border-left: 4px solid var(--primary-color);
+    padding-left: 1rem;
+    margin-left: 0;
+    margin-right: 0;
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+.markdown-content :deep(a) {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.markdown-content :deep(a:hover) {
+    text-decoration: underline;
+}
+
+.markdown-content :deep(hr) {
+    border-color: var(--border-color);
+    margin: 1.5rem 0;
+}
+
+.markdown-content :deep(table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+}
+
+.markdown-content :deep(th), 
+.markdown-content :deep(td) {
+    border: 1px solid var(--border-color);
+    padding: 0.75rem;
+}
+
+.markdown-content :deep(th) {
+    background-color: var(--hover-bg);
+}
+
+/* Note: URL list and YouTube thumbnail styles have been moved to app.css */

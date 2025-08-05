@@ -4,6 +4,8 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using SharedDump.Models.Reports;
+using SharedDump.Models.Account;
+using SharedDump.Utils.Account;
 using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
@@ -11,6 +13,10 @@ using SharedDump.Services.Interfaces;
 using SharedDump.AI;
 using FeedbackFunctions.Utils;
 using FeedbackFunctions.Services;
+using FeedbackFunctions.Services.Reports;
+using FeedbackFunctions.Services.Email;
+using FeedbackFunctions.Services.Account;
+using FeedbackFunctions.Models.Email;
 
 namespace FeedbackFunctions;
 
@@ -22,11 +28,15 @@ public class ReportProcessorFunctions
     private readonly ILogger<ReportProcessorFunctions> _logger;
     private readonly IConfiguration _configuration;
     private const string TableName = "reportrequests";
+    private const string UserRequestsTableName = "userreportrequests";
     private readonly TableClient _tableClient;
+    private readonly TableClient _userRequestsTableClient;
     private readonly BlobServiceClient _serviceClient;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
     private readonly ReportGenerator _reportGenerator;
     private readonly IReportCacheService _cacheService;
+    private readonly IEmailService _emailService;
+    private readonly IUserAccountService _userAccountService;
 
     public ReportProcessorFunctions(
         ILogger<ReportProcessorFunctions> logger,
@@ -34,7 +44,9 @@ public class ReportProcessorFunctions
         IRedditService redditService,
         IGitHubService githubService,
         IFeedbackAnalyzerService analyzerService,
-        IReportCacheService cacheService)
+        IReportCacheService cacheService,
+        IEmailService emailService,
+        IUserAccountService userAccountService)
     {
 #if DEBUG
         _configuration = new ConfigurationBuilder()
@@ -46,20 +58,24 @@ public class ReportProcessorFunctions
 #endif
         _logger = logger;
         _cacheService = cacheService;
+        _emailService = emailService;
+        _userAccountService = userAccountService;
         
         // Initialize table client
-        var storageConnection = _configuration["AzureWebJobsStorage"] ?? throw new InvalidOperationException("Storage connection string not configured");
+        var storageConnection = _configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
         var tableServiceClient = new TableServiceClient(storageConnection);
         _tableClient = tableServiceClient.GetTableClient(TableName);
         _tableClient.CreateIfNotExists();
+        
+        // Initialize user requests table client
+        _userRequestsTableClient = tableServiceClient.GetTableClient(UserRequestsTableName);
+        _userRequestsTableClient.CreateIfNotExists();
 
         // Initialize blob service client
         _serviceClient = new BlobServiceClient(storageConnection);
 
         // Initialize report generator
-        var reportsContainerClient = _serviceClient.GetBlobContainerClient("reports");
-        reportsContainerClient.CreateIfNotExists();
-        _reportGenerator = new ReportGenerator(_logger, redditService, githubService, analyzerService, reportsContainerClient, _cacheService);
+        _reportGenerator = new ReportGenerator(_logger, redditService, githubService, analyzerService, _serviceClient, _configuration, _cacheService);
     }
 
     /// <summary>
@@ -280,6 +296,89 @@ public class ReportProcessorFunctions
     }
 
     /// <summary>
+    /// Generates a summary version of a Reddit report with stats, top posts, and weekly summary only
+    /// </summary>
+    /// <param name="req">HTTP request with query parameters</param>
+    /// <returns>HTTP response with a summary HTML-formatted report</returns>
+    /// <remarks>
+    /// Query parameters:
+    /// - subreddit: Required. The name of the subreddit to analyze
+    /// - force: Optional. If true, bypasses cache and forces new report generation (default: false)
+    /// 
+    /// The function fetches a recent summary report (within last 24 hours) or generates a new one.
+    /// Summary reports contain only essential information: statistics, top posts, and weekly summary.
+    /// </remarks>
+    /// <example>
+    /// GET /api/RedditReportSummary?subreddit=dotnet&amp;force=true
+    /// </example>
+    [Function("RedditReportSummary")]
+    public async Task<HttpResponseData> RedditReportSummary(
+        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+    {
+        var startTime = DateTime.UtcNow;
+        _logger.LogInformation("Starting Reddit Summary Report processing for URL {RequestUrl}", req.Url);
+
+        var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
+        var subreddit = queryParams["subreddit"];
+        var forceParam = queryParams["force"];
+        var force = bool.TryParse(forceParam, out var parsedForce) && parsedForce;
+
+        if (string.IsNullOrEmpty(subreddit))
+        {
+            _logger.LogWarning("Reddit Summary Report request rejected - missing subreddit parameter");
+            var response = req.CreateResponse(HttpStatusCode.BadRequest);
+            await response.WriteStringAsync("Subreddit parameter is required");
+            return response;
+        }
+
+        try
+        {
+            // First, check if we have a recent summary report (last 24 hours) unless forced
+            var recentSummaryReport = force ? null : await _reportGenerator.GetRecentSummaryReportAsync("reddit", subreddit);
+            ReportModel summaryReport;
+
+            if (recentSummaryReport != null)
+            {
+                _logger.LogInformation("Using existing summary report {ReportId} for r/{Subreddit} generated {TimeSinceGeneration} ago", 
+                    recentSummaryReport.Id, subreddit, DateTime.UtcNow - recentSummaryReport.GeneratedAt);
+                summaryReport = recentSummaryReport;
+            }
+            else
+            {
+                var logMessage = force 
+                    ? "Force parameter specified, generating new summary report for r/{Subreddit}" 
+                    : "No recent summary report found for r/{Subreddit}, generating new summary report";
+                _logger.LogInformation(logMessage, subreddit);
+                
+                // Generate a full report which will automatically create a summary report
+                var cutoffDate = DateTimeOffset.UtcNow.AddDays(-7);
+                var fullReport = await _reportGenerator.GenerateRedditReportAsync(subreddit, cutoffDate, storeToBlob: true);
+                
+                // Get the summary report that was just created
+                summaryReport = await _reportGenerator.GetRecentSummaryReportAsync("reddit", subreddit) ?? 
+                    throw new InvalidOperationException("Summary report was not created as expected");
+            }
+
+            var processingTime = DateTime.UtcNow - startTime;
+            _logger.LogInformation("Reddit Summary Report processing completed for r/{Subreddit} in {ProcessingTime:c}", 
+                subreddit, processingTime);
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            response.Headers.Add("Content-Type", "text/html; charset=utf-8");
+            await response.WriteStringAsync(summaryReport.HtmlContent ?? string.Empty);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing Reddit summary report for r/{Subreddit}. Processing time: {ProcessingTime:c}", 
+                subreddit, DateTime.UtcNow - startTime);
+            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await response.WriteStringAsync($"Error processing summary report: {ex.Message}");
+            return response;
+        }
+    }
+
+    /// <summary>
     /// Timer trigger for weekly report processing
     /// </summary>
     [Function("WeeklyReportProcessor")]
@@ -317,6 +416,9 @@ public class ReportProcessorFunctions
                     _logger.LogWarning("Failed to process request {RequestId}", request.Id);
                 }
             }
+
+            // Send email notifications for generated reports
+            await ProcessEmailNotificationsAsync(generatedReports, requests);
 
             // Store summary of the weekly processing session
             await StoreWeeklyProcessingSummaryAsync(generatedReports, failedRequests);
@@ -424,6 +526,162 @@ public class ReportProcessorFunctions
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error storing weekly processing summary");
+        }
+    }
+
+    /// <summary>
+    /// Process email notifications for generated reports
+    /// </summary>
+    private async Task ProcessEmailNotificationsAsync(List<ReportModel> generatedReports, List<ReportRequestModel> requests)
+    {
+        try
+        {
+            _logger.LogInformation("Processing email notifications for {ReportCount} generated reports", generatedReports.Count);
+
+            // For each generated report, find users who requested it
+            var userReportsMap = new Dictionary<string, List<ReportModel>>();
+            
+            foreach (var report in generatedReports)
+            {
+                try
+                {
+                    // Generate the expected request ID from the report
+                    var requestId = $"{report.Source}_{report.SubSource?.Replace("/", "_")}";
+                    
+                    // Query user requests that match this report
+                    var filter = $"RowKey eq '{requestId}'";
+                    
+                    await foreach (var userRequest in _userRequestsTableClient.QueryAsync<UserReportRequestModel>(filter))
+                    {
+                        var userId = userRequest.UserId;
+                        if (!string.IsNullOrEmpty(userId))
+                        {
+                            if (!userReportsMap.ContainsKey(userId))
+                                userReportsMap[userId] = new List<ReportModel>();
+                            
+                            userReportsMap[userId].Add(report);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error finding users for report {ReportId}", report.Id);
+                }
+            }
+
+            _logger.LogInformation("Found reports for {UserCount} users", userReportsMap.Count);
+
+            // Process each user's reports
+            foreach (var kvp in userReportsMap)
+            {
+                var userId = kvp.Key;
+                var userReports = kvp.Value;
+                
+                try
+                {
+                    // Get user account to check email preferences
+                    var userAccount = await _userAccountService.GetUserAccountAsync(userId);
+                    if (userAccount == null)
+                    {
+                        _logger.LogWarning("Could not find user account for userId: {UserId}", userId);
+                        continue;
+                    }
+
+                    // Check if user has email notifications enabled
+                    if (!userAccount.EmailNotificationsEnabled)
+                    {
+                        _logger.LogDebug("Email notifications disabled for user {UserId}", userId);
+                        continue;
+                    }
+
+                    // Check if user's tier supports email notifications
+                    if (!AccountTierUtils.SupportsEmailNotifications(userAccount.Tier))
+                    {
+                        _logger.LogDebug("Email notifications not supported for user {UserId} with tier {Tier}", 
+                            userId, userAccount.Tier);
+                        continue;
+                    }
+
+                    // Get user's email address
+                    var emailAddress = !string.IsNullOrEmpty(userAccount.PreferredEmail) 
+                        ? userAccount.PreferredEmail 
+                        : userId; // Assuming userId is the email address
+
+                    // Validate email address
+                    if (!_emailService.IsValidEmailAddress(emailAddress))
+                    {
+                        _logger.LogWarning("Invalid email address for user {UserId}: {Email}", userId, emailAddress);
+                        continue;
+                    }
+
+                    // For individual notifications, send separate emails for each report
+                    if (userAccount.EmailFrequency == EmailReportFrequency.Individual)
+                    {
+                        foreach (var report in userReports)
+                        {
+                            await SendIndividualReportEmailAsync(emailAddress, report);
+                        }
+                    }
+                    // For weekly digest notifications, they'll be processed by the weekly digest processor
+                    // Individual report emails are already handled above
+                    else if (userAccount.EmailFrequency == EmailReportFrequency.WeeklyDigest)
+                    {
+                        // Weekly digest emails are handled by the DigestEmailProcessorFunction
+                        // No immediate action needed here since reports are sent weekly after generation
+                        _logger.LogDebug("User {UserId} has weekly digest preference - will be processed by weekly digest function", userId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing email notifications for user {UserId}", userId);
+                }
+            }
+
+            _logger.LogInformation("Completed processing email notifications");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in email notification processing");
+        }
+    }
+
+    /// <summary>
+    /// Send immediate email notification for a single report
+    /// </summary>
+    private async Task SendIndividualReportEmailAsync(string emailAddress, ReportModel report)
+    {
+        try
+        {
+            var emailRequest = new ReportEmailRequest
+            {
+                RecipientEmail = emailAddress,
+                RecipientName = "User", // We could enhance this by getting the actual name
+                ReportId = report.Id.ToString(),
+                ReportTitle = $"{report.Source} Report - {report.SubSource}",
+                ReportSummary = $"Generated report with {report.ThreadCount} threads and {report.CommentCount} comments",
+                ReportUrl = WebUrlHelper.BuildReportQueryUrl(_configuration, report.Id, "email"),
+                ReportType = report.Source,
+                GeneratedAt = report.GeneratedAt.DateTime
+            };
+
+            var deliveryStatus = await _emailService.SendReportEmailAsync(emailRequest);
+            
+            if (deliveryStatus.Status == Azure.Communication.Email.EmailSendStatus.Succeeded || 
+                deliveryStatus.Status == Azure.Communication.Email.EmailSendStatus.Running)
+            {
+                _logger.LogInformation("Successfully sent email notification to {Email} for report {ReportId}", 
+                    emailAddress, report.Id);
+            }
+            else
+            {
+                _logger.LogWarning("Email notification failed for {Email}, report {ReportId}: {Error}", 
+                    emailAddress, report.Id, deliveryStatus.ErrorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending immediate email for report {ReportId} to {Email}", 
+                report.Id, emailAddress);
         }
     }
 }

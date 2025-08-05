@@ -1,6 +1,8 @@
 using System.Text;
 using System.Text.Json;
 using FeedbackWebApp.Services.Interfaces;
+using FeedbackWebApp.Services.Authentication;
+using SharedDump.Utils;
 
 namespace FeedbackWebApp.Services.Feedback;
 
@@ -17,7 +19,9 @@ public abstract class FeedbackService : IFeedbackService
 {
     private readonly UserSettingsService _userSettings;
     protected readonly HttpClient Http;
+    protected readonly IHttpClientFactory HttpFactory;
     protected readonly IConfiguration Configuration;
+    protected readonly IAuthenticationHeaderService AuthHeaderService;
     protected readonly string BaseUrl;
     protected readonly FeedbackStatusUpdate? OnStatusUpdate;
 
@@ -25,10 +29,13 @@ public abstract class FeedbackService : IFeedbackService
         IHttpClientFactory http, 
         IConfiguration configuration, 
         UserSettingsService userSettings,
+        IAuthenticationHeaderService authHeaderService,
         FeedbackStatusUpdate? onStatusUpdate = null)
     {
         Http = http.CreateClient();
+        HttpFactory = http;
         Configuration = configuration;
+        AuthHeaderService = authHeaderService;
         _userSettings = userSettings;
         OnStatusUpdate = onStatusUpdate;
 
@@ -97,10 +104,10 @@ public abstract class FeedbackService : IFeedbackService
         {
             customPrompt = explicitCustomPrompt;
         }
-        // Otherwise, check user settings for custom prompts (for other service types)
+        // Otherwise, check user settings for custom prompts
         else if (settings.UseCustomPrompts)
         {
-            customPrompt = settings.ServicePrompts.GetValueOrDefault(serviceType.ToLower());
+            customPrompt = settings.UniversalPrompt;
         }
 
         if (customPrompt != null)
@@ -121,8 +128,7 @@ public abstract class FeedbackService : IFeedbackService
             "application/json");
 
         var getAnalysisUrl = $"{BaseUrl}/api/AnalyzeComments?code={Uri.EscapeDataString(analyzeCode)}";
-        var analyzeResponse = await Http.PostAsync(getAnalysisUrl, analyzeContent);
-        analyzeResponse.EnsureSuccessStatusCode();
+        var analyzeResponse = await SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod.Post, getAnalysisUrl, analyzeContent);
 
         UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed");
         return await analyzeResponse.Content.ReadAsStringAsync();
@@ -143,10 +149,10 @@ public abstract class FeedbackService : IFeedbackService
         {
             customPrompt = explicitCustomPrompt;
         }
-        // Otherwise, check user settings for custom prompts (for other service types)
+        // Otherwise, check user settings for custom prompts
         else if (settings.UseCustomPrompts)
         {
-            customPrompt = settings.ServicePrompts.GetValueOrDefault(serviceType.ToLower());
+            customPrompt = settings.UniversalPrompt;
         }
 
         if (customPrompt != null)
@@ -167,8 +173,7 @@ public abstract class FeedbackService : IFeedbackService
             "application/json");
 
         var getAnalysisUrl = $"{BaseUrl}/api/AnalyzeComments?code={Uri.EscapeDataString(analyzeCode)}";
-        var analyzeResponse = await Http.PostAsync(getAnalysisUrl, analyzeContent);
-        analyzeResponse.EnsureSuccessStatusCode();
+        var analyzeResponse = await SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod.Post, getAnalysisUrl, analyzeContent);
 
         // Note: This method doesn't call UpdateStatus to avoid multiple completion status updates
         return await analyzeResponse.Content.ReadAsStringAsync();
@@ -178,5 +183,63 @@ public abstract class FeedbackService : IFeedbackService
     {
         var settings = await _userSettings.GetSettingsAsync();
         return settings.MaxCommentsToAnalyze;
+    }
+
+    /// <summary>
+    /// Creates an authenticated HTTP request message with proper headers
+    /// </summary>
+    /// <param name="method">HTTP method</param>
+    /// <param name="requestUri">Request URI</param>
+    /// <param name="content">Optional content</param>
+    /// <returns>Configured HttpRequestMessage</returns>
+    protected async Task<HttpRequestMessage> CreateAuthenticatedRequestAsync(HttpMethod method, string requestUri, HttpContent? content = null)
+    {
+        var request = new HttpRequestMessage(method, requestUri);
+        if (content != null)
+        {
+            request.Content = content;
+        }
+        
+        await AuthHeaderService.AddAuthenticationHeadersAsync(request);
+        return request;
+    }
+
+    /// <summary>
+    /// Sends an authenticated HTTP request
+    /// </summary>
+    /// <param name="method">HTTP method</param>
+    /// <param name="requestUri">Request URI</param>
+    /// <param name="content">Optional content</param>
+    /// <returns>HTTP response message</returns>
+    protected async Task<HttpResponseMessage> SendAuthenticatedRequestAsync(HttpMethod method, string requestUri, HttpContent? content = null)
+    {
+        var request = await CreateAuthenticatedRequestAsync(method, requestUri, content);
+        return await Http.SendAsync(request);
+    }
+
+    /// <summary>
+    /// Sends an authenticated HTTP request and ensures success, with special handling for usage limit errors
+    /// </summary>
+    /// <param name="method">HTTP method</param>
+    /// <param name="requestUri">Request URI</param>
+    /// <param name="content">Optional content</param>
+    /// <returns>HTTP response message</returns>
+    /// <exception cref="UsageLimitExceededException">Thrown when usage limits are exceeded</exception>
+    protected async Task<HttpResponseMessage> SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod method, string requestUri, HttpContent? content = null)
+    {
+        var response = await SendAuthenticatedRequestAsync(method, requestUri, content);
+        
+        // Check for usage limit error before calling EnsureSuccessStatusCode
+        if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            if (UsageLimitErrorHelper.TryParseUsageLimitError(errorContent, response.StatusCode, out var limitError) && limitError != null)
+            {
+                throw new UsageLimitExceededException(limitError);
+            }
+        }
+        
+        response.EnsureSuccessStatusCode();
+        return response;
     }
 }

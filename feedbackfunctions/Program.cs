@@ -14,15 +14,20 @@ using SharedDump.Models.YouTube;
 using SharedDump.Services;
 using SharedDump.Services.Interfaces;
 using SharedDump.Services.Mock;
+using FeedbackFunctions.Services.Authentication;
+using FeedbackFunctions.Middleware;
+using FeedbackFunctions.Services.Account;
+using FeedbackFunctions.Services.Email;
 using System.Configuration;
 using Azure.Storage.Blobs;
-using FeedbackFunctions.Services;
+using FeedbackFunctions.Services.Reports;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
-builder.ConfigureFunctionsWebApplication();
+// Note: Usage validation will be handled via attributes on individual functions
+// rather than global middleware due to complexity in current Functions runtime
 builder.Configuration.AddUserSecrets<Program>(true);
 
 
@@ -39,12 +44,19 @@ throwIfNullOrEmpty = true;
 // Register HTTP client factory
 builder.Services.AddHttpClient();
 
+// Register authentication services
+builder.Services.AddScoped<IAuthUserTableService, AuthUserTableService>();
+builder.Services.AddScoped<FeedbackFunctions.Middleware.AuthenticationMiddleware>();
+
+// Register unified account service
+RegisterAccountServices(builder.Services);
+
 // Register blob storage and cache services
 builder.Services.AddSingleton<IReportCacheService>(serviceProvider =>
 {
     var configuration = GetConfig(serviceProvider);
     var logger = serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ReportCacheService>>();
-    var storageConnection = configuration["AzureWebJobsStorage"] ?? throw new InvalidOperationException("Storage connection string not configured");
+    var storageConnection = configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
     var serviceClient = new BlobServiceClient(storageConnection);
     var containerClient = serviceClient.GetBlobContainerClient("reports");
     containerClient.CreateIfNotExists();
@@ -63,6 +75,10 @@ if (useMocks)
     builder.Services.AddScoped<IFeedbackAnalyzerService, MockFeedbackAnalyzerService>();
     builder.Services.AddScoped<ITwitterService, MockTwitterService>();
     builder.Services.AddScoped<IBlueSkyService, MockBlueSkyService>();
+    builder.Services.AddScoped<IEmailService, MockEmailService>();
+    
+    // Register unified account service
+    RegisterAccountServices(builder.Services);
 }
 else
 {
@@ -180,6 +196,29 @@ else
         blueSkyFetcher.SetCredentials(blueSkyUsername, blueSkyAppPassword);
         return new BlueSkyServiceAdapter(blueSkyFetcher);
     });
+    
+    // Register email service
+    builder.Services.AddScoped<IEmailService>(serviceProvider =>
+    {
+        var configuration = GetConfig(serviceProvider);
+        var logger = serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<EmailService>>();
+        
+        var connectionString = configuration["AzureCommunicationServices:ConnectionString"];
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            if (throwIfNullOrEmpty)
+                throw new ConfigurationErrorsException("Azure Communication Services connection string is not configured.");
+                
+            Console.WriteLine("Using mock email service, no Azure Communication Services connection string provided.");
+            var mockLogger = serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<MockEmailService>>();
+            return new MockEmailService(mockLogger);
+        }
+        
+        return new EmailService(configuration, logger);
+    });
+    
+    // Register unified account service
+    RegisterAccountServices(builder.Services);
 }
 
 IConfiguration GetConfig(IServiceProvider? serviceProvider = null)
@@ -191,9 +230,30 @@ IConfiguration GetConfig(IServiceProvider? serviceProvider = null)
 #endif
 }
 
+void RegisterAccountServices(IServiceCollection services)
+{
+    // Register the unified user account service
+    services.AddSingleton<IUserAccountService>(sp =>
+    {
+        var config = GetConfig(sp);
+        var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<UserAccountService>>();
+        var storage = config["ProductionStorage"] ?? "UseDevelopmentStorage=true";
+        return new UserAccountService(storage, config, logger);
+    });
+}
+
 // Application Insights isn't enabled by default. See https://aka.ms/AAt8mw4.
 builder.Services
     .AddApplicationInsightsTelemetryWorkerService()
     .ConfigureFunctionsApplicationInsights();
 
-builder.Build().Run();
+var app = builder.Build();
+
+// Ensure tables exist on startup
+using (var scope = app.Services.CreateScope())
+{
+    var userAccountService = scope.ServiceProvider.GetRequiredService<IUserAccountService>();
+    await userAccountService.InitializeTablesAsync();
+}
+
+app.Run();

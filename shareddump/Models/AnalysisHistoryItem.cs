@@ -10,6 +10,7 @@ public record AnalysisHistoryItem
     public bool IsShared { get; init; } = false;
     public string? SharedId { get; init; } // ID for shared analysis reference
     public DateTime? SharedDate { get; init; } // Date when the analysis was shared
+    public bool IsPublic { get; set; } = false; // Whether the shared analysis is publicly accessible
     
     /// <summary>
     /// Comment threads associated with this analysis (e.g., YouTube videos, Reddit threads, GitHub issues)

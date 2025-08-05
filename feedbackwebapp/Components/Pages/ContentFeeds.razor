@@ -7,6 +7,8 @@
 @using SharedDump.Models.YouTube
 @using SharedDump.Models.Reddit
 @using SharedDump.Models.HackerNews
+@using SharedDump.Models.Account
+@using SharedDump.Utils
 @using FeedbackWebApp.Components.Feedback
 @using FeedbackWebApp.Components.Feedback.Forms
 @using FeedbackWebApp.Components.ContentFeed.Forms
@@ -22,13 +24,20 @@
 @inject IConfiguration Configuration
 @inject ContentFeedServiceProvider ContentFeedProvider
 @inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@inject FeedbackWebApp.Services.Authentication.IAuthenticationService AuthService
 
 <PageTitle>Content Feeds - FeedbackFlow</PageTitle>
 
 <div class="container">
     @if (!isAuthenticated)
     {
-        <AuthenticationForm OnAuthenticated="HandleAuthenticated" />
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <span>Loading...</span>
+            </div>
+        </div>
     }
     else
     {
@@ -86,7 +95,7 @@
                                 <button class="btn btn-primary source-button w-100" disabled="@isLoading" @onclick="FetchContent">
                                     @if (isLoading)
                                     {
-                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        <span class="spinner-border spinner-border-sm text-light me-2" role="status"></span>
                                         <span>Loading...</span>
                                     }
                                     else
@@ -129,6 +138,11 @@
     }
 </div>
 
+<UsageLimitDialog 
+    UsageError="@usageLimitError" 
+    IsVisible="@showUsageLimitDialog" 
+    OnClose="@CloseUsageLimitDialog" />
+
 @code {
     private bool isAuthenticated;
     private bool isLoading;
@@ -140,6 +154,8 @@
     private HackerNewsFeedForm? hackerNewsFeedForm;    private List<YouTubeOutputVideo>? youtubeVideos;
     private List<RedditThreadModel>? redditThreads;
     private List<HackerNewsItem>? hackerNewsItems;
+    private bool showUsageLimitDialog = false;
+    private UsageValidationResult? usageLimitError;
     
     private record SourceOption(string Name, string IconClass, string Value, string Description);
 
@@ -154,6 +170,23 @@
     {
         isAuthenticated = success;
         StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            
+            if (!isAuthenticated)
+            {
+                // Redirect to home page for login
+                NavigationManager.NavigateTo("/");
+                return;
+            }
+            
+            StateHasChanged();
+        }
     }
 
     private void SelectSource(string source)
@@ -239,13 +272,34 @@
                     break;
             }
         }
+        catch (UsageLimitExceededException ex)
+        {
+            usageLimitError = ex.LimitError;
+            showUsageLimitDialog = true;
+        }
         catch (Exception ex)
         {
-            error = $"Error fetching content: {ex.Message}";
+            // Check if this is a usage limit error from error message
+            if (UsageLimitErrorHelper.TryParseUsageLimitError(ex.Message, out var limitError))
+            {
+                usageLimitError = limitError;
+                showUsageLimitDialog = true;
+            }
+            else
+            {
+                error = $"Error fetching content: {ex.Message}";
+            }
         }
         finally
         {
             isLoading = false;
         }
+    }
+
+    private void CloseUsageLimitDialog()
+    {
+        showUsageLimitDialog = false;
+        usageLimitError = null;
+        StateHasChanged();
     }
 }

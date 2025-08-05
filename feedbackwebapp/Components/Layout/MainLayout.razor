@@ -2,72 +2,17 @@
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 
+@inject ILogger<MainLayout> Logger
+
 <div class="page d-flex flex-column min-vh-100">
-    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+    <!-- Desktop Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4 d-none d-lg-block">
         <div class="container">
-            <div class="navbar-nav me-3 d-lg-none">
-                <div class="nav-item dropdown">
-                    <button class="nav-link dropdown-toggle btn btn-link p-0 border-0 modern-hamburger" 
-                            type="button" 
-                            data-bs-toggle="dropdown" 
-                            aria-expanded="false">
-                        <div class="hamburger-icon">
-                            <span class="bar bar-1"></span>
-                            <span class="bar bar-2"></span>
-                            <span class="bar bar-3"></span>
-                        </div>
-                    </button>
-                    <ul class="dropdown-menu modern-dropdown">
-                        <li class="dropdown-item-wrapper" style="--delay: 0.05s">
-                            <a class="dropdown-item @(IsActive("/") ? "active" : "")" href="/">
-                                <i class="bi bi-chat-dots me-2"></i>
-                                <span>Analyze</span>
-                            </a>
-                        </li>
-                        <li class="dropdown-item-wrapper" style="--delay: 0.1s">
-                            <a class="dropdown-item @(IsActive("/content-feeds") ? "active" : "")" href="/content-feeds">
-                                <i class="bi bi-collection me-2"></i>
-                                <span>Feeds</span>
-                            </a>
-                        </li>
-                        <li class="dropdown-item-wrapper" style="--delay: 0.15s">
-                            <a class="dropdown-item @(IsActive("/reports") ? "active" : "")" href="/reports">
-                                <i class="bi bi-graph-up me-2"></i>
-                                <span>Reports</span>
-                            </a>
-                        </li>
-                        <li class="dropdown-divider-wrapper" style="--delay: 0.2s">
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li class="dropdown-item-wrapper" style="--delay: 0.25s">
-                            <a class="dropdown-item @(IsActive("/history") ? "active" : "")" href="/history">
-                                <i class="bi bi-clock-history me-2"></i>
-                                <span>Saved</span>
-                            </a>
-                        </li>
-                        <li class="dropdown-item-wrapper" style="--delay: 0.3s">
-                            <a class="dropdown-item @(IsActive("/whats-new") ? "active" : "")" href="/whats-new">
-                                <i class="bi bi-stars me-2"></i>
-                                <span>What's New</span>
-                            </a>
-                        </li>
-                        <li class="dropdown-item-wrapper" style="--delay: 0.35s">
-                            <a class="dropdown-item @(IsActive("/settings") ? "active" : "")" href="/settings">
-                                <i class="bi bi-gear me-2"></i>
-                                <span>Settings</span>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
             <a href="/" class="navbar-brand d-flex align-items-center">
                 <img src="logo-feedbackflow.svg" alt="FeedbackFlow Logo" width="36" height="36" class="me-2" style="filter: brightness(0) invert(1);" />
                 <span>FeedbackFlow</span>
             </a>
-            <button class="navbar-toggler d-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>            
-            <div class="collapse navbar-collapse d-none d-lg-block" id="navbarNav">
+            <div class="collapse navbar-collapse">
                 <ul class="navbar-nav">
                     <li class="nav-item">
                         <a class="nav-link @(IsActive("/") ? "active" : "")" href="/">
@@ -86,14 +31,10 @@
                             <i class="bi bi-graph-up me-1"></i>
                             Reports
                         </a>
-                    </li>                    
-                    @* Original implementation commented out for reference
-                    Previous dropdown and mobile implementation removed - see /docs/navigation-layout.md for details
-                    *@
-
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link @(IsActive("/history") ? "active" : "")" href="/history">
-                            <i class="bi bi-clock-history me-1"></i>
+                            <i class="bi bi-cloud-upload me-1"></i>
                             <span>Saved</span>
                         </a>
                     </li>
@@ -108,15 +49,66 @@
                         <i class="bi bi-gear"></i>
                     </a>
                 </div>
+                <div class="me-3">
+                    <ThemeToggle />
+                </div>
+                <UserNavigation />
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Header -->
+    <div class="mobile-header d-lg-none">
+        <div class="mobile-header-content">
+            <div class="mobile-user-section">
+                <UserNavigation />
+            </div>
+            <div class="mobile-page-title">
+                @GetCurrentPageTitle()
+            </div>
+            <div class="mobile-utility-actions">
+                <a class="mobile-utility-action @(IsActive("/whats-new") ? "active" : "")" href="/whats-new" title="What's New">
+                    <i class="bi bi-stars"></i>
+                </a>
                 <ThemeToggle />
             </div>
         </div>
-    </nav>    
-    <main class="container-fluid pb-4 flex-grow-1">
+    </div>
+    
+    <main class="container-fluid flex-grow-1 @(GetMainClasses())">
         @Body
     </main>
     
-    <Footer />
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-bottom-nav d-lg-none">
+        <div class="mobile-nav-items">
+            <a href="/" class="mobile-nav-item @(IsActive("/") ? "active" : "")" title="Analyze">
+                <i class="bi bi-chat-dots"></i>
+                <span>Analyze</span>
+            </a>
+            <a href="/content-feeds" class="mobile-nav-item @(IsActive("/content-feeds") ? "active" : "")" title="Feeds">
+                <i class="bi bi-collection"></i>
+                <span>Feeds</span>
+            </a>
+            <a href="/reports" class="mobile-nav-item @(IsActive("/reports") ? "active" : "")" title="Reports">
+                <i class="bi bi-graph-up"></i>
+                <span>Reports</span>
+            </a>
+            <a href="/history" class="mobile-nav-item @(IsActive("/history") ? "active" : "")" title="Saved">
+                <i class="bi bi-cloud-upload"></i>
+                <span>Saved</span>
+            </a>
+            <a href="/settings" class="mobile-nav-item @(IsActive("/settings") ? "active" : "")" title="Settings">
+                <i class="bi bi-gear"></i>
+                <span>Settings</span>
+            </a>
+        </div>
+    </nav>
+    
+    <!-- Desktop Footer -->
+    <div class="d-none d-lg-block">
+        <Footer />
+    </div>
     <ToastNotification />
 </div>
 
@@ -133,9 +125,49 @@
             {
                 // Silently ignore any JavaScript errors
             }
+
+            // Initialize automatic token refresh
+            try
+            {
+
+                Logger.LogInformation("Authentication token refresh started in MainLayout");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to start authentication token refresh in MainLayout");
+            }
         }
     }
 
     private bool IsActive(string path) => 
         NavigationManager.Uri.EndsWith(path, StringComparison.OrdinalIgnoreCase);
+
+    private string GetCurrentPageTitle()
+    {
+        var uri = new Uri(NavigationManager.Uri);
+        var path = uri.LocalPath.ToLowerInvariant();
+        
+        return path switch
+        {
+            "/" => "Analyze",
+            "/content-feeds" => "Feeds", 
+            "/reports" => "Reports",
+            "/history" => "Saved",
+            "/settings" => "Settings",
+            "/whats-new" => "What's New",
+            "/account-settings" => "Account",
+            "/history-local" => "Local History",
+            var p when p.StartsWith("/reports/") => "Reports",
+            var p when p.StartsWith("/report/") => "Report Details",
+            var p when p.StartsWith("/analysis/") => "Analysis",
+            var p when p.StartsWith("/shared/") => "Shared Analysis",
+            _ => "FeedbackFlow"
+        };
+    }
+
+    private string GetMainClasses()
+    {
+        // Add padding bottom for mobile to account for bottom navigation
+        return "pb-4 pb-mobile-nav";
+    }
 }

@@ -2,26 +2,16 @@
 export {
     initDb,
     getItem,
-    saveItem,
     getAllItems,
     deleteItem,
     clearStore,
-    migrateFromLocalStorage,
     // History-specific exports
     getHistoryItem,
-    saveHistoryItem,
     getAllHistoryItems,
     deleteHistoryItem,
     clearHistory,
     getHistoryItemsPaged,
-    getHistoryItemsCount,
-    updateHistoryItem,
-    // Report requests-specific exports
-    getReportRequest,
-    saveReportRequest,
-    getAllReportRequests,
-    deleteReportRequest,
-    clearReportRequests
+    getHistoryItemsCount
 };
 
 // Initialize database
@@ -56,23 +46,6 @@ async function getItem(dbName, storeName, id) {
 
         request.onerror = () => reject(request.error);
         request.onsuccess = () => resolve(request.result);
-        transaction.oncomplete = () => db.close();
-    });
-}
-
-// Add or update an item
-async function saveItem(dbName, storeName, item) {
-    const db = await initDb(dbName, storeName);
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(storeName, 'readwrite');
-        const store = transaction.objectStore(storeName);
-        const request = store.put(item);
-
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => {
-            const isUpdate = request.result === item.id;
-            resolve({ isUpdate, item });
-        };
         transaction.oncomplete = () => db.close();
     });
 }
@@ -119,40 +92,10 @@ async function clearStore(dbName, storeName) {
     });
 }
 
-// Migrate from localStorage
-async function migrateFromLocalStorage(dbName, storeName, key) {
-    const data = localStorage.getItem(key);
-    if (!data) return;
-
-    try {
-        const items = JSON.parse(data);
-        if (Array.isArray(items)) {
-            const db = await initDb(dbName, storeName);
-            const transaction = db.transaction(storeName, 'readwrite');
-            const store = transaction.objectStore(storeName);
-
-            for (const item of items) {
-                await store.put(item);
-            }
-
-            // Remove from localStorage after successful migration
-            localStorage.removeItem(key);
-        }
-    } catch (error) {
-        console.error('Migration failed:', error);
-    }
-}
-
 // History-specific configuration and helper functions
 const HISTORY_CONFIG = {
     dbName: 'History',
     storeName: 'HistoryItems'
-};
-
-// Report requests-specific configuration and helper functions
-const REPORT_REQUESTS_CONFIG = {
-    dbName: 'ReportRequests',
-    storeName: 'ReportRequestItems'
 };
 
 async function getHistoryItem(id) {
@@ -160,27 +103,6 @@ async function getHistoryItem(id) {
         HISTORY_CONFIG.dbName, 
         HISTORY_CONFIG.storeName, 
         id
-    );
-}
-
-async function saveHistoryItem(item) {
-    // Create a simplified version of the item without CommentThreads and Summary
-    // to optimize storage size in IndexedDB
-    const optimizedItem = {
-        id: item.id,
-        timestamp: item.timestamp,
-        fullAnalysis: item.fullAnalysis,
-        sourceType: item.sourceType,
-        userInput: item.userInput,
-        isShared: item.isShared,
-        sharedId: item.sharedId,
-        sharedDate: item.sharedDate
-    };
-    
-    return saveItem(
-        HISTORY_CONFIG.dbName, 
-        HISTORY_CONFIG.storeName, 
-        optimizedItem
     );
 }
 
@@ -261,47 +183,4 @@ async function getHistoryItemsCount(searchTerm) {
         };
         transaction.oncomplete = () => db.close();
     });
-}
-
-async function updateHistoryItem(item) {
-    // For simplicity, just use saveHistoryItem since it handles both insert and update
-    return saveHistoryItem(item);
-}
-
-async function getReportRequest(id) {
-    return getItem(
-        REPORT_REQUESTS_CONFIG.dbName, 
-        REPORT_REQUESTS_CONFIG.storeName, 
-        id
-    );
-}
-
-async function saveReportRequest(request) {
-    return saveItem(
-        REPORT_REQUESTS_CONFIG.dbName, 
-        REPORT_REQUESTS_CONFIG.storeName, 
-        request
-    );
-}
-
-async function getAllReportRequests() {
-    return getAllItems(
-        REPORT_REQUESTS_CONFIG.dbName, 
-        REPORT_REQUESTS_CONFIG.storeName
-    );
-}
-
-async function deleteReportRequest(id) {
-    return deleteItem(
-        REPORT_REQUESTS_CONFIG.dbName, 
-        REPORT_REQUESTS_CONFIG.storeName, 
-        id
-    );
-}
-
-async function clearReportRequests() {
-    return clearStore(
-        REPORT_REQUESTS_CONFIG.dbName, 
-        REPORT_REQUESTS_CONFIG.storeName
-    );
 }

@@ -1,4 +1,6 @@
+@using FeedbackWebApp.Services
 @inject IJSRuntime JSRuntime
+@inject UserSettingsService UserSettingsService
 
 <div class="reddit-feed-form">
     <div class="form-floating mb-3">
@@ -74,21 +76,19 @@
             SortBy,
             Days
         };
-        await JSRuntime.InvokeVoidAsync("localStorage.setItem", StorageKey, 
-            System.Text.Json.JsonSerializer.Serialize(state));
+        await UserSettingsService.SaveToLocalStorageAsync(StorageKey, state);
     }
 
     private async Task LoadFromLocalStorageAsync()
     {
-        var savedValue = await JSRuntime.InvokeAsync<string>("localStorage.getItem", StorageKey);
-        if (!string.IsNullOrEmpty(savedValue))
+        var state = await UserSettingsService.GetFromLocalStorageAsync<dynamic>(StorageKey);
+        if (state != null)
         {
             try
             {
-                var state = System.Text.Json.JsonSerializer.Deserialize<dynamic>(savedValue);
-                Subreddit = state?.GetProperty("Subreddit").GetString() ?? "";
-                SortBy = state?.GetProperty("SortBy").GetString() ?? "hot";
-                Days = state?.GetProperty("Days").GetInt32();
+                Subreddit = state.GetProperty("Subreddit").GetString() ?? "";
+                SortBy = state.GetProperty("SortBy").GetString() ?? "hot";
+                Days = state.GetProperty("Days").GetInt32();
             }
             catch
             {

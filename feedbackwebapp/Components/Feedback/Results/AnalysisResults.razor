@@ -1,7 +1,6 @@
 @namespace FeedbackWebApp.Components.Feedback.Results
 @using System.Text.RegularExpressions
 @using SharedDump.Utils
-@using FeedbackWebApp.Components.Shared
 @using Microsoft.Extensions.Logging
 @using SharedDump.Services
 @using FeedbackWebApp.Services.Feedback
@@ -9,9 +8,8 @@
 @inject ILogger<AnalysisResults> Logger
 @inject FeedbackWebApp.Services.UserSettingsService UserSettings
 @inject ISpeechSynthesisService SpeechSynthesisService
-@inject FeedbackWebApp.Services.Interfaces.IHistoryService HistoryService
+@inject FeedbackWebApp.Services.ISharedHistoryServiceProvider SharedHistoryServiceProvider
 @inject FeedbackWebApp.Services.IToastService ToastService
-@inject FeedbackWebApp.Services.Interfaces.IAnalysisSharingService SharingService
 @inject SharedDump.Services.Interfaces.IExportService ExportService
 @inject NavigationManager NavigationManager
 @implements IDisposable
@@ -21,7 +19,6 @@
     Content="@failedCopyContent"
     ContentType="@failedCopyContentType"
     OnClose="@CloseCopyFailedDialog" />
-
 
 
 @if (!string.IsNullOrEmpty(Error))
@@ -35,64 +32,97 @@
 @if (!string.IsNullOrEmpty(MarkdownResult))
 {
     <div class="card mt-4 shadow-sm">        
-        <header class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h2 class="card-title mb-0 h5">Analysis Summary</h2>
-            <ActionMenu>
-                <PrimaryAction>
-                    @if (!string.IsNullOrEmpty(MarkdownResult))
-                    {
-                        <ExportButton Items="@(new[] { CreateHistoryItemForExport() })" ButtonVariant="light" Size="sm" Mini="true" />
-                    }
-                </PrimaryAction>                  
-                <ChildContent>
-                    @if (!string.IsNullOrEmpty(MarkdownResult))
-                    {
-                        <ExportButton Items="@(new[] { CreateHistoryItemForExport() })" ButtonVariant="light" Size="sm" Mini="false" />
-                    }
-                    <button class="btn btn-sm btn-outline-light me-2 action-btn" 
-                            @onclick="SaveToHistory"
-                            disabled="@_isSaved"
-                            aria-label="Save to history">
-                        <i class="bi bi-clock-history me-1" aria-hidden="false"></i>
-                        @(_isSaved ? "Saved" : "Save")
+        <header class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h2 class="card-title mb-0 h5">Analysis Summary</h2>
+            </div>
+            
+            <!-- Action buttons on secondary line -->
+            <div class="analysis-actions d-flex flex-wrap align-items-center justify-content-end gap-2">
+                @if (!string.IsNullOrEmpty(MarkdownResult))
+                {
+                    <ExportButton Items="@(new[] { CreateHistoryItemForExport() })" ButtonVariant="light" Size="sm" Mini="false" />
+                }
+                
+                <!-- Save & Share Dropdown -->
+                <div class="dropdown d-inline-block">
+                    <button class="btn btn-sm btn-outline-light dropdown-toggle action-btn @(_isSaved ? "btn-saved" : "")" 
+                            type="button" 
+                            id="saveShareDropdown" 
+                            data-bs-toggle="dropdown" 
+                            aria-expanded="false"
+                            disabled="@isProcessingSave"
+                            title="@(_isSaved ? "Saved" : "Save and share analysis")"
+                            aria-label="@(_isSaved ? "Analysis saved" : "Save and share analysis")">
+                        @if (isProcessingSave)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                            @:Saving...
+                        }
+                        else
+                        {
+                            <i class="bi @(_isSaved ? "bi-check-circle" : "bi-cloud-upload") me-1" aria-hidden="true"></i>
+                            @(_isSaved ? "Saved" : "Save & Share")
+                        }
                     </button>
-                    <button class="btn btn-sm btn-outline-light me-2 action-btn" 
-                            @onclick="@(sharedId == null ? ShareAnalysis : CopyShareLink)"
-                            aria-label="@(sharedId == null ? "Share analysis" : "Copy share link")">
-                        <i class="bi @(sharedId == null ? "bi-share" : "bi-link-45deg") me-1" aria-hidden="false"></i>
-                        @(sharedId == null ? "Share" : "Copy Link")
-                    </button>
-                    <button class="btn btn-sm btn-outline-light me-2 action-btn @(_isSpeaking ? "btn-speak-active" : "")" 
-                            @onclick="SpeakAnalysis"
-                            aria-label="@(_isSpeaking ? "Stop speaking" : "Speak analysis")"
-                            aria-pressed="@_isSpeaking.ToString().ToLower()">
-                        <i class="bi @(_isSpeaking ? "bi-pause-fill" : "bi-volume-up-fill") me-1" aria-hidden="false"></i>
-                        @(_isSpeaking ? "Stop" : "Speak")
-                    </button>
-                    <button class="btn btn-sm btn-outline-light action-btn" 
-                            @onclick="CopyToClipboard"
-                            aria-label="Copy to clipboard">
-                        <i class="bi bi-clipboard me-1" aria-hidden="false"></i>
-                        Copy
-                    </button>
-                </ChildContent>
-                <SecondaryActions>
-                    <li><button class="dropdown-item" @onclick="SaveToHistory" disabled="@_isSaved">
-                        <i class="bi bi-clock-history"></i> @(_isSaved ? "Saved" : "Save to History")
-                    </button></li>
-                    <li><button class="dropdown-item" @onclick="@(sharedId == null ? ShareAnalysis : CopyShareLink)">
-                        <i class="bi @(sharedId == null ? "bi-share" : "bi-link-45deg")"></i> 
-                        @(sharedId == null ? "Share Analysis" : "Copy Share Link")
-                    </button></li>
-                    <li><button class="dropdown-item" @onclick="SpeakAnalysis">
-                        <i class="bi @(_isSpeaking ? "bi-pause-fill" : "bi-volume-up-fill")"></i> 
-                        @(_isSpeaking ? "Stop Speaking" : "Speak Analysis")
-                    </button></li>
-                    <li><button class="dropdown-item" @onclick="CopyToClipboard">
-                        <i class="bi bi-clipboard"></i> Copy Analysis
-                    </button></li>                
-                </SecondaryActions>
-            </ActionMenu>
+                    <ul class="dropdown-menu save-share-menu" aria-labelledby="saveShareDropdown">
+                        @if (!_isSaved && !isProcessingSave)
+                        {
+                            <li><h6 class="dropdown-header">Save Analysis</h6></li>
+                            <li>
+                                <button class="dropdown-item" @onclick="() => HandleSaveClick(false)" disabled="@isProcessingSave">
+                                    <i class="bi bi-lock me-2" aria-hidden="true"></i>Save Privately
+                                    <small class="text-muted d-block">Only you can view this analysis</small>
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item" @onclick="() => HandleSaveClick(true)" disabled="@isProcessingSave">
+                                    <i class="bi bi-globe me-2" aria-hidden="true"></i>Save & Share Publicly
+                                    <small class="text-muted d-block">Anyone with the link can view</small>
+                                </button>
+                            </li>
+                        }
+                        else if (_isSaved)
+                        {
+                            <li><h6 class="dropdown-header">Analysis Saved</h6></li>
+                            @if (!string.IsNullOrEmpty(shareUrl))
+                            {
+                                <li>
+                                    <button class="dropdown-item" @onclick="CopyShareUrl">
+                                        <i class="bi bi-link-45deg me-2" aria-hidden="true"></i>Copy Share Link
+                                    </button>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                            }
+                            <li>
+                                <a class="dropdown-item" href="/history" target="_blank">
+                                    <i class="bi bi-folder-open me-2" aria-hidden="true"></i>View in History
+                                </a>
+                            </li>
+                        }
+                        else if (isProcessingSave)
+                        {
+                            <li><h6 class="dropdown-header">Saving...</h6></li>
+                            <li><span class="dropdown-item-text text-muted">Please wait while we save your analysis</span></li>
+                        }
+                    </ul>
+                </div>
+                
+                <button class="btn btn-sm btn-outline-light action-btn @(_isSpeaking ? "btn-speak-active" : "")" 
+                        @onclick="SpeakAnalysis"
+                        aria-label="@(_isSpeaking ? "Stop speaking" : "Speak analysis")"
+                        aria-pressed="@_isSpeaking.ToString().ToLower()">
+                    <i class="bi @(_isSpeaking ? "bi-pause-fill" : "bi-volume-up-fill") me-1" aria-hidden="false"></i>
+                    @(_isSpeaking ? "Stop" : "Speak")
+                </button>
+                
+                <button class="btn btn-sm btn-outline-light action-btn" 
+                        @onclick="CopyToClipboard"
+                        aria-label="Copy to clipboard">
+                    <i class="bi bi-clipboard me-1" aria-hidden="false"></i>
+                    Copy
+                </button>
+            </div>
         </header>
         <div class="card-body">
             <div class="markdown-body" tabindex="0">
@@ -120,11 +150,12 @@
     
     private string? _previousMarkdown;
     private bool _isSpeaking = false;
-    private string? sharedId;
-    private string? shareLink;
-    private bool isProcessingShare = false;
     private bool _isSaved = false;
     private string? _savedItemId;
+    
+    // Save & Share state
+    private bool isProcessingSave = false;
+    private string? shareUrl;
     
     // Copy failed dialog state
     private bool showCopyFailedDialog = false;
@@ -145,31 +176,13 @@
             if(_previousMarkdown != MarkdownResult)
             {               
                 await TriggerConfetti();
-                sharedId = null;
-                shareLink = null;
-                isProcessingShare = false;
+                // Reset all state for new analysis
                 _isSaved = false;
                 _savedItemId = null;
+                isProcessingSave = false;
+                shareUrl = null;
                 _previousMarkdown = MarkdownResult;
-                
-                // Check if this analysis is already saved
-                await CheckIfItemIsSaved();
             }
-        }
-    }
-
-    private async Task CheckIfItemIsSaved()
-    {
-        if (string.IsNullOrEmpty(MarkdownResult))
-            return;
-            
-        var historyItems = await HistoryService.GetHistoryAsync();
-        var existingItem = historyItems.FirstOrDefault(h => h.FullAnalysis == MarkdownResult);
-        if (existingItem != null)
-        {
-            _isSaved = true;
-            _savedItemId = existingItem.Id;
-            StateHasChanged();
         }
     }
 
@@ -185,43 +198,107 @@
 
     private async Task CopyToClipboard()
     {
-        if (!string.IsNullOrEmpty(MarkdownResult))
+        if (string.IsNullOrEmpty(MarkdownResult))
+            return;
+        
+        try
         {
-            try
+            var success = await JSRuntime.InvokeAsync<bool>("copyToClipboard", MarkdownResult);
+            if (success)
             {
-                var success = await JSRuntime.InvokeAsync<bool>("copyToClipboard", MarkdownResult);
-                if (success)
-                {
-                    await ToastService.ShowSuccessAsync("Analysis copied to clipboard", 3000);
-                }
-                else
-                {
-                    // Show dialog instead of error toast
-                    ShowCopyFailedDialog(MarkdownResult, "Analysis");
-                }
+                await ToastService.ShowSuccessAsync("Analysis copied to clipboard", 3000);
             }
-            catch (Exception ex)
+            else
             {
-                Logger.LogError(ex, "Failed to copy analysis to clipboard");
                 // Show dialog instead of error toast
                 ShowCopyFailedDialog(MarkdownResult, "Analysis");
             }
         }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to copy analysis to clipboard");
+            // Show dialog instead of error toast
+            ShowCopyFailedDialog(MarkdownResult, "Analysis");
+        }
+        
     }    
-      private async Task SaveToHistory()
+    
+    private async Task HandleSaveClick(bool isPublic)
     {
-        if (!string.IsNullOrEmpty(MarkdownResult))
-        {            
-            var historyItem = new SharedDump.Models.AnalysisHistoryItem
+        if (string.IsNullOrEmpty(MarkdownResult) || _isSaved)
+            return;
+
+        isProcessingSave = true;
+        StateHasChanged();
+
+        try
+        {
+            var analysisData = new SharedDump.Models.AnalysisData
             {
-                FullAnalysis = MarkdownResult,
+                Id = _savedItemId ?? Guid.NewGuid().ToString(),
+                Title = $"{SourceType} Analysis",
+                Summary = !string.IsNullOrEmpty(MarkdownResult) && MarkdownResult.Length > 500 
+                    ? MarkdownResult.Substring(0, 500) + "..." 
+                    : MarkdownResult ?? string.Empty,
+                FullAnalysis = MarkdownResult ?? string.Empty,
                 SourceType = SourceType,
-                UserInput = UserInput
+                UserInput = UserInput,
+                CreatedDate = DateTime.UtcNow,
             };
-            await HistoryService.SaveToHistoryAsync(historyItem);
+
+            var savedId = await SharedHistoryServiceProvider.GetService().ShareAnalysisAsync(analysisData, isPublic);
+            
+            if (string.IsNullOrEmpty(savedId))
+            {
+                await ToastService.ShowErrorAsync("Failed to save analysis. Please try again.");
+                return;
+            }
+            
+            // Update component state
             _isSaved = true;
-            _savedItemId = historyItem.Id;
-            await ToastService.ShowSuccessAsync("Analysis saved to history", 3000);
+            _savedItemId = savedId;
+            
+            if (isPublic)
+            {
+                shareUrl = $"{NavigationManager.BaseUri.TrimEnd('/')}/analysis/{savedId}";
+            }
+            
+            await ToastService.ShowSuccessAsync("Analysis saved successfully!", 3000);
+            await TriggerConfetti();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to save analysis");
+            await ToastService.ShowErrorAsync("Failed to save analysis. Please try again.");
+        }
+        finally
+        {
+            isProcessingSave = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CopyShareUrl()
+    {
+        if (!string.IsNullOrEmpty(shareUrl))
+        {
+            try
+            {
+                var success = await JSRuntime.InvokeAsync<bool>("copyToClipboard", shareUrl);
+                if (success)
+                {
+                    await ToastService.ShowSuccessAsync("Share URL copied to clipboard!", 3000);
+                }
+                else
+                {
+                    ShowCopyFailedDialog(shareUrl, "Share URL");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to copy share URL to clipboard");
+                ShowCopyFailedDialog(shareUrl, "Share URL");
+            }
         }
     }
 
@@ -296,115 +373,8 @@
         }
     }
 
-    private async Task CopyShareLink()
-    {
-        if (!string.IsNullOrEmpty(shareLink))
-        {
-            try
-            {
-                var success = await JSRuntime.InvokeAsync<bool>("copyToClipboard", shareLink);
-                if (success)
-                {
-                    await ToastService.ShowSuccessAsync("Share link copied to clipboard!", 3000);
-                }
-                else
-                {
-                    // Show dialog instead of error toast
-                    ShowCopyFailedDialog(shareLink, "Share Link");
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Failed to copy share link to clipboard");
-                // Show dialog instead of error toast
-                ShowCopyFailedDialog(shareLink, "Share Link");
-            }
-        }
-    }    
+
     
-    private async Task ShareAnalysis()
-    {
-        if(isProcessingShare || string.IsNullOrEmpty(MarkdownResult))
-            return;
-            
-        isProcessingShare = true;
-        await ToastService.ShowInfoAsync("Creating share link...", 5000);
-
-        try
-        {
-            SharedDump.Models.AnalysisHistoryItem historyItem;
-            
-            // If the item is already saved, use that instead of creating a new one
-            if (_isSaved && !string.IsNullOrEmpty(_savedItemId))
-            {
-                var historyItems = await HistoryService.GetHistoryAsync();
-                historyItem = historyItems.First(h => h.Id == _savedItemId);
-            }
-            else
-            {
-                // Create and save new history item
-                var commentThreads = ConvertAdditionalDataToCommentThreads();
-                  historyItem = new SharedDump.Models.AnalysisHistoryItem
-                {
-                    FullAnalysis = MarkdownResult,
-                    SourceType = SourceType,
-                    UserInput = UserInput,
-                    CommentThreads = commentThreads
-                };
-                await HistoryService.SaveToHistoryAsync(historyItem);
-                _isSaved = true;
-                _savedItemId = historyItem.Id;
-            }            var analysisData = new SharedDump.Models.AnalysisData
-            {
-                Id = historyItem.Id,
-                Title = $"{SourceType} Analysis",
-                Summary = historyItem.Summary, // Using the computed property
-                FullAnalysis = historyItem.FullAnalysis,
-                SourceType = SourceType,
-                UserInput = UserInput,
-                CreatedDate = DateTime.UtcNow
-            };
-
-            sharedId = await SharingService.ShareAnalysisAsync(analysisData);
-
-            if (string.IsNullOrEmpty(sharedId))
-            {
-                await ToastService.ShowErrorAsync("Unable to create share link.");
-                return;
-            }
-            
-            await SharingService.UpdateHistoryItemWithShareInfoAsync(historyItem.Id, sharedId);
-            
-            // Store and copy share link
-            shareLink = $"{NavigationManager.BaseUri.TrimEnd('/')}/shared/{sharedId}";
-            
-            var copySuccess = await JSRuntime.InvokeAsync<bool>("copyToClipboard", shareLink);
-            
-            if (copySuccess)
-            {
-                // Trigger confetti and show success message
-                await ToastService.ShowSuccessAsync("Share link copied to clipboard! The link will be valid for 30 days.", 5000);
-                await TriggerConfetti();
-            }
-            else
-            {
-                // Show dialog instead of generic message
-                ShowCopyFailedDialog(shareLink, "Share Link");
-                await ToastService.ShowSuccessAsync("Share link created! The link will be valid for 30 days.", 5000);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Unable to create share link");
-            await ToastService.ShowErrorAsync($"Unable to create share link: {ex.Message}");
-        }
-        finally
-        {
-            isProcessingShare = false;
-            StateHasChanged();
-        }
-    }
-      
     private void ShowCopyFailedDialog(string content, string contentType)
     {
         failedCopyContent = content;

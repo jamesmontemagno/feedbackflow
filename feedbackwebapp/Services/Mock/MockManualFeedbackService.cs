@@ -1,6 +1,7 @@
 // filepath: c:\GitHub\feedbackflow\feedbackwebapp\Services\Mock\MockManualFeedbackService.cs
 using FeedbackWebApp.Services.Feedback;
 using FeedbackWebApp.Services.Interfaces;
+using FeedbackWebApp.Services.Authentication;
 using SharedDump.Services.Mock;
 
 namespace FeedbackWebApp.Services.Mock;
@@ -14,8 +15,9 @@ public class MockManualFeedbackService : FeedbackService, IManualFeedbackService
         IHttpClientFactory http,
         IConfiguration configuration,
         UserSettingsService userSettings,
+        IAuthenticationHeaderService authenticationHeaderService,
         FeedbackStatusUpdate? onStatusUpdate = null)
-        : base(http, configuration, userSettings, onStatusUpdate) { }
+        : base(http, configuration, userSettings, authenticationHeaderService, onStatusUpdate) { }
 
     public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {

@@ -14,5 +14,7 @@ namespace FeedbackFunctions;
 [JsonSerializable(typeof(YouTubeOutputVideo[]))]
 [JsonSerializable(typeof(RedditThreadModel[]))]
 [JsonSerializable(typeof(AnalyzeCommentsRequest))]
-[JsonSerializable(typeof(AnalyzeCommentsBYOKRequest))]
+[JsonSerializable(typeof(SaveAnalysisRequest))]
+[JsonSerializable(typeof(UpdateVisibilityRequest))]
+[JsonSerializable(typeof(RegisterUserRequest))]
 public partial class FeedbackJsonContext : JsonSerializerContext { }

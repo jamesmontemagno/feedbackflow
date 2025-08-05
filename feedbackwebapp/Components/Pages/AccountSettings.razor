@@ -1,0 +1,762 @@
+@page "/account-settings"
+@using FeedbackWebApp.Services
+@using FeedbackWebApp.Services.Authentication
+@using FeedbackWebApp.Services.Interfaces
+@using FeedbackWebApp.Components.Account
+@using FeedbackWebApp.Services.Account
+@using FeedbackWebApp.Components.Shared
+@using SharedDump.Models.Account
+@using SharedDump.Utils.Account
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Web
+@inject IUserManagementService UserManagementService
+@inject IAuthenticationService AuthService
+@inject IAccountServiceProvider AccountServiceProvider
+@inject IToastService ToastService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+
+<PageTitle>Account Settings - FeedbackFlow</PageTitle>
+
+<div class="container my-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-person-gear me-2"></i>
+                        Account Settings
+                    </h4>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Loading account information...</p>
+                        </div>
+                    }
+                    else if (userInfo != null)
+                    {
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-warning" role="alert">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                <strong>Loading Issue:</strong> @errorMessage
+                                <br><small>Account information displayed below may be from cached authentication data.</small>
+                            </div>
+                        }
+                        
+                        <!-- Account Information -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <h5 class="text-primary">Account Information</h5>
+                                @if (userAccount?.Tier == AccountTier.SuperUser)
+                                {
+                                    <div class="mt-2">
+                                        <span class="badge bg-warning text-dark fs-6">
+                                            <i class="bi bi-star-fill me-1"></i>
+                                            Super User
+                                        </span>
+                                        <p class="text-muted small mt-1 mb-0">Administrative Account</p>
+                                    </div>
+                                }
+                                else if (userAccount?.Tier == AccountTier.Admin)
+                                {
+                                    <div class="mt-2">
+                                        <span class="badge bg-warning text-dark fs-6">
+                                            <i class="bi bi-star-fill me-1"></i>
+                                            Admin
+                                        </span>
+                                        <p class="text-muted small mt-1 mb-0">Administrative Account</p>
+                                    </div>
+                                }
+                            </div>
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Name</label>
+                                    <p class="form-control-plaintext">
+                                        @userInfo.Name
+                                        @if (userAccount?.Tier == AccountTier.SuperUser)
+                                        {
+                                            <span class="badge bg-warning text-dark ms-2">
+                                                <i class="bi bi-star-fill me-1"></i>
+                                                Super User
+                                            </span>
+                                        }
+                                        else if (userAccount?.Tier == AccountTier.Admin)
+                                        {
+                                            <span class="badge bg-warning text-dark ms-2">
+                                                <i class="bi bi-star-fill me-1"></i>
+                                                Admin
+                                            </span>
+                                        }
+                                    </p>
+                                </div>
+                                @if (!string.IsNullOrEmpty(userInfo.Email))
+                                {
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Email</label>
+                                        <p class="form-control-plaintext">@userInfo.Email</p>
+                                    </div>
+                                }
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Authentication Provider</label>
+                                    <p class="form-control-plaintext">
+                                        <span class="badge bg-secondary">@userInfo.AuthProvider</span>
+                                    </p>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Account Created</label>
+                                    <p class="form-control-plaintext">@userInfo.CreatedAt.ToString("MMMM d, yyyy 'at' h:mm tt")</p>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Last Login</label>
+                                    <p class="form-control-plaintext">@userInfo.LastLoginAt.ToString("MMMM d, yyyy 'at' h:mm tt")</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <!-- Email Preferences -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <h5 class="text-primary">Email Preferences</h5>
+                                <p class="text-muted small">
+                                    Set a preferred email address for notifications. If not set, your account email will be used.
+                                </p>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label for="preferredEmail" class="form-label fw-bold">Preferred Email Address</label>
+                                    <div class="input-group">
+                                        <input type="email" 
+                                               class="form-control" 
+                                               id="preferredEmail"
+                                               @bind="preferredEmailInput" 
+                                               @bind:event="oninput"
+                                               placeholder="@(userInfo?.Email ?? "") (your account email)"
+                                               disabled="@isUpdatingEmail" />
+                                        <button class="btn btn-outline-primary" 
+                                                type="button" 
+                                                @onclick="UpdatePreferredEmailAsync"
+                                                disabled="@(isUpdatingEmail || !hasEmailChanged)">
+                                            @if (isUpdatingEmail)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                                <span>Saving...</span>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-check-lg me-1"></i>
+                                                <span>Update</span>
+                                            }
+                                        </button>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(emailUpdateMessage))
+                                    {
+                                        <div class="@($"alert alert-{(emailUpdateSuccess ? "success" : "danger")} mt-2 mb-0")" role="alert">
+                                            <i class="@($"bi bi-{(emailUpdateSuccess ? "check-circle" : "exclamation-triangle")}-fill me-2")"></i>
+                                            @emailUpdateMessage
+                                        </div>
+                                    }
+                                    <div class="form-text">
+                                        <small class="text-muted">
+                                            <strong>Current:</strong> @(string.IsNullOrEmpty(userInfo?.PreferredEmail) ? $"{userInfo?.Email ?? ""} (account email)" : userInfo.PreferredEmail)
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Email Notification Settings -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <h6 class="text-primary">📧 Report Notifications</h6>
+                                <p class="text-muted small">
+                                    Configure when you'd like to receive email notifications about your reports.
+                                </p>
+                                @if (userAccount != null && !AccountTierUtils.SupportsEmailNotifications(userAccount.Tier))
+                                {
+                                    <p class="text-muted small">
+                                        <i class="bi bi-star-fill text-warning me-1"></i>
+                                        <strong>Pro feature</strong> - Upgrade to Pro or Pro+ to receive email notifications.
+                                    </p>
+                                }
+                            </div>
+                            <div class="col-md-8">
+                                @if (userAccount != null && AccountTierUtils.SupportsEmailNotifications(userAccount.Tier))
+                                {
+                                    <div class="card border-light">
+                                        <div class="card-body p-3">
+                                            <!-- Enable Notifications Toggle -->
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" 
+                                                       type="checkbox" 
+                                                       id="emailNotificationsEnabled"
+                                                       @bind="emailNotificationsEnabled"
+                                                       @bind:event="onchange"
+                                                       @bind:after="UpdateEmailNotificationSettings"
+                                                       disabled="@isUpdatingEmailSettings">
+                                                <label class="form-check-label fw-bold" for="emailNotificationsEnabled">
+                                                    Enable email notifications
+                                                </label>
+                                            </div>
+                                            
+                                            @if (emailNotificationsEnabled)
+                                            {
+                                                <!-- Frequency Selection -->
+                                                <div class="mb-3">
+                                                    <label class="form-label">Notification Frequency</label>
+                                                    <select class="form-select" 
+                                                            @bind="selectedEmailFrequency"
+                                                            @bind:event="onchange"
+                                                            @bind:after="UpdateEmailNotificationSettings"
+                                                            disabled="@isUpdatingEmailSettings">
+                                                        <option value="@((int)EmailReportFrequency.Individual)">Individual reports (send email for each report)</option>
+                                                        <option value="@((int)EmailReportFrequency.WeeklyDigest)">Weekly digest (combine all reports)</option>
+                                                    </select>
+                                                </div>
+                                            }
+                                            
+                                            @if (isUpdatingEmailSettings)
+                                            {
+                                                <div class="text-muted small">
+                                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                                    Updating settings...
+                                                </div>
+                                            }
+                                            
+                                            @if (!string.IsNullOrEmpty(emailSettingsMessage))
+                                            {
+                                                <div class="alert @(emailSettingsSuccess ? "alert-success" : "alert-danger") alert-sm py-2 mt-2">
+                                                    <small>@emailSettingsMessage</small>
+                                                </div>
+                                            }
+                                            
+                                            <div class="form-text">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-info-circle me-1"></i>
+                                                    Email notifications will be sent to: <strong>@(string.IsNullOrEmpty(userAccount?.PreferredEmail) ? userInfo?.Email : userAccount.PreferredEmail)</strong>
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <!-- Tier restriction message with upgrade prompt -->
+                                    <div class="card border-warning">
+                                        <div class="card-body p-3 text-center">
+                                            <div class="mb-3">
+                                                <i class="bi bi-star-fill text-warning" style="font-size: 2rem;"></i>
+                                            </div>
+                                            <h6 class="text-warning mb-2">Email Notifications - Pro Feature</h6>
+                                            <p class="text-muted mb-3">
+                                                Get notified when your reports are ready! Email notifications are available for Pro and Pro+ subscribers.
+                                            </p>
+                                            <div class="d-flex gap-2 justify-content-center flex-wrap">
+                                                <button class="btn btn-warning btn-sm" @onclick="() => HandleUpgradeRequest(AccountTier.Pro)">
+                                                    <i class="bi bi-arrow-up-circle me-1"></i>
+                                                    Upgrade to Pro
+                                                </button>
+                                                <button class="btn btn-outline-warning btn-sm" @onclick="() => HandleUpgradeRequest(AccountTier.ProPlus)">
+                                                    <i class="bi bi-star-fill me-1"></i>
+                                                    Upgrade to Pro+
+                                                </button>
+                                            </div>
+                                            <div class="mt-2">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-check-circle-fill text-success me-1"></i>
+                                                    Individual report notifications when generated
+                                                    <br>
+                                                    <i class="bi bi-check-circle-fill text-success me-1"></i>
+                                                    Weekly digest options
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <!-- Usage Dashboard -->
+                        @if (!isLoadingUsage)
+                        {
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <h5 class="text-primary mb-3">
+                                        <i class="bi bi-graph-up me-2"></i>
+                                        Current Usage
+                                    </h5>
+                                    <UsageDashboard UserAccount="@userAccount" 
+                                                    Limits="@accountLimits" 
+                                                    IsLoading="@false" />
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <!-- Tier Comparison -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <h5 class="text-primary mb-3">
+                                        <i class="bi bi-star me-2"></i>
+                                        Available Plans
+                                    </h5>
+                                    <TierComparison CurrentTier="@(userAccount?.Tier ?? AccountTier.Free)" 
+                                                    UserAccount="@userAccount" 
+                                                    Tiers="@tierInformation"
+                                                    IsLoading="@false"
+                                                    ErrorMessage="@tierErrorMessage"
+                                                    OnUpgradeRequest="@HandleUpgradeRequest" />
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+                        }
+                        else
+                        {
+                            <!-- Loading state for usage and tier information -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <h5 class="text-primary mb-3">
+                                        <i class="bi bi-graph-up me-2"></i>
+                                        Usage & Plans
+                                    </h5>
+                                    
+                                    <!-- Usage Dashboard Loading -->
+                                    <UsageDashboard UserAccount="@null" 
+                                                    Limits="@null" 
+                                                    IsLoading="@true" />
+                                    
+                                    <hr class="my-3">
+                                    
+                                    <!-- Tier Comparison Loading -->
+                                    <TierComparison CurrentTier="@AccountTier.Free" 
+                                                    UserAccount="@null" 
+                                                    Tiers="@null"
+                                                    IsLoading="@true"
+                                                    ErrorMessage=""
+                                                    OnUpgradeRequest="@HandleUpgradeRequest" />
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+                        }
+
+                        <!-- Danger Zone -->
+                        <div class="danger-zone">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h5 class="text-danger">
+                                        <i class="bi bi-exclamation-triangle me-2"></i>
+                                        Danger Zone
+                                    </h5>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="alert alert-danger" role="alert">
+                                        <h6 class="alert-heading">Delete Account</h6>
+                                        <p class="mb-3">
+                                            Permanently delete your account and all associated data. This action cannot be undone.
+                                        </p>
+                                        <ul class="mb-3">
+                                            <li>Your account will be permanently deleted and you will be logged out</li>
+                                            <li>All shared analyses will be removed from our system</li>
+                                            <li>All report requests and generated reports will be deleted</li>
+                                            <li>Your usage history for audit and compliance purposes will be retained</li>
+                                        </ul>
+                                        <button class="btn btn-danger" 
+                                                @onclick="ShowDeleteConfirmation" 
+                                                disabled="@isDeleting">
+                                            @if (isDeleting)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                                <span>Deleting Account and Data...</span>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-trash me-2"></i>
+                                                <span>Delete My Account</span>
+                                            }
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            @errorMessage
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Account Deleted Success Dialog *@
+@if (showAccountDeletedDialog)
+{
+    <AccountDeletedDialog OnLogoutNow="@HandleLogoutNow" />
+}
+
+@code {
+    private UserInfo? userInfo;
+    private UserAccount? userAccount;
+    private AccountLimits? accountLimits;
+    private TierInfo[]? tierInformation;
+    private string tierErrorMessage = "";
+    private bool isLoading = true;
+    private bool isLoadingUsage = true;
+    private bool isDeleting = false;
+    private bool showAccountDeletedDialog = false;
+    private string errorMessage = "";
+    
+    // Email preferences fields
+    private string preferredEmailInput = "";
+    private bool isUpdatingEmail = false;
+    private string emailUpdateMessage = "";
+    private bool emailUpdateSuccess = false;
+    private bool hasEmailChanged => preferredEmailInput != (userAccount?.PreferredEmail ?? "");
+    
+    // Email notification settings fields
+    private bool emailNotificationsEnabled = false;
+    private int selectedEmailFrequency = (int)EmailReportFrequency.Individual;
+    private bool isUpdatingEmailSettings = false;
+    private string emailSettingsMessage = "";
+    private bool emailSettingsSuccess = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserInfoAsync();
+        await LoadUserAccountAsync();
+    }
+
+    private async Task LoadUserInfoAsync()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = "";
+            
+            // Check if user is authenticated
+            var isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (!isAuthenticated)
+            {
+                Navigation.NavigateTo("/");
+                return;
+            }
+
+            // Get user info from the backend - this returns UserInfo? directly
+            userInfo = await UserManagementService.GetCurrentUserInfoAsync();
+            
+            if (userInfo == null)
+            {
+                // Fallback: create UserInfo from AuthenticatedUser if backend fails
+                var currentUser = await AuthService.GetCurrentUserAsync();
+                if (currentUser != null)
+                {
+                    userInfo = new UserInfo
+                    {
+                        UserId = currentUser.UserId,
+                        Email = currentUser.Email,
+                        Name = currentUser.Name,
+                        AuthProvider = currentUser.AuthProvider,
+                        ProviderUserId = currentUser.ProviderUserId,
+                        ProfileImageUrl = currentUser.ProfileImageUrl,
+                        CreatedAt = currentUser.CreatedAt,
+                        LastLoginAt = currentUser.LastLoginAt ?? DateTime.UtcNow
+                    };
+                    
+                    errorMessage = "Backend service unavailable. Displaying authentication data only.";
+                }
+                else
+                {
+                    errorMessage = "Unable to load account information. Please try logging out and back in.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Try fallback approach when backend fails
+            try
+            {
+                var currentUser = await AuthService.GetCurrentUserAsync();
+                if (currentUser != null)
+                {
+                    userInfo = new UserInfo
+                    {
+                        UserId = currentUser.UserId,
+                        Email = currentUser.Email,
+                        Name = currentUser.Name,
+                        AuthProvider = currentUser.AuthProvider,
+                        ProviderUserId = currentUser.ProviderUserId,
+                        ProfileImageUrl = currentUser.ProfileImageUrl,
+                        CreatedAt = currentUser.CreatedAt,
+                        LastLoginAt = currentUser.LastLoginAt ?? DateTime.UtcNow
+                    };
+                    
+                    errorMessage = $"Backend service error: {ex.Message}. Displaying authentication data only.";
+                }
+                else
+                {
+                    errorMessage = $"Failed to load account information: {ex.Message}";
+                }
+            }
+            catch (Exception fallbackEx)
+            {
+                errorMessage = $"Critical error loading account information: {fallbackEx.Message}. Please contact support.";
+            }
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadUserAccountAsync()
+    {
+        try
+        {
+            isLoadingUsage = true;
+            tierErrorMessage = "";
+            var accountService = AccountServiceProvider.GetService();
+            
+            // Load tier information first
+            try
+            {
+                tierInformation = await accountService.GetTierLimitsAsync();
+            }
+            catch (Exception ex)
+            {
+                tierErrorMessage = $"Failed to load tier information: {ex.Message}";
+                tierInformation = null;
+            }
+
+            // Load user account and limits, passing tier info to avoid duplicate API call
+            var accountResult = await accountService.GetUserAccountAndLimitsAsync(tierInformation);
+            if (accountResult.HasValue)
+            {
+                userAccount = accountResult.Value.account;
+                accountLimits = accountResult.Value.limits;
+                
+                // Update preferred email input to use UserAccount data
+                if (userAccount != null)
+                {
+                    preferredEmailInput = userAccount.PreferredEmail ?? userInfo?.Email ?? "";
+                    
+                    // Initialize email notification settings
+                    emailNotificationsEnabled = userAccount.EmailNotificationsEnabled;
+                    selectedEmailFrequency = (int)userAccount.EmailFrequency;
+                }
+            }
+            else
+            {
+                userAccount = null;
+                accountLimits = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't show to user - usage dashboard will show error state
+            Console.WriteLine($"Error loading user account: {ex.Message}");
+            userAccount = null;
+            accountLimits = null;
+            tierInformation = null;
+            tierErrorMessage = "Failed to load account data. Please refresh the page.";
+        }
+        finally
+        {
+            isLoadingUsage = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleUpgradeRequest(AccountTier tier)
+    {
+        await ToastService.ShowToastAsync($"Upgrade to {tier} tier coming soon!", ToastType.Info);
+        // TODO: Implement actual upgrade logic when payment system is integrated
+    }
+
+    private async Task ShowDeleteConfirmation()
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+            "Are you absolutely sure you want to deactivate your account?\n\n" +
+            "This will:\n" +
+            "• Deactivate your account and log you out\n" +
+            "• Prevent access to your reports\n" +
+            "• Preserve your data for audit purposes\n\n" +
+            "This action cannot be undone!\n\n" +
+            "Type 'DELETE' to confirm:");
+
+        if (confirmed)
+        {
+            // Second confirmation with typing requirement
+            var deleteConfirmation = await JSRuntime.InvokeAsync<string>("prompt", 
+                "Please type 'DELETE' (in capital letters) to confirm account deletion:");
+
+            if (deleteConfirmation == "DELETE")
+            {
+                await DeleteAccountAsync();
+            }
+            else if (!string.IsNullOrEmpty(deleteConfirmation))
+            {
+                await ToastService.ShowToastAsync("Account deletion cancelled. You must type 'DELETE' exactly to confirm.", ToastType.Danger);
+            }
+        }
+    }
+
+    private async Task DeleteAccountAsync()
+    {
+        try
+        {
+            isDeleting = true;
+            StateHasChanged();
+
+            var result = await UserManagementService.DeleteCurrentUserAsync();
+            
+            if (result.Success)
+            {
+                // Show success dialog
+                showAccountDeletedDialog = true;
+                isDeleting = false;
+                StateHasChanged();
+                
+                // Auto-logout after 5 seconds
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(5000);
+                    await InvokeAsync(async () =>
+                    {
+                        await HandleLogoutNow();
+                    });
+                });
+            }
+            else
+            {
+                await ToastService.ShowToastAsync($"Failed to delete account: {result.ErrorMessage}", ToastType.Danger);
+                isDeleting = false;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastService.ShowToastAsync($"Error deleting account: {ex.Message}", ToastType.Danger);
+            isDeleting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleLogoutNow()
+    {
+        try
+        {
+            showAccountDeletedDialog = false;
+            await AuthService.LogoutAsync();
+            Navigation.NavigateTo("/", true);
+        }
+        catch (Exception ex)
+        {
+            await ToastService.ShowToastAsync($"Error during logout: {ex.Message}", ToastType.Danger);
+            Navigation.NavigateTo("/", true);
+        }
+    }
+
+    private async Task UpdatePreferredEmailAsync()
+    {
+        try
+        {
+            isUpdatingEmail = true;
+            emailUpdateMessage = "";
+            StateHasChanged();
+
+            var result = await UserManagementService.UpdatePreferredEmailAsync(preferredEmailInput);
+            
+            if (result.Success)
+            {
+                // Refresh the user account to get the updated preferred email
+                await LoadUserAccountAsync();
+                
+                emailUpdateMessage = "Email preference updated successfully!";
+                await ToastService.ShowToastAsync("Email preference updated successfully!", ToastType.Success);
+            }
+            else
+            {
+                emailUpdateMessage = $"Failed to update email preference: {result.ErrorMessage}";
+                await ToastService.ShowToastAsync($"Failed to update email preference: {result.ErrorMessage}", ToastType.Danger);
+            }
+        }
+        catch (Exception ex)
+        {
+            emailUpdateMessage = $"Error updating email preference: {ex.Message}";
+            await ToastService.ShowToastAsync($"Error updating email preference: {ex.Message}", ToastType.Danger);
+        }
+        finally
+        {
+            isUpdatingEmail = false;
+            StateHasChanged();
+        }
+    }
+    
+    private async Task UpdateEmailNotificationSettings()
+    {
+        try
+        {
+            isUpdatingEmailSettings = true;
+            emailSettingsMessage = "";
+            emailSettingsSuccess = false;
+            //if we just enabled it then change it to 1
+            if(emailNotificationsEnabled && selectedEmailFrequency == 0)
+            {
+                selectedEmailFrequency = 1;
+            }
+            StateHasChanged();
+
+            // Call the backend API to update email notification settings
+            var result = await UserManagementService.UpdateEmailNotificationSettingsAsync(
+                emailNotificationsEnabled, 
+                (EmailReportFrequency)selectedEmailFrequency);
+            
+            if (result.Success)
+            {
+                // Update the local UserAccount model to reflect the changes
+                if (userAccount != null)
+                {
+                    userAccount.EmailNotificationsEnabled = emailNotificationsEnabled;
+                    userAccount.EmailFrequency = (EmailReportFrequency)selectedEmailFrequency;
+                }
+                
+                emailSettingsMessage = "Email notification settings updated successfully!";
+                emailSettingsSuccess = true;
+                await ToastService.ShowToastAsync("Email notification settings updated!", ToastType.Success);
+            }
+            else
+            {
+                emailSettingsMessage = $"Failed to update email notification settings: {result.ErrorMessage}";
+                emailSettingsSuccess = false;
+                await ToastService.ShowToastAsync($"Failed to update email notification settings: {result.ErrorMessage}", ToastType.Danger);
+            }
+        }
+        catch (Exception ex)
+        {
+            emailSettingsMessage = $"Error updating email notification settings: {ex.Message}";
+            emailSettingsSuccess = false;
+            await ToastService.ShowToastAsync($"Error updating email notification settings: {ex.Message}", ToastType.Danger);
+        }
+        finally
+        {
+            isUpdatingEmailSettings = false;
+            StateHasChanged();
+        }
+    }
+}

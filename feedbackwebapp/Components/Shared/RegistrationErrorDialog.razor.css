@@ -1,0 +1,99 @@
+/* Registration Error Dialog Styles */
+.modal-content {
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    border: none;
+}
+
+.modal-header .modal-title {
+    font-weight: 600;
+}
+
+.modal-body {
+    background: var(--card-background);
+}
+
+.alert {
+    border-radius: var(--border-radius);
+}
+
+.alert-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: var(--text-color);
+}
+
+.alert-info {
+    background-color: rgba(13, 110, 253, 0.1);
+    color: var(--text-color);
+}
+
+.alert-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: var(--text-color);
+}
+
+.alert-heading {
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+details summary {
+    transition: color 0.2s ease;
+}
+
+details summary:hover {
+    color: var(--primary-color);
+}
+
+details[open] summary {
+    margin-bottom: 0.5rem;
+}
+
+.btn {
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.modal-footer {
+    background: var(--card-background);
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .modal-content {
+    background: var(--card-background);
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .alert-danger {
+    background-color: rgba(220, 53, 69, 0.15);
+    border: 1px solid rgba(220, 53, 69, 0.2);
+}
+
+[data-theme="dark"] .alert-info {
+    background-color: rgba(13, 110, 253, 0.15);
+    border: 1px solid rgba(13, 110, 253, 0.2);
+}
+
+[data-theme="dark"] .alert-warning {
+    background-color: rgba(255, 193, 7, 0.15);
+    border: 1px solid rgba(255, 193, 7, 0.2);
+}
+
+[data-theme="dark"] details .bg-light {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] code {
+    color: var(--text-muted);
+    background: transparent;
+}

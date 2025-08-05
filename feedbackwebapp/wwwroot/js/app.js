@@ -125,6 +125,7 @@ function downloadFile(dataUrl, fileName) {
 
 window.downloadFile = downloadFile;
 
+
 document.addEventListener('DOMContentLoaded', async () => {
     // Add the toast container to the DOM if it doesn't exist
     if (!document.getElementById('toast-container')) {
@@ -134,12 +135,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.appendChild(toastContainer);
     }
 
-    // Load and expose IndexedDB module
+    // Load and expose IndexedDB module (optional, don't fail if it's not available)
     try {
         const indexedDbModule = await import('./indexedDb.js');
         window.indexedDbModule = indexedDbModule;
         console.log('IndexedDB module loaded successfully');
     } catch (error) {
-        console.error('Failed to load IndexedDB module:', error);
+        console.warn('IndexedDB module not available or failed to load (this is optional):', error.message);
+        // Don't treat this as a critical error - the app can function without IndexedDB
     }
 });

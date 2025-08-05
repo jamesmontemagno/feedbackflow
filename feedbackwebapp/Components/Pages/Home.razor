@@ -9,14 +9,18 @@
 @using FeedbackWebApp.Components.Feedback.Results
 @using FeedbackWebApp.Services.Interfaces
 @using FeedbackWebApp.Services.Feedback
+@using FeedbackWebApp.Services.Authentication
+@using FeedbackWebApp.Services
 @using FeedbackWebApp.Components.Shared
 @using SharedDump.Models
+@using SharedDump.Models.Account
 @using SharedDump.Models.BlueSkyFeedback
 @using SharedDump.Models.DevBlogs
 @using SharedDump.Models.GitHub
 @using SharedDump.Models.HackerNews
 @using SharedDump.Models.Reddit
 @using SharedDump.Models.YouTube
+@using SharedDump.Utils
 
 @inject IConfiguration Configuration
 @inject FeedbackServiceProvider ServiceProvider
@@ -24,6 +28,10 @@
 @inject NavigationManager NavigationManager
 @inject UserSettingsService UserSettings
 @inject IHistoryService HistoryService
+@inject IAuthenticationService AuthService
+@inject IRegistrationErrorService RegistrationErrorService
+@inject ITwitterAccessService TwitterAccessService
+@implements IDisposable
 
 <PageTitle>Feedback Analysis - FeedbackFlow</PageTitle>
 
@@ -33,10 +41,20 @@
     OnGotIt="@MarkNewFeaturesAsSeen" 
     OnRemindLater="@CloseNewFeaturesDialog" />
 
+<UsageLimitDialog 
+    UsageError="@usageLimitError" 
+    IsVisible="@showUsageLimitDialog" 
+    OnClose="@CloseUsageLimitDialog" />
+
+<RegistrationErrorDialog 
+    IsVisible="@showRegistrationError" 
+    ErrorMessage="@registrationErrorMessage" 
+    OnClose="@CloseRegistrationErrorDialog" />
+
 <div class="container">
     @if (!isAuthenticated)
     {
-        <AuthenticationForm OnAuthenticated="HandleAuthenticated" />
+        <AuthenticationForm OnAuthenticatedWithDetails="HandleAuthenticatedWithDetails" />
     }
     else
     {        
@@ -139,12 +157,43 @@
     private bool isLoading = false;
     private bool isAuthenticated = false;
     private bool showNewFeaturesDialog = false;
+    private bool showUsageLimitDialog = false;
+    private bool showRegistrationError = false;
+    private string? registrationErrorMessage = null;
+    private UsageValidationResult? usageLimitError;
     private List<FeedbackSourceData>? feedbackSources;
     private object? currentAdditionalData;
     private FeedbackProcessStatus currentStatus;
     private string currentStatusMessage = "";
     private string? initialSource;
     private string? initialId;
+
+    private async Task HandleAuthenticatedWithDetails((bool success, bool justLoggedIn) details)
+    {
+        isAuthenticated = details.success;
+        StateHasChanged();
+
+        if (details.success)
+        {
+            // Only handle post-login registration if the user just logged in
+            // This avoids unnecessary backend calls when user was already authenticated
+            if (details.justLoggedIn)
+            {
+                try
+                {
+                    await AuthService.HandlePostLoginRegistrationAsync();
+                }
+                catch (Exception ex)
+                {
+                    // Log but don't fail the authentication flow if registration has issues
+                    Console.WriteLine($"Post-login registration warning: {ex.Message}");
+                }
+            }
+
+            await HandleQueryNav();
+            //await CheckForNewFeatures();
+        }
+    }
 
     private async Task HandleAuthenticated(bool success)
     {
@@ -153,13 +202,27 @@
 
         if (success)
         {
+            // Handle post-login registration for OAuth providers (GitHub, Google, etc.)
+            // This ensures users are properly registered in the backend after OAuth login
+            // With caching enabled, this won't make excessive API calls
+            try
+            {
+                await AuthService.HandlePostLoginRegistrationAsync();
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail the authentication flow if registration has issues
+                Console.WriteLine($"Post-login registration warning: {ex.Message}");
+            }
+
             await HandleQueryNav();
-            await CheckForNewFeatures();
+            //await CheckForNewFeatures();
         }
     }
 
     private async Task CheckForNewFeatures()
     {
+
         try
         {
             // Check if user has history (indicating they've used the app before)
@@ -195,6 +258,13 @@
     {
         await UserSettings.MarkFeatureAnnouncementShownAsync();
         CloseNewFeaturesDialog();
+    }
+
+    private void CloseUsageLimitDialog()
+    {
+        showUsageLimitDialog = false;
+        usageLimitError = null;
+        StateHasChanged();
     }
 
     private void HandleStatusUpdate(FeedbackProcessStatus status, string message)
@@ -292,6 +362,19 @@
             currentStatus = FeedbackProcessStatus.GatheringComments;
             currentStatusMessage = "Starting analysis...";
 
+            // For Auto source, check Twitter access before submitting
+            if (selectedSource == "Auto")
+            {
+                var urls = autoDataSourceForm?.GetUrls() ?? new List<string>();
+                var (hasAccess, accessError) = await TwitterAccessService.CheckTwitterAccessAsync(urls);
+                
+                if (!hasAccess && !string.IsNullOrEmpty(accessError))
+                {
+                    error = accessError;
+                    return;
+                }
+            }
+
             IFeedbackService service = selectedSource switch
             {
                 "Auto" or "auto" => ServiceProvider.CreateAutoDataSourceService(
@@ -314,9 +397,24 @@
                 feedbackSources = sources;
             }
         }
+        catch (UsageLimitExceededException ex)
+        {
+            usageLimitError = ex.LimitError;
+            showUsageLimitDialog = true;
+            StateHasChanged();
+        }
         catch (Exception ex)
         {
-            error = $"An error occurred: {ex.Message}";
+            // Check if this is a usage limit error from error message
+            if (UsageLimitErrorHelper.TryParseUsageLimitError(ex.Message, out var limitError))
+            {
+                usageLimitError = limitError;
+                showUsageLimitDialog = true;
+            }
+            else
+            {
+                error = $"An error occurred: {ex.Message}";
+            }
             StateHasChanged();
         }
         finally
@@ -331,8 +429,24 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Subscribe to registration error events
+        RegistrationErrorService.RegistrationErrorOccurred += OnRegistrationErrorOccurred;
+        
         var uri = new Uri(NavigationManager.Uri);
         var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+
+        // Check if this is an OAuth redirect (user just completed login)
+        var isOAuthRedirect = !string.IsNullOrEmpty(query["code"]) || 
+                             !string.IsNullOrEmpty(query["state"]) ||
+                             uri.AbsolutePath.Contains("/.auth/login/");
+
+        // Store auth status for later processing in OnAfterRenderAsync
+        var authStatus = query["auth"];
+        if (authStatus == "failed" || authStatus == "error")
+        {
+            // Store the auth error status to handle in OnAfterRenderAsync
+            await Task.CompletedTask; // Placeholder - will handle in OnAfterRenderAsync
+        }
 
         initialSource = query["source"]?.ToLower();
         initialId = query["id"];
@@ -345,7 +459,50 @@
             initialId = url;
         }
 
+        // If this is an OAuth redirect, check authentication and handle post-login registration
+        if (isOAuthRedirect)
+        {
+            try
+            {
+                // Give time for OAuth tokens to settle
+                await Task.Delay(500);
+                
+                var isAuthenticated = await AuthService.IsAuthenticatedAsync();
+                if (isAuthenticated)
+                {
+                    // This is a fresh OAuth login, handle post-login registration
+                    await HandleAuthenticatedWithDetails((true, true));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"OAuth redirect handling error: {ex.Message}");
+            }
+        }
+
         await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Handle authentication error logging after render
+            var uri = new Uri(NavigationManager.Uri);
+            var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+            var authStatus = query["auth"];
+            
+            if (authStatus == "failed")
+            {
+                // Show authentication failed message
+                await JSRuntime.InvokeVoidAsync("console.log", "Authentication failed");
+            }
+            else if (authStatus == "error")
+            {
+                // Show authentication error message
+                await JSRuntime.InvokeVoidAsync("console.log", "Authentication error occurred");
+            }
+        }
     }    
     
     private async Task HandleQueryNav()
@@ -376,5 +533,33 @@
                 StateHasChanged();
             }
         }
+    }
+
+    private void OnRegistrationErrorOccurred(object? sender, string errorMessage)
+    {
+        InvokeAsync(() =>
+        {
+            registrationErrorMessage = errorMessage;
+            showRegistrationError = true;
+            isAuthenticated = false;
+            StateHasChanged();
+        });
+    }
+
+    private async Task CloseRegistrationErrorDialog()
+    {
+        showRegistrationError = false;
+        registrationErrorMessage = null;
+        StateHasChanged();
+        
+        // Refresh the page to restart the authentication flow
+        await Task.Delay(100); // Small delay to allow UI to update
+        NavigationManager.NavigateTo("/", forceLoad: true);
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe from registration error events
+        RegistrationErrorService.RegistrationErrorOccurred -= OnRegistrationErrorOccurred;
     }
 }

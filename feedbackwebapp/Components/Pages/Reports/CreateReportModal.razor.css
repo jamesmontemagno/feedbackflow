@@ -1,0 +1,328 @@
+/* CreateReportModal.razor.css */
+
+.modal {
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    border: none;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.modal-header {
+    background: var(--primary-gradient);
+    color: white;
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+    border-bottom: none;
+}
+
+.modal-header h5 {
+    margin: 0;
+    font-weight: 600;
+}
+
+.modal-header .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+    opacity: 0.8;
+    transition: opacity 0.3s ease, transform 0.2s ease;
+}
+
+.modal-header .btn-close:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.modal-header .btn-close:focus {
+    box-shadow: 0 0 0 0.25rem rgba(255, 255, 255, 0.25);
+}
+
+.modal-body {
+    padding: 1.5rem;
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border-color);
+    background-color: var(--surface-color);
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+
+.modal-backdrop {
+    background-color: rgba(var(--text-secondary-rgb), 0.6);
+    transition: background-color 0.3s ease;
+}
+
+/* Dark theme specific backdrop override for better contrast */
+[data-theme="dark"] .modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.75);
+}
+
+/* Form validation styling */
+.input-group-text.text-success {
+    background-color: rgba(var(--success-color-rgb), 0.1);
+    border-color: var(--success-color);
+    color: var(--success-color);
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.input-group-text.text-danger {
+    background-color: rgba(var(--danger-color-rgb), 0.1);
+    border-color: var(--danger-color);
+    color: var(--danger-color);
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.form-control.is-valid {
+    border-color: var(--success-color);
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+
+.form-control.is-invalid {
+    border-color: var(--danger-color);
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+
+.invalid-feedback {
+    font-size: 0.875rem;
+    color: var(--danger-color);
+    transition: color 0.3s ease;
+}
+
+/* Input group styling for dark theme */
+.input-group-text {
+    background-color: rgba(var(--bg-secondary-rgb), 0.8);
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+    transition: all 0.3s ease;
+}
+
+/* Form control and select overrides for modal */
+.form-control,
+.form-select {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--input-bg);
+    border-color: var(--primary-color);
+    color: var(--text-primary);
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+.form-control::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+/* Form labels */
+.form-label {
+    color: var(--text-primary);
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.form-text {
+    color: var(--text-secondary);
+    transition: color 0.3s ease;
+}
+
+/* Animation for modal entrance */
+.modal.show {
+    animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Dark theme specific modal content overrides */
+[data-theme="dark"] .modal-content {
+    background-color: var(--card-bg) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .modal-body {
+    background-color: var(--card-bg) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .modal-footer {
+    background-color: var(--surface-color) !important;
+    color: var(--text-primary) !important;
+    border-top-color: var(--border-color) !important;
+}
+
+/* Bootstrap Alert Overrides for Dark Theme */
+.alert {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    border-radius: var(--border-radius-sm);
+    transition: all 0.3s ease;
+}
+
+.alert-danger {
+    background-color: rgba(var(--danger-color-rgb), 0.1);
+    border-color: var(--danger-color);
+    color: var(--danger-color);
+}
+
+.alert-warning {
+    background-color: rgba(var(--warning-color-rgb), 0.1);
+    border-color: var(--warning-color);
+    color: var(--warning-color);
+}
+
+.alert-success {
+    background-color: rgba(var(--success-color-rgb), 0.1);
+    border-color: var(--success-color);
+    color: var(--success-color);
+}
+
+.alert-info {
+    background-color: rgba(var(--info-color-rgb), 0.1);
+    border-color: var(--info-color);
+    color: var(--info-color);
+}
+
+/* Button styling improvements */
+.btn {
+    transition: all 0.3s ease;
+}
+
+.btn-outline-secondary {
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+    background-color: transparent;
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--hover-bg);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-outline-secondary:disabled {
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+    opacity: 0.6;
+}
+
+.btn-primary:disabled {
+    background: var(--primary-gradient);
+    border-color: var(--primary-color);
+    opacity: 0.6;
+}
+
+/* Spinner styling */
+.spinner-border-sm {
+    color: currentColor;
+}
+
+/* Email notification section styling */
+.email-notification-card {
+    background: var(--bs-light);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    transition: all 0.3s ease;
+}
+
+.email-notification-card:hover {
+    background: var(--card-bg);
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+[data-theme="dark"] .email-notification-card {
+    background: var(--surface-color);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .email-notification-card:hover {
+    background: var(--card-bg);
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 8px rgba(255,255,255,0.1);
+}
+
+.form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.form-check-label {
+    font-weight: 500;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.email-info-text {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.form-check-input {
+    transition: all 0.2s ease;
+}
+
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+.email-notification-card .bi-info-circle {
+    color: var(--info-color);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .modal-dialog {
+        margin: 1rem;
+    }
+    
+    .modal-body {
+        padding: 1rem;
+    }
+    
+    .modal-footer {
+        padding: 1rem;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
+    }
+    
+    .modal-footer .btn:first-child {
+        order: 2;
+    }
+    
+    .modal-footer .btn:last-child {
+        order: 1;
+    }
+}

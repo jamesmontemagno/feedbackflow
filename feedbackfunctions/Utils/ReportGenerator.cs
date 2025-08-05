@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Azure.Storage.Blobs;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SharedDump.AI;
 using SharedDump.Models.Reddit;
@@ -9,6 +10,7 @@ using SharedDump.Models.Reports;
 using SharedDump.Services.Interfaces;
 using SharedDump.Utils;
 using FeedbackFunctions.Services;
+using FeedbackFunctions.Services.Reports;
 
 namespace FeedbackFunctions.Utils;
 
@@ -22,22 +24,33 @@ public class ReportGenerator
     private readonly IGitHubService _githubService;
     private readonly IFeedbackAnalyzerService _analyzerService;
     private readonly BlobContainerClient _containerClient;
+    private readonly BlobContainerClient _summaryContainerClient;
     private readonly IReportCacheService? _cacheService;
+    private readonly IConfiguration _configuration;
+    private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public ReportGenerator(
         ILogger logger,
         IRedditService redditService,
         IGitHubService githubService,
         IFeedbackAnalyzerService analyzerService,
-        BlobContainerClient containerClient,
+        BlobServiceClient blobServiceClient,
+        IConfiguration configuration,
         IReportCacheService? cacheService = null)
     {
         _logger = logger;
         _redditService = redditService;
         _githubService = githubService;
         _analyzerService = analyzerService;
-        _containerClient = containerClient;
+        _configuration = configuration;
         _cacheService = cacheService;
+        
+        // Initialize both blob container clients
+        _containerClient = blobServiceClient.GetBlobContainerClient("reports");
+        _containerClient.CreateIfNotExists();
+        
+        _summaryContainerClient = blobServiceClient.GetBlobContainerClient("reports-summary");
+        _summaryContainerClient.CreateIfNotExists();
     }
 
     /// <summary>
@@ -179,6 +192,36 @@ Keep each section very brief and focused. Total analysis should be no more than 
             if (storeToBlob.HasValue && storeToBlob.Value)
             {
                 await StoreReportAsync(report);
+                
+                // Also create and store a summary report
+                _logger.LogInformation("Generating summary report for r/{Subreddit}", subreddit);
+                var summaryReport = new ReportModel
+                {
+                    Id = report.Id, // Use the same ID for linking
+                    Source = report.Source,
+                    SubSource = report.SubSource,
+                    ThreadCount = report.ThreadCount,
+                    CommentCount = report.CommentCount,
+                    CutoffDate = report.CutoffDate,
+                    GeneratedAt = report.GeneratedAt
+                };
+
+                var fullReportUrl = WebUrlHelper.BuildReportUrl(_configuration, report.Id);
+                var summaryHtml = EmailUtils.GenerateRedditReportSummary(
+                    subreddit, 
+                    actualCutoffDate, 
+                    weeklyAnalysis, 
+                    threadAnalyses,
+                    report.Id.ToString(),
+                    subredditInfo, 
+                    newThreadsCount, 
+                    totalCommentsCount, 
+                    totalUpvotes,
+                    fullReportUrl);
+                    
+                summaryReport.HtmlContent = summaryHtml;
+                await StoreSummaryReportAsync(summaryReport);
+                _logger.LogInformation("Successfully stored summary report for r/{Subreddit} with ID {ReportId}", subreddit, summaryReport.Id);
             }
 
             return report;
@@ -393,6 +436,93 @@ Keep each section very brief and focused. Total analysis should be no more than 
         {
             _logger.LogError(ex, "Error storing report {ReportId} to blob storage", report.Id);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Stores a summary report in blob storage
+    /// </summary>
+    /// <param name="report">The summary report to store</param>
+    /// <returns>The blob name where the summary report was stored</returns>
+    public async Task<string> StoreSummaryReportAsync(ReportModel report)
+    {
+        _logger.LogInformation("Storing summary report {ReportId} to blob storage", report.Id);
+
+        try
+        {
+            var blobName = $"{report.Id}-summary.json";
+            var blobClient = _summaryContainerClient.GetBlobClient(blobName);
+            
+            var reportJson = JsonSerializer.Serialize(report);
+            await using var ms = new MemoryStream(Encoding.UTF8.GetBytes(reportJson));
+            await blobClient.UploadAsync(ms, overwrite: true);
+
+            _logger.LogInformation("Successfully stored summary report {ReportId} as blob {BlobName}", report.Id, blobName);
+            return blobName;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error storing summary report {ReportId} to blob storage", report.Id);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Gets a recent summary report (within last 24 hours) for the given source and subsource
+    /// </summary>
+    /// <param name="source">The report source (e.g., "reddit", "github")</param>
+    /// <param name="subSource">The report subsource (e.g., subreddit name, repo name)</param>
+    /// <returns>The most recent summary report if found within 24 hours, otherwise null</returns>
+    public async Task<ReportModel?> GetRecentSummaryReportAsync(string source, string subSource)
+    {
+        try
+        {
+            _logger.LogDebug("Checking for recent summary reports with source '{Source}' and subsource '{SubSource}'", source, subSource);
+            
+            var cutoff = DateTimeOffset.UtcNow.AddHours(-24);
+            var recentReport = (ReportModel?)null;
+            
+            await foreach (var blob in _summaryContainerClient.GetBlobsAsync())
+            {
+                if (blob.Properties.LastModified >= cutoff)
+                {
+                    try
+                    {
+                        var blobClient = _summaryContainerClient.GetBlobClient(blob.Name);
+                        var content = await blobClient.DownloadContentAsync();
+                        var report = JsonSerializer.Deserialize<ReportModel>(content.Value.Content, _jsonOptions);
+                        
+                        if (report != null && report.Source == source && report.SubSource == subSource)
+                        {
+                            if (recentReport == null || report.GeneratedAt > recentReport.GeneratedAt)
+                            {
+                                recentReport = report;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error reading summary report blob {BlobName}", blob.Name);
+                    }
+                }
+            }
+
+            if (recentReport != null)
+            {
+                _logger.LogInformation("Found recent summary report {ReportId} generated at {GeneratedAt} for {Source}/{SubSource}", 
+                    recentReport.Id, recentReport.GeneratedAt, source, subSource);
+            }
+            else
+            {
+                _logger.LogDebug("No recent summary report found for {Source}/{SubSource}", source, subSource);
+            }
+
+            return recentReport;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error checking for recent summary reports for {Source}/{SubSource}. Will proceed with generating new report.", source, subSource);
+            return null;
         }
     }
 

@@ -1,0 +1,434 @@
+/* Searchbox (input) dark mode fix - scoped to HistoryLocal only */
+[data-theme='dark'] .history-local-page .filter-section .form-control,
+[data-theme='dark'] .history-local-page .filter-section .form-select,
+[data-theme='dark'] .history-local-page .filter-section .form-control:focus,
+[data-theme='dark'] .history-local-page .filter-section .form-select:focus {
+    background-color: var(--bg-primary) !important;
+    color: #fff !important;
+    border-color: var(--border-color) !important;
+}
+
+[data-theme='dark'] .history-local-page .filter-section .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Explicit dark mode card overrides - scoped to HistoryLocal only */
+[data-theme='dark'] .history-local-page .card,
+[data-theme='dark'] .history-local-page .card.bg-body,
+[data-theme='dark'] .history-local-page .loading-state.card,
+[data-theme='dark'] .history-local-page .empty-state.card {
+    background-color: #212529 !important; /* Nearly black to match other cards */
+    color: var(--bs-light) !important;
+    border-color: #495057 !important; /* Darker border */
+}
+
+[data-theme='dark'] .history-local-page .list-group-item {
+    background-color: #212529 !important; /* Nearly black to match other cards */
+    border-color: #495057 !important; /* Darker border */
+}
+
+/* Dark theme card specific styles - scoped to HistoryLocal only */
+.history-local-page .dark-theme-card {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+[data-theme='dark'] .history-local-page .dark-theme-card {
+    background-color: #212529 !important; /* Nearly black to match other cards */
+    color: var(--bs-light) !important;
+    border-color: #495057 !important; /* Darker border */
+}
+
+[data-theme='dark'] .history-local-page .dark-theme-card .card-body {
+    color: var(--bs-light) !important;
+}
+
+[data-theme='dark'] .history-local-page .dark-theme-card .text-muted {
+    color: #adb5bd !important; /* Lighter gray for better readability */
+    opacity: 1;
+}
+
+/* Empty state specific styling for dark mode - scoped to HistoryLocal only */
+[data-theme='dark'] .history-local-page .empty-state small.text-muted {
+    color: #adb5bd !important; /* Even lighter for this specific text */
+    font-weight: 400;
+}
+
+/* History.razor.css - Slimmed down, Bootstrap-aligned, and theme-respecting */
+
+/* State blocks */
+.loading-state, .empty-state {
+    text-align: center;
+    color: var(--bs-body-color);
+    animation: fadeIn 0.6s ease-in-out;
+    background-color: var(--bs-body-bg) !important;
+    border-radius: var(--border-radius);
+    margin: 1rem 0;
+    min-height: 250px;
+}
+
+.loading-state .card-body,
+.empty-state .card-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+}
+
+.empty-state i {
+    color: var(--text-secondary);
+    opacity: 0.7;
+    margin-bottom: 1.5rem;
+}
+
+.empty-state p {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state small {
+    opacity: 0.8;
+}
+
+.card {
+    background-color: var(--bs-body-bg) !important;
+    color: var(--bs-body-color) !important;
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
+}
+
+/* Filter section */
+.filter-section.card {
+    margin-bottom: 1.5rem;
+}
+
+/* Note: Shared styles for YouTube thumbnails, URL list, service icons, etc. 
+   have been moved to app.css */
+
+/* History item styles */
+.history-item {
+    border-left: 4px solid transparent;
+    padding: 1.25rem;
+}
+
+.history-item:hover {
+    border-left-color: var(--primary-color);
+    transform: translateX(5px);
+}
+
+.history-item-title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.history-item:hover .history-item-title {
+    color: var(--primary-color);
+}
+
+.history-item-date {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.markdown-content {
+    line-height: 1.6;
+    font-size: 1rem;
+    padding: 0.5rem 0;
+}
+
+/* Clear History Button */
+.clear-all-btn {
+    background: linear-gradient(135deg, #e98a97, #d96674);
+    border: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .history-item {
+        padding: 1rem;
+    }
+    
+    .service-icon {
+        font-size: 1rem;
+    }
+    
+    .source-badge {
+        font-size: 0.7rem;
+    }
+    
+    /* Header adjustments for mobile */
+    .d-flex.justify-content-between.align-items-center {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .d-flex.align-items-center.gap-2 {
+        width: 100%;
+        justify-content: right;
+        flex-wrap: wrap;
+        gap: 0.5rem !important;
+    }
+    
+    /* Make buttons stack nicely on small screens */
+    .d-flex.align-items-center.gap-2 > * {
+        flex: 1;
+        min-width: 100px;
+    }
+}
+
+@media (max-width: 576px) {
+    
+    .d-flex.align-items-center.gap-2 > * {
+        flex: none;
+    }
+}
+
+/* Shared badge styling */
+.shared-badge {
+    font-size: 0.7rem;
+    background-color: #28a745;
+    color: white;
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.25rem;
+    vertical-align: middle;
+}
+
+[data-theme='dark'] .history-local-page .shared-badge {
+    background-color: #3ea854;
+}
+
+/* Shared item styles */
+.shared-item {
+    border-left: 4px solid var(--primary-color);
+    position: relative;
+}
+
+.shared-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background-color: var(--primary-color);
+    color: #fff;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+}
+
+.shared-status i {
+    font-size: 1rem;
+}
+
+/* Action buttons */
+/* Custom animations for History page */
+@keyframes pulse {
+    0% {
+        transform: scale(0.95);
+        opacity: 0.8;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(0.95);
+        opacity: 0.8;
+    }
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Note: .action-btn styles have been moved to app.css */
+
+/* Loading spinner */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.15em;
+}
+
+/* Alert styles */
+.alert {
+    border-radius: 0.5rem;
+    margin: 0.5rem 0;
+}
+
+.alert-info {
+    background-color: var(--info-light);
+    border-color: var(--info);
+    color: var(--info-dark);
+}
+
+.alert-danger {
+    background-color: var(--danger-light);
+    border-color: var(--danger);
+    color: var(--danger-dark);
+}
+
+/* Empty state hint text */
+.empty-state-hint {
+    font-size: 0.95rem;
+}
+
+[data-theme='dark'] .history-local-page .empty-state-hint {
+    color: #ced4da !important; /* Even lighter color for this specific message */
+    font-weight: 400;
+}
+
+/* Individual item export button styles */
+.list-group-item .export-btn {
+    min-width: 90px;
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+}
+
+.list-group-item .export-btn .dropdown-toggle::after {
+    margin-left: 0.5rem;
+}
+
+/* Consistent action button styling for History page */
+.list-group-item .action-btn {
+    min-width: 36px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease-in-out;
+}
+
+.list-group-item .action-btn i {
+    font-size: 1rem;
+    transition: transform 0.2s ease;
+}
+
+.list-group-item .action-btn:hover:not(:disabled) i {
+    transform: scale(1.1);
+}
+
+/* Specific button variant styling for better visual hierarchy */
+.list-group-item .btn-outline-success {
+    border-color: var(--success-color);
+    color: var(--success-color);
+}
+
+.list-group-item .btn-outline-success:hover {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+    color: white;
+}
+
+.list-group-item .btn-outline-danger {
+    border-color: var(--danger-color);
+    color: var(--danger-color);
+}
+
+.list-group-item .btn-outline-danger:hover {
+    background-color: var(--danger-color);
+    border-color: var(--danger-color);
+    color: white;
+}
+
+.list-group-item .btn-outline-secondary {
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.list-group-item .btn-outline-secondary:hover {
+    background-color: var(--hover-bg);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+/* Mobile responsive adjustments for action buttons */
+@media (max-width: 768px) {
+    .list-group-item .action-btn {
+        min-width: 36px !important;
+        width: 36px !important;
+        height: 32px !important;
+        padding: 0.375rem 0.5rem !important;
+        font-size: 0.875rem !important;
+    }
+    
+    .list-group-item .action-btn i {
+        font-size: 1rem !important;
+    }
+    
+    /* Ensure consistent button group spacing */
+    .list-group-item .d-flex.align-items-center.gap-2 {
+        gap: 0.5rem !important;
+    }
+    
+    /* Allow icon/badge groups to wrap on mobile */
+    .list-group-item .d-flex.align-items-center.gap-2:first-child {
+        flex-wrap: wrap;
+    }
+    
+    /* Keep expand/collapse button normal size on mobile */
+    .analysis-content .btn.action-btn {
+        min-width: auto !important;
+        width: auto !important;
+        height: auto !important;
+        padding: 0.375rem 0.75rem !important;
+        font-size: 0.875rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .list-group-item .action-btn {
+        min-width: 32px !important;
+        width: 32px !important;
+        height: 28px !important;
+        padding: 0.25rem 0.375rem !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .list-group-item .action-btn i {
+        font-size: 0.875rem !important;
+    }
+    
+    /* Tighter spacing for very small screens */
+    .list-group-item .d-flex.align-items-center.gap-2 {
+        gap: 0.375rem !important;
+    }
+    
+    /* Stack button groups more compactly on small screens */
+    .list-group-item .d-flex.justify-content-between.align-items-center {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .list-group-item .d-flex.align-items-center.gap-2 {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    /* Keep expand/collapse button normal size on very small screens too */
+    .analysis-content .btn.action-btn {
+        min-width: auto !important;
+        width: auto !important;
+        height: auto !important;
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.8rem !important;
+    }
+    
+    /* Ensure source badge doesn't change size */
+    .source-badge {
+        font-size: 0.75rem !important;
+        padding: 0.4em 0.8em !important;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+}

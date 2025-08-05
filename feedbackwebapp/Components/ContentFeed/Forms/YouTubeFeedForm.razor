@@ -1,4 +1,6 @@
+@using FeedbackWebApp.Services
 @inject IJSRuntime JSRuntime
+@inject UserSettingsService UserSettingsService
 
 <div class="youtube-feed-form">
     <div class="form-floating mb-3">
@@ -71,21 +73,19 @@
             Tag,
             Days
         };
-        await JSRuntime.InvokeVoidAsync("localStorage.setItem", StorageKey, 
-            System.Text.Json.JsonSerializer.Serialize(state));
+        await UserSettingsService.SaveToLocalStorageAsync(StorageKey, state);
     }
 
     private async Task LoadFromLocalStorageAsync()
     {
-        var savedValue = await JSRuntime.InvokeAsync<string>("localStorage.getItem", StorageKey);
-        if (!string.IsNullOrEmpty(savedValue))
+        var state = await UserSettingsService.GetFromLocalStorageAsync<dynamic>(StorageKey);
+        if (state != null)
         {
             try
             {
-                var state = System.Text.Json.JsonSerializer.Deserialize<dynamic>(savedValue);
-                Topic = state?.GetProperty("Topic").GetString() ?? "";
-                Tag = state?.GetProperty("Tag").GetString();
-                Days = state?.GetProperty("Days").GetInt32();
+                Topic = state.GetProperty("Topic").GetString() ?? "";
+                Tag = state.GetProperty("Tag").GetString();
+                Days = state.GetProperty("Days").GetInt32();
             }
             catch
             {

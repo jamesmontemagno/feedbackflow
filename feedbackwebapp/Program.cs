@@ -1,5 +1,5 @@
-using FeedbackWebApp.Components;
 using FeedbackWebApp.Services;
+using FeedbackWebApp.Services.Account;
 using FeedbackWebApp.Services.Authentication;
 using FeedbackWebApp.Services.ContentFeed;
 using FeedbackWebApp.Services.Feedback;
@@ -24,9 +24,14 @@ builder.Services.AddRazorComponents()
         options.MaximumReceiveMessageSize = 1_024_000; // 200 KB or more
     });
 
+// Add HttpContextAccessor for server-side authentication
+builder.Services.AddHttpContextAccessor();
+
 // Add Data Protection services for secure authentication
 builder.Services.AddDataProtection();
-    
+
+builder.Services.AddMemoryCache();
+
 // Register ToastService and other services
 builder.Services.AddScoped<IToastService, ToastService>();
 builder.Services.AddScoped<IHistoryHelper, HistoryHelper>();
@@ -35,14 +40,48 @@ builder.Services.AddHttpClient("DefaultClient")
     .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(3));
 builder.Services.AddScoped<FeedbackServiceProvider>();
 builder.Services.AddScoped<ContentFeedServiceProvider>();
-builder.Services.AddScoped<AuthenticationService>();
+
+// Register authentication service based on environment
+var bypassAuth = builder.Configuration.GetValue<bool>("Authentication:BypassInDevelopment", false);
+var isDevelopment = builder.Environment.IsDevelopment();
+
+if (bypassAuth && isDevelopment)
+{
+    // Use debug authentication service for local development
+    builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
+    builder.Services.AddScoped<IAuthenticationHeaderService, AuthenticationHeaderService>();
+}
+else
+{
+    // Use OAuth authentication service for production/staging
+    builder.Services.AddScoped<IAuthenticationService, ServerSideAuthService>();
+    builder.Services.AddScoped<IAuthenticationHeaderService, ServerSideAuthenticationHeaderService>();
+}
+
+// Register registration error service
+builder.Services.AddScoped<IRegistrationErrorService, RegistrationErrorService>();
+
+// Register user management service
+builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+
+// Register authentication token refresh service
+
+
+// Register the proper frontend account service that calls backend APIs
+var useMocks = builder.Configuration.GetValue<bool>("UseMocks", false);
+#if DEBUG
+    useMocks = builder.Configuration.GetValue<bool>("UseMocks", true); // Default to mocks in debug
+#endif
+
+// Account Services using provider pattern
+builder.Services.AddScoped<IAccountServiceProvider, AccountServiceProvider>();
 builder.Services.AddScoped<UserSettingsService>();
 builder.Services.AddScoped<IReportServiceProvider, ReportServiceProvider>();
 builder.Services.AddScoped<IReportRequestService, ReportRequestService>();
-builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IHistoryService, HistoryService>();
-builder.Services.AddScoped<IAnalysisSharingService, AnalysisSharingService>();
+builder.Services.AddScoped<ISharedHistoryServiceProvider, SharedHistoryServiceProvider>();
 builder.Services.AddScoped<IExportService, ExportService>();
+builder.Services.AddScoped<ITwitterAccessService, TwitterAccessService>();
 
 var app = builder.Build();
 
@@ -67,7 +106,7 @@ app.UseHttpsRedirection();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
-app.MapRazorComponents<App>()
+app.MapRazorComponents<FeedbackWebApp.Components.App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();

@@ -9,11 +9,17 @@ using SharedDump.Models.Reddit;
 using SharedDump.Models.GitHub;
 using SharedDump.Models.Reports;
 using SharedDump.AI;
+using SharedDump.Services;
 using SharedDump.Services.Interfaces;
 using SharedDump.Utils;
 using Azure.Storage.Blobs;
 using FeedbackFunctions.Utils;
 using FeedbackFunctions.Services;
+using FeedbackFunctions.Services.Reports;
+using FeedbackFunctions.Services.Authentication;
+using FeedbackFunctions.Middleware;
+using FeedbackFunctions.Extensions;
+using FeedbackFunctions.Attributes;
 
 namespace FeedbackFunctions;
 
@@ -33,6 +39,7 @@ public class ReportingFunctions
     private readonly IFeedbackAnalyzerService _analyzerService;
     private readonly IConfiguration _configuration;
     private readonly IReportCacheService _cacheService;
+    private readonly FeedbackFunctions.Middleware.AuthenticationMiddleware _authMiddleware;
     private const string ContainerName = "reports";
     private readonly BlobContainerClient _containerClient;
     private readonly ReportGenerator _reportGenerator;
@@ -47,13 +54,15 @@ public class ReportingFunctions
     /// <param name="githubService">GitHub service for repository operations</param>
     /// <param name="analyzerService">Feedback analyzer service for AI-powered analysis</param>
     /// <param name="cacheService">Report cache service for in-memory caching</param>
+    /// <param name="authMiddleware">Authentication middleware for request validation</param>
     public ReportingFunctions(
         ILogger<ReportingFunctions> logger,
         IConfiguration configuration,
         IRedditService redditService,
         IGitHubService githubService,
         IFeedbackAnalyzerService analyzerService,
-        IReportCacheService cacheService)
+        IReportCacheService cacheService,
+        FeedbackFunctions.Middleware.AuthenticationMiddleware authMiddleware)
     {
 
 #if DEBUG
@@ -71,15 +80,16 @@ public class ReportingFunctions
         _githubService = githubService;
         _analyzerService = analyzerService;
         _cacheService = cacheService;
+        _authMiddleware = authMiddleware;
         
         // Initialize blob container
-        var storageConnection = _configuration["AzureWebJobsStorage"] ?? throw new InvalidOperationException("Storage connection string not configured");
+        var storageConnection = _configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
         var serviceClient = new BlobServiceClient(storageConnection);
         _containerClient = serviceClient.GetBlobContainerClient(ContainerName);
         _containerClient.CreateIfNotExists();
 
         // Initialize report generator
-        _reportGenerator = new ReportGenerator(_logger, _redditService, _githubService, _analyzerService, _containerClient, _cacheService);
+        _reportGenerator = new ReportGenerator(_logger, _redditService, _githubService, _analyzerService, serviceClient, _configuration, _cacheService);
     }
 
   
@@ -124,20 +134,52 @@ public class ReportingFunctions
     }
 
      /// <summary>
-    /// Filter reports based on user's requests
+    /// Get reports for the authenticated user
     /// </summary>
-    [Function("FilterReports")]
-    public async Task<HttpResponseData> FilterReports(
-        [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
+    [Function("GetUserReports")]
+    [Authorize]
+    public async Task<HttpResponseData> GetUserReports(
+        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
-        _logger.LogInformation("Filtering reports based on user requests");
+        _logger.LogInformation("Getting reports for authenticated user");
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
+
+        if (user == null)
+        {
+            var errorResponse = req.CreateResponse(HttpStatusCode.Unauthorized);
+            await errorResponse.WriteStringAsync("User authentication failed");
+            return errorResponse;
+        }
 
         try
         {
-            var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            var userRequests = JsonSerializer.Deserialize<List<ReportRequestModel>>(requestBody, _jsonOptions);
+            // Get user's report requests instead of parsing from request body
+            // This ensures we only return reports for sources the user has actually requested
+            var userReportRequests = new List<ReportRequestModel>();
+            
+            // Connect to user requests table
+            var storageConnection = _configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
+            var tableServiceClient = new Azure.Data.Tables.TableServiceClient(storageConnection);
+            var userRequestsTableClient = tableServiceClient.GetTableClient("userreportrequests");
 
-            if (userRequests == null || !userRequests.Any())
+            await foreach (var entity in userRequestsTableClient.QueryAsync<UserReportRequestModel>(
+                filter: $"PartitionKey eq '{user.UserId}'"))
+            {
+                // Convert user request to ReportRequestModel for consistency
+                userReportRequests.Add(new ReportRequestModel
+                {
+                    Type = entity.Type,
+                    Subreddit = entity.Subreddit,
+                    Owner = entity.Owner,
+                    Repo = entity.Repo
+                });
+            }
+
+            if (!userReportRequests.Any())
             {
                 var emptyResponse = req.CreateResponse(HttpStatusCode.OK);
                 emptyResponse.Headers.Add("Content-Type", "application/json");
@@ -152,7 +194,7 @@ public class ReportingFunctions
             foreach (var report in allReports)
             {
                 // Check if this report matches any of the user's requests
-                var matchesRequest = userRequests.Any(userReq =>
+                var matchesRequest = userReportRequests.Any(userReq =>
                     userReq.Type == report.Source &&
                     ((userReq.Type == "reddit" && userReq.Subreddit == report.SubSource) ||
                      (userReq.Type == "github" && $"{userReq.Owner}/{userReq.Repo}" == report.SubSource)));
@@ -172,6 +214,11 @@ public class ReportingFunctions
                 }
             }
 
+            // Sort by generation date (newest first)
+            matchingReports = matchingReports
+                .OrderByDescending(r => ((dynamic)r).generatedAt)
+                .ToList();
+
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "application/json");
             await response.WriteStringAsync(JsonSerializer.Serialize(new { reports = matchingReports }));
@@ -179,66 +226,9 @@ public class ReportingFunctions
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error filtering reports");
+            _logger.LogError(ex, "Error getting reports for user {UserId}", user.UserId);
             var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await errorResponse.WriteStringAsync($"Error filtering reports: {ex.Message}");
-            return errorResponse;
-        }
-    }
-
-    /// <summary>
-    /// Lists all reports with basic metadata
-    /// </summary>
-    /// <param name="req">HTTP request</param>
-    /// <returns>HTTP response with a list of report summaries</returns>
-    /// <remarks>
-    /// Query parameters:
-    /// - source: Optional. Filter reports by source (e.g., "reddit")
-    /// - subsource: Optional. Filter reports by subsource (e.g., "dotnet")
-    /// 
-    /// If no parameters are provided, returns all reports (backward compatible).
-    /// Parameters can be used individually or in combination.
-    /// </remarks>
-    [Function("ListReports")]
-    public async Task<HttpResponseData> ListReports(
-        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
-    {
-        var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
-        var sourceFilter = queryParams["source"];
-        var subsourceFilter = queryParams["subsource"];
-        
-        var filterMessage = sourceFilter == null && subsourceFilter == null 
-            ? "all reports" 
-            : $"reports (source: {sourceFilter ?? "any"}, subsource: {subsourceFilter ?? "any"})";
-            
-        _logger.LogInformation("Listing {FilterMessage}", filterMessage);
-
-        try
-        {
-            // Get reports from cache with optional filtering
-            var cachedReports = await _cacheService.GetReportsAsync(sourceFilter, subsourceFilter);
-            
-            var reports = cachedReports.Select(report => new
-            {
-                id = report.Id,
-                source = report.Source,
-                subSource = report.SubSource,
-                generatedAt = report.GeneratedAt,
-                threadCount = report.ThreadCount,
-                commentCount = report.CommentCount,
-                cutoffDate = report.CutoffDate
-            }).ToList();
-
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            response.Headers.Add("Content-Type", "application/json");
-            await response.WriteStringAsync(JsonSerializer.Serialize(new { reports }));
-            return response;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error listing reports");
-            var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await errorResponse.WriteStringAsync($"Error listing reports: {ex.Message}");
+            await errorResponse.WriteStringAsync($"Error getting user reports: {ex.Message}");
             return errorResponse;
         }
     }

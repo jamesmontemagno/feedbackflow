@@ -1,0 +1,154 @@
+@namespace FeedbackWebApp.Components.Shared
+@using SharedDump.Models.Account
+@inject NavigationManager NavigationManager
+
+@if (IsVisible && UsageError != null)
+{
+    <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog" aria-labelledby="usageLimitModalLabel">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title d-flex align-items-center" id="usageLimitModalLabel">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Usage Limit Exceeded
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="OnClose" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="usage-limit-content">
+                        <div class="alert alert-warning mb-4">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-info-circle-fill me-2 mt-1"></i>
+                                <div>
+                                    <strong>@UsageError.Message</strong>
+                                    <p class="mb-0 mt-2">You've reached the limit for your current plan.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="usage-details mb-4">
+                            <h6 class="fw-bold mb-3">Usage Details</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="usage-stat">
+                                        <div class="usage-label">Current Usage</div>
+                                        <div class="usage-value text-warning">@UsageError.CurrentUsage</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="usage-stat">
+                                        <div class="usage-label">Plan Limit</div>
+                                        <div class="usage-value">@UsageError.Limit</div>
+                                    </div>
+                                </div>
+                            </div>
+                            @if (UsageError.ResetDate.HasValue)
+                            {
+                                <div class="mt-3">
+                                    <div class="usage-stat">
+                                        <div class="usage-label">Usage Resets</div>
+                                        <div class="usage-value text-muted">@GetFormattedResetDate()</div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="upgrade-section">
+                            <h6 class="fw-bold mb-3">What's Next?</h6>
+                            <div class="upgrade-options">
+                                @if (UsageError.ResetDate.HasValue)
+                                {
+                                    <div class="upgrade-option mb-3">
+                                        <div class="d-flex align-items-start">
+                                            <i class="bi bi-clock me-2 mt-1 text-info"></i>
+                                            <div>
+                                                <strong>Wait for Reset</strong>
+                                                @if (UsageError.ResetDate.HasValue)
+                                                {
+                                                    <p class="mb-0 text-muted small">Your usage will reset @GetFormattedResetDate() and you can continue using this feature.</p>
+                                                }
+                                                else
+                                                {
+                                                    <p class="mb-0 text-muted small">Your usage will reset at the next billing cycle.</p>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(UsageError.UpgradeUrl))
+                                {
+                                    <div class="upgrade-option">
+                                        <div class="d-flex align-items-start">
+                                            <i class="bi bi-arrow-up-circle me-2 mt-1 text-success"></i>
+                                            <div>
+                                                <strong>Upgrade Your Plan</strong>
+                                                <p class="mb-0 text-muted small">Get higher limits and more features with a premium plan.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary" @onclick="OnClose">
+                        <i class="bi bi-x-lg me-1"></i>
+                        Close
+                    </button>
+                    @if (!string.IsNullOrEmpty(UsageError.UpgradeUrl))
+                    {
+                        <button type="button" class="btn btn-success" @onclick="NavigateToUpgrade">
+                            <i class="bi bi-arrow-up-circle me-1"></i>
+                            Upgrade Plan
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public UsageValidationResult? UsageError { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private void NavigateToUpgrade()
+    {
+        if (!string.IsNullOrEmpty(UsageError?.UpgradeUrl))
+        {
+            NavigationManager.NavigateTo(UsageError.UpgradeUrl);
+        }
+    }
+
+    private string GetFormattedResetDate()
+    {
+        if (UsageError?.ResetDate == null)
+            return "Unknown";
+
+        var resetDate = UsageError.ResetDate.Value;
+        var now = DateTimeOffset.Now;
+        var diff = resetDate - now;
+
+        if (diff.TotalDays < 1)
+        {
+            if (diff.TotalHours < 1)
+            {
+                var minutes = (int)diff.TotalMinutes;
+                return minutes <= 1 ? "in a few minutes" : $"in {minutes} minutes";
+            }
+            var hours = (int)diff.TotalHours;
+            return hours == 1 ? "in 1 hour" : $"in {hours} hours";
+        }
+        
+        if (diff.TotalDays < 7)
+        {
+            var days = (int)diff.TotalDays;
+            return days == 1 ? "tomorrow" : $"in {days} days";
+        }
+
+        return resetDate.ToString("MMM d, yyyy");
+    }
+}

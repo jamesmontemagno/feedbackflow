@@ -11,7 +11,14 @@ using SharedDump.Services.Interfaces;
 using SharedDump.AI;
 using FeedbackFunctions.Utils;
 using FeedbackFunctions.Services;
+using FeedbackFunctions.Services.Authentication;
+using FeedbackFunctions.Middleware;
+using FeedbackFunctions.Extensions;
+using FeedbackFunctions.Attributes;
+using FeedbackFunctions.Services.Account;
 using SharedDump.Services;
+using SharedDump.Models.Account;
+using FeedbackFunctions.Services.Reports;
 
 namespace FeedbackFunctions;
 
@@ -23,13 +30,17 @@ public class ReportRequestFunctions
     private readonly ILogger<ReportRequestFunctions> _logger;
     private readonly IConfiguration _configuration;
     private const string TableName = "reportrequests";
+    private const string UserRequestsTableName = "userreportrequests";
     private readonly TableClient _tableClient;
+    private readonly TableClient _userRequestsTableClient;
     private readonly BlobServiceClient _serviceClient; // Still needed for reports filtering
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
     private readonly ReportGenerator _reportGenerator;
     private readonly IReportCacheService _cacheService;
     private readonly IRedditService _redditService;
     private readonly IGitHubService _githubService;
+    private readonly FeedbackFunctions.Middleware.AuthenticationMiddleware _authMiddleware;
+    private readonly IUserAccountService _userAccountService;
 
     public ReportRequestFunctions(
         ILogger<ReportRequestFunctions> logger,
@@ -37,7 +48,9 @@ public class ReportRequestFunctions
         IRedditService redditService,
         IGitHubService githubService,
         IFeedbackAnalyzerService analyzerService,
-        IReportCacheService cacheService)
+        IReportCacheService cacheService,
+        FeedbackFunctions.Middleware.AuthenticationMiddleware authMiddleware,
+        IUserAccountService userAccountService)
     {
 #if DEBUG
         _configuration = new ConfigurationBuilder()
@@ -51,35 +64,78 @@ public class ReportRequestFunctions
         _cacheService = cacheService;
         _redditService = redditService;
         _githubService = githubService;
+        _authMiddleware = authMiddleware;
+        _userAccountService = userAccountService;
         
         // Initialize table client
-        var storageConnection = _configuration["AzureWebJobsStorage"] ?? throw new InvalidOperationException("Storage connection string not configured");
+        var storageConnection = _configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
         var tableServiceClient = new TableServiceClient(storageConnection);
         _tableClient = tableServiceClient.GetTableClient(TableName);
         _tableClient.CreateIfNotExists();
+
+        // Initialize user-specific requests table client
+        _userRequestsTableClient = tableServiceClient.GetTableClient(UserRequestsTableName);
+        _userRequestsTableClient.CreateIfNotExists();
 
         // Initialize blob service client for reports filtering
         _serviceClient = new BlobServiceClient(storageConnection);
 
         // Initialize report generator
-        var reportsContainerClient = _serviceClient.GetBlobContainerClient("reports");
-        reportsContainerClient.CreateIfNotExists();
-        _reportGenerator = new ReportGenerator(_logger, redditService, githubService, analyzerService, reportsContainerClient, _cacheService);
+        _reportGenerator = new ReportGenerator(_logger, redditService, githubService, analyzerService, _serviceClient, _configuration, _cacheService);
     }
 
+    private static string GenerateRequestId(ReportRequestModel request)
+    {
+        var source = request.Type.ToLowerInvariant();
+        var identifier = request.Type == "reddit"
+            ? request.Subreddit?.ToLowerInvariant()
+            : $"{request.Owner?.ToLowerInvariant()}/{request.Repo?.ToLowerInvariant()}";
+
+        return $"{source}_{identifier}".Replace("/", "_");
+    }
+
+    private static string GetPartitionKeyFromId(string id)
+    {
+        // ID format is "{type}_{identifier}", so we extract the type part
+        var parts = id.Split('_', 2);
+        return parts.Length > 0 ? parts[0] : "unknown";
+    }
+
+    // ==============================================
+    // USER-SPECIFIC REPORT REQUEST FUNCTIONS
+    // ==============================================
+
     /// <summary>
-    /// Add a new report request
+    /// Add a report request for a specific user
     /// </summary>
-    [Function("AddReportRequest")]
-    public async Task<HttpResponseData> AddReportRequest(
+    [Function("AddUserReportRequest")]
+    [Authorize]
+    public async Task<HttpResponseData> AddUserReportRequest(
         [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
-        _logger.LogInformation("Adding new report request");
+        _logger.LogInformation("Adding user-specific report request");
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
+
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.ReportCreated, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
+
+        if (user == null)
+        {
+            var errorResponse = req.CreateResponse(HttpStatusCode.Unauthorized);
+            await errorResponse.WriteStringAsync("User authentication failed");
+            return errorResponse;
+        }
 
         try
         {
             var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            var request = JsonSerializer.Deserialize<ReportRequestModel>(requestBody, _jsonOptions);
+            var request = JsonSerializer.Deserialize<UserReportRequestModel>(requestBody, _jsonOptions);
 
             if (request == null)
             {
@@ -88,13 +144,8 @@ public class ReportRequestFunctions
                 return badRequestResponse;
             }
 
-            // Validate required fields and URLs
-            if (string.IsNullOrEmpty(request.Type))
-            {
-                var validationResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await validationResponse.WriteStringAsync("Source type is required");
-                return validationResponse;
-            }
+            // Set user ID from authenticated user
+            request.UserId = user.UserId;
 
             // Validate required fields
             if (string.IsNullOrEmpty(request.Type))
@@ -177,74 +228,126 @@ public class ReportRequestFunctions
                 return validationResponse;
             }
 
+            // Validate email notification settings
+            if (request.EmailEnabled)
+            {
+                // Get user account to validate tier permissions
+                var userAccount = await _userAccountService.GetUserAccountAsync(user.UserId);
+                if (userAccount == null)
+                {
+                    var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+                    await errorResponse.WriteStringAsync("Unable to retrieve user account information");
+                    return errorResponse;
+                }
+
+                // Check if user's tier supports email notifications
+                if (!SharedDump.Utils.Account.AccountTierUtils.SupportsEmailNotifications(userAccount.Tier))
+                {
+                    var forbiddenResponse = req.CreateResponse(HttpStatusCode.Forbidden);
+                    await forbiddenResponse.WriteStringAsync("Email notifications are not available for your current account tier. Please upgrade to Pro or Pro+ to enable email notifications.");
+                    return forbiddenResponse;
+                }
+            }
+
             // Generate deterministic ID based on type and parameters
-            var requestId = GenerateRequestId(request);
+            var requestId = GenerateUserRequestId(request);
             request.Id = requestId;
             
             // Set table entity properties
-            request.PartitionKey = request.Type.ToLowerInvariant();
+            request.PartitionKey = request.UserId;
             request.RowKey = requestId;
 
             try
             {
-                // Check if entity exists using query instead of exception handling
-                var existingEntities = _tableClient.QueryAsync<ReportRequestModel>(
+                // Check if this user already has this request
+                var existingEntities = _userRequestsTableClient.QueryAsync<UserReportRequestModel>(
                     filter: $"PartitionKey eq '{request.PartitionKey}' and RowKey eq '{request.RowKey}'",
                     maxPerPage: 1);
 
-                ReportRequestModel? existingEntity = null;
+                UserReportRequestModel? existingEntity = null;
                 await foreach (var entity in existingEntities)
                 {
                     existingEntity = entity;
-                    break; // We only expect one result
+                    break;
                 }
                 
                 if (existingEntity != null)
                 {
-                    // Entity exists, increment subscriber count
-                    existingEntity.SubscriberCount++;
-                    await _tableClient.UpdateEntityAsync(existingEntity, existingEntity.ETag);
-                    
-                    _logger.LogInformation("Incremented subscriber count for existing request {RequestId} to {Count}", 
-                        request.Id, existingEntity.SubscriberCount);
+                    var duplicateResponse = req.CreateResponse(HttpStatusCode.Conflict);
+                    await duplicateResponse.WriteStringAsync("This request already exists for the user");
+                    return duplicateResponse;
+                }
+
+                // Add the user request
+                await _userRequestsTableClient.AddEntityAsync(request);
+                
+                _logger.LogInformation("Created new user report request {RequestId} for user {UserId}, {Type}: {Details}", 
+                    request.Id, request.UserId, request.Type, 
+                    request.Type == "reddit" ? request.Subreddit : $"{request.Owner}/{request.Repo}");
+
+                // Also add/update the global request for background processing
+                var globalRequest = new ReportRequestModel
+                {
+                    Type = request.Type,
+                    Subreddit = request.Subreddit,
+                    Owner = request.Owner,
+                    Repo = request.Repo
+                };
+                
+                var globalRequestId = GenerateRequestId(globalRequest);
+                globalRequest.Id = globalRequestId;
+                globalRequest.PartitionKey = globalRequest.Type.ToLowerInvariant();
+                globalRequest.RowKey = globalRequestId;
+
+                // Check if global request exists and increment subscriber count
+                var globalExistingEntities = _tableClient.QueryAsync<ReportRequestModel>(
+                    filter: $"PartitionKey eq '{globalRequest.PartitionKey}' and RowKey eq '{globalRequest.RowKey}'",
+                    maxPerPage: 1);
+
+                ReportRequestModel? globalExistingEntity = null;
+                await foreach (var entity in globalExistingEntities)
+                {
+                    globalExistingEntity = entity;
+                    break;
+                }
+                
+                if (globalExistingEntity != null)
+                {
+                    globalExistingEntity.SubscriberCount++;
+                    await _tableClient.UpdateEntityAsync(globalExistingEntity, globalExistingEntity.ETag);
                 }
                 else
                 {
-                    // Entity doesn't exist, create new one
-                    await _tableClient.AddEntityAsync(request);
+                    await _tableClient.AddEntityAsync(globalRequest);
                     
-                    _logger.LogInformation("Created new report request {RequestId} for {Type}: {Details}", 
-                        request.Id, request.Type, 
-                        request.Type == "reddit" ? request.Subreddit : $"{request.Owner}/{request.Repo}");
-
-                    // Start report generation in the background without waiting for it
+                    // Start report generation in the background
                     _ = Task.Run(async () =>
                     {
                         try
                         {
-                            _logger.LogInformation("Starting background report generation for new request {RequestId}", request.Id);
-                            var generatedReport = await _reportGenerator.ProcessReportRequestAsync(request);
+                            _logger.LogInformation("Starting background report generation for new global request {RequestId}", globalRequest.Id);
+                            var generatedReport = await _reportGenerator.ProcessReportRequestAsync(globalRequest);
                             
                             if (generatedReport != null)
                             {
                                 _logger.LogInformation("Successfully generated background report {ReportId} for request {RequestId}", 
-                                    generatedReport.Id, request.Id);
+                                    generatedReport.Id, globalRequest.Id);
                             }
                             else
                             {
-                                _logger.LogWarning("Failed to generate background report for request {RequestId}", request.Id);
+                                _logger.LogWarning("Failed to generate background report for request {RequestId}", globalRequest.Id);
                             }
                         }
                         catch (Exception reportEx)
                         {
-                            _logger.LogError(reportEx, "Error generating background report for request {RequestId}", request.Id);
+                            _logger.LogError(reportEx, "Error generating background report for request {RequestId}", globalRequest.Id);
                         }
                     });
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking/creating report request {RequestId}", request.Id);
+                _logger.LogError(ex, "Error creating user report request {RequestId}", request.Id);
                 var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
                 await errorResponse.WriteStringAsync($"Error processing request: {ex.Message}");
                 return errorResponse;
@@ -254,13 +357,17 @@ public class ReportRequestFunctions
             response.Headers.Add("Content-Type", "application/json");
             await response.WriteStringAsync(JsonSerializer.Serialize(new { 
                 id = request.Id, 
-                message = "Request added successfully"
+                message = "User request added successfully"
             }));
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.ReportCreated, _userAccountService, _logger, request.Type);
+            
             return response;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error adding report request");
+            _logger.LogError(ex, "Error adding user report request");
             var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
             await errorResponse.WriteStringAsync($"Error adding request: {ex.Message}");
             return errorResponse;
@@ -268,72 +375,118 @@ public class ReportRequestFunctions
     }
 
     /// <summary>
-    /// Remove a report request by ID
+    /// Remove a user's report request by ID
     /// </summary>
-    [Function("RemoveReportRequest")]
-    public async Task<HttpResponseData> RemoveReportRequest(
-        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "reportrequest/{id}")] HttpRequestData req,
+    [Function("RemoveUserReportRequest")]
+    [Authorize]
+    public async Task<HttpResponseData> RemoveUserReportRequest(
+        [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "userreportrequest/{id}")] HttpRequestData req,
         string id)
     {
-        _logger.LogInformation("Removing report request {RequestId}", id);
+        _logger.LogInformation("Removing user report request {RequestId}", id);
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
+
+        // Validate usage limits
+        var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.ReportDeleted, _userAccountService, _logger);
+        if (usageValidationResponse != null)
+            return usageValidationResponse;
+
+        if (user == null)
+        {
+            var errorResponse = req.CreateResponse(HttpStatusCode.Unauthorized);
+            await errorResponse.WriteStringAsync("User authentication failed");
+            return errorResponse;
+        }
 
         try
         {
-            // Parse the ID to get partition key and row key
-            var partitionKey = GetPartitionKeyFromId(id);
+            var partitionKey = user.UserId;
             var rowKey = id;
 
             try
             {
-                // Check if entity exists using query instead of exception handling
-                var existingEntities = _tableClient.QueryAsync<ReportRequestModel>(
+                // Check if user request exists
+                var existingEntities = _userRequestsTableClient.QueryAsync<UserReportRequestModel>(
                     filter: $"PartitionKey eq '{partitionKey}' and RowKey eq '{rowKey}'",
                     maxPerPage: 1);
 
-                ReportRequestModel? existingEntity = null;
+                UserReportRequestModel? existingEntity = null;
                 await foreach (var entity in existingEntities)
                 {
                     existingEntity = entity;
-                    break; // We only expect one result
+                    break;
                 }
                 
                 if (existingEntity == null)
                 {
                     var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
-                    await notFoundResponse.WriteStringAsync($"Request with ID {id} not found");
+                    await notFoundResponse.WriteStringAsync($"Request with ID {id} not found for this user");
                     return notFoundResponse;
                 }
+
+                // Remove the user request
+                await _userRequestsTableClient.DeleteEntityAsync(partitionKey, rowKey);
                 
-                if (existingEntity.SubscriberCount > 1)
+                // Also decrement global request subscriber count
+                var globalRequest = new ReportRequestModel
                 {
-                    // Decrement subscriber count instead of deleting
-                    existingEntity.SubscriberCount--;
-                    await _tableClient.UpdateEntityAsync(existingEntity, existingEntity.ETag);
-                    
-                    _logger.LogInformation("Decremented subscriber count for request {RequestId} to {Count}", 
-                        id, existingEntity.SubscriberCount);
-                }
-                else
+                    Type = existingEntity.Type,
+                    Subreddit = existingEntity.Subreddit,
+                    Owner = existingEntity.Owner,
+                    Repo = existingEntity.Repo
+                };
+                
+                var globalRequestId = GenerateRequestId(globalRequest);
+                var globalPartitionKey = globalRequest.Type.ToLowerInvariant();
+
+                var globalExistingEntities = _tableClient.QueryAsync<ReportRequestModel>(
+                    filter: $"PartitionKey eq '{globalPartitionKey}' and RowKey eq '{globalRequestId}'",
+                    maxPerPage: 1);
+
+                ReportRequestModel? globalExistingEntity = null;
+                await foreach (var entity in globalExistingEntities)
                 {
-                    // Last subscriber, delete the request
-                    await _tableClient.DeleteEntityAsync(partitionKey, rowKey);
-                    _logger.LogInformation("Deleted report request {RequestId}", id);
+                    globalExistingEntity = entity;
+                    break;
                 }
+                
+                if (globalExistingEntity != null)
+                {
+                    if (globalExistingEntity.SubscriberCount > 1)
+                    {
+                        globalExistingEntity.SubscriberCount--;
+                        await _tableClient.UpdateEntityAsync(globalExistingEntity, globalExistingEntity.ETag);
+                    }
+                    else
+                    {
+                        await _tableClient.DeleteEntityAsync(globalPartitionKey, globalRequestId);
+                    }
+                }
+                
+                _logger.LogInformation("Deleted user report request {RequestId} for user {UserId}", id, user.UserId);
             }
             catch (Azure.RequestFailedException ex) when (ex.Status == 404)
             {
                 var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
-                await notFoundResponse.WriteStringAsync($"Request with ID {id} not found");
+                await notFoundResponse.WriteStringAsync($"Request with ID {id} not found for this user");
                 return notFoundResponse;
             }
 
             var response = req.CreateResponse(HttpStatusCode.OK);
-            await response.WriteStringAsync("Request removed successfully");
+            await response.WriteStringAsync("User request removed successfully");
+            
+            // Track usage on successful completion
+            await user!.TrackUsageAsync(UsageType.ReportDeleted, _userAccountService, _logger, id);
+            
             return response;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error removing report request {RequestId}", id);
+            _logger.LogError(ex, "Error removing user report request {RequestId}", id);
             var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
             await errorResponse.WriteStringAsync($"Error removing request: {ex.Message}");
             return errorResponse;
@@ -341,19 +494,151 @@ public class ReportRequestFunctions
     }
 
     /// <summary>
-    /// List all report requests (for admin/timer trigger use)
+    /// Update email notification settings for a specific user report request
     /// </summary>
-    [Function("ListReportRequests")]
-    public async Task<HttpResponseData> ListReportRequests(
-        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+    [Function("UpdateUserReportRequestEmailSettings")]
+    [Authorize]
+    public async Task<HttpResponseData> UpdateUserReportRequestEmailSettings(
+        [HttpTrigger(AuthorizationLevel.Function, "put", Route = "userreportrequest/{id}/email-settings")] HttpRequestData req,
+        string id)
     {
-        _logger.LogInformation("Listing all report requests");
+        _logger.LogInformation("Updating email settings for user report request {RequestId}", id);
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
+
+        if (user == null)
+        {
+            var errorResponse = req.CreateResponse(HttpStatusCode.Unauthorized);
+            await errorResponse.WriteStringAsync("User authentication failed");
+            return errorResponse;
+        }
 
         try
         {
-            var requests = new List<ReportRequestModel>();
+            // Parse request body
+            var requestBody = await req.ReadAsStringAsync();
+            if (string.IsNullOrWhiteSpace(requestBody))
+            {
+                var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await badRequestResponse.WriteStringAsync("Request body is required");
+                return badRequestResponse;
+            }
+
+            var emailSettings = JsonSerializer.Deserialize<EmailSettingsUpdate>(requestBody, _jsonOptions);
+            if (emailSettings == null)
+            {
+                var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await badRequestResponse.WriteStringAsync("Invalid request body format");
+                return badRequestResponse;
+            }
+
+            var partitionKey = user.UserId;
+            var rowKey = id;
+
+            // Check if user request exists
+            var existingEntities = _userRequestsTableClient.QueryAsync<UserReportRequestModel>(
+                filter: $"PartitionKey eq '{partitionKey}' and RowKey eq '{rowKey}'",
+                maxPerPage: 1);
+
+            UserReportRequestModel? existingEntity = null;
+            await foreach (var entity in existingEntities)
+            {
+                existingEntity = entity;
+                break;
+            }
             
-            await foreach (var entity in _tableClient.QueryAsync<ReportRequestModel>())
+            if (existingEntity == null)
+            {
+                var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+                await notFoundResponse.WriteStringAsync($"Request with ID {id} not found for this user");
+                return notFoundResponse;
+            }
+
+            // Get user account to validate tier permissions
+            var userAccount = await _userAccountService.GetUserAccountAsync(user.UserId);
+            if (userAccount == null)
+            {
+                var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+                await errorResponse.WriteStringAsync("Unable to retrieve user account information");
+                return errorResponse;
+            }
+
+            // Validate email notification permissions (prevent Free tier users from enabling notifications)
+            var emailEnabled = emailSettings.EmailEnabled;
+            if (emailEnabled && !SharedDump.Utils.Account.AccountTierUtils.SupportsEmailNotifications(userAccount.Tier))
+            {
+                var forbiddenResponse = req.CreateResponse(HttpStatusCode.Forbidden);
+                await forbiddenResponse.WriteStringAsync("Email notifications are not available for your current account tier. Please upgrade to Pro or Pro+ to enable email notifications.");
+                return forbiddenResponse;
+            }
+
+            // Update the email settings
+            existingEntity.EmailEnabled = emailEnabled;
+
+            // Update the entity in table storage
+            await _userRequestsTableClient.UpdateEntityAsync(existingEntity, existingEntity.ETag);
+            
+            _logger.LogInformation("Updated email settings for user report request {RequestId} for user {UserId}: EmailEnabled={EmailEnabled}", 
+                id, user.UserId, emailEnabled);
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            await response.WriteStringAsync("Email settings updated successfully");
+            return response;
+        }
+        catch (Azure.RequestFailedException ex) when (ex.Status == 404)
+        {
+            var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+            await notFoundResponse.WriteStringAsync($"Request with ID {id} not found for this user");
+            return notFoundResponse;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Error parsing email settings update request");
+            var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await badRequestResponse.WriteStringAsync("Invalid request body format");
+            return badRequestResponse;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating email settings for user report request {RequestId}", id);
+            var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await errorResponse.WriteStringAsync($"Error updating email settings: {ex.Message}");
+            return errorResponse;
+        }
+    }
+
+    /// <summary>
+    /// List all report requests for a specific user
+    /// </summary>
+    [Function("ListUserReportRequests")]
+    [Authorize]
+    public async Task<HttpResponseData> ListUserReportRequests(
+        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+    {
+        _logger.LogInformation("Listing user report requests");
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
+
+        if (user == null)
+        {
+            var errorResponse = req.CreateResponse(HttpStatusCode.Unauthorized);
+            await errorResponse.WriteStringAsync("User authentication failed");
+            return errorResponse;
+        }
+
+        try
+        {
+            var requests = new List<UserReportRequestModel>();
+            
+            // Query for this user's requests
+            await foreach (var entity in _userRequestsTableClient.QueryAsync<UserReportRequestModel>(
+                filter: $"PartitionKey eq '{user.UserId}'"))
             {
                 requests.Add(entity);
             }
@@ -365,13 +650,14 @@ public class ReportRequestFunctions
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error listing report requests");
+            _logger.LogError(ex, "Error listing user report requests");
             var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
             await errorResponse.WriteStringAsync($"Error listing requests: {ex.Message}");
             return errorResponse;
         }
     }
-    private static string GenerateRequestId(ReportRequestModel request)
+
+    private static string GenerateUserRequestId(UserReportRequestModel request)
     {
         var source = request.Type.ToLowerInvariant();
         var identifier = request.Type == "reddit"
@@ -381,11 +667,11 @@ public class ReportRequestFunctions
         return $"{source}_{identifier}".Replace("/", "_");
     }
 
-    private static string GetPartitionKeyFromId(string id)
+    /// <summary>
+    /// Model for updating email notification settings for a specific report
+    /// </summary>
+    public class EmailSettingsUpdate
     {
-        // ID format is "{type}_{identifier}", so we extract the type part
-        var parts = id.Split('_', 2);
-        return parts.Length > 0 ? parts[0] : "unknown";
+        public bool EmailEnabled { get; set; }
     }
-
 }

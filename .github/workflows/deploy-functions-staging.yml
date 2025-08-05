@@ -5,6 +5,8 @@ on:
   pull_request:
     branches:
       - main
+      - 'copilot/**'
+      - 'copilot/fix-19'
     paths:
       - 'feedbackfunctions/**'
       - 'shareddump/**'
@@ -69,6 +71,7 @@ jobs:
   deploy-staging:
     runs-on: windows-latest
     needs: build
+    if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'workflow_dispatch'
     environment:
       name: 'staging'
       url: 'https://feedbackfunctions20250414121421-staging.azurewebsites.net'
