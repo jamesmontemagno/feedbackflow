@@ -59,78 +59,80 @@
 
         @if (configs.Any())
         {
-            <div class="row">
-                @foreach (var config in configs)
-                {
-                    <div class="col-lg-6 mb-4">
-                        <div class="card shadow-sm">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h5 class="mb-0">@config.Name</h5>
-                                    <small class="text-muted">
-                                        @config.Type.ToUpper() 
-                                        @if (config.Type == "reddit")
-                                        {
-                                            <span>- r/@config.Subreddit</span>
-                                        }
-                                        else if (config.Type == "github")
-                                        {
-                                            <span>- @config.Owner/@config.Repo</span>
-                                        }
-                                    </small>
-                                </div>
-                                <div class="d-flex gap-2">
-                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => EditConfig(config)">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteConfig(config)">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-sm-6">
-                                        <small class="text-muted">Email Recipient:</small>
-                                        <div>@config.EmailRecipient</div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Source</th>
+                            <th>Email Recipient</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Last Processed</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var config in configs)
+                        {
+                            <tr>
+                                <td>
+                                    <strong>@config.Name</strong>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">@config.Type.ToUpper()</span>
+                                </td>
+                                <td>
+                                    @if (config.Type == "reddit")
+                                    {
+                                        <span><i class="bi bi-reddit text-danger me-1"></i>r/@config.Subreddit</span>
+                                    }
+                                    else if (config.Type == "github")
+                                    {
+                                        <span><i class="bi bi-github text-dark me-1"></i>@config.Owner/@config.Repo</span>
+                                    }
+                                </td>
+                                <td>
+                                    <small class="text-muted">@config.EmailRecipient</small>
+                                </td>
+                                <td>
+                                    @if (config.IsActive)
+                                    {
+                                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary"><i class="bi bi-pause-circle me-1"></i>Inactive</span>
+                                    }
+                                </td>
+                                <td>
+                                    <small class="text-muted">@config.CreatedAt.ToString("MMM dd, yyyy")</small>
+                                </td>
+                                <td>
+                                    @if (config.LastProcessedAt.HasValue)
+                                    {
+                                        <small class="text-muted">@config.LastProcessedAt.Value.ToString("MMM dd, yyyy")</small>
+                                    }
+                                    else
+                                    {
+                                        <small class="text-muted">Never</small>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-1">
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => EditConfig(config)" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteConfig(config)" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
                                     </div>
-                                    <div class="col-sm-6">
-                                        <small class="text-muted">Status:</small>
-                                        <div>
-                                            @if (config.IsActive)
-                                            {
-                                                <span class="badge bg-success">Active</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge bg-secondary">Inactive</span>
-                                            }
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="row mt-2">
-                                    <div class="col-sm-6">
-                                        <small class="text-muted">Created:</small>
-                                        <div>@config.CreatedAt.ToString("MMM dd, yyyy")</div>
-                                    </div>
-                                    <div class="col-sm-6">
-                                        <small class="text-muted">Last Processed:</small>
-                                        <div>
-                                            @if (config.LastProcessedAt.HasValue)
-                                            {
-                                                @config.LastProcessedAt.Value.ToString("MMM dd, yyyy")
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">Never</span>
-                                            }
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
         }
         else
