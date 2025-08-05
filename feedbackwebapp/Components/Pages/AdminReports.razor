@@ -266,7 +266,7 @@
             isLoading = true;
             errorMessage = string.Empty;
 
-            // Check if user is authenticated and is admin
+            // Check if user is authenticated and is admin.
             var isAuthenticated = await AuthService.IsAuthenticatedAsync();
             if (!isAuthenticated)
             {

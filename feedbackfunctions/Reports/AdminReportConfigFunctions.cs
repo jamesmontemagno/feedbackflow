@@ -13,7 +13,7 @@ using SharedDump.Models.Account;
 namespace FeedbackFunctions.Reports;
 
 /// <summary>
-/// Azure Functions for managing admin report configurations
+/// Azure Functions for managing admin report configurations.
 /// </summary>
 public class AdminReportConfigFunctions
 {
