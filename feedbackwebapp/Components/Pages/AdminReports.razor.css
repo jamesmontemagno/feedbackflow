@@ -208,11 +208,21 @@
 }
 
 /* Modal Styling */
+.admin-modal {
+    z-index: 1060;
+}
+
+.admin-modal .modal-backdrop {
+    z-index: 1055;
+}
+
 .admin-modal .modal-content {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-lg);
     box-shadow: var(--card-shadow);
+    z-index: 1065;
+    position: relative;
 }
 
 .admin-modal .modal-header {
