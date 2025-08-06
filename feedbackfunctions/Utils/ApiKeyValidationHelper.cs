@@ -28,7 +28,7 @@ public static class ApiKeyValidationHelper
             string? apiKey = null;
             
             logger.LogInformation("Checking for API key in headers...");
-            if (!apiKeyHeader.Key.Any() || !apiKeyHeader.Value.Any())
+            if (string.IsNullOrEmpty(apiKeyHeader.Key) || !apiKeyHeader.Value.Any())
             {
                 logger.LogInformation("No API key found in headers, checking query parameters...");
                 // Check for API key in query parameter
