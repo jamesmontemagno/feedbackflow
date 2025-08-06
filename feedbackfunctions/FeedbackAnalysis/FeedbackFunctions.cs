@@ -762,9 +762,12 @@ public class FeedbackFunctions
     {
         _logger.LogInformation("Processing auto-analyze request");
 
-        // Validate API key
-        var (isValid, errorResponse) = await ApiKeyValidationHelper.ValidateApiKeyAsync(req, 
-            req.FunctionContext.InstanceServices.GetRequiredService<IApiKeyService>(), _logger);
+        // Validate API key and check usage limits (AutoAnalyze = 1 usage point)
+        var (isValid, errorResponse, userId) = await ApiKeyValidationHelper.ValidateApiKeyWithUsageAsync(req, 
+            req.FunctionContext.InstanceServices.GetRequiredService<IApiKeyService>(),
+            _userAccountService,
+            _logger,
+            1);
         if (!isValid)
             return errorResponse!;
 
@@ -865,6 +868,9 @@ public class FeedbackFunctions
 
             var successResponse = req.CreateResponse(HttpStatusCode.OK);
             await successResponse.WriteStringAsync(analysisBuilder.ToString());
+            
+            // Track API usage on successful completion (AutoAnalyze = 1 usage point)
+            await ApiKeyValidationHelper.TrackApiUsageAsync(userId!, 1, _userAccountService, _logger, url);
             
             return successResponse;
         }

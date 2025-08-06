@@ -13,6 +13,7 @@ public class UserAccount
     public int AnalysesUsed { get; set; }
     public int FeedQueriesUsed { get; set; }
     public int ActiveReports { get; set; }
+    public int ApiUsed { get; set; }
     public string PreferredEmail { get; set; } = string.Empty;
     
     // Email notification settings

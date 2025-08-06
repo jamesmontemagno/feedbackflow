@@ -13,16 +13,19 @@ public class UserAccountService : IUserAccountService
 {
     private readonly TableClient _userAccountsTable;
     private readonly TableClient _usageRecordsTable;
+    private readonly TableClient _apiKeysTable;
     private readonly IConfiguration? _configuration;
     private readonly ILogger<UserAccountService>? _logger;
 
     private const string UserAccountsTableName = "UserAccounts";
     private const string UsageRecordsTableName = "UsageRecords";
+    private const string ApiKeysTableName = "apikeys";
 
     public UserAccountService(string storageConnectionString, IConfiguration? configuration = null, ILogger<UserAccountService>? logger = null)
     {
         _userAccountsTable = new TableClient(storageConnectionString, UserAccountsTableName);
         _usageRecordsTable = new TableClient(storageConnectionString, UsageRecordsTableName);
+        _apiKeysTable = new TableClient(storageConnectionString, ApiKeysTableName);
         _configuration = configuration;
         _logger = logger;
     }
@@ -58,6 +61,22 @@ public class UserAccountService : IUserAccountService
             var entity = await _userAccountsTable.GetEntityIfExistsAsync<UserAccountEntity>(userId, "account");
             if (!entity.HasValue)
                 return false;
+
+            // Delete associated API keys first
+            try
+            {
+                var filter = $"UserId eq '{userId}'";
+                await foreach (var apiKeyEntity in _apiKeysTable.QueryAsync<ApiKeyEntity>(filter))
+                {
+                    await _apiKeysTable.DeleteEntityAsync(apiKeyEntity);
+                    _logger?.LogInformation("Deleted API key for user {UserId}", userId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Error deleting API keys for user {UserId}", userId);
+                // Continue with account deletion even if API key deletion fails
+            }
 
             await _userAccountsTable.DeleteEntityAsync(entity.Value);
             _logger?.LogInformation("User account {UserId} deleted permanently", userId);
@@ -102,6 +121,7 @@ public class UserAccountService : IUserAccountService
             {
                 user.AnalysesUsed = 0;
                 user.FeedQueriesUsed = 0;
+                user.ApiUsed = 0;
                 user.LastResetDate = resetDate;
                 
                 await _userAccountsTable.UpdateEntityAsync(user, user.ETag);
@@ -130,6 +150,7 @@ public class UserAccountService : IUserAccountService
                 AnalysisLimit = GetConfigValue("AccountTiers:Free:AnalysisLimit", 10),
                 ReportLimit = GetConfigValue("AccountTiers:Free:ReportLimit", 1),
                 FeedQueryLimit = GetConfigValue("AccountTiers:Free:FeedQueryLimit", 20),
+                ApiLimit = 0, // Free tier doesn't support API access
                 AnalysisRetentionDays = GetConfigValue("AccountTiers:Free:AnalysisRetentionDays", 30)
             },
             AccountTier.Pro => new AccountLimits 
@@ -137,6 +158,7 @@ public class UserAccountService : IUserAccountService
                 AnalysisLimit = GetConfigValue("AccountTiers:Pro:AnalysisLimit", 75),
                 ReportLimit = GetConfigValue("AccountTiers:Pro:ReportLimit", 5),
                 FeedQueryLimit = GetConfigValue("AccountTiers:Pro:FeedQueryLimit", 200),
+                ApiLimit = 0, // Pro tier doesn't support API access
                 AnalysisRetentionDays = GetConfigValue("AccountTiers:Pro:AnalysisRetentionDays", 60)
             },
             AccountTier.ProPlus => new AccountLimits 
@@ -144,6 +166,7 @@ public class UserAccountService : IUserAccountService
                 AnalysisLimit = GetConfigValue("AccountTiers:ProPlus:AnalysisLimit", 300),
                 ReportLimit = GetConfigValue("AccountTiers:ProPlus:ReportLimit", 25),
                 FeedQueryLimit = GetConfigValue("AccountTiers:ProPlus:FeedQueryLimit", 1000),
+                ApiLimit = GetConfigValue("AccountTiers:ProPlus:ApiLimit", 100),
                 AnalysisRetentionDays = GetConfigValue("AccountTiers:ProPlus:AnalysisRetentionDays", 90)
             },
             AccountTier.SuperUser => new AccountLimits 
@@ -151,6 +174,7 @@ public class UserAccountService : IUserAccountService
                 AnalysisLimit = 10000,
                 ReportLimit = 10000,
                 FeedQueryLimit = 10000,
+                ApiLimit = 1000,
                 AnalysisRetentionDays = 3650 // 10 years
             },
             AccountTier.Admin => new AccountLimits 
@@ -158,9 +182,10 @@ public class UserAccountService : IUserAccountService
                 AnalysisLimit = 10000,
                 ReportLimit = 10000,
                 FeedQueryLimit = 10000,
+                ApiLimit = 1000,
                 AnalysisRetentionDays = 3650 // 10 years
             },
-            _ => new AccountLimits { AnalysisLimit = 0, ReportLimit = 0, FeedQueryLimit = 0, AnalysisRetentionDays = 0 }
+            _ => new AccountLimits { AnalysisLimit = 0, ReportLimit = 0, FeedQueryLimit = 0, ApiLimit = 0, AnalysisRetentionDays = 0 }
         };
     }
 
@@ -191,6 +216,7 @@ public class UserAccountService : IUserAccountService
             UsageType.Analysis => user.AnalysesUsed < limits.AnalysisLimit,
             UsageType.FeedQuery => user.FeedQueriesUsed < limits.FeedQueryLimit,
             UsageType.ReportCreated => user.ActiveReports < limits.ReportLimit,
+            UsageType.ApiCall => user.ApiUsed < limits.ApiLimit,
             _ => true
         };
 
@@ -217,7 +243,7 @@ public class UserAccountService : IUserAccountService
 
     #region Usage Tracking
 
-    public async Task TrackUsageAsync(string userId, UsageType usageType, string? resourceId = null)
+    public async Task TrackUsageAsync(string userId, UsageType usageType, string? resourceId = null, int amount = 1)
     {
         var user = await GetUserAccountAsync(userId);
         
@@ -242,6 +268,9 @@ public class UserAccountService : IUserAccountService
                 break;
             case UsageType.ReportDeleted:
                 user.ActiveReports = Math.Max(0, user.ActiveReports - 1);
+                break;
+            case UsageType.ApiCall:
+                user.ApiUsed += amount;
                 break;
         }
 
@@ -327,6 +356,7 @@ public class UserAccountService : IUserAccountService
     {
         await _userAccountsTable.CreateIfNotExistsAsync();
         await _usageRecordsTable.CreateIfNotExistsAsync();
+        await _apiKeysTable.CreateIfNotExistsAsync();
     }
 
     #endregion
@@ -348,6 +378,7 @@ public class UserAccountService : IUserAccountService
             UsageType.Analysis => user.AnalysesUsed,
             UsageType.FeedQuery => user.FeedQueriesUsed,
             UsageType.ReportCreated => user.ActiveReports,
+            UsageType.ApiCall => user.ApiUsed,
             _ => 0
         };
     }
@@ -359,6 +390,7 @@ public class UserAccountService : IUserAccountService
             UsageType.Analysis => limits.AnalysisLimit,
             UsageType.FeedQuery => limits.FeedQueryLimit,
             UsageType.ReportCreated => limits.ReportLimit,
+            UsageType.ApiCall => limits.ApiLimit,
             _ => 0
         };
     }
@@ -376,6 +408,7 @@ public class UserAccountService : IUserAccountService
             AnalysesUsed = entity.AnalysesUsed,
             FeedQueriesUsed = entity.FeedQueriesUsed,
             ActiveReports = entity.ActiveReports,
+            ApiUsed = entity.ApiUsed,
             PreferredEmail = entity.PreferredEmail,
             EmailFrequency = (EmailReportFrequency)entity.EmailFrequency,
             EmailNotificationsEnabled = entity.EmailNotificationsEnabled,
@@ -397,6 +430,7 @@ public class UserAccountService : IUserAccountService
             AnalysesUsed = model.AnalysesUsed,
             FeedQueriesUsed = model.FeedQueriesUsed,
             ActiveReports = model.ActiveReports,
+            ApiUsed = model.ApiUsed,
             PreferredEmail = model.PreferredEmail,
             EmailFrequency = (int)model.EmailFrequency,
             EmailNotificationsEnabled = model.EmailNotificationsEnabled,

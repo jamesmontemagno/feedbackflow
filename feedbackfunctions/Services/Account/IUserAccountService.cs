@@ -22,7 +22,7 @@ public interface IUserAccountService
     Task<bool> CanPerformActionAsync(string userId, UsageType usageType);
 
     // Usage Tracking
-    Task TrackUsageAsync(string userId, UsageType usageType, string? resourceId = null);
+    Task TrackUsageAsync(string userId, UsageType usageType, string? resourceId = null, int amount = 1);
     Task<List<UsageRecord>> GetUsageHistoryAsync(string userId);
 
     // Convenience Methods

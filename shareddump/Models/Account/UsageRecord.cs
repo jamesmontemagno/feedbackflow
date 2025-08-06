@@ -19,6 +19,9 @@ namespace SharedDump.Models.Account
         ReportCreated,
         ReportDeleted,
 
+        // API calls
+        ApiCall,
+
         // Account actions
         Registration,
         Deletion

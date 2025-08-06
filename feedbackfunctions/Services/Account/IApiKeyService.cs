@@ -6,6 +6,7 @@ public interface IApiKeyService
 {
     Task<ApiKey?> GetApiKeyByUserIdAsync(string userId);
     Task<ApiKey?> GetApiKeyByKeyAsync(string apiKey);
+    Task<string?> GetUserIdByApiKeyAsync(string apiKey);
     Task<ApiKey> CreateApiKeyAsync(string userId, string? name = null);
     Task<bool> DeleteApiKeyAsync(string userId);
     Task<bool> ValidateApiKeyAsync(string apiKey);

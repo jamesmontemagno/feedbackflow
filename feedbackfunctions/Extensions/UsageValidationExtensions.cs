@@ -74,16 +74,18 @@ public static class UsageValidationExtensions
     /// <param name="userAccountService">User account service</param>
     /// <param name="logger">Logger instance</param>
     /// <param name="resourceId">Optional resource identifier</param>
+    /// <param name="amount">Amount of usage to track</param>
     public static async Task TrackUsageAsync(
         this AuthenticatedUser user,
         UsageType usageType,
         IUserAccountService userAccountService,
         ILogger? logger = null,
-        string? resourceId = null)
+        string? resourceId = null,
+        int amount = 1)
     {
         try
         {
-            await userAccountService.TrackUsageAsync(user.UserId, usageType, resourceId);
+            await userAccountService.TrackUsageAsync(user.UserId, usageType, resourceId, amount);
             logger?.LogInformation("Tracked usage for user {UserId} and type {UsageType}", user.UserId, usageType);
         }
         catch (Exception ex)

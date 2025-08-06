@@ -55,6 +55,20 @@ public class ApiKeyService : IApiKeyService
         }
     }
 
+    public async Task<string?> GetUserIdByApiKeyAsync(string apiKey)
+    {
+        try
+        {
+            var key = await GetApiKeyByKeyAsync(apiKey);
+            return key?.UserId;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting user ID for API key");
+            return null;
+        }
+    }
+
     public async Task<ApiKey> CreateApiKeyAsync(string userId, string? name = null)
     {
         try

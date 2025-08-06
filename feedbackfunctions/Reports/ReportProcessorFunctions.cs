@@ -144,9 +144,10 @@ public class ReportProcessorFunctions
         var startTime = DateTime.UtcNow;
         _logger.LogInformation("Starting Reddit Report processing for URL {RequestUrl}", req.Url);
 
-        // Validate API key
+        // Validate API key and check usage limits (Reports = 2 usage points)
         var apiKeyService = req.FunctionContext.InstanceServices.GetRequiredService<IApiKeyService>();
-        var (isValid, errorResponse) = await ApiKeyValidationHelper.ValidateApiKeyAsync(req, apiKeyService, _logger);
+        var userAccountService = req.FunctionContext.InstanceServices.GetRequiredService<IUserAccountService>();
+        var (isValid, errorResponse, userId) = await ApiKeyValidationHelper.ValidateApiKeyWithUsageAsync(req, apiKeyService, userAccountService, _logger, 2);
         if (!isValid)
             return errorResponse!;
 
@@ -195,6 +196,10 @@ public class ReportProcessorFunctions
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "text/html; charset=utf-8");
             await response.WriteStringAsync(report.HtmlContent ?? string.Empty);
+            
+            // Track API usage on successful completion (Reports = 2 usage points)
+            await ApiKeyValidationHelper.TrackApiUsageAsync(userId!, 2, userAccountService, _logger, $"reddit:{subreddit}");
+            
             return response;
         }
         catch (Exception ex)
@@ -231,9 +236,10 @@ public class ReportProcessorFunctions
         var startTime = DateTime.UtcNow;
         _logger.LogInformation("Starting GitHub Issues Report processing for URL {RequestUrl}", req.Url);
 
-        // Validate API key
+        // Validate API key and check usage limits (Reports = 2 usage points)
         var apiKeyService = req.FunctionContext.InstanceServices.GetRequiredService<IApiKeyService>();
-        var (isValid, errorResponse) = await ApiKeyValidationHelper.ValidateApiKeyAsync(req, apiKeyService, _logger);
+        var userAccountService = req.FunctionContext.InstanceServices.GetRequiredService<IUserAccountService>();
+        var (isValid, errorResponse, userId) = await ApiKeyValidationHelper.ValidateApiKeyWithUsageAsync(req, apiKeyService, userAccountService, _logger, 2);
         if (!isValid)
             return errorResponse!;
 
@@ -294,6 +300,10 @@ public class ReportProcessorFunctions
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "text/html; charset=utf-8");
             await response.WriteStringAsync(report.HtmlContent ?? string.Empty);
+            
+            // Track API usage on successful completion (Reports = 2 usage points)
+            await ApiKeyValidationHelper.TrackApiUsageAsync(userId!, 2, userAccountService, _logger, $"github:{normalizedRepo}");
+            
             return response;
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("not found or not accessible"))
@@ -336,9 +346,10 @@ public class ReportProcessorFunctions
         var startTime = DateTime.UtcNow;
         _logger.LogInformation("Starting Reddit Summary Report processing for URL {RequestUrl}", req.Url);
 
-        // Validate API key
+        // Validate API key and check usage limits (Reports = 2 usage points)
         var apiKeyService = req.FunctionContext.InstanceServices.GetRequiredService<IApiKeyService>();
-        var (isValid, errorResponse) = await ApiKeyValidationHelper.ValidateApiKeyAsync(req, apiKeyService, _logger);
+        var userAccountService = req.FunctionContext.InstanceServices.GetRequiredService<IUserAccountService>();
+        var (isValid, errorResponse, userId) = await ApiKeyValidationHelper.ValidateApiKeyWithUsageAsync(req, apiKeyService, userAccountService, _logger, 2);
         if (!isValid)
             return errorResponse!;
 
@@ -393,6 +404,10 @@ public class ReportProcessorFunctions
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "text/html; charset=utf-8");
             await response.WriteStringAsync(summaryReport.HtmlContent ?? string.Empty);
+            
+            // Track API usage on successful completion (Reports = 2 usage points)
+            await ApiKeyValidationHelper.TrackApiUsageAsync(userId!, 2, userAccountService, _logger, $"reddit-summary:{subreddit}");
+            
             return response;
         }
         catch (Exception ex)
