@@ -763,107 +763,61 @@ public class FeedbackFunctions
         try
         {
             _logger.LogInformation("Processing auto-analyze request");
-            _logger.LogInformation("Request URL: {Url}", req.Url.ToString());
-            _logger.LogInformation("Request method: {Method}", req.Method);
-            _logger.LogInformation("Request headers count: {Count}", req.Headers.Count());
-
-            // Log query parameters for debugging
-            var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
-            _logger.LogInformation("Query parameters: url={Url}, maxComments={MaxComments}, customPrompt={CustomPrompt}, apikey={ApiKeyPresent}", 
-                queryParams["url"], 
-                queryParams["maxComments"], 
-                queryParams["customPrompt"],
-                !string.IsNullOrEmpty(queryParams["apikey"]) ? "Present" : "Not present");
-
-            _logger.LogInformation("Starting API key validation...");
-
-            // Get the required services with error handling
-            IApiKeyService apiKeyService;
-            try
-            {
-                _logger.LogInformation("Getting IApiKeyService from dependency injection...");
-                apiKeyService = req.FunctionContext.InstanceServices.GetRequiredService<IApiKeyService>();
-                _logger.LogInformation("Successfully obtained IApiKeyService");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get IApiKeyService from dependency injection");
-                var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-                await errorResponse.WriteStringAsync("Service configuration error.");
-                return errorResponse;
-            }
 
             // Validate API key and check usage limits (AutoAnalyze = 1 usage point)
-            var (isValid, errorResponse2, userId) = await ApiKeyValidationHelper.ValidateApiKeyWithUsageAsync(req, 
-                apiKeyService,
+            var (isValid, errorResponse, userId) = await ApiKeyValidationHelper.ValidateApiKeyWithUsageAsync(req, 
+                req.FunctionContext.InstanceServices.GetRequiredService<IApiKeyService>(),
                 _userAccountService,
                 _logger,
                 1);
-            
-            
             if (!isValid)
-            {
-                _logger.LogWarning("API key validation failed");
-                return errorResponse2!;
-            }
+                return errorResponse!;
 
-            _logger.LogInformation("API key validation successful, user ID: {UserId}", userId);
-
+            var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
             var url = queryParams["url"];
             var maxCommentsStr = queryParams["maxComments"];
             var customPrompt = queryParams["customPrompt"];
 
             if (string.IsNullOrEmpty(url))
             {
-                _logger.LogWarning("URL parameter is missing or empty");
                 var response = req.CreateResponse(HttpStatusCode.BadRequest);
                 await response.WriteStringAsync("'url' parameter is required");
                 return response;
             }
 
-            _logger.LogInformation("Processing URL: {Url}", url);
-
             var maxComments = int.TryParse(maxCommentsStr, out var max) ? max : 1000;
-            _logger.LogInformation("Max comments: {MaxComments}", maxComments);
 
             string serviceType;
             object platformData;
             string commentsText;
 
-            _logger.LogInformation("Determining platform type for URL: {Url}", url);
-
             // Determine platform and get data
             if (SharedDump.Utils.UrlParsing.IsGitHubUrl(url))
             {
-                _logger.LogInformation("Detected GitHub URL");
                 serviceType = "github";
                 platformData = await GetGitHubDataForAnalysis(url, maxComments);
                 commentsText = ConvertGitHubDataToCommentsText(platformData);
             }
             else if (SharedDump.Utils.UrlParsing.IsYouTubeUrl(url))
             {
-                _logger.LogInformation("Detected YouTube URL");
                 serviceType = "youtube";
                 platformData = await GetYouTubeDataForAnalysis(url, maxComments);
                 commentsText = ConvertYouTubeDataToCommentsText(platformData);
             }
             else if (SharedDump.Utils.UrlParsing.IsRedditUrl(url))
             {
-                _logger.LogInformation("Detected Reddit URL");
                 serviceType = "reddit";
                 platformData = await GetRedditDataForAnalysis(url, maxComments);
                 commentsText = ConvertRedditDataToCommentsText(platformData);
             }
             else if (SharedDump.Utils.UrlParsing.IsDevBlogsUrl(url))
             {
-                _logger.LogInformation("Detected DevBlogs URL");
                 serviceType = "devblogs";
                 platformData = await GetDevBlogsDataForAnalysis(url, maxComments);
                 commentsText = ConvertDevBlogsDataToCommentsText(platformData);
             }
             else if (SharedDump.Utils.UrlParsing.IsTwitterUrl(url))
             {
-                _logger.LogInformation("Detected Twitter URL");
                 serviceType = "twitter";
                 
                 platformData = await GetTwitterDataForAnalysis(url, maxComments);
@@ -871,65 +825,60 @@ public class FeedbackFunctions
             }
             else if (SharedDump.Utils.UrlParsing.IsBlueSkyUrl(url))
             {
-                _logger.LogInformation("Detected BlueSky URL");
                 serviceType = "bluesky";
                 platformData = await GetBlueSkyDataForAnalysis(url, maxComments);
                 commentsText = ConvertBlueSkyDataToCommentsText(platformData);
             }
             else if (SharedDump.Utils.UrlParsing.IsHackerNewsUrl(url))
             {
-                _logger.LogInformation("Detected Hacker News URL");
                 serviceType = "hackernews";
                 var hackerNewsId = SharedDump.Utils.UrlParsing.ExtractHackerNewsId(url);
                 if (string.IsNullOrEmpty(hackerNewsId))
                 {
-                    _logger.LogWarning("Could not extract Hacker News ID from URL: {Url}", url);
                     var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                     await badResponse.WriteStringAsync("Could not extract Hacker News ID from URL");
                     return badResponse;
                 }
-                platformData = await GetHackerNewsDataForAnalysis(hackerNewsId, maxComments);
-                commentsText = ConvertHackerNewsDataToCommentsText(platformData);
-            }
-            else
-            {
-                _logger.LogWarning("Unsupported URL format: {Url}", url);
-                var response = req.CreateResponse(HttpStatusCode.BadRequest);
-                await response.WriteStringAsync("Unsupported URL format. Supported platforms: GitHub, YouTube, Reddit, DevBlogs, Twitter/X, BlueSky, Hacker News");
-                return response;
-            }
+                    platformData = await GetHackerNewsDataForAnalysis(hackerNewsId, maxComments);
+                    commentsText = ConvertHackerNewsDataToCommentsText(platformData);
+                }
+                else
+                {
+                    var response = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await response.WriteStringAsync("Unsupported URL format. Supported platforms: GitHub, YouTube, Reddit, DevBlogs, Twitter/X, BlueSky, Hacker News");
+                    return response;
+                }
 
-            _logger.LogInformation("Platform data retrieved successfully for {ServiceType}", serviceType);
+    
+                // Perform analysis using the AnalyzeComments logic
+                if (string.IsNullOrEmpty(commentsText))
+                {
+    
+                    var noCommentsResponse = req.CreateResponse(HttpStatusCode.OK);
+                    await noCommentsResponse.WriteStringAsync("## No Comments Available\n\nThere are no comments to analyze at this time.");
+                    return noCommentsResponse;
+                }
 
-            // Perform analysis using the AnalyzeComments logic
-            if (string.IsNullOrEmpty(commentsText))
-            {
-                _logger.LogInformation("No comments available for analysis");
-                var noCommentsResponse = req.CreateResponse(HttpStatusCode.OK);
-                await noCommentsResponse.WriteStringAsync("## No Comments Available\n\nThere are no comments to analyze at this time.");
-                return noCommentsResponse;
-            }
+    
 
-            _logger.LogInformation("Starting analysis for {ServiceType} with comments length: {Length}", serviceType, commentsText.Length);
+                var analysisBuilder = new System.Text.StringBuilder();
+                await foreach (var update in _analyzerService.GetStreamingAnalysisAsync(
+                    serviceType, 
+                    commentsText,
+                    customPrompt))
+                {
+                    analysisBuilder.Append(update);
+                }
 
-            var analysisBuilder = new System.Text.StringBuilder();
-            await foreach (var update in _analyzerService.GetStreamingAnalysisAsync(
-                serviceType, 
-                commentsText,
-                customPrompt))
-            {
-                analysisBuilder.Append(update);
-            }
+    
 
-            _logger.LogInformation("Analysis completed successfully, response length: {Length}", analysisBuilder.Length);
-
-            var successResponse = req.CreateResponse(HttpStatusCode.OK);
-            await successResponse.WriteStringAsync(analysisBuilder.ToString());
-            
-            // Track API usage on successful completion (AutoAnalyze = 1 usage point)
-            await ApiKeyValidationHelper.TrackApiUsageAsync(userId!, 1, _userAccountService, _logger, url);
-            
-            _logger.LogInformation("Auto-analyze request completed successfully");
+                var successResponse = req.CreateResponse(HttpStatusCode.OK);
+                await successResponse.WriteStringAsync(analysisBuilder.ToString());
+                
+                // Track API usage on successful completion (AutoAnalyze = 1 usage point)
+                await ApiKeyValidationHelper.TrackApiUsageAsync(userId!, 1, _userAccountService, _logger, url);
+                
+    
             return successResponse;
         }
         catch (Exception ex)

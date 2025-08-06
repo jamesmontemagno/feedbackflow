@@ -17,24 +17,10 @@ public class ApiKeyService : IApiKeyService
     {
         _logger = logger;
         
-        try
-        {
-            _logger.LogInformation("Initializing ApiKeyService...");
-            var connectionString = configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
-            _logger.LogInformation("Connection string obtained, creating table service client...");
-            
-            var tableServiceClient = new TableServiceClient(connectionString);
-            _tableClient = tableServiceClient.GetTableClient(TableName);
-            _logger.LogInformation("Table client created for table: {TableName}", TableName);
-            
-            _tableClient.CreateIfNotExists();
-            _logger.LogInformation("ApiKeyService initialized successfully");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to initialize ApiKeyService");
-            throw;
-        }
+        var connectionString = configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
+        var tableServiceClient = new TableServiceClient(connectionString);
+        _tableClient = tableServiceClient.GetTableClient(TableName);
+        _tableClient.CreateIfNotExists();
     }
 
     public async Task<ApiKey?> GetApiKeyByUserIdAsync(string userId)
@@ -59,11 +45,8 @@ public class ApiKeyService : IApiKeyService
     {
         try
         {
-            _logger.LogInformation("Getting API key by key from table (prefix: {Prefix})", apiKey.Length > 5 ? apiKey.Substring(0, 5) : apiKey);
             var response = await _tableClient.GetEntityIfExistsAsync<ApiKeyEntity>("apikeys", apiKey);
-            var hasValue = response.HasValue;
-            _logger.LogInformation("Table query result: hasValue={HasValue}", hasValue);
-            return hasValue ? response.Value.ToApiKey() : null;
+            return response.HasValue ? response.Value.ToApiKey() : null;
         }
         catch (Exception ex)
         {
@@ -76,11 +59,8 @@ public class ApiKeyService : IApiKeyService
     {
         try
         {
-            _logger.LogInformation("Getting user ID for API key (prefix: {Prefix})", apiKey.Length > 5 ? apiKey.Substring(0, 5) : apiKey);
             var key = await GetApiKeyByKeyAsync(apiKey);
-            var userId = key?.UserId;
-            _logger.LogInformation("User ID lookup result: {UserId}", userId ?? "null");
-            return userId;
+            return key?.UserId;
         }
         catch (Exception ex)
         {
@@ -150,12 +130,8 @@ public class ApiKeyService : IApiKeyService
     {
         try
         {
-            _logger.LogInformation("Validating API key (prefix: {Prefix})", apiKey.Length > 5 ? apiKey.Substring(0, 5) : apiKey);
             var key = await GetApiKeyByKeyAsync(apiKey);
-            var isValid = key != null && key.IsEnabled;
-            _logger.LogInformation("API key validation result: {IsValid} (exists: {Exists}, enabled: {Enabled})", 
-                isValid, key != null, key?.IsEnabled ?? false);
-            return isValid;
+            return key != null && key.IsEnabled;
         }
         catch (Exception ex)
         {
