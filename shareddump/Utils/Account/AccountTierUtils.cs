@@ -75,5 +75,30 @@ namespace SharedDump.Utils.Account
         {
             return AccountTier.Pro;
         }
+
+        /// <summary>
+        /// Checks if the account tier supports API key generation
+        /// </summary>
+        /// <param name="tier">The account tier to check</param>
+        /// <returns>True if the tier supports API key generation, false otherwise</returns>
+        public static bool SupportsApiKeyGeneration(AccountTier tier)
+        {
+            return tier switch
+            {
+                AccountTier.ProPlus => true,
+                AccountTier.SuperUser => true,
+                AccountTier.Admin => true,
+                _ => false
+            };
+        }
+
+        /// <summary>
+        /// Gets the minimum tier required for API key generation
+        /// </summary>
+        /// <returns>The minimum account tier that supports API key generation</returns>
+        public static AccountTier GetMinimumTierForApiKeyGeneration()
+        {
+            return AccountTier.ProPlus;
+        }
     }
 }

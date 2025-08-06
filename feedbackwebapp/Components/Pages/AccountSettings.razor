@@ -350,7 +350,158 @@
                             <hr class="my-4">
                         }
 
-                        <!-- Admin Features -->
+                        <!-- API Key Management -->
+                        @if (userAccount != null && AccountTierUtils.SupportsApiKeyGeneration(userAccount.Tier))
+                        {
+                            <div class="row mb-4">
+                                <div class="col-md-4">
+                                    <h5 class="text-primary">
+                                        <i class="bi bi-key me-2"></i>
+                                        API Key Management
+                                    </h5>
+                                    <p class="text-muted small">
+                                        Generate and manage your API key for programmatic access to FeedbackFlow functions.
+                                    </p>
+                                </div>
+                                <div class="col-md-8">
+                                    @if (isLoadingApiKey)
+                                    {
+                                        <div class="card border-light">
+                                            <div class="card-body p-3 text-center">
+                                                <div class="spinner-border text-primary" role="status">
+                                                    <span class="visually-hidden">Loading...</span>
+                                                </div>
+                                                <p class="mt-2 text-muted">Loading API key information...</p>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if (userApiKey != null)
+                                    {
+                                        <div class="card @(userApiKey.IsEnabled ? "border-success" : "border-warning")">
+                                            <div class="card-body p-3">
+                                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                                    <div>
+                                                        <h6 class="mb-1">
+                                                            <i class="bi bi-key me-1"></i>
+                                                            @userApiKey.Name
+                                                        </h6>
+                                                        <small class="text-muted">
+                                                            Created: @userApiKey.CreatedAt.ToString("MMM d, yyyy")
+                                                        </small>
+                                                    </div>
+                                                    <span class="badge @(userApiKey.IsEnabled ? "bg-success" : "bg-warning text-dark")">
+                                                        @(userApiKey.IsEnabled ? "Enabled" : "Disabled")
+                                                    </span>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label class="form-label small text-muted">API Key</label>
+                                                    <div class="input-group">
+                                                        <input type="@(showApiKey ? "text" : "password")" 
+                                                               class="form-control font-monospace" 
+                                                               value="@userApiKey.Key" 
+                                                               readonly>
+                                                        <button class="btn btn-outline-secondary" 
+                                                                type="button" 
+                                                                @onclick="ToggleApiKeyVisibility">
+                                                            <i class="bi bi-@(showApiKey ? "eye-slash" : "eye")"></i>
+                                                        </button>
+                                                        <button class="btn btn-outline-primary" 
+                                                                type="button" 
+                                                                @onclick="() => CopyToClipboard(userApiKey.Key)">
+                                                            <i class="bi bi-clipboard"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                @if (!userApiKey.IsEnabled)
+                                                {
+                                                    <div class="alert alert-warning alert-sm py-2 mb-3">
+                                                        <small>
+                                                            <i class="bi bi-exclamation-triangle me-1"></i>
+                                                            <strong>API Key Disabled:</strong> Your API key is currently disabled. 
+                                                            Contact an administrator to enable it for use.
+                                                        </small>
+                                                    </div>
+                                                }
+
+                                                <div class="d-flex gap-2">
+                                                    <button class="btn btn-danger btn-sm" 
+                                                            @onclick="DeleteApiKeyAsync"
+                                                            disabled="@isApiKeyProcessing">
+                                                        @if (isApiKeyProcessing)
+                                                        {
+                                                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <i class="bi bi-trash me-1"></i>
+                                                        }
+                                                        <span>Delete Key</span>
+                                                    </button>
+                                                </div>
+
+                                                @if (!string.IsNullOrEmpty(apiKeyMessage))
+                                                {
+                                                    <div class="alert @(apiKeySuccess ? "alert-success" : "alert-danger") alert-sm py-2 mt-2">
+                                                        <small>@apiKeyMessage</small>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="card border-light">
+                                            <div class="card-body p-3 text-center">
+                                                <div class="mb-3">
+                                                    <i class="bi bi-key text-muted" style="font-size: 2rem;"></i>
+                                                </div>
+                                                <h6 class="text-muted mb-2">No API Key</h6>
+                                                <p class="text-muted mb-3">
+                                                    You haven't generated an API key yet. Create one to access FeedbackFlow functions programmatically.
+                                                </p>
+                                                <button class="btn btn-primary" 
+                                                        @onclick="CreateApiKeyAsync"
+                                                        disabled="@isApiKeyProcessing">
+                                                    @if (isApiKeyProcessing)
+                                                    {
+                                                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                                        <span>Creating...</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="bi bi-plus-circle me-1"></i>
+                                                        <span>Generate API Key</span>
+                                                    }
+                                                </button>
+
+                                                @if (!string.IsNullOrEmpty(apiKeyMessage))
+                                                {
+                                                    <div class="alert @(apiKeySuccess ? "alert-success" : "alert-danger") alert-sm py-2 mt-3">
+                                                        <small>@apiKeyMessage</small>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+
+                                    <div class="form-text mt-2">
+                                        <small class="text-muted">
+                                            <i class="bi bi-info-circle me-1"></i>
+                                            Use your API key to access:
+                                            <strong>AutoAnalyze</strong>, <strong>RedditReport</strong>, <strong>GitHubIssuesReport</strong>, and <strong>RedditReportSummary</strong> functions.
+                                            <br>
+                                            Include it in the <code>x-api-key</code> header or <code>apikey</code> query parameter.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+                        }
+                  
+                       <!-- Admin Features -->
                         @if (userAccount?.Tier == AccountTier.Admin || userAccount?.Tier == AccountTier.SuperUser)
                         {
                             <div class="row mb-4">
@@ -476,6 +627,14 @@
     private string emailSettingsMessage = "";
     private bool emailSettingsSuccess = false;
 
+    // API key management fields
+    private ApiKey? userApiKey;
+    private bool isLoadingApiKey = true;
+    private bool isApiKeyProcessing = false;
+    private bool showApiKey = false;
+    private string apiKeyMessage = "";
+    private bool apiKeySuccess = false;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadUserInfoAsync();
@@ -599,6 +758,16 @@
                     // Initialize email notification settings
                     emailNotificationsEnabled = userAccount.EmailNotificationsEnabled;
                     selectedEmailFrequency = (int)userAccount.EmailFrequency;
+                    
+                    // Load API key if user supports it
+                    if (AccountTierUtils.SupportsApiKeyGeneration(userAccount.Tier))
+                    {
+                        await LoadApiKeyAsync();
+                    }
+                    else
+                    {
+                        isLoadingApiKey = false;
+                    }
                 }
             }
             else
@@ -798,6 +967,139 @@
         {
             isUpdatingEmailSettings = false;
             StateHasChanged();
+        }
+    }
+
+    private async Task LoadApiKeyAsync()
+    {
+        try
+        {
+            isLoadingApiKey = true;
+            apiKeyMessage = "";
+            
+            var accountService = AccountServiceProvider.GetService();
+            userApiKey = await accountService.GetApiKeyAsync();
+        }
+        catch (Exception ex)
+        {
+            apiKeyMessage = $"Error loading API key: {ex.Message}";
+            apiKeySuccess = false;
+        }
+        finally
+        {
+            isLoadingApiKey = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CreateApiKeyAsync()
+    {
+        try
+        {
+            isApiKeyProcessing = true;
+            apiKeyMessage = "";
+            apiKeySuccess = false;
+            StateHasChanged();
+
+            var accountService = AccountServiceProvider.GetService();
+            var newApiKey = await accountService.CreateApiKeyAsync("API Key");
+            
+            if (newApiKey != null)
+            {
+                userApiKey = newApiKey;
+                apiKeyMessage = "API key created successfully! Note: The key is disabled by default and requires admin approval.";
+                apiKeySuccess = true;
+                await ToastService.ShowToastAsync("API key created successfully!", ToastType.Success);
+            }
+            else
+            {
+                apiKeyMessage = "Failed to create API key. Please try again.";
+                apiKeySuccess = false;
+                await ToastService.ShowToastAsync("Failed to create API key", ToastType.Danger);
+            }
+        }
+        catch (Exception ex)
+        {
+            apiKeyMessage = $"Error creating API key: {ex.Message}";
+            apiKeySuccess = false;
+            await ToastService.ShowToastAsync($"Error creating API key: {ex.Message}", ToastType.Danger);
+        }
+        finally
+        {
+            isApiKeyProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteApiKeyAsync()
+    {
+        try
+        {
+            var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+                "Are you sure you want to delete your API key?\n\n" +
+                "This action cannot be undone and will immediately revoke access for any applications using this key.");
+
+            if (!confirmed)
+                return;
+
+            isApiKeyProcessing = true;
+            apiKeyMessage = "";
+            apiKeySuccess = false;
+            StateHasChanged();
+
+            var accountService = AccountServiceProvider.GetService();
+            var deleted = await accountService.DeleteApiKeyAsync();
+            
+            if (deleted)
+            {
+                userApiKey = null;
+                apiKeyMessage = "API key deleted successfully.";
+                apiKeySuccess = true;
+                await ToastService.ShowToastAsync("API key deleted successfully", ToastType.Success);
+            }
+            else
+            {
+                apiKeyMessage = "Failed to delete API key. Please try again.";
+                apiKeySuccess = false;
+                await ToastService.ShowToastAsync("Failed to delete API key", ToastType.Danger);
+            }
+        }
+        catch (Exception ex)
+        {
+            apiKeyMessage = $"Error deleting API key: {ex.Message}";
+            apiKeySuccess = false;
+            await ToastService.ShowToastAsync($"Error deleting API key: {ex.Message}", ToastType.Danger);
+        }
+        finally
+        {
+            isApiKeyProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleApiKeyVisibility()
+    {
+        showApiKey = !showApiKey;
+    }
+
+    private async Task CopyToClipboard(string text)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            await ToastService.ShowToastAsync("API key copied to clipboard!", ToastType.Success);
+        }
+        catch (Exception)
+        {
+            // Fallback for older browsers
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("prompt", "Copy this API key:", text);
+            }
+            catch (Exception ex)
+            {
+                await ToastService.ShowToastAsync($"Failed to copy to clipboard: {ex.Message}", ToastType.Danger);
+            }
         }
     }
 }

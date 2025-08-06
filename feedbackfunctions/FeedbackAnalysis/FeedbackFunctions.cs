@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SharedDump.Models;
 using SharedDump.Models.GitHub;
@@ -22,6 +23,7 @@ using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
 using FeedbackFunctions.Services.Account;
+using FeedbackFunctions.Utils;
 using SharedDump.Models.Account;
 
 namespace FeedbackFunctions.FeedbackAnalysis;
@@ -756,26 +758,35 @@ public class FeedbackFunctions
     /// </remarks>
     [Function("AutoAnalyze")]
     public async Task<HttpResponseData> AutoAnalyze(
-        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
     {
-        _logger.LogInformation("Processing auto-analyze request");
-
-        var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
-        var url = queryParams["url"];
-        var maxCommentsStr = queryParams["maxComments"];
-        var customPrompt = queryParams["customPrompt"];
-
-        if (string.IsNullOrEmpty(url))
-        {
-            var response = req.CreateResponse(HttpStatusCode.BadRequest);
-            await response.WriteStringAsync("'url' parameter is required");
-            return response;
-        }
-
-        var maxComments = int.TryParse(maxCommentsStr, out var max) ? max : 1000;
-
         try
         {
+            _logger.LogInformation("Processing auto-analyze request");
+
+            // Validate API key and check usage limits (AutoAnalyze = 1 usage point)
+            var (isValid, errorResponse, userId) = await ApiKeyValidationHelper.ValidateApiKeyWithUsageAsync(req, 
+                req.FunctionContext.InstanceServices.GetRequiredService<IApiKeyService>(),
+                _userAccountService,
+                _logger,
+                1);
+            if (!isValid)
+                return errorResponse!;
+
+            var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
+            var url = queryParams["url"];
+            var maxCommentsStr = queryParams["maxComments"];
+            var customPrompt = queryParams["customPrompt"];
+
+            if (string.IsNullOrEmpty(url))
+            {
+                var response = req.CreateResponse(HttpStatusCode.BadRequest);
+                await response.WriteStringAsync("'url' parameter is required");
+                return response;
+            }
+
+            var maxComments = int.TryParse(maxCommentsStr, out var max) ? max : 1000;
+
             string serviceType;
             object platformData;
             string commentsText;
@@ -828,41 +839,51 @@ public class FeedbackFunctions
                     await badResponse.WriteStringAsync("Could not extract Hacker News ID from URL");
                     return badResponse;
                 }
-                platformData = await GetHackerNewsDataForAnalysis(hackerNewsId, maxComments);
-                commentsText = ConvertHackerNewsDataToCommentsText(platformData);
-            }
-            else
-            {
-                var response = req.CreateResponse(HttpStatusCode.BadRequest);
-                await response.WriteStringAsync("Unsupported URL format. Supported platforms: GitHub, YouTube, Reddit, DevBlogs, Twitter/X, BlueSky, Hacker News");
-                return response;
-            }
+                    platformData = await GetHackerNewsDataForAnalysis(hackerNewsId, maxComments);
+                    commentsText = ConvertHackerNewsDataToCommentsText(platformData);
+                }
+                else
+                {
+                    var response = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await response.WriteStringAsync("Unsupported URL format. Supported platforms: GitHub, YouTube, Reddit, DevBlogs, Twitter/X, BlueSky, Hacker News");
+                    return response;
+                }
 
-            // Perform analysis using the AnalyzeComments logic
-            if (string.IsNullOrEmpty(commentsText))
-            {
-                var noCommentsResponse = req.CreateResponse(HttpStatusCode.OK);
-                await noCommentsResponse.WriteStringAsync("## No Comments Available\n\nThere are no comments to analyze at this time.");
-                return noCommentsResponse;
-            }
+    
+                // Perform analysis using the AnalyzeComments logic
+                if (string.IsNullOrEmpty(commentsText))
+                {
+    
+                    var noCommentsResponse = req.CreateResponse(HttpStatusCode.OK);
+                    await noCommentsResponse.WriteStringAsync("## No Comments Available\n\nThere are no comments to analyze at this time.");
+                    return noCommentsResponse;
+                }
 
-            var analysisBuilder = new System.Text.StringBuilder();
-            await foreach (var update in _analyzerService.GetStreamingAnalysisAsync(
-                serviceType, 
-                commentsText,
-                customPrompt))
-            {
-                analysisBuilder.Append(update);
-            }
+    
 
-            var successResponse = req.CreateResponse(HttpStatusCode.OK);
-            await successResponse.WriteStringAsync(analysisBuilder.ToString());
-            
+                var analysisBuilder = new System.Text.StringBuilder();
+                await foreach (var update in _analyzerService.GetStreamingAnalysisAsync(
+                    serviceType, 
+                    commentsText,
+                    customPrompt))
+                {
+                    analysisBuilder.Append(update);
+                }
+
+    
+
+                var successResponse = req.CreateResponse(HttpStatusCode.OK);
+                await successResponse.WriteStringAsync(analysisBuilder.ToString());
+                
+                // Track API usage on successful completion (AutoAnalyze = 1 usage point)
+                await ApiKeyValidationHelper.TrackApiUsageAsync(userId!, 1, _userAccountService, _logger, url);
+                
+    
             return successResponse;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing auto-analyze request for URL: {Url}", url);
+            _logger.LogError(ex, "Error processing auto-analyze request");
             var response = req.CreateResponse(HttpStatusCode.InternalServerError);
             await response.WriteStringAsync("An error occurred processing the request");
             return response;

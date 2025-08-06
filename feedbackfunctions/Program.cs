@@ -243,6 +243,9 @@ void RegisterAccountServices(IServiceCollection services)
         var storage = config["ProductionStorage"] ?? "UseDevelopmentStorage=true";
         return new UserAccountService(storage, config, logger);
     });
+    
+    // Register the API key service
+    services.AddScoped<IApiKeyService, ApiKeyService>();
 }
 
 // Application Insights isn't enabled by default. See https://aka.ms/AAt8mw4.

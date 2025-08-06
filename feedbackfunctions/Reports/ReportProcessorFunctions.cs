@@ -9,6 +9,7 @@ using SharedDump.Utils.Account;
 using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using SharedDump.Services.Interfaces;
 using SharedDump.AI;
 using FeedbackFunctions.Utils;
@@ -138,10 +139,17 @@ public class ReportProcessorFunctions
     /// </example>
     [Function("RedditReport")]
     public async Task<HttpResponseData> RedditReport(
-        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
     {
         var startTime = DateTime.UtcNow;
         _logger.LogInformation("Starting Reddit Report processing for URL {RequestUrl}", req.Url);
+
+        // Validate API key and check usage limits (Reports = 2 usage points)
+        var apiKeyService = req.FunctionContext.InstanceServices.GetRequiredService<IApiKeyService>();
+        var userAccountService = req.FunctionContext.InstanceServices.GetRequiredService<IUserAccountService>();
+        var (isValid, errorResponse, userId) = await ApiKeyValidationHelper.ValidateApiKeyWithUsageAsync(req, apiKeyService, userAccountService, _logger, 2);
+        if (!isValid)
+            return errorResponse!;
 
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var subreddit = queryParams["subreddit"];
@@ -188,6 +196,10 @@ public class ReportProcessorFunctions
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "text/html; charset=utf-8");
             await response.WriteStringAsync(report.HtmlContent ?? string.Empty);
+            
+            // Track API usage on successful completion (Reports = 2 usage points)
+            await ApiKeyValidationHelper.TrackApiUsageAsync(userId!, 2, userAccountService, _logger, $"reddit:{subreddit}");
+            
             return response;
         }
         catch (Exception ex)
@@ -219,10 +231,17 @@ public class ReportProcessorFunctions
     /// </example>
     [Function("GitHubIssuesReport")]
     public async Task<HttpResponseData> GitHubIssuesReport(
-        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
     {
         var startTime = DateTime.UtcNow;
         _logger.LogInformation("Starting GitHub Issues Report processing for URL {RequestUrl}", req.Url);
+
+        // Validate API key and check usage limits (Reports = 2 usage points)
+        var apiKeyService = req.FunctionContext.InstanceServices.GetRequiredService<IApiKeyService>();
+        var userAccountService = req.FunctionContext.InstanceServices.GetRequiredService<IUserAccountService>();
+        var (isValid, errorResponse, userId) = await ApiKeyValidationHelper.ValidateApiKeyWithUsageAsync(req, apiKeyService, userAccountService, _logger, 2);
+        if (!isValid)
+            return errorResponse!;
 
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var repo = queryParams["repo"];
@@ -281,6 +300,10 @@ public class ReportProcessorFunctions
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "text/html; charset=utf-8");
             await response.WriteStringAsync(report.HtmlContent ?? string.Empty);
+            
+            // Track API usage on successful completion (Reports = 2 usage points)
+            await ApiKeyValidationHelper.TrackApiUsageAsync(userId!, 2, userAccountService, _logger, $"github:{normalizedRepo}");
+            
             return response;
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("not found or not accessible"))
@@ -318,10 +341,17 @@ public class ReportProcessorFunctions
     /// </example>
     [Function("RedditReportSummary")]
     public async Task<HttpResponseData> RedditReportSummary(
-        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
     {
         var startTime = DateTime.UtcNow;
         _logger.LogInformation("Starting Reddit Summary Report processing for URL {RequestUrl}", req.Url);
+
+        // Validate API key and check usage limits (Reports = 2 usage points)
+        var apiKeyService = req.FunctionContext.InstanceServices.GetRequiredService<IApiKeyService>();
+        var userAccountService = req.FunctionContext.InstanceServices.GetRequiredService<IUserAccountService>();
+        var (isValid, errorResponse, userId) = await ApiKeyValidationHelper.ValidateApiKeyWithUsageAsync(req, apiKeyService, userAccountService, _logger, 2);
+        if (!isValid)
+            return errorResponse!;
 
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var subreddit = queryParams["subreddit"];
@@ -374,6 +404,10 @@ public class ReportProcessorFunctions
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "text/html; charset=utf-8");
             await response.WriteStringAsync(summaryReport.HtmlContent ?? string.Empty);
+            
+            // Track API usage on successful completion (Reports = 2 usage points)
+            await ApiKeyValidationHelper.TrackApiUsageAsync(userId!, 2, userAccountService, _logger, $"reddit-summary:{subreddit}");
+            
             return response;
         }
         catch (Exception ex)

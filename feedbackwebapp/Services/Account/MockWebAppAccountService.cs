@@ -178,4 +178,61 @@ public class MockWebAppAccountService : IWebAppAccountService
 
         return Task.FromResult<TierInfo[]?>(tiers);
     }
+
+    public Task<ApiKey?> GetApiKeyAsync()
+    {
+        _logger.LogInformation("Mock: Getting API key");
+        
+        // Mock API key for testing
+        if (_mockUser.Tier >= AccountTier.ProPlus)
+        {
+            var mockApiKey = new ApiKey
+            {
+                Key = "ff_mock_api_key_for_testing_only",
+                UserId = _mockUser.UserId,
+                IsEnabled = false, // Disabled by default
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+                Name = "Mock API Key"
+            };
+            return Task.FromResult<ApiKey?>(mockApiKey);
+        }
+        
+        return Task.FromResult<ApiKey?>(null);
+    }
+
+    public Task<ApiKey?> CreateApiKeyAsync(string? name = null)
+    {
+        _logger.LogInformation("Mock: Creating API key with name '{Name}'", name);
+        
+        if (_mockUser.Tier < AccountTier.ProPlus)
+        {
+            _logger.LogWarning("Mock: User does not have permission to create API keys");
+            return Task.FromResult<ApiKey?>(null);
+        }
+
+        var newApiKey = new ApiKey
+        {
+            Key = $"ff_mock_created_{DateTime.UtcNow:yyyyMMddHHmmss}",
+            UserId = _mockUser.UserId,
+            IsEnabled = false, // Disabled by default
+            CreatedAt = DateTime.UtcNow,
+            Name = name ?? "API Key"
+        };
+        
+        return Task.FromResult<ApiKey?>(newApiKey);
+    }
+
+    public Task<bool> DeleteApiKeyAsync()
+    {
+        _logger.LogInformation("Mock: Deleting API key");
+        
+        if (_mockUser.Tier < AccountTier.ProPlus)
+        {
+            _logger.LogWarning("Mock: User does not have permission to delete API keys");
+            return Task.FromResult(false);
+        }
+        
+        // Simulate successful deletion
+        return Task.FromResult(true);
+    }
 }
