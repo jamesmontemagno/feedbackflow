@@ -22,12 +22,12 @@ API keys can be provided in two ways:
 #### Option 1: HTTP Header (Recommended)
 ```bash
 curl -H "x-api-key: ff_YOUR_API_KEY" \
-  "https://api.feedbackflow.com/api/AutoAnalyze?url=https://github.com/dotnet/maui/issues/123"
+  "https://api.feedbackflow.app/api/AutoAnalyze?url=https://github.com/dotnet/maui/issues/123"
 ```
 
 #### Option 2: Query Parameter
 ```bash
-curl "https://api.feedbackflow.com/api/AutoAnalyze?apikey=ff_YOUR_API_KEY&url=https://github.com/dotnet/maui/issues/123"
+curl "https://api.feedbackflow.app/api/AutoAnalyze?apikey=ff_YOUR_API_KEY&url=https://github.com/dotnet/maui/issues/123"
 ```
 
 ## Usage Limits
@@ -80,18 +80,18 @@ Analyzes feedback from various platforms and returns AI-generated insights.
 ```bash
 # GitHub Issue Analysis
 curl -H "x-api-key: ff_YOUR_API_KEY" \
-  "https://api.feedbackflow.com/api/AutoAnalyze?url=https://github.com/dotnet/maui/issues/123&maxComments=50"
+  "https://api.feedbackflow.app/api/AutoAnalyze?url=https://github.com/dotnet/maui/issues/123&maxComments=50"
 
 # YouTube Video Analysis
 curl -H "x-api-key: ff_YOUR_API_KEY" \
-  "https://api.feedbackflow.com/api/AutoAnalyze?url=https://www.youtube.com/watch?v=VIDEO_ID"
+  "https://api.feedbackflow.app/api/AutoAnalyze?url=https://www.youtube.com/watch?v=VIDEO_ID"
 
 # Reddit Post Analysis
 curl -H "x-api-key: ff_YOUR_API_KEY" \
-  "https://api.feedbackflow.com/api/AutoAnalyze?url=https://www.reddit.com/r/programming/comments/POST_ID/"
+  "https://api.feedbackflow.app/api/AutoAnalyze?url=https://www.reddit.com/r/programming/comments/POST_ID/"
 
 # Using query parameter authentication
-curl "https://api.feedbackflow.com/api/AutoAnalyze?apikey=ff_YOUR_API_KEY&url=https://github.com/dotnet/maui/issues/123"
+curl "https://api.feedbackflow.app/api/AutoAnalyze?apikey=ff_YOUR_API_KEY&url=https://github.com/dotnet/maui/issues/123"
 ```
 
 #### Response Format
@@ -131,11 +131,11 @@ Generates comprehensive reports for Reddit subreddits over a specified time peri
 ```bash
 # Basic subreddit report
 curl -H "x-api-key: ff_YOUR_API_KEY" \
-  "https://api.feedbackflow.com/api/RedditReport?subreddit=dotnet"
+  "https://api.feedbackflow.app/api/RedditReport?subreddit=dotnet"
 
 # Detailed report with custom parameters
 curl -H "x-api-key: ff_YOUR_API_KEY" \
-  "https://api.feedbackflow.com/api/RedditReport?subreddit=programming&days=30&limit=50&sort=top&force=true"
+  "https://api.feedbackflow.app/api/RedditReport?subreddit=programming&days=30&limit=50&sort=top&force=true"
 ```
 
 #### Response Format
@@ -182,11 +182,11 @@ Generates reports for GitHub repository issues and discussions.
 ```bash
 # Basic repository report
 curl -H "x-api-key: ff_YOUR_API_KEY" \
-  "https://api.feedbackflow.com/api/GitHubIssuesReport?repo=microsoft/vscode"
+  "https://api.feedbackflow.app/api/GitHubIssuesReport?repo=microsoft/vscode"
 
 # Force new report for longer timeframe
 curl -H "x-api-key: ff_YOUR_API_KEY" \
-  "https://api.feedbackflow.com/api/GitHubIssuesReport?repo=dotnet/maui&days=30&force=true"
+  "https://api.feedbackflow.app/api/GitHubIssuesReport?repo=dotnet/maui&days=30&force=true"
 ```
 
 #### Response Format
@@ -234,11 +234,11 @@ Generates condensed summary reports for Reddit subreddits.
 ```bash
 # Basic summary report
 curl -H "x-api-key: ff_YOUR_API_KEY" \
-  "https://api.feedbackflow.com/api/RedditReportSummary?subreddit=dotnet"
+  "https://api.feedbackflow.app/api/RedditReportSummary?subreddit=dotnet"
 
 # Force new summary
 curl -H "x-api-key: ff_YOUR_API_KEY" \
-  "https://api.feedbackflow.com/api/RedditReportSummary?subreddit=programming&force=true"
+  "https://api.feedbackflow.app/api/RedditReportSummary?subreddit=programming&force=true"
 ```
 
 #### Response Format
@@ -309,7 +309,7 @@ Always implement proper error handling in your applications:
 ```javascript
 async function analyzeContent(url, apiKey) {
   try {
-    const response = await fetch(`https://api.feedbackflow.com/api/AutoAnalyze?url=${encodeURIComponent(url)}`, {
+    const response = await fetch(`https://api.feedbackflow.app/api/AutoAnalyze?url=${encodeURIComponent(url)}`, {
       headers: {
         'x-api-key': apiKey
       }
@@ -404,7 +404,7 @@ async function batchAnalyze(urls, apiKey, delayMs = 1000) {
 ```bash
 # Test with a simple GitHub issue analysis
 curl -H "x-api-key: ff_YOUR_ACTUAL_API_KEY" \
-  "https://api.feedbackflow.com/api/AutoAnalyze?url=https://github.com/dotnet/aspnetcore/issues/1"
+  "https://api.feedbackflow.app/api/AutoAnalyze?url=https://github.com/dotnet/aspnetcore/issues/1"
 ```
 
 ### Step 4: Monitor Usage
