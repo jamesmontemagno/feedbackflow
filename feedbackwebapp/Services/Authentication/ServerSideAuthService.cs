@@ -47,6 +47,7 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
     
     // Semaphore to ensure only one authentication check happens at a time
     private readonly SemaphoreSlim _authSemaphore = new SemaphoreSlim(1, 1);
+    private readonly SemaphoreSlim _registrationSemaphore = new SemaphoreSlim(1, 1);
 
     public event EventHandler<bool>? AuthenticationStateChanged;
 
@@ -899,6 +900,8 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
     {
         await _userSettingsService.LogAuthDebugAsync("HandlePostLoginRegistrationAsync called");
         
+        // Use semaphore to prevent double registration
+        await _registrationSemaphore.WaitAsync();
         try
         {
             var httpContext = _httpContextAccessor.HttpContext;
@@ -957,6 +960,10 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
             });
             _logger.LogError(ex, "Error during post-login registration");
             return false;
+        }
+        finally
+        {
+            _registrationSemaphore.Release();
         }
     }
 
@@ -1289,6 +1296,7 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
     public void Dispose()
     {
         _authSemaphore?.Dispose();
+        _registrationSemaphore?.Dispose();
     }
 }
 

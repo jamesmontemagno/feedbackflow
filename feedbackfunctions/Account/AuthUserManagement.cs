@@ -22,7 +22,7 @@ namespace FeedbackFunctions.Account;
 /// <summary>
 /// Azure Functions for user management operations
 /// </summary>
-public class AuthUserManagement
+public class AuthUserManagement : IDisposable
 {
     private readonly ILogger<AuthUserManagement> _logger;
     private readonly FeedbackFunctions.Middleware.AuthenticationMiddleware _authMiddleware;
@@ -30,6 +30,7 @@ public class AuthUserManagement
     private readonly IUserAccountService _userAccountService;
     private readonly BlobServiceClient _blobServiceClient;
     private readonly TableServiceClient _tableServiceClient;
+    private readonly SemaphoreSlim _registrationSemaphore = new SemaphoreSlim(1, 1);
 
     public AuthUserManagement(
         ILogger<AuthUserManagement> logger,
@@ -61,6 +62,8 @@ public class AuthUserManagement
     public async Task<HttpResponseData> RegisterUserAsync(
         [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
+        // Use semaphore to prevent double registration
+        await _registrationSemaphore.WaitAsync();
         try
         {
             _logger.LogInformation("RegisterUser function triggered");
@@ -216,6 +219,10 @@ public class AuthUserManagement
             var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
             await errorResponse.WriteStringAsync("Internal server error occurred during user registration");
             return errorResponse;
+        }
+        finally
+        {
+            _registrationSemaphore.Release();
         }
     }
 
@@ -585,5 +592,11 @@ public class AuthUserManagement
         }
     }
 
-  
+    /// <summary>
+    /// Dispose of resources
+    /// </summary>
+    public void Dispose()
+    {
+        _registrationSemaphore?.Dispose();
+    }
 }
