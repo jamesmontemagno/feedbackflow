@@ -140,7 +140,10 @@ public class AuthUserManagement : IDisposable
                 if (existingUserAccount == null)
                 {
                     var tier = AccountTier.Free;
-                    if (!string.IsNullOrWhiteSpace(authenticatedUser.Email) && authenticatedUser.Email.EndsWith("@microsoft.com", StringComparison.InvariantCultureIgnoreCase))
+                    // Check if the user is from a whitelisted domain
+                    if (!string.IsNullOrWhiteSpace(authenticatedUser.Email) &&
+                    (authenticatedUser.Email.EndsWith("@microsoft.com", StringComparison.InvariantCultureIgnoreCase) ||
+                    authenticatedUser.Email.EndsWith("@github.com", StringComparison.InvariantCultureIgnoreCase)))
                     {
                         tier = AccountTier.Pro;
                     }
