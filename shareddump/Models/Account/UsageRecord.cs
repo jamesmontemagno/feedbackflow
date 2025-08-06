@@ -14,16 +14,16 @@ namespace SharedDump.Models.Account
     public enum UsageType
     {
         // Feedback/Analysis
-        Analysis,
-        FeedQuery,
-        ReportCreated,
-        ReportDeleted,
-
-        // API calls
-        ApiCall,
+        Analysis = 0,
+        FeedQuery = 1,
+        ReportCreated = 2,
+        ReportDeleted = 3,
 
         // Account actions
-        Registration,
-        Deletion
+        Registration = 100,
+        Deletion = 101,
+
+        // API calls
+        ApiCall = 200
     }
 }
