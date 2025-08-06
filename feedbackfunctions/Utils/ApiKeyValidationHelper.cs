@@ -15,30 +15,54 @@ public static class ApiKeyValidationHelper
         ILogger logger,
         int apiUsageAmount = 1)
     {
-        // Check for API key in header
-        var apiKeyHeader = req.Headers.FirstOrDefault(h => h.Key.Equals("x-api-key", StringComparison.OrdinalIgnoreCase));
-        string? apiKey = null;
-        
-        if (!apiKeyHeader.Key.Any() || !apiKeyHeader.Value.Any())
+        try
         {
-            // Check for API key in query parameter
-            var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
-            apiKey = queryParams["apikey"] ?? queryParams["api_key"];
+            logger.LogInformation("Starting API key validation for {Path}", req.Url.AbsolutePath);
             
-            if (string.IsNullOrEmpty(apiKey))
+            // Log request details for debugging
+            logger.LogInformation("Request URL: {Url}", req.Url.ToString());
+            logger.LogInformation("Request headers count: {HeaderCount}", req.Headers.Count());
+            
+            // Check for API key in header
+            var apiKeyHeader = req.Headers.FirstOrDefault(h => h.Key.Equals("x-api-key", StringComparison.OrdinalIgnoreCase));
+            string? apiKey = null;
+            
+            logger.LogInformation("Checking for API key in headers...");
+            if (!apiKeyHeader.Key.Any() || !apiKeyHeader.Value.Any())
             {
-                logger.LogWarning("API key missing from request to {Path}", req.Url.AbsolutePath);
-                var errorResponse = req.CreateResponse(HttpStatusCode.Unauthorized);
-                await errorResponse.WriteStringAsync("API key is required. Provide it in 'x-api-key' header or 'apikey' query parameter.");
-                return (false, errorResponse, null);
+                logger.LogInformation("No API key found in headers, checking query parameters...");
+                // Check for API key in query parameter
+                var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
+                apiKey = queryParams["apikey"] ?? queryParams["api_key"];
+                
+                if (string.IsNullOrEmpty(apiKey))
+                {
+                    logger.LogWarning("API key missing from request to {Path}", req.Url.AbsolutePath);
+                    var errorResponse = req.CreateResponse(HttpStatusCode.Unauthorized);
+                    await errorResponse.WriteStringAsync("API key is required. Provide it in 'x-api-key' header or 'apikey' query parameter.");
+                    return (false, errorResponse, null);
+                }
+                else
+                {
+                    logger.LogInformation("API key found in query parameter (length: {Length})", apiKey.Length);
+                }
             }
-        }
-        else
-        {
-            apiKey = apiKeyHeader.Value.First();
-        }
+            else
+            {
+                apiKey = apiKeyHeader.Value.First();
+                logger.LogInformation("API key found in header (length: {Length})", apiKey.Length);
+            }
 
-        return await ValidateKeyWithUsageAsync(req, apiKeyService, userAccountService, logger, apiKey, apiUsageAmount);
+            logger.LogInformation("Proceeding to validate API key with usage check...");
+            return await ValidateKeyWithUsageAsync(req, apiKeyService, userAccountService, logger, apiKey, apiUsageAmount);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Exception occurred during API key validation for {Path}", req.Url.AbsolutePath);
+            var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await errorResponse.WriteStringAsync("Internal error during API key validation.");
+            return (false, errorResponse, null);
+        }
     }
 
     public static async Task<(bool IsValid, HttpResponseData? ErrorResponse)> ValidateApiKeyAsync(
@@ -58,52 +82,73 @@ public static class ApiKeyValidationHelper
         string apiKey,
         int apiUsageAmount = 1)
     {
-        var isValid = await apiKeyService.ValidateApiKeyAsync(apiKey);
-        if (!isValid)
+        try
         {
-            logger.LogWarning("Invalid or disabled API key used for request to {Path}", req.Url.AbsolutePath);
-            var errorResponse = req.CreateResponse(HttpStatusCode.Unauthorized);
-            await errorResponse.WriteStringAsync("Invalid or disabled API key. Contact admin to enable your API key.");
-            return (false, errorResponse, null);
-        }
+            logger.LogInformation("Validating API key with service (key prefix: {Prefix})", apiKey.Length > 5 ? apiKey.Substring(0, 5) : apiKey);
+            
+            var isValid = await apiKeyService.ValidateApiKeyAsync(apiKey);
+            if (!isValid)
+            {
+                logger.LogWarning("Invalid or disabled API key used for request to {Path}", req.Url.AbsolutePath);
+                var errorResponse = req.CreateResponse(HttpStatusCode.Unauthorized);
+                await errorResponse.WriteStringAsync("Invalid or disabled API key. Contact admin to enable your API key.");
+                return (false, errorResponse, null);
+            }
 
-        // Get user ID for usage tracking
-        var userId = await apiKeyService.GetUserIdByApiKeyAsync(apiKey);
-        if (string.IsNullOrEmpty(userId))
+            logger.LogInformation("API key is valid, getting user ID...");
+            
+            // Get user ID for usage tracking
+            var userId = await apiKeyService.GetUserIdByApiKeyAsync(apiKey);
+            if (string.IsNullOrEmpty(userId))
+            {
+                logger.LogError("Could not find user ID for valid API key");
+                var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
+                await errorResponse.WriteStringAsync("Internal error processing API key.");
+                return (false, errorResponse, null);
+            }
+
+            logger.LogInformation("Found user ID: {UserId}, checking usage limits (usage amount: {Amount})", userId, apiUsageAmount);
+
+            // Check usage limits if userAccountService is provided and apiUsageAmount > 0
+            if (userAccountService != null && apiUsageAmount > 0)
+            {
+                var usageValidation = await userAccountService.ValidateUsageAsync(userId, UsageType.ApiCall);
+                if (!usageValidation.IsWithinLimit)
+                {
+                    logger.LogWarning("API usage limit exceeded for user {UserId}", userId);
+                    var errorResponse = req.CreateResponse(HttpStatusCode.TooManyRequests);
+                    await errorResponse.WriteAsJsonAsync(usageValidation);
+                    return (false, errorResponse, userId);
+                }
+                logger.LogInformation("Usage validation passed for user {UserId}", userId);
+            }
+
+            logger.LogInformation("Updating last used timestamp for API key...");
+            
+            // Update last used timestamp (fire and forget)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await apiKeyService.UpdateLastUsedAsync(apiKey);
+                    logger.LogInformation("Successfully updated last used timestamp");
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to update last used timestamp for API key");
+                }
+            });
+
+            logger.LogInformation("API key validation completed successfully");
+            return (true, null, userId);
+        }
+        catch (Exception ex)
         {
-            logger.LogError("Could not find user ID for valid API key");
+            logger.LogError(ex, "Exception occurred during key validation with usage check");
             var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await errorResponse.WriteStringAsync("Internal error processing API key.");
+            await errorResponse.WriteStringAsync("Internal error during API key validation.");
             return (false, errorResponse, null);
         }
-
-        // Check usage limits if userAccountService is provided and apiUsageAmount > 0
-        if (userAccountService != null && apiUsageAmount > 0)
-        {
-            var usageValidation = await userAccountService.ValidateUsageAsync(userId, UsageType.ApiCall);
-            if (!usageValidation.IsWithinLimit)
-            {
-                logger.LogWarning("API usage limit exceeded for user {UserId}", userId);
-                var errorResponse = req.CreateResponse(HttpStatusCode.TooManyRequests);
-                await errorResponse.WriteAsJsonAsync(usageValidation);
-                return (false, errorResponse, userId);
-            }
-        }
-
-        // Update last used timestamp (fire and forget)
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await apiKeyService.UpdateLastUsedAsync(apiKey);
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to update last used timestamp for API key");
-            }
-        });
-
-        return (true, null, userId);
     }
 
     public static async Task TrackApiUsageAsync(
