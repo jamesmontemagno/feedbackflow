@@ -136,11 +136,17 @@ public class AuthUserManagement
                 var existingUserAccount = await _userAccountService.GetUserAccountAsync(authenticatedUser.UserId);
                 if (existingUserAccount == null)
                 {
+                    var tier = AccountTier.Free;
+                    if (!string.IsNullOrWhiteSpace(authenticatedUser.Email) && authenticatedUser.Email.EndsWith("@microsoft.com", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        tier = AccountTier.Pro;
+                    }
+
                     // Create new user account with default Free tier
                     var userAccount = new UserAccount
                     {
                         UserId = authenticatedUser.UserId,
-                        Tier = AccountTier.Free,
+                        Tier = tier,
                         SubscriptionStart = DateTime.UtcNow,
                         CreatedAt = DateTime.UtcNow,
                         LastResetDate = DateTime.UtcNow,

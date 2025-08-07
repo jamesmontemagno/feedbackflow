@@ -744,17 +744,18 @@ public class FeedbackFunctions
     /// Automatically analyzes feedback from any supported platform based on a single URL
     /// </summary>
     /// <param name="req">HTTP request containing the URL to analyze</param>
-    /// <returns>HTTP response with markdown-formatted analysis</returns>
+    /// <returns>HTTP response with analysis and/or comments data based on type parameter</returns>
     /// <remarks>
     /// Parameters:
     /// - url: Required. URL from any supported platform (GitHub, YouTube, Reddit, DevBlogs, Twitter, BlueSky, HackerNews)
     /// - maxComments: Optional. Maximum number of comments to analyze (default: 100)
     /// - customPrompt: Optional. Custom analysis prompt to use
+    /// - type: Optional. Response type: 0 = analysis only (default), 1 = comments only, 2 = both comments and analysis
     /// 
     /// Example usage:
-    /// GET /api/AutoAnalyze?url=https://github.com/dotnet/maui/issues/123&maxComments=50
-    /// GET /api/AutoAnalyze?url=https://www.youtube.com/watch?v=VIDEO_ID
-    /// GET /api/AutoAnalyze?url=https://www.reddit.com/r/programming/comments/POST_ID/
+    /// GET /api/AutoAnalyze?url=https://github.com/dotnet/maui/issues/123&maxComments=50&type=0
+    /// GET /api/AutoAnalyze?url=https://www.youtube.com/watch?v=VIDEO_ID&type=1
+    /// GET /api/AutoAnalyze?url=https://www.reddit.com/r/programming/comments/POST_ID/&type=2
     /// </remarks>
     [Function("AutoAnalyze")]
     public async Task<HttpResponseData> AutoAnalyze(
@@ -777,6 +778,7 @@ public class FeedbackFunctions
             var url = queryParams["url"];
             var maxCommentsStr = queryParams["maxComments"];
             var customPrompt = queryParams["customPrompt"];
+            var typeStr = queryParams["type"];
 
             if (string.IsNullOrEmpty(url))
             {
@@ -786,6 +788,7 @@ public class FeedbackFunctions
             }
 
             var maxComments = int.TryParse(maxCommentsStr, out var max) ? max : 1000;
+            var responseType = int.TryParse(typeStr, out var type) ? type : 0;
 
             string serviceType;
             object platformData;
@@ -849,37 +852,79 @@ public class FeedbackFunctions
                     return response;
                 }
 
-    
-                // Perform analysis using the AnalyzeComments logic
-                if (string.IsNullOrEmpty(commentsText))
+                // Handle different response types
+                HttpResponseData successResponse;
+                
+                switch (responseType)
                 {
-    
-                    var noCommentsResponse = req.CreateResponse(HttpStatusCode.OK);
-                    await noCommentsResponse.WriteStringAsync("## No Comments Available\n\nThere are no comments to analyze at this time.");
-                    return noCommentsResponse;
+                    case 1: // Comments only
+                        if (string.IsNullOrEmpty(commentsText))
+                        {
+                            successResponse = req.CreateResponse(HttpStatusCode.OK);
+                            await successResponse.WriteAsJsonAsync(new { message = "No comments available for this URL" });
+                        }
+                        else
+                        {
+                            successResponse = req.CreateResponse(HttpStatusCode.OK);
+                            await successResponse.WriteAsJsonAsync(new { comments = commentsText });
+                        }
+                        break;
+                        
+                    case 2: // Both comments and analysis
+                        if (string.IsNullOrEmpty(commentsText))
+                        {
+                            successResponse = req.CreateResponse(HttpStatusCode.OK);
+                            await successResponse.WriteAsJsonAsync(new { 
+                                comments = "No comments available",
+                                analysis = "## No Comments Available\n\nThere are no comments to analyze at this time."
+                            });
+                        }
+                        else
+                        {
+                            var analysisBuilder = new System.Text.StringBuilder();
+                            await foreach (var update in _analyzerService.GetStreamingAnalysisAsync(
+                                serviceType, 
+                                commentsText,
+                                customPrompt))
+                            {
+                                analysisBuilder.Append(update);
+                            }
+                            
+                            successResponse = req.CreateResponse(HttpStatusCode.OK);
+                            await successResponse.WriteAsJsonAsync(new { 
+                                comments = commentsText,
+                                analysis = analysisBuilder.ToString()
+                            });
+                        }
+                        break;
+                        
+                    default: // 0 or any other value = Analysis only (default behavior)
+                        if (string.IsNullOrEmpty(commentsText))
+                        {
+                            successResponse = req.CreateResponse(HttpStatusCode.OK);
+                            await successResponse.WriteStringAsync("## No Comments Available\n\nThere are no comments to analyze at this time.");
+                        }
+                        else
+                        {
+                            var analysisBuilder = new System.Text.StringBuilder();
+                            await foreach (var update in _analyzerService.GetStreamingAnalysisAsync(
+                                serviceType, 
+                                commentsText,
+                                customPrompt))
+                            {
+                                analysisBuilder.Append(update);
+                            }
+                            
+                            successResponse = req.CreateResponse(HttpStatusCode.OK);
+                            await successResponse.WriteStringAsync(analysisBuilder.ToString());
+                        }
+                        break;
                 }
-
-    
-
-                var analysisBuilder = new System.Text.StringBuilder();
-                await foreach (var update in _analyzerService.GetStreamingAnalysisAsync(
-                    serviceType, 
-                    commentsText,
-                    customPrompt))
-                {
-                    analysisBuilder.Append(update);
-                }
-
-    
-
-                var successResponse = req.CreateResponse(HttpStatusCode.OK);
-                await successResponse.WriteStringAsync(analysisBuilder.ToString());
                 
                 // Track API usage on successful completion (AutoAnalyze = 1 usage point)
                 await ApiKeyValidationHelper.TrackApiUsageAsync(userId!, 1, _userAccountService, _logger, url);
                 
-    
-            return successResponse;
+                return successResponse;
         }
         catch (Exception ex)
         {

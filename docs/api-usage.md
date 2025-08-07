@@ -59,6 +59,11 @@ Analyzes feedback from various platforms and returns AI-generated insights.
 
 **Usage Cost:** 1 API point
 
+**Response Types:**
+- **Type 0 (Analysis only)**: Default behavior. Returns AI-generated analysis as markdown text. Best for applications that only need insights and summaries.
+- **Type 1 (Comments only)**: Returns raw extracted comments without analysis. Useful for applications that want to perform their own processing or display raw feedback.
+- **Type 2 (Both)**: Returns both raw comments and AI analysis in JSON format. Best for comprehensive applications that need both the source data and insights.
+
 **Supported Platforms:**
 - GitHub Issues, Pull Requests, and Discussions
 - YouTube Videos
@@ -74,39 +79,53 @@ Analyzes feedback from various platforms and returns AI-generated insights.
 |-----------|------|----------|-------------|
 | `url` | string | Yes | The URL to analyze |
 | `maxComments` | int | No | Maximum number of comments to analyze (default: platform-specific) |
+| `type` | int | No | Response type: 0 = analysis only (default), 1 = comments only, 2 = both comments and analysis |
 
 #### Example Requests
 
 ```bash
-# GitHub Issue Analysis
+# GitHub Issue Analysis (default - analysis only)
 curl -H "x-api-key: ff_YOUR_API_KEY" \
   "https://api.feedbackflow.app/api/AutoAnalyze?url=https://github.com/dotnet/maui/issues/123&maxComments=50"
 
-# YouTube Video Analysis
+# YouTube Video Analysis - comments only
 curl -H "x-api-key: ff_YOUR_API_KEY" \
-  "https://api.feedbackflow.app/api/AutoAnalyze?url=https://www.youtube.com/watch?v=VIDEO_ID"
+  "https://api.feedbackflow.app/api/AutoAnalyze?url=https://www.youtube.com/watch?v=VIDEO_ID&type=1"
 
-# Reddit Post Analysis
+# Reddit Post Analysis - both comments and analysis
 curl -H "x-api-key: ff_YOUR_API_KEY" \
-  "https://api.feedbackflow.app/api/AutoAnalyze?url=https://www.reddit.com/r/programming/comments/POST_ID/"
+  "https://api.feedbackflow.app/api/AutoAnalyze?url=https://www.reddit.com/r/programming/comments/POST_ID/&type=2"
 
-# Using query parameter authentication
-curl "https://api.feedbackflow.app/api/AutoAnalyze?apikey=ff_YOUR_API_KEY&url=https://github.com/dotnet/maui/issues/123"
+# Using query parameter authentication with analysis only
+curl "https://api.feedbackflow.app/api/AutoAnalyze?apikey=ff_YOUR_API_KEY&url=https://github.com/dotnet/maui/issues/123&type=0"
 ```
 
 #### Response Format
 
+The response format depends on the `type` parameter:
+
+**Type 0 (Analysis only - default):**
+```json
+"## Analysis Title\n\nDetailed AI-generated analysis of the feedback..."
+```
+
+**Type 1 (Comments only):**
 ```json
 {
-  "title": "Analysis Title",
-  "summary": "Brief summary of the feedback",
-  "fullAnalysis": "Detailed AI-generated analysis...",
-  "totalComments": 45,
-  "sourceUrl": "https://github.com/dotnet/maui/issues/123",
-  "sourceType": "GitHub Issue",
-  "generatedAt": "2024-01-15T10:30:00Z"
+  "comments": "Raw comments data extracted from the platform..."
 }
 ```
+
+**Type 2 (Both comments and analysis):**
+```json
+{
+  "comments": "Raw comments data extracted from the platform...",
+  "analysis": "## Analysis Title\n\nDetailed AI-generated analysis..."
+}
+```
+
+**Legacy format (for backward compatibility):**
+When `type=0` or not specified, the response is returned as plain text markdown for backward compatibility with existing integrations.
 
 ### 2. RedditReport
 
@@ -307,9 +326,9 @@ curl -H "x-api-key: ff_YOUR_API_KEY" \
 Always implement proper error handling in your applications:
 
 ```javascript
-async function analyzeContent(url, apiKey) {
+async function analyzeContent(url, apiKey, responseType = 0) {
   try {
-    const response = await fetch(`https://api.feedbackflow.app/api/AutoAnalyze?url=${encodeURIComponent(url)}`, {
+    const response = await fetch(`https://api.feedbackflow.app/api/AutoAnalyze?url=${encodeURIComponent(url)}&type=${responseType}`, {
       headers: {
         'x-api-key': apiKey
       }
@@ -320,7 +339,12 @@ async function analyzeContent(url, apiKey) {
       throw new Error(`API Error: ${response.status} - ${error}`);
     }
     
-    return await response.json();
+    // Handle different response types
+    if (responseType === 0) {
+      return await response.text(); // Analysis as markdown text
+    } else {
+      return await response.json(); // Comments and/or analysis as JSON
+    }
   } catch (error) {
     console.error('Analysis failed:', error);
     throw error;
@@ -348,15 +372,15 @@ Consider caching results to minimize API usage:
 ```javascript
 const cache = new Map();
 
-async function getCachedAnalysis(url, apiKey, maxAgeMinutes = 60) {
-  const cacheKey = url;
+async function getCachedAnalysis(url, apiKey, responseType = 0, maxAgeMinutes = 60) {
+  const cacheKey = `${url}-${responseType}`;
   const cached = cache.get(cacheKey);
   
   if (cached && Date.now() - cached.timestamp < maxAgeMinutes * 60 * 1000) {
     return cached.data;
   }
   
-  const result = await analyzeContent(url, apiKey);
+  const result = await analyzeContent(url, apiKey, responseType);
   cache.set(cacheKey, { data: result, timestamp: Date.now() });
   
   return result;
@@ -367,12 +391,12 @@ async function getCachedAnalysis(url, apiKey, maxAgeMinutes = 60) {
 For multiple URLs, process them sequentially to avoid overwhelming the service:
 
 ```javascript
-async function batchAnalyze(urls, apiKey, delayMs = 1000) {
+async function batchAnalyze(urls, apiKey, responseType = 0, delayMs = 1000) {
   const results = [];
   
   for (const url of urls) {
     try {
-      const result = await analyzeContent(url, apiKey);
+      const result = await analyzeContent(url, apiKey, responseType);
       results.push({ url, result, success: true });
     } catch (error) {
       results.push({ url, error: error.message, success: false });
@@ -402,9 +426,17 @@ async function batchAnalyze(urls, apiKey, delayMs = 1000) {
 
 ### Step 3: Test Your Setup
 ```bash
-# Test with a simple GitHub issue analysis
+# Test with a simple GitHub issue analysis (default - analysis only)
 curl -H "x-api-key: ff_YOUR_ACTUAL_API_KEY" \
   "https://api.feedbackflow.app/api/AutoAnalyze?url=https://github.com/dotnet/aspnetcore/issues/1"
+
+# Test with comments only
+curl -H "x-api-key: ff_YOUR_ACTUAL_API_KEY" \
+  "https://api.feedbackflow.app/api/AutoAnalyze?url=https://github.com/dotnet/aspnetcore/issues/1&type=1"
+
+# Test with both comments and analysis
+curl -H "x-api-key: ff_YOUR_ACTUAL_API_KEY" \
+  "https://api.feedbackflow.app/api/AutoAnalyze?url=https://github.com/dotnet/aspnetcore/issues/1&type=2"
 ```
 
 ### Step 4: Monitor Usage
