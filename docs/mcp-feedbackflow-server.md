@@ -206,7 +206,7 @@ Add `.vscode/launch.json` if you want breakpoints in `FeedbackFlowTools`:
 | `url` | string | Yes | Feedback source URL (GitHub issue/PR/discussion, YouTube video, Reddit post, HN story, etc.) |
 | `maxComments` | int | No | Limit comments scanned (server may clamp excessively large values) |
 | `customPrompt` | string | No | Override default analysis prompt (applies only to type=0 or 2) |
-| `type` | int/enum | No | Output mode: 0 = analysis markdown (default), 1 = comments only (JSON), 2 = combined comments + analysis (JSON) |
+| `type` | int/enum | No | Output mode enum: 0=AnalysisOnly (markdown), 1=CommentsOnly (comments JSON), 2=AnalysisAndComments (combined JSON) |
 
 ### 2. github_issues_report
 | Parameter | Type | Required | Description |
@@ -229,12 +229,12 @@ Add `.vscode/launch.json` if you want breakpoints in `FeedbackFlowTools`:
 ### Output Format Notes
 | Tool | Typical Default Output | Alt Modes |
 |------|------------------------|----------|
-| autoanalyze_feedback | Markdown analysis (type=0) | JSON (type=1 or 2) |
+| autoanalyze_feedback | Markdown analysis (AnalysisOnly / type=0) | JSON (CommentsOnly / type=1, AnalysisAndComments / type=2) |
 | github_issues_report | Markdown (narrative) | — |
 | reddit_report | Markdown (detailed sections) | — |
 | reddit_report_summary | Markdown (condensed) | — |
 
-### Sample JSON (autoanalyze_feedback type=2 excerpt)
+### Sample JSON (autoanalyze_feedback type=2 / AnalysisAndComments excerpt)
 ```json
 {
   "url": "https://github.com/dotnet/runtime/issues/1",

@@ -14,12 +14,19 @@ public sealed class FeedbackFlowTools
         _httpClientFactory = httpClientFactory;
     }
 
+    public enum AnalysisType
+    {
+        AnalysisOnly = 0,
+        CommentsOnly = 1,
+        AnalysisAndComments = 2
+    }
+
     [McpServerTool, Description("Analyze feedback from various sources using AI (AutoAnalyze function). Requires API key in FEEDBACKFLOW_API_KEY environment variable.")]
     public async Task<string> AutoAnalyzeFeedback(
         [Description("The URL to analyze (GitHub, YouTube, Reddit, etc.)")] string url,
         [Description("Maximum number of comments to analyze (default: 1000)")] int maxComments = 1000,
         [Description("Custom analysis prompt (optional)")] string? customPrompt = null,
-        [Description("Analysis type (optional)")] string? type = null)
+    [Description("Output mode (optional): AnalysisOnly=0 (markdown), CommentsOnly=1 (JSON), AnalysisAndComments=2 (combined JSON)")] AnalysisType? type = null)
     {
         var apiKey = Environment.GetEnvironmentVariable("FEEDBACKFLOW_API_KEY");
         if (string.IsNullOrEmpty(apiKey))
@@ -34,8 +41,8 @@ public sealed class FeedbackFlowTools
             var queryParams = $"url={Uri.EscapeDataString(url)}&maxComments={maxComments}";
             if (!string.IsNullOrEmpty(customPrompt))
                 queryParams += $"&customPrompt={Uri.EscapeDataString(customPrompt)}";
-            if (!string.IsNullOrEmpty(type))
-                queryParams += $"&type={Uri.EscapeDataString(type)}";
+            if (type.HasValue)
+                queryParams += $"&type={(int)type.Value}";
 
             var requestUrl = $"{BaseUrl}/api/AutoAnalyze?{queryParams}";
             var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
