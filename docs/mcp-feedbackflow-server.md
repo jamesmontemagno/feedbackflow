@@ -65,29 +65,27 @@ If your VS Code setup (via an MCP-enabled extension) supports a user-level JSON 
 ### Example MCP Configuration Snippet (Docker)
 ```jsonc
 {
-  "mcp": {
-    "inputs": [
-      {
-        "type": "promptString",
-        "id": "feedbackflow_api_key",
-        "description": "FeedbackFlow API Key (starts with ff_)",
-        "password": true
-      }
-    ],
-    "servers": {
-      "feedbackflow": {
-        "command": "docker",
-        "args": [
-          "run",
-          "-i",
-          "--rm",
-          "-e",
-          "FEEDBACKFLOW_API_KEY",
-          "jamesmontemagno/feedbackflowmcp:latest"
-        ],
-        "env": {
-          "FEEDBACKFLOW_API_KEY": "${input:feedbackflow_api_key}"
-        }
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "feedbackflow_api_key",
+      "description": "FeedbackFlow API Key (starts with ff_)",
+      "password": true
+    }
+  ],
+  "servers": {
+    "feedbackflow": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "FEEDBACKFLOW_API_KEY",
+        "jamesmontemagno/feedbackflowmcp:latest"
+      ],
+      "env": {
+        "FEEDBACKFLOW_API_KEY": "${input:feedbackflow_api_key}"
       }
     }
   }
@@ -99,26 +97,24 @@ This pattern prompts once for the API key (secured as a password) and injects it
 If you prefer running the local project directly (useful while debugging):
 ```jsonc
 {
-  "mcp": {
-    "inputs": [
-      {
-        "type": "promptString",
-        "id": "feedbackflow_api_key",
-        "description": "FeedbackFlow API Key (starts with ff_)",
-        "password": true
-      }
-    ],
-    "servers": {
-      "feedbackflow": {
-        "command": "dotnet",
-        "args": [
-          "run",
-          "--project",
-          "FeedbackFlowMCP/FeedbackFlowMCP.csproj"
-        ],
-        "env": {
-          "FEEDBACKFLOW_API_KEY": "${input:feedbackflow_api_key}"
-        }
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "feedbackflow_api_key",
+      "description": "FeedbackFlow API Key (starts with ff_)",
+      "password": true
+    }
+  ],
+  "servers": {
+    "feedbackflow": {
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "FeedbackFlowMCP/FeedbackFlowMCP.csproj"
+      ],
+      "env": {
+        "FEEDBACKFLOW_API_KEY": "${input:feedbackflow_api_key}"
       }
     }
   }
