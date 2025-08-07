@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using SharedDump.Models.Account;
+using SharedDump.Models.Admin;
 
 namespace FeedbackFunctions.Services.Account;
 
@@ -36,4 +37,20 @@ public interface IUserAccountService
     /// Returns a dictionary of userId to AccountTier for all users.
     /// </summary>
     Task<Dictionary<string, SharedDump.Models.Account.AccountTier>> GetAllUserTiersAsync();
+
+    // Admin Dashboard Methods
+    /// <summary>
+    /// Get all user accounts for admin dashboard (admin only)
+    /// </summary>
+    Task<List<UserAccount>> GetAllUserAccountsAsync();
+
+    /// <summary>
+    /// Get recent usage records for activity analysis (admin only)
+    /// </summary>
+    Task<List<UsageRecord>> GetRecentUsageRecordsAsync(DateTime since);
+
+    /// <summary>
+    /// Generate comprehensive admin dashboard metrics (admin only)
+    /// </summary>
+    Task<AdminDashboardMetrics> GetAdminDashboardMetricsAsync();
 }

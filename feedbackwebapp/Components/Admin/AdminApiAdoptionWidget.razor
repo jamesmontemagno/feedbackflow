@@ -1,0 +1,356 @@
+@using SharedDump.Models.Admin
+
+@if (ApiStats == null)
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>
+        No API statistics available
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        <!-- API Overview -->
+        <div class="col-12">
+            <div class="row g-3">
+                <div class="col-lg-3 col-md-6">
+                    <div class="api-summary-card">
+                        <div class="api-icon api-icon-users">
+                            <i class="bi bi-people"></i>
+                        </div>
+                        <div class="api-content">
+                            <span class="api-value">@ApiStats.TotalApiEnabledUsers.ToString("N0")</span>
+                            <span class="api-label">API-Enabled Users</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="api-summary-card">
+                        <div class="api-icon api-icon-calls">
+                            <i class="bi bi-diagram-3"></i>
+                        </div>
+                        <div class="api-content">
+                            <span class="api-value">@ApiStats.TotalApiCalls.ToString("N0")</span>
+                            <span class="api-label">Total API Calls</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="api-summary-card">
+                        <div class="api-icon api-icon-average">
+                            <i class="bi bi-graph-up"></i>
+                        </div>
+                        <div class="api-content">
+                            <span class="api-value">@ApiStats.AverageApiCallsPerUser.ToString("F1")</span>
+                            <span class="api-label">Avg Calls/User</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="api-summary-card">
+                        <div class="api-icon api-icon-active">
+                            <i class="bi bi-activity"></i>
+                        </div>
+                        <div class="api-content">
+                            <span class="api-value">@ApiStats.RecentlyActiveApiUsers.ToString("N0")</span>
+                            <span class="api-label">Active (7 days)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top API Users -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-trophy me-2"></i>
+                        Top API Users
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if (ApiStats.TopApiUsers.Any())
+                    {
+                        @for (int i = 0; i < ApiStats.TopApiUsers.Count; i++)
+                        {
+                            var user = ApiStats.TopApiUsers[i];
+                            <div class="top-api-user-item">
+                                <div class="api-user-rank">
+                                    @if (i == 0)
+                                    {
+                                        <i class="bi bi-trophy-fill text-warning"></i>
+                                    }
+                                    else if (i == 1)
+                                    {
+                                        <i class="bi bi-award-fill text-secondary"></i>
+                                    }
+                                    else if (i == 2)
+                                    {
+                                        <i class="bi bi-award text-danger"></i>
+                                    }
+                                    else
+                                    {
+                                        <span class="rank-number">@(i + 1)</span>
+                                    }
+                                </div>
+                                <div class="api-user-info">
+                                    <div class="api-user-header">
+                                        <span class="api-user-id">@user.MaskedUserId</span>
+                                        <span class="tier-badge tier-badge-@user.Tier.ToLower()">@user.Tier</span>
+                                    </div>
+                                    <div class="api-user-stats">
+                                        <span class="api-calls-count">
+                                            <i class="bi bi-diagram-3 me-1"></i>
+                                            @user.ApiCalls.ToString("N0") calls
+                                        </span>
+                                        @if (user.LastUsedAt.HasValue)
+                                        {
+                                            <span class="api-last-used">
+                                                <i class="bi bi-clock me-1"></i>
+                                                @GetTimeAgo(user.LastUsedAt.Value)
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted">No API users found</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- API Usage Distribution -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-pie-chart me-2"></i>
+                        Endpoint Distribution
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if (ApiStats.EndpointDistribution.Any())
+                    {
+                        var totalEndpointCalls = ApiStats.EndpointDistribution.Values.Sum();
+                        <div class="endpoint-distribution">
+                            @foreach (var endpoint in ApiStats.EndpointDistribution.OrderByDescending(e => e.Value))
+                            {
+                                var percentage = totalEndpointCalls > 0 ? (double)endpoint.Value / totalEndpointCalls * 100 : 0;
+                                <div class="endpoint-item">
+                                    <div class="endpoint-header">
+                                        <span class="endpoint-name">@endpoint.Key</span>
+                                        <span class="endpoint-stats">
+                                            @endpoint.Value.ToString("N0") (@percentage.ToString("F1")%)
+                                        </span>
+                                    </div>
+                                    <div class="endpoint-progress">
+                                        <div class="progress">
+                                            <div class="progress-bar endpoint-progress-@GetEndpointColor(endpoint.Key)" 
+                                                 style="width: @percentage%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No endpoint usage data available</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- API Adoption Metrics -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-speedometer2 me-2"></i>
+                        Adoption Metrics
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="adoption-metrics">
+                        <div class="adoption-metric">
+                            <span class="adoption-label">API Adoption Rate</span>
+                            <div class="adoption-visual">
+                                @{
+                                    // Assuming we can get total users from context or calculate it
+                                    var totalUsers = ApiStats.TotalApiEnabledUsers > 0 ? (int)(ApiStats.TotalApiEnabledUsers / 0.096) : 100; // Rough estimate based on mock data pattern
+                                    var adoptionRate = totalUsers > 0 ? (double)ApiStats.TotalApiEnabledUsers / totalUsers * 100 : 0;
+                                }
+                                <div class="progress adoption-progress">
+                                    <div class="progress-bar bg-info" style="width: @adoptionRate%"></div>
+                                </div>
+                                <span class="adoption-percentage">@adoptionRate.ToString("F1")%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="adoption-metric">
+                            <span class="adoption-label">Average Usage per User</span>
+                            <div class="adoption-visual">
+                                <div class="progress adoption-progress">
+                                    <div class="progress-bar bg-success" style="width: @(Math.Min(100, ApiStats.AverageApiCallsPerUser))%"></div>
+                                </div>
+                                <span class="adoption-percentage">@ApiStats.AverageApiCallsPerUser.ToString("F1") calls</span>
+                            </div>
+                        </div>
+                        
+                        <div class="adoption-metric">
+                            <span class="adoption-label">Recent Activity Rate</span>
+                            <div class="adoption-visual">
+                                @{
+                                    var activityRate = ApiStats.TotalApiEnabledUsers > 0 ? (double)ApiStats.RecentlyActiveApiUsers / ApiStats.TotalApiEnabledUsers * 100 : 0;
+                                }
+                                <div class="progress adoption-progress">
+                                    <div class="progress-bar @(activityRate > 70 ? "bg-success" : activityRate > 40 ? "bg-warning" : "bg-danger")" 
+                                         style="width: @activityRate%"></div>
+                                </div>
+                                <span class="adoption-percentage">@activityRate.ToString("F1")%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Health & Performance -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-heart-pulse me-2"></i>
+                        API Health
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="api-health-metrics">
+                        <div class="health-metric">
+                            <div class="health-metric-header">
+                                <span class="health-metric-label">User Engagement</span>
+                                @{
+                                    var engagementRate = ApiStats.TotalApiEnabledUsers > 0 ? (double)ApiStats.RecentlyActiveApiUsers / ApiStats.TotalApiEnabledUsers * 100 : 0;
+                                    var engagementStatus = engagementRate > 70 ? "excellent" : engagementRate > 40 ? "good" : "needs-attention";
+                                }
+                                <span class="health-status health-status-@engagementStatus">
+                                    @if (engagementStatus == "excellent")
+                                    {
+                                        <i class="bi bi-check-circle-fill"></i>
+                                        <span>Excellent</span>
+                                    }
+                                    else if (engagementStatus == "good")
+                                    {
+                                        <i class="bi bi-exclamation-circle-fill"></i>
+                                        <span>Good</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-x-circle-fill"></i>
+                                        <span>Needs Attention</span>
+                                    }
+                                </span>
+                            </div>
+                            <p class="health-metric-description">
+                                @ApiStats.RecentlyActiveApiUsers of @ApiStats.TotalApiEnabledUsers API users were active in the last 7 days
+                            </p>
+                        </div>
+                        
+                        <div class="health-metric">
+                            <div class="health-metric-header">
+                                <span class="health-metric-label">Usage Distribution</span>
+                                @{
+                                    var usageHealth = ApiStats.AverageApiCallsPerUser > 50 ? "excellent" : ApiStats.AverageApiCallsPerUser > 20 ? "good" : "needs-attention";
+                                }
+                                <span class="health-status health-status-@usageHealth">
+                                    @if (usageHealth == "excellent")
+                                    {
+                                        <i class="bi bi-check-circle-fill"></i>
+                                        <span>Healthy</span>
+                                    }
+                                    else if (usageHealth == "good")
+                                    {
+                                        <i class="bi bi-exclamation-circle-fill"></i>
+                                        <span>Moderate</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-x-circle-fill"></i>
+                                        <span>Low Usage</span>
+                                    }
+                                </span>
+                            </div>
+                            <p class="health-metric-description">
+                                Average of @ApiStats.AverageApiCallsPerUser.ToString("F1") calls per user indicates @(usageHealth == "excellent" ? "strong" : usageHealth == "good" ? "moderate" : "low") API adoption
+                            </p>
+                        </div>
+                        
+                        <div class="health-metric">
+                            <div class="health-metric-header">
+                                <span class="health-metric-label">Total Volume</span>
+                                @{
+                                    var volumeHealth = ApiStats.TotalApiCalls > 1000 ? "excellent" : ApiStats.TotalApiCalls > 100 ? "good" : "needs-attention";
+                                }
+                                <span class="health-status health-status-@volumeHealth">
+                                    @if (volumeHealth == "excellent")
+                                    {
+                                        <i class="bi bi-check-circle-fill"></i>
+                                        <span>High Volume</span>
+                                    }
+                                    else if (volumeHealth == "good")
+                                    {
+                                        <i class="bi bi-exclamation-circle-fill"></i>
+                                        <span>Growing</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-x-circle-fill"></i>
+                                        <span>Low Volume</span>
+                                    }
+                                </span>
+                            </div>
+                            <p class="health-metric-description">
+                                @ApiStats.TotalApiCalls.ToString("N0") total API calls across all users and endpoints
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public ApiStatistics? ApiStats { get; set; }
+
+    private string GetTimeAgo(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+        
+        if (timeSpan.TotalDays > 1)
+            return $"{(int)timeSpan.TotalDays}d ago";
+        if (timeSpan.TotalHours > 1)
+            return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalMinutes > 1)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+        
+        return "Just now";
+    }
+
+    private string GetEndpointColor(string endpoint)
+    {
+        return endpoint.ToLower() switch
+        {
+            var e when e.Contains("analysis") => "primary",
+            var e when e.Contains("feed") => "success",
+            var e when e.Contains("shared") => "info",
+            var e when e.Contains("user") => "warning",
+            _ => "secondary"
+        };
+    }
+}

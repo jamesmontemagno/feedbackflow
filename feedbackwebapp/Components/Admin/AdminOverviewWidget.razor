@@ -1,0 +1,164 @@
+@using SharedDump.Models.Admin
+
+@if (Metrics == null)
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>
+        No metrics data available
+    </div>
+}
+else
+{
+    <!-- KPI Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-3 col-md-6">
+            <div class="metric-card metric-card-primary">
+                <div class="metric-icon">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+                <div class="metric-content">
+                    <h3 class="metric-value">@Metrics.UserStats.TotalUsers.ToString("N0")</h3>
+                    <p class="metric-label">Total Users</p>
+                    @if (Metrics.UserStats.NewUsersLast30Days > 0)
+                    {
+                        <small class="metric-change metric-change-positive">
+                            <i class="bi bi-arrow-up"></i>
+                            +@Metrics.UserStats.NewUsersLast30Days this month
+                        </small>
+                    }
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6">
+            <div class="metric-card metric-card-success">
+                <div class="metric-icon">
+                    <i class="bi bi-activity"></i>
+                </div>
+                <div class="metric-content">
+                    <h3 class="metric-value">@Metrics.UserStats.ActiveUsersLast14Days.ToString("N0")</h3>
+                    <p class="metric-label">Active Users (14d)</p>
+                    <small class="metric-change">
+                        @Metrics.UserStats.ActiveUsersPercentage.ToString("F1")% of total users
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6">
+            <div class="metric-card metric-card-info">
+                <div class="metric-icon">
+                    <i class="bi bi-code-slash"></i>
+                </div>
+                <div class="metric-content">
+                    <h3 class="metric-value">@Metrics.ApiStats.TotalApiCalls.ToString("N0")</h3>
+                    <p class="metric-label">Total API Calls</p>
+                    <small class="metric-change">
+                        @Metrics.ApiStats.TotalApiEnabledUsers API users
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6">
+            <div class="metric-card metric-card-warning">
+                <div class="metric-icon">
+                    <i class="bi bi-graph-up"></i>
+                </div>
+                <div class="metric-content">
+                    <h3 class="metric-value">@Metrics.UsageStats.TotalAnalysesUsed.ToString("N0")</h3>
+                    <p class="metric-label">Total Analyses</p>
+                    <small class="metric-change">
+                        @Metrics.UsageStats.TotalActiveReports reports active
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Growth Indicators -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-graph-up-arrow me-2"></i>
+                        Growth Indicators
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="growth-metric">
+                        <span class="growth-label">New Users (7 days)</span>
+                        <span class="growth-value growth-positive">
+                            +@Metrics.UserStats.NewUsersLast7Days
+                        </span>
+                    </div>
+                    <div class="growth-metric">
+                        <span class="growth-label">New Users (30 days)</span>
+                        <span class="growth-value growth-positive">
+                            +@Metrics.UserStats.NewUsersLast30Days
+                        </span>
+                    </div>
+                    <div class="growth-metric">
+                        <span class="growth-label">Email Notifications</span>
+                        <span class="growth-value">
+                            @Metrics.UserStats.EmailNotificationsEnabledPercentage.ToString("F1")%
+                        </span>
+                    </div>
+                    <div class="growth-metric">
+                        <span class="growth-label">API Adoption</span>
+                        <span class="growth-value">
+                            @Metrics.UserStats.ApiEnabledUsersPercentage.ToString("F1")%
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-speedometer2 me-2"></i>
+                        System Health
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="health-metric">
+                        <span class="health-label">User Activity Rate</span>
+                        <div class="progress mb-2">
+                            <div class="progress-bar bg-success" style="width: @(Metrics.UserStats.ActiveUsersPercentage)%"></div>
+                        </div>
+                        <small class="text-muted">@Metrics.UserStats.ActiveUsersPercentage.ToString("F1")% active in last 14 days</small>
+                    </div>
+                    
+                    <div class="health-metric mt-3">
+                        <span class="health-label">API Usage</span>
+                        <div class="progress mb-2">
+                            <div class="progress-bar bg-info" style="width: @(Math.Min(100, Metrics.ApiStats.AverageApiCallsPerUser))%"></div>
+                        </div>
+                        <small class="text-muted">@Metrics.ApiStats.AverageApiCallsPerUser.ToString("F1") avg calls per API user</small>
+                    </div>
+
+                    @{
+                        var totalCapacity = Metrics.UsageStats.TierUsageMetrics.Values.Sum(t => t.UserCount * t.TierLimit);
+                        var totalUsed = Metrics.UsageStats.TierUsageMetrics.Values.Sum(t => t.TotalUsed);
+                        var capacityUtilization = totalCapacity > 0 ? (double)totalUsed / totalCapacity * 100 : 0;
+                    }
+                    
+                    <div class="health-metric mt-3">
+                        <span class="health-label">Capacity Utilization</span>
+                        <div class="progress mb-2">
+                            <div class="progress-bar @(capacityUtilization > 80 ? "bg-warning" : "bg-primary")" style="width: @(capacityUtilization)%"></div>
+                        </div>
+                        <small class="text-muted">@capacityUtilization.ToString("F1")% of total system capacity</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public AdminDashboardMetrics? Metrics { get; set; }
+}

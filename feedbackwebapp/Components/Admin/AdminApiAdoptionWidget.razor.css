@@ -1,0 +1,407 @@
+/* Admin API Adoption Widget Styles */
+
+.api-summary-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.api-summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.api-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    color: white;
+    flex-shrink: 0;
+}
+
+.api-icon-users {
+    background: linear-gradient(135deg, #6f42c1, #563d7c);
+}
+
+.api-icon-calls {
+    background: linear-gradient(135deg, #17a2b8, #117a8b);
+}
+
+.api-icon-average {
+    background: linear-gradient(135deg, #28a745, #1e7e34);
+}
+
+.api-icon-active {
+    background: linear-gradient(135deg, #ffc107, #e0a800);
+}
+
+.api-content {
+    flex: 1;
+}
+
+.api-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-color);
+    line-height: 1;
+}
+
+.api-label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+/* Top API Users */
+.top-api-user-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.top-api-user-item:last-child {
+    border-bottom: none;
+}
+
+.api-user-rank {
+    width: 30px;
+    text-align: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.rank-number {
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.api-user-info {
+    flex: 1;
+}
+
+.api-user-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.api-user-id {
+    font-weight: 600;
+    color: var(--text-color);
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+}
+
+.api-user-stats {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.api-calls-count {
+    font-size: 0.85rem;
+    color: var(--primary-color);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.api-last-used {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+}
+
+/* Endpoint Distribution */
+.endpoint-distribution {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.endpoint-item {
+    margin-bottom: 0.75rem;
+}
+
+.endpoint-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.endpoint-name {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.endpoint-stats {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.endpoint-progress .progress {
+    height: 8px;
+}
+
+.endpoint-progress-primary {
+    background: linear-gradient(90deg, #007bff, #0056b3);
+}
+
+.endpoint-progress-success {
+    background: linear-gradient(90deg, #28a745, #1e7e34);
+}
+
+.endpoint-progress-info {
+    background: linear-gradient(90deg, #17a2b8, #117a8b);
+}
+
+.endpoint-progress-warning {
+    background: linear-gradient(90deg, #ffc107, #e0a800);
+}
+
+.endpoint-progress-secondary {
+    background: linear-gradient(90deg, #6c757d, #545b62);
+}
+
+/* Adoption Metrics */
+.adoption-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.adoption-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.adoption-label {
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+.adoption-visual {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.adoption-progress {
+    flex: 1;
+    height: 10px;
+}
+
+.adoption-percentage {
+    min-width: 80px;
+    text-align: right;
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+/* API Health Metrics */
+.api-health-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.health-metric {
+    padding: 1rem;
+    background: rgba(var(--primary-color-rgb), 0.05);
+    border-radius: var(--border-radius);
+    border-left: 4px solid var(--border-color);
+}
+
+.health-metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.health-metric-label {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.health-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 15px;
+}
+
+.health-status-excellent {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+    border-left-color: #28a745;
+}
+
+.health-status-good {
+    background: rgba(255, 193, 7, 0.1);
+    color: #ffc107;
+    border-left-color: #ffc107;
+}
+
+.health-status-needs-attention {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    border-left-color: #dc3545;
+}
+
+.health-metric-description {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* Tier badge variations (reused) */
+.tier-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tier-badge-free {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.tier-badge-pro {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.tier-badge-proplus {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.tier-badge-admin {
+    background: #fce4ec;
+    color: #c2185b;
+}
+
+/* Dark theme support */
+[data-theme="dark"] .api-summary-card:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .tier-badge-free {
+    background: rgba(33, 118, 210, 0.2);
+    color: #64b5f6;
+}
+
+[data-theme="dark"] .tier-badge-pro {
+    background: rgba(123, 31, 162, 0.2);
+    color: #ba68c8;
+}
+
+[data-theme="dark"] .tier-badge-proplus {
+    background: rgba(245, 124, 0, 0.2);
+    color: #ffb74d;
+}
+
+[data-theme="dark"] .tier-badge-admin {
+    background: rgba(194, 24, 91, 0.2);
+    color: #f06292;
+}
+
+[data-theme="dark"] .health-metric {
+    background: rgba(var(--primary-color-rgb), 0.1);
+}
+
+[data-theme="dark"] .health-status-excellent {
+    background: rgba(40, 167, 69, 0.2);
+    color: #4caf50;
+}
+
+[data-theme="dark"] .health-status-good {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffeb3b;
+}
+
+[data-theme="dark"] .health-status-needs-attention {
+    background: rgba(220, 53, 69, 0.2);
+    color: #f44336;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .api-summary-card {
+        padding: 1rem;
+        flex-direction: column;
+        text-align: center;
+        gap: 0.75rem;
+    }
+    
+    .api-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+    
+    .api-user-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    
+    .api-user-stats {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    
+    .endpoint-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    
+    .adoption-visual {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+    
+    .adoption-percentage {
+        text-align: left;
+        min-width: auto;
+    }
+    
+    .health-metric-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+}

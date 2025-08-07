@@ -1,0 +1,224 @@
+@page "/admin"
+@using FeedbackWebApp.Services
+@using FeedbackWebApp.Services.Account
+@using SharedDump.Models.Admin
+@using SharedDump.Models.Account
+@using SharedDump.Utils
+@inject IAdminDashboardService AdminDashboardService
+@inject IAccountServiceProvider AccountServiceProvider
+@inject IToastService ToastService
+@inject NavigationManager Navigation
+
+@namespace FeedbackWebApp.Components.Pages
+
+<PageTitle>Admin Dashboard - FeedbackFlow</PageTitle>
+
+<div class="container my-4">
+    @if (isLoading)
+    {
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading admin dashboard...</p>
+        </div>
+    }
+    else if (!isAdmin)
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-shield-exclamation me-2"></i>
+            <strong>Access Denied:</strong> This page is only available to administrators.
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-circle me-2"></i>
+            <strong>Error:</strong> @errorMessage
+            <button type="button" class="btn btn-outline-danger btn-sm ms-3" @onclick="LoadDashboard">
+                <i class="bi bi-arrow-clockwise me-1"></i>Retry
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="admin-header mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="feedbackflow-title mb-2">
+                        <i class="bi bi-speedometer2 me-2"></i>
+                        Admin Dashboard
+                    </h1>
+                    <p class="text-muted mb-0">System metrics and user analytics</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary btn-sm" @onclick="LoadDashboard" disabled="@isRefreshing">
+                        @if (isRefreshing)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-arrow-clockwise me-1"></i>
+                        }
+                        Refresh
+                    </button>
+                    <small class="text-muted align-self-center">
+                        Updated: @(metrics?.GeneratedAt.ToString("MMM d, h:mm tt") ?? "Never")
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <ul class="nav nav-tabs admin-nav-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "overview" ? "active" : "")" type="button" 
+                        @onclick='() => SetActiveTab("overview")'>
+                    <i class="bi bi-graph-up me-2"></i>Overview
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "users" ? "active" : "")" type="button" 
+                        @onclick='() => SetActiveTab("users")'>
+                    <i class="bi bi-people me-2"></i>User Distribution
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "usage" ? "active" : "")" type="button" 
+                        @onclick='() => SetActiveTab("usage")'>
+                    <i class="bi bi-bar-chart me-2"></i>Usage Consumption
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "api" ? "active" : "")" type="button" 
+                        @onclick='() => SetActiveTab("api")'>
+                    <i class="bi bi-code-slash me-2"></i>API Adoption
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content admin-tab-content mt-4">
+            <!-- Overview Tab -->
+            @if (activeTab == "overview")
+            {
+                <AdminOverviewWidget Metrics="metrics" />
+            }
+            
+            <!-- User Distribution Tab -->
+            @if (activeTab == "users")
+            {
+                <AdminUserDistributionWidget UserStats="metrics?.UserStats" />
+            }
+            
+            <!-- Usage Consumption Tab -->
+            @if (activeTab == "usage")
+            {
+                <AdminUsageConsumptionWidget UsageStats="metrics?.UsageStats" />
+            }
+            
+            <!-- API Adoption Tab -->
+            @if (activeTab == "api")
+            {
+                <AdminApiAdoptionWidget ApiStats="metrics?.ApiStats" />
+            }
+        </div>
+    }
+</div>
+
+<!-- Usage Limit Dialog -->
+@if (showUsageLimitDialog && usageLimitError != null)
+{
+    <UsageLimitDialog 
+        UsageError="usageLimitError"
+        IsVisible="showUsageLimitDialog"
+        OnClose="() => showUsageLimitDialog = false" />
+}
+
+@code {
+    private bool isLoading = true;
+    private bool isAdmin = false;
+    private bool isRefreshing = false;
+    private string errorMessage = string.Empty;
+    private string activeTab = "overview";
+    private AdminDashboardMetrics? metrics;
+    
+    // Usage limit error handling
+    private bool showUsageLimitDialog = false;
+    private UsageValidationResult? usageLimitError = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            isLoading = true;
+            
+            // Check admin status
+            var accountService = AccountServiceProvider.GetService();
+            var accountResult = await accountService.GetUserAccountAndLimitsAsync();
+            if (accountResult.HasValue)
+            {
+                isAdmin = accountResult.Value.account?.Tier == AccountTier.Admin;
+            }
+            else
+            {
+                isAdmin = false;
+            }
+
+            if (isAdmin)
+            {
+                await LoadDashboard();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error initializing admin dashboard: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadDashboard()
+    {
+        try
+        {
+            isRefreshing = true;
+            errorMessage = string.Empty;
+            
+            metrics = await AdminDashboardService.GetDashboardMetricsAsync();
+            
+            ToastService.ShowSuccessAsync("Admin dashboard metrics refreshed successfully");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            errorMessage = ex.Message;
+            ToastService.ShowErrorAsync("Access denied: Admin privileges required");
+        }
+        catch (Exception ex)
+        {
+            // Check if this is a usage limit error
+            if (UsageLimitErrorHelper.TryParseUsageLimitError(ex.Message, out var limitError))
+            {
+                usageLimitError = limitError;
+                showUsageLimitDialog = true;
+            }
+            else
+            {
+                errorMessage = $"Failed to load dashboard metrics: {ex.Message}";
+                ToastService.ShowErrorAsync("Failed to load admin dashboard");
+            }
+        }
+        finally
+        {
+            isRefreshing = false;
+        }
+    }
+
+    private void SetActiveTab(string tab)
+    {
+        activeTab = tab;
+    }
+}

@@ -6,6 +6,7 @@ using Azure.Data.Tables;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SharedDump.Models.Account;
+using SharedDump.Models.Admin;
 
 namespace FeedbackFunctions.Services.Account;
 
@@ -436,6 +437,251 @@ public class UserAccountService : IUserAccountService
             EmailNotificationsEnabled = model.EmailNotificationsEnabled,
             LastEmailSent = model.LastEmailSent
         };
+    }
+
+    #endregion
+
+    #region Admin Dashboard Methods
+
+    public async Task<List<UserAccount>> GetAllUserAccountsAsync()
+    {
+        var accounts = new List<UserAccount>();
+        
+        try
+        {
+            await foreach (var entity in _userAccountsTable.QueryAsync<UserAccountEntity>())
+            {
+                accounts.Add(MapEntityToModel(entity));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error retrieving all user accounts for admin dashboard");
+        }
+
+        return accounts;
+    }
+
+    public async Task<List<UsageRecord>> GetRecentUsageRecordsAsync(DateTime since)
+    {
+        var records = new List<UsageRecord>();
+        
+        try
+        {
+            // Query with date filter to improve performance
+            var filter = $"UsageTimestamp ge datetime'{since:yyyy-MM-ddTHH:mm:ssZ}'";
+            await foreach (var entity in _usageRecordsTable.QueryAsync<UsageRecordEntity>(filter))
+            {
+                records.Add(new UsageRecord
+                {
+                    UserId = entity.PartitionKey,
+                    Date = entity.UsageTimestamp,
+                    Type = (UsageType)entity.UsageType,
+                    ResourceId = entity.ResourceId,
+                    Details = entity.Details
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error retrieving recent usage records since {Since}", since);
+        }
+
+        return records;
+    }
+
+    public async Task<AdminDashboardMetrics> GetAdminDashboardMetricsAsync()
+    {
+        var metrics = new AdminDashboardMetrics();
+        
+        try
+        {
+            // Get all user accounts and API keys
+            var allUsers = await GetAllUserAccountsAsync();
+            var apiKeys = await GetAllApiKeysAsync();
+            
+            // Calculate cutoff dates
+            var last7Days = DateTime.UtcNow.AddDays(-7);
+            var last30Days = DateTime.UtcNow.AddDays(-30);
+            var last14Days = DateTime.UtcNow.AddDays(-14);
+            
+            // Get recent usage for activity analysis
+            var recentUsage = await GetRecentUsageRecordsAsync(last14Days);
+            var activeUserIds = recentUsage.Select(r => r.UserId).Distinct().ToHashSet();
+
+            // Calculate user statistics
+            metrics.UserStats = CalculateUserStatistics(allUsers, apiKeys, activeUserIds, last7Days, last30Days);
+            
+            // Calculate usage statistics
+            metrics.UsageStats = CalculateUsageStatistics(allUsers);
+            
+            // Calculate API statistics
+            metrics.ApiStats = CalculateApiStatistics(allUsers, apiKeys, last7Days);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error generating admin dashboard metrics");
+        }
+
+        return metrics;
+    }
+
+    private async Task<List<ApiKey>> GetAllApiKeysAsync()
+    {
+        var apiKeys = new List<ApiKey>();
+        
+        try
+        {
+            await foreach (var entity in _apiKeysTable.QueryAsync<ApiKeyEntity>())
+            {
+                apiKeys.Add(new ApiKey
+                {
+                    Key = entity.RowKey,
+                    UserId = entity.UserId,
+                    IsEnabled = entity.IsEnabled,
+                    CreatedAt = entity.CreatedAt,
+                    LastUsedAt = entity.LastUsedAt,
+                    Name = entity.Name
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error retrieving all API keys");
+        }
+
+        return apiKeys;
+    }
+
+    private UserStatistics CalculateUserStatistics(List<UserAccount> allUsers, List<ApiKey> apiKeys, HashSet<string> activeUserIds, DateTime last7Days, DateTime last30Days)
+    {
+        var stats = new UserStatistics
+        {
+            TotalUsers = allUsers.Count,
+            NewUsersLast7Days = allUsers.Count(u => u.CreatedAt >= last7Days),
+            NewUsersLast30Days = allUsers.Count(u => u.CreatedAt >= last30Days),
+            ActiveUsersLast14Days = activeUserIds.Count,
+            InactiveUsers = allUsers.Count - activeUserIds.Count
+        };
+
+        if (stats.TotalUsers > 0)
+        {
+            stats.ActiveUsersPercentage = Math.Round((double)stats.ActiveUsersLast14Days / stats.TotalUsers * 100, 1);
+        }
+
+        // Calculate tier distribution
+        var tierGroups = allUsers.GroupBy(u => u.Tier.ToString()).ToList();
+        foreach (var group in tierGroups)
+        {
+            var count = group.Count();
+            stats.TierDistribution[group.Key] = count;
+            stats.TierDistributionPercentage[group.Key] = stats.TotalUsers > 0 ? Math.Round((double)count / stats.TotalUsers * 100, 1) : 0;
+        }
+
+        // Calculate email notification stats
+        stats.EmailNotificationsEnabledCount = allUsers.Count(u => u.EmailNotificationsEnabled);
+        stats.EmailNotificationsEnabledPercentage = stats.TotalUsers > 0 ? Math.Round((double)stats.EmailNotificationsEnabledCount / stats.TotalUsers * 100, 1) : 0;
+
+        foreach (var group in allUsers.Where(u => u.EmailNotificationsEnabled).GroupBy(u => u.Tier.ToString()))
+        {
+            stats.EmailNotificationsByTier[group.Key] = group.Count();
+        }
+
+        // Calculate API-enabled users
+        var apiEnabledUserIds = apiKeys.Where(k => k.IsEnabled).Select(k => k.UserId).Distinct().ToHashSet();
+        stats.ApiEnabledUsers = apiEnabledUserIds.Count;
+        stats.ApiEnabledUsersPercentage = stats.TotalUsers > 0 ? Math.Round((double)stats.ApiEnabledUsers / stats.TotalUsers * 100, 1) : 0;
+
+        return stats;
+    }
+
+    private UsageStatistics CalculateUsageStatistics(List<UserAccount> allUsers)
+    {
+        var stats = new UsageStatistics
+        {
+            TotalAnalysesUsed = allUsers.Sum(u => u.AnalysesUsed),
+            TotalFeedQueriesUsed = allUsers.Sum(u => u.FeedQueriesUsed),
+            TotalActiveReports = allUsers.Sum(u => u.ActiveReports),
+            TotalApiCalls = allUsers.Sum(u => u.ApiUsed)
+        };
+
+        // Calculate tier usage metrics
+        var tierGroups = allUsers.GroupBy(u => u.Tier).ToList();
+        foreach (var group in tierGroups)
+        {
+            var tierName = group.Key.ToString();
+            var userCount = group.Count();
+            var limits = GetLimitsForTier(group.Key);
+            var totalAnalysesUsed = group.Sum(u => u.AnalysesUsed);
+            var totalCapacity = userCount * limits.AnalysisLimit;
+
+            stats.TierUsageMetrics[tierName] = new TierUsageMetrics
+            {
+                UserCount = userCount,
+                TierLimit = limits.AnalysisLimit,
+                TotalUsed = totalAnalysesUsed,
+                UtilizationPercentage = totalCapacity > 0 ? Math.Round((double)totalAnalysesUsed / totalCapacity * 100, 1) : 0,
+                UsageType = "Analyses"
+            };
+        }
+
+        // Calculate top users by combined usage
+        stats.TopUsers = allUsers
+            .Select(u => new TopUserUsage
+            {
+                UserId = u.UserId,
+                MaskedUserId = MaskUserId(u.UserId),
+                Tier = u.Tier.ToString(),
+                CombinedUsage = u.AnalysesUsed + u.FeedQueriesUsed + u.ApiUsed,
+                AnalysesUsed = u.AnalysesUsed,
+                FeedQueriesUsed = u.FeedQueriesUsed,
+                ApiUsed = u.ApiUsed
+            })
+            .OrderByDescending(u => u.CombinedUsage)
+            .Take(5)
+            .ToList();
+
+        return stats;
+    }
+
+    private ApiStatistics CalculateApiStatistics(List<UserAccount> allUsers, List<ApiKey> apiKeys, DateTime last7Days)
+    {
+        var apiEnabledKeys = apiKeys.Where(k => k.IsEnabled).ToList();
+        var apiUsers = allUsers.Where(u => apiEnabledKeys.Any(k => k.UserId == u.UserId)).ToList();
+        var totalApiCalls = apiUsers.Sum(u => u.ApiUsed);
+
+        var stats = new ApiStatistics
+        {
+            TotalApiEnabledUsers = apiUsers.Count,
+            TotalApiCalls = totalApiCalls,
+            AverageApiCallsPerUser = apiUsers.Count > 0 ? Math.Round((double)totalApiCalls / apiUsers.Count, 1) : 0,
+            RecentlyActiveApiUsers = apiKeys.Count(k => k.IsEnabled && k.LastUsedAt >= last7Days)
+        };
+
+        // Calculate top API users
+        stats.TopApiUsers = apiUsers
+            .Where(u => u.ApiUsed > 0)
+            .Select(u => new TopApiUser
+            {
+                UserId = u.UserId,
+                MaskedUserId = MaskUserId(u.UserId),
+                Tier = u.Tier.ToString(),
+                ApiCalls = u.ApiUsed,
+                LastUsedAt = apiKeys.FirstOrDefault(k => k.UserId == u.UserId)?.LastUsedAt
+            })
+            .OrderByDescending(u => u.ApiCalls)
+            .Take(5)
+            .ToList();
+
+        return stats;
+    }
+
+    private static string MaskUserId(string userId)
+    {
+        if (string.IsNullOrEmpty(userId)) return "***";
+        if (userId.Length <= 6) return new string('*', userId.Length);
+        
+        return userId[..3] + new string('*', Math.Max(1, userId.Length - 6)) + userId[^3..];
     }
 
     #endregion

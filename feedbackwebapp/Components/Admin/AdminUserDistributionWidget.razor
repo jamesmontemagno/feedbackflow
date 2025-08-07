@@ -1,0 +1,230 @@
+@using SharedDump.Models.Admin
+
+@if (UserStats == null)
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>
+        No user statistics available
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        <!-- Tier Distribution -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-pie-chart me-2"></i>
+                        Tier Distribution
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @foreach (var tier in UserStats.TierDistribution.OrderByDescending(t => t.Value))
+                    {
+                        <div class="tier-distribution-item">
+                            <div class="tier-info">
+                                <span class="tier-badge tier-badge-@tier.Key.ToLower()">@tier.Key</span>
+                                <span class="tier-count">@tier.Value users</span>
+                            </div>
+                            <div class="tier-progress">
+                                <div class="progress">
+                                    <div class="progress-bar tier-progress-@tier.Key.ToLower()" 
+                                         style="width: @(UserStats.TierDistributionPercentage.GetValueOrDefault(tier.Key, 0))%"></div>
+                                </div>
+                                <span class="tier-percentage">@UserStats.TierDistributionPercentage.GetValueOrDefault(tier.Key, 0).ToString("F1")%</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Email Notifications -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-envelope me-2"></i>
+                        Email Notifications
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="notification-summary">
+                        <div class="notification-stat">
+                            <span class="notification-value">@UserStats.EmailNotificationsEnabledCount</span>
+                            <span class="notification-label">Users with email enabled</span>
+                        </div>
+                        <div class="notification-stat">
+                            <span class="notification-value">@UserStats.EmailNotificationsEnabledPercentage.ToString("F1")%</span>
+                            <span class="notification-label">Adoption rate</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h6 class="mb-3">By Tier</h6>
+                        @if (UserStats.EmailNotificationsByTier.Any())
+                        {
+                            @foreach (var tierNotification in UserStats.EmailNotificationsByTier.OrderByDescending(t => t.Value))
+                            {
+                                var tierTotal = UserStats.TierDistribution.GetValueOrDefault(tierNotification.Key, 0);
+                                var adoptionRate = tierTotal > 0 ? (double)tierNotification.Value / tierTotal * 100 : 0;
+                                
+                                <div class="tier-notification-item">
+                                    <div class="tier-notification-header">
+                                        <span class="tier-badge tier-badge-@tierNotification.Key.ToLower()">@tierNotification.Key</span>
+                                        <span class="tier-notification-stats">@tierNotification.Value/@tierTotal (@adoptionRate.ToString("F0")%)</span>
+                                    </div>
+                                    <div class="progress tier-notification-progress">
+                                        <div class="progress-bar bg-primary" style="width: @adoptionRate%"></div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p class="text-muted">No email notifications enabled</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Activity -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-activity me-2"></i>
+                        User Activity
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="activity-summary">
+                        <div class="activity-item activity-active">
+                            <div class="activity-icon">
+                                <i class="bi bi-check-circle-fill"></i>
+                            </div>
+                            <div class="activity-content">
+                                <span class="activity-value">@UserStats.ActiveUsersLast14Days</span>
+                                <span class="activity-label">Active Users (14 days)</span>
+                                <small class="activity-percentage">@UserStats.ActiveUsersPercentage.ToString("F1")% of total</small>
+                            </div>
+                        </div>
+                        
+                        <div class="activity-item activity-inactive">
+                            <div class="activity-icon">
+                                <i class="bi bi-pause-circle-fill"></i>
+                            </div>
+                            <div class="activity-content">
+                                <span class="activity-value">@UserStats.InactiveUsers</span>
+                                <span class="activity-label">Inactive Users</span>
+                                <small class="activity-percentage">@((100 - UserStats.ActiveUsersPercentage).ToString("F1"))% of total</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="activity-chart mt-3">
+                        <div class="progress activity-progress">
+                            <div class="progress-bar bg-success" style="width: @UserStats.ActiveUsersPercentage%"></div>
+                        </div>
+                        <div class="activity-legend">
+                            <span class="legend-item legend-active">
+                                <span class="legend-color bg-success"></span>
+                                Active (@UserStats.ActiveUsersPercentage.ToString("F1")%)
+                            </span>
+                            <span class="legend-item legend-inactive">
+                                <span class="legend-color bg-secondary"></span>
+                                Inactive (@((100 - UserStats.ActiveUsersPercentage).ToString("F1"))%)
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Adoption -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-code-slash me-2"></i>
+                        API Adoption
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="api-summary">
+                        <div class="api-stat">
+                            <span class="api-value">@UserStats.ApiEnabledUsers</span>
+                            <span class="api-label">API-enabled users</span>
+                        </div>
+                        <div class="api-stat">
+                            <span class="api-value">@UserStats.ApiEnabledUsersPercentage.ToString("F1")%</span>
+                            <span class="api-label">Adoption rate</span>
+                        </div>
+                    </div>
+                    
+                    <div class="api-progress-container mt-3">
+                        <div class="progress">
+                            <div class="progress-bar bg-info" style="width: @UserStats.ApiEnabledUsersPercentage%"></div>
+                        </div>
+                        <small class="text-muted">@UserStats.ApiEnabledUsers of @UserStats.TotalUsers users have API access</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Growth Metrics -->
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-graph-up-arrow me-2"></i>
+                        User Growth
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="growth-card">
+                                <div class="growth-icon">
+                                    <i class="bi bi-calendar-week"></i>
+                                </div>
+                                <div class="growth-info">
+                                    <span class="growth-number">+@UserStats.NewUsersLast7Days</span>
+                                    <span class="growth-description">New users (7 days)</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="growth-card">
+                                <div class="growth-icon">
+                                    <i class="bi bi-calendar-month"></i>
+                                </div>
+                                <div class="growth-info">
+                                    <span class="growth-number">+@UserStats.NewUsersLast30Days</span>
+                                    <span class="growth-description">New users (30 days)</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="growth-card">
+                                <div class="growth-icon">
+                                    <i class="bi bi-people"></i>
+                                </div>
+                                <div class="growth-info">
+                                    <span class="growth-number">@UserStats.TotalUsers</span>
+                                    <span class="growth-description">Total users</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public UserStatistics? UserStats { get; set; }
+}
