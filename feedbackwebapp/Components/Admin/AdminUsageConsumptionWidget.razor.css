@@ -1,0 +1,409 @@
+/* Admin Usage Consumption Widget Styles */
+
+.usage-summary-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.usage-summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.usage-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    color: white;
+    flex-shrink: 0;
+}
+
+.usage-icon-analyses {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+}
+
+.usage-icon-queries {
+    background: linear-gradient(135deg, #28a745, #1e7e34);
+}
+
+.usage-icon-reports {
+    background: linear-gradient(135deg, #17a2b8, #117a8b);
+}
+
+.usage-icon-api {
+    background: linear-gradient(135deg, #6f42c1, #563d7c);
+}
+
+.usage-content {
+    flex: 1;
+}
+
+.usage-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-color);
+    line-height: 1;
+}
+
+.usage-label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+/* Tier Usage Metrics */
+.tier-usage-item {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tier-usage-item:last-child {
+    border-bottom: none;
+}
+
+.tier-usage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.tier-usage-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.tier-user-count {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.tier-usage-stats {
+    text-align: right;
+}
+
+.tier-usage-numbers {
+    display: block;
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+.tier-usage-percentage {
+    display: block;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--primary-color);
+}
+
+.tier-progress-container {
+    margin-bottom: 0.5rem;
+}
+
+.tier-progress {
+    height: 10px;
+    margin-bottom: 0.25rem;
+}
+
+.tier-progress-warning {
+    background: linear-gradient(90deg, #ffc107, #fd7e14) !important;
+}
+
+.tier-progress-details {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+/* Top Users */
+.top-user-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.top-user-item:last-child {
+    border-bottom: none;
+}
+
+.top-user-rank {
+    width: 30px;
+    text-align: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.rank-number {
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.top-user-info {
+    flex: 1;
+}
+
+.top-user-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
+.top-user-id {
+    font-weight: 600;
+    color: var(--text-color);
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+}
+
+.top-user-usage {
+    margin-bottom: 0.5rem;
+}
+
+.usage-total {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.usage-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.usage-breakdown-item {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.usage-breakdown-item i {
+    font-size: 0.7rem;
+}
+
+/* Usage Distribution */
+.usage-distribution {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.usage-distribution-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.usage-distribution-label {
+    min-width: 120px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.usage-distribution-bar {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.usage-distribution-bar .progress {
+    flex: 1;
+    height: 8px;
+}
+
+.usage-distribution-value {
+    min-width: 45px;
+    text-align: right;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+/* Capacity Summary */
+.capacity-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.capacity-metric {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.capacity-metric:last-child {
+    border-bottom: none;
+}
+
+.capacity-metric-main {
+    padding: 1rem 0;
+    border-top: 2px solid var(--border-color);
+    margin-top: 0.5rem;
+}
+
+.capacity-label {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.capacity-value {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.capacity-percentage {
+    font-size: 1.1rem;
+    color: var(--primary-color);
+}
+
+.capacity-progress .progress {
+    height: 12px;
+    margin-bottom: 0.5rem;
+}
+
+/* Tier badge variations (reused from user distribution) */
+.tier-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tier-badge-free {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.tier-badge-pro {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.tier-badge-proplus {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.tier-badge-admin {
+    background: #fce4ec;
+    color: #c2185b;
+}
+
+.tier-progress-free {
+    background: linear-gradient(90deg, #2196f3, #64b5f6);
+}
+
+.tier-progress-pro {
+    background: linear-gradient(90deg, #9c27b0, #ba68c8);
+}
+
+.tier-progress-proplus {
+    background: linear-gradient(90deg, #ff9800, #ffb74d);
+}
+
+.tier-progress-admin {
+    background: linear-gradient(90deg, #e91e63, #f06292);
+}
+
+/* Dark theme support */
+[data-theme="dark"] .usage-summary-card:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .tier-badge-free {
+    background: rgba(33, 118, 210, 0.2);
+    color: #64b5f6;
+}
+
+[data-theme="dark"] .tier-badge-pro {
+    background: rgba(123, 31, 162, 0.2);
+    color: #ba68c8;
+}
+
+[data-theme="dark"] .tier-badge-proplus {
+    background: rgba(245, 124, 0, 0.2);
+    color: #ffb74d;
+}
+
+[data-theme="dark"] .tier-badge-admin {
+    background: rgba(194, 24, 91, 0.2);
+    color: #f06292;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .usage-summary-card {
+        padding: 1rem;
+        flex-direction: column;
+        text-align: center;
+        gap: 0.75rem;
+    }
+    
+    .usage-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+    
+    .tier-usage-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .tier-usage-stats {
+        text-align: left;
+        align-self: flex-end;
+    }
+    
+    .top-user-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    
+    .usage-breakdown {
+        justify-content: flex-start;
+    }
+    
+    .usage-distribution-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .usage-distribution-bar {
+        width: 100%;
+    }
+    
+    .capacity-summary {
+        gap: 0.5rem;
+    }
+}

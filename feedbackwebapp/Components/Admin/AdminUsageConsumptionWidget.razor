@@ -1,0 +1,314 @@
+@using SharedDump.Models.Admin
+
+@if (UsageStats == null)
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>
+        No usage statistics available
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        <!-- Usage Summary -->
+        <div class="col-12">
+            <div class="row g-3">
+                <div class="col-lg-3 col-md-6">
+                    <div class="usage-summary-card">
+                        <div class="usage-icon usage-icon-analyses">
+                            <i class="bi bi-graph-up"></i>
+                        </div>
+                        <div class="usage-content">
+                            <span class="usage-value">@UsageStats.TotalAnalysesUsed.ToString("N0")</span>
+                            <span class="usage-label">Total Analyses</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="usage-summary-card">
+                        <div class="usage-icon usage-icon-queries">
+                            <i class="bi bi-search"></i>
+                        </div>
+                        <div class="usage-content">
+                            <span class="usage-value">@UsageStats.TotalFeedQueriesUsed.ToString("N0")</span>
+                            <span class="usage-label">Feed Queries</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="usage-summary-card">
+                        <div class="usage-icon usage-icon-reports">
+                            <i class="bi bi-file-earmark-text"></i>
+                        </div>
+                        <div class="usage-content">
+                            <span class="usage-value">@UsageStats.TotalActiveReports.ToString("N0")</span>
+                            <span class="usage-label">Active Reports</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="usage-summary-card">
+                        <div class="usage-icon usage-icon-api">
+                            <i class="bi bi-code-slash"></i>
+                        </div>
+                        <div class="usage-content">
+                            <span class="usage-value">@UsageStats.TotalApiCalls.ToString("N0")</span>
+                            <span class="usage-label">API Calls</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tier Usage Metrics -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-bar-chart-line me-2"></i>
+                        Tier Capacity Utilization
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if (UsageStats.TierUsageMetrics.Any())
+                    {
+                        @foreach (var tierMetric in UsageStats.TierUsageMetrics.OrderByDescending(t => t.Value.UtilizationPercentage))
+                        {
+                            <div class="tier-usage-item">
+                                <div class="tier-usage-header">
+                                    <div class="tier-usage-info">
+                                        <span class="tier-badge tier-badge-@tierMetric.Key.ToLower()">@tierMetric.Key</span>
+                                        <span class="tier-user-count">@tierMetric.Value.UserCount users</span>
+                                    </div>
+                                    <div class="tier-usage-stats">
+                                        <span class="tier-usage-numbers">
+                                            @tierMetric.Value.TotalUsed.ToString("N0") / @((tierMetric.Value.UserCount * tierMetric.Value.TierLimit).ToString("N0"))
+                                        </span>
+                                        <span class="tier-usage-percentage">@tierMetric.Value.UtilizationPercentage.ToString("F1")%</span>
+                                    </div>
+                                </div>
+                                <div class="tier-progress-container">
+                                    <div class="progress tier-progress">
+                                        <div class="progress-bar tier-progress-@tierMetric.Key.ToLower() @(tierMetric.Value.UtilizationPercentage > 80 ? "tier-progress-warning" : "")" 
+                                             style="width: @tierMetric.Value.UtilizationPercentage%"></div>
+                                    </div>
+                                    <small class="tier-progress-details">
+                                        Individual limit: @tierMetric.Value.TierLimit @tierMetric.Value.UsageType.ToLower() per user
+                                    </small>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted">No tier usage data available</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Users -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-trophy me-2"></i>
+                        Top Users by Usage
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if (UsageStats.TopUsers.Any())
+                    {
+                        @for (int i = 0; i < UsageStats.TopUsers.Count; i++)
+                        {
+                            var user = UsageStats.TopUsers[i];
+                            <div class="top-user-item">
+                                <div class="top-user-rank">
+                                    @if (i == 0)
+                                    {
+                                        <i class="bi bi-trophy-fill text-warning"></i>
+                                    }
+                                    else if (i == 1)
+                                    {
+                                        <i class="bi bi-award-fill text-secondary"></i>
+                                    }
+                                    else if (i == 2)
+                                    {
+                                        <i class="bi bi-award text-danger"></i>
+                                    }
+                                    else
+                                    {
+                                        <span class="rank-number">@(i + 1)</span>
+                                    }
+                                </div>
+                                <div class="top-user-info">
+                                    <div class="top-user-header">
+                                        <span class="top-user-id">@(user.MaskedUserId.Length > 5 ? user.MaskedUserId.Substring(0, 5) : user.MaskedUserId)</span>
+                                        <span class="tier-badge tier-badge-@user.Tier.ToLower()">@user.Tier</span>
+                                    </div>
+                                    <div class="top-user-usage">
+                                        <span class="usage-total">@user.CombinedUsage total usage</span>
+                                    </div>
+                                    <div class="usage-breakdown">
+                                        @if (user.AnalysesUsed > 0)
+                                        {
+                                            <span class="usage-breakdown-item">
+                                                <i class="bi bi-graph-up"></i> @user.AnalysesUsed
+                                            </span>
+                                        }
+                                        @if (user.FeedQueriesUsed > 0)
+                                        {
+                                            <span class="usage-breakdown-item">
+                                                <i class="bi bi-search"></i> @user.FeedQueriesUsed
+                                            </span>
+                                        }
+                                        @if (user.ApiUsed > 0)
+                                        {
+                                            <span class="usage-breakdown-item">
+                                                <i class="bi bi-code-slash"></i> @user.ApiUsed
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted">No usage data available</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Usage Analytics -->
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-analytics me-2"></i>
+                        Usage Analytics
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <!-- Usage Distribution -->
+                        <div class="col-md-6">
+                            <h6 class="mb-3">Usage Type Distribution</h6>
+                            @{
+                                var totalUsage = UsageStats.TotalAnalysesUsed + UsageStats.TotalFeedQueriesUsed + UsageStats.TotalApiCalls;
+                            }
+                            @if (totalUsage > 0)
+                            {
+                                <div class="usage-distribution">
+                                    @{
+                                        var analysesPercentage = (double)UsageStats.TotalAnalysesUsed / totalUsage * 100;
+                                        var queriesPercentage = (double)UsageStats.TotalFeedQueriesUsed / totalUsage * 100;
+                                        var apiPercentage = (double)UsageStats.TotalApiCalls / totalUsage * 100;
+                                    }
+                                    
+                                    <div class="usage-distribution-item">
+                                        <span class="usage-distribution-label">
+                                            <i class="bi bi-graph-up text-primary"></i> Analyses
+                                        </span>
+                                        <div class="usage-distribution-bar">
+                                            <div class="progress">
+                                                <div class="progress-bar bg-primary" style="width: @analysesPercentage%"></div>
+                                            </div>
+                                            <span class="usage-distribution-value">@analysesPercentage.ToString("F1")%</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="usage-distribution-item">
+                                        <span class="usage-distribution-label">
+                                            <i class="bi bi-search text-success"></i> Feed Queries
+                                        </span>
+                                        <div class="usage-distribution-bar">
+                                            <div class="progress">
+                                                <div class="progress-bar bg-success" style="width: @queriesPercentage%"></div>
+                                            </div>
+                                            <span class="usage-distribution-value">@queriesPercentage.ToString("F1")%</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="usage-distribution-item">
+                                        <span class="usage-distribution-label">
+                                            <i class="bi bi-code-slash text-info"></i> API Calls
+                                        </span>
+                                        <div class="usage-distribution-bar">
+                                            <div class="progress">
+                                                <div class="progress-bar bg-info" style="width: @apiPercentage%"></div>
+                                            </div>
+                                            <span class="usage-distribution-value">@apiPercentage.ToString("F1")%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="text-muted">No usage data available</p>
+                            }
+                        </div>
+
+                        <!-- Capacity Summary -->
+                        <div class="col-md-6">
+                            <h6 class="mb-3">Capacity Summary</h6>
+                            @{
+                                var totalCapacity = UsageStats.TierUsageMetrics.Values.Sum(t => t.UserCount * t.TierLimit);
+                                var totalUsed = UsageStats.TierUsageMetrics.Values.Sum(t => t.TotalUsed);
+                                var overallUtilization = totalCapacity > 0 ? (double)totalUsed / totalCapacity * 100 : 0;
+                            }
+                            
+                            <div class="capacity-summary">
+                                <div class="capacity-metric">
+                                    <span class="capacity-label">Total Capacity</span>
+                                    <span class="capacity-value">@totalCapacity.ToString("N0")</span>
+                                </div>
+                                <div class="capacity-metric">
+                                    <span class="capacity-label">Used</span>
+                                    <span class="capacity-value">@totalUsed.ToString("N0")</span>
+                                </div>
+                                <div class="capacity-metric">
+                                    <span class="capacity-label">Available</span>
+                                    <span class="capacity-value">@((totalCapacity - totalUsed).ToString("N0"))</span>
+                                </div>
+                                <div class="capacity-metric capacity-metric-main">
+                                    <span class="capacity-label">Overall Utilization</span>
+                                    <span class="capacity-value capacity-percentage">@overallUtilization.ToString("F1")%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="capacity-progress mt-3">
+                                <div class="progress">
+                                    <div class="progress-bar @(overallUtilization > 80 ? "bg-warning" : overallUtilization > 60 ? "bg-info" : "bg-success")" 
+                                         style="width: @overallUtilization%"></div>
+                                </div>
+                                <small class="text-muted">
+                                    @if (overallUtilization > 80)
+                                    {
+                                        <i class="bi bi-exclamation-triangle text-warning"></i>
+                                        <span>High utilization - consider monitoring</span>
+                                    }
+                                    else if (overallUtilization > 60)
+                                    {
+                                        <i class="bi bi-info-circle text-info"></i>
+                                        <span>Moderate utilization</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-check-circle text-success"></i>
+                                        <span>Healthy utilization</span>
+                                    }
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public UsageStatistics? UsageStats { get; set; }
+}

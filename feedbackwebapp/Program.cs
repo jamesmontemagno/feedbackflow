@@ -94,6 +94,24 @@ builder.Services.AddScoped<FeedbackWebApp.Services.IAdminReportConfigService>(se
         return new AdminReportConfigService(httpClient, headerService, logger, configuration);
     }
 });
+
+// Register Admin Dashboard Service
+builder.Services.AddScoped<IAdminDashboardService>(serviceProvider =>
+{
+    if (useMocks)
+    {
+        var logger = serviceProvider.GetRequiredService<ILogger<FeedbackWebApp.Services.Mock.MockAdminDashboardService>>();
+        return new FeedbackWebApp.Services.Mock.MockAdminDashboardService(logger);
+    }
+    else
+    {
+        var httpClient = serviceProvider.GetRequiredService<IHttpClientFactory>().CreateClient("DefaultClient");
+        var headerService = serviceProvider.GetRequiredService<IAuthenticationHeaderService>();
+        var logger = serviceProvider.GetRequiredService<ILogger<AdminDashboardService>>();
+        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+        return new AdminDashboardService(httpClient, headerService, logger, configuration);
+    }
+});
 builder.Services.AddScoped<IHistoryService, HistoryService>();
 builder.Services.AddScoped<ISharedHistoryServiceProvider, SharedHistoryServiceProvider>();
 builder.Services.AddScoped<IExportService, ExportService>();
