@@ -1,0 +1,261 @@
+@namespace FeedbackWebApp.Components.Admin
+@using FeedbackWebApp.Services.Account
+@inject IAdminApiKeyService AdminApiKeyService
+@inject IToastService ToastService
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-key me-2"></i>
+            API Key Management
+        </h5>
+        <small class="text-muted">Manage user API keys and view usage statistics</small>
+    </div>
+    <div class="card-body">
+        @if (isLoading)
+        {
+            <div class="d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                <span>Loading API keys...</span>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                @errorMessage
+            </div>
+        }
+        else if (apiKeys == null || !apiKeys.Any())
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                No API keys found. Users with Pro+ accounts can generate API keys in their account settings.
+            </div>
+        }
+        else
+        {
+            <!-- API Key Summary -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="api-key-summary-card">
+                        <div class="api-key-icon api-key-icon-total">
+                            <i class="bi bi-key"></i>
+                        </div>
+                        <div class="api-key-content">
+                            <span class="api-key-value">@apiKeys.Count</span>
+                            <span class="api-key-label">Total Keys</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="api-key-summary-card">
+                        <div class="api-key-icon api-key-icon-enabled">
+                            <i class="bi bi-check-circle"></i>
+                        </div>
+                        <div class="api-key-content">
+                            <span class="api-key-value">@apiKeys.Count(k => k.IsEnabled)</span>
+                            <span class="api-key-label">Enabled</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="api-key-summary-card">
+                        <div class="api-key-icon api-key-icon-disabled">
+                            <i class="bi bi-x-circle"></i>
+                        </div>
+                        <div class="api-key-content">
+                            <span class="api-key-value">@apiKeys.Count(k => !k.IsEnabled)</span>
+                            <span class="api-key-label">Disabled</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="api-key-summary-card">
+                        <div class="api-key-icon api-key-icon-active">
+                            <i class="bi bi-activity"></i>
+                        </div>
+                        <div class="api-key-content">
+                            <span class="api-key-value">@apiKeys.Count(k => k.LastUsedAt.HasValue && k.LastUsedAt.Value > DateTime.UtcNow.AddDays(-7))</span>
+                            <span class="api-key-label">Active (7d)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Keys Table -->
+            <div class="table-responsive">
+                <table class="table table-hover align-middle admin-api-keys-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">API Key</th>
+                            <th scope="col">User ID</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">Status</th>
+                            <th scope="col" class="d-none d-md-table-cell">Created</th>
+                            <th scope="col" class="d-none d-lg-table-cell">Last Used</th>
+                            <th scope="col" class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var apiKey in apiKeys.OrderByDescending(k => k.CreatedAt))
+                        {
+                            <tr>
+                                <td>
+                                    <code class="api-key-display">@apiKey.Key</code>
+                                </td>
+                                <td>
+                                    <span class="user-id-masked">@apiKey.UserId</span>
+                                </td>
+                                <td>
+                                    <div class="api-key-name">@apiKey.Name</div>
+                                </td>
+                                <td>
+                                    <span class="status-badge @(apiKey.IsEnabled ? "status-enabled" : "status-disabled")">
+                                        <i class="bi bi-@(apiKey.IsEnabled ? "check-circle" : "x-circle") me-1"></i>
+                                        @(apiKey.IsEnabled ? "Enabled" : "Disabled")
+                                    </span>
+                                </td>
+                                <td class="d-none d-md-table-cell">
+                                    <span class="api-key-date">
+                                        <i class="bi bi-calendar me-1"></i>
+                                        @apiKey.CreatedAt.ToString("MMM d")
+                                    </span>
+                                    <br>
+                                    <small class="api-key-date-relative">@GetRelativeTime(apiKey.CreatedAt)</small>
+                                </td>
+                                <td class="d-none d-lg-table-cell">
+                                    @if (apiKey.LastUsedAt.HasValue)
+                                    {
+                                        <span class="api-key-date">
+                                            <i class="bi bi-clock me-1"></i>
+                                            @apiKey.LastUsedAt.Value.ToString("MMM d")
+                                        </span>
+                                        <br>
+                                        <small class="api-key-date-relative">@GetRelativeTime(apiKey.LastUsedAt.Value)</small>
+                                    }
+                                    else
+                                    {
+                                        <span class="api-key-date-never">Never used</span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    <div class="action-buttons">
+                                        <button type="button" 
+                                                class="btn btn-sm @(apiKey.IsEnabled ? "btn-outline-warning" : "btn-outline-success")"
+                                                @onclick="() => ToggleApiKeyStatus(apiKey)"
+                                                disabled="@isProcessing"
+                                                title="@(apiKey.IsEnabled ? "Disable API Key" : "Enable API Key")">
+                                            @if (isProcessing && processingKey == apiKey.Key)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-@(apiKey.IsEnabled ? "pause" : "play") me-1"></i>
+                                            }
+                                            @(apiKey.IsEnabled ? "Disable" : "Enable")
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<AdminApiKeyInfo>? apiKeys;
+    private bool isLoading = true;
+    private bool isProcessing = false;
+    private string? processingKey = null;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadApiKeysAsync();
+    }
+
+    private async Task LoadApiKeysAsync()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+            
+            apiKeys = await AdminApiKeyService.GetAllApiKeysAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading API keys: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleApiKeyStatus(AdminApiKeyInfo apiKey)
+    {
+        try
+        {
+            isProcessing = true;
+            processingKey = apiKey.Key;
+            StateHasChanged();
+
+            // Get the full API key for the request
+            var fullApiKey = apiKey.FullKey;
+            var newStatus = !apiKey.IsEnabled;
+            
+            var success = await AdminApiKeyService.UpdateApiKeyStatusAsync(fullApiKey, newStatus);
+            
+            if (success)
+            {
+                apiKey.IsEnabled = newStatus;
+                await ToastService.ShowToastAsync(
+                    $"API key {(newStatus ? "enabled" : "disabled")} successfully", 
+                    ToastType.Success);
+            }
+            else
+            {
+                await ToastService.ShowToastAsync(
+                    "Failed to update API key status", 
+                    ToastType.Danger);
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastService.ShowToastAsync(
+                $"Error updating API key: {ex.Message}", 
+                ToastType.Danger);
+        }
+        finally
+        {
+            isProcessing = false;
+            processingKey = null;
+            StateHasChanged();
+        }
+    }
+
+    private string GetRelativeTime(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+        
+        if (timeSpan.TotalDays >= 365)
+            return $"{(int)(timeSpan.TotalDays / 365)}y ago";
+        if (timeSpan.TotalDays >= 30)
+            return $"{(int)(timeSpan.TotalDays / 30)}mo ago";
+        if (timeSpan.TotalDays >= 1)
+            return $"{(int)timeSpan.TotalDays}d ago";
+        if (timeSpan.TotalHours >= 1)
+            return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalMinutes >= 1)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+        
+        return "Just now";
+    }
+}
