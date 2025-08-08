@@ -8,6 +8,7 @@ using SharedDump.Models.Account;
 using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
+using FeedbackFunctions.Services.Authentication;
 
 namespace FeedbackFunctions.Account;
 
@@ -22,6 +23,7 @@ public class AdminUserTierFunctions
 {
     private readonly ILogger<AdminUserTierFunctions> _logger;
     private readonly IUserAccountService _userAccountService;
+    private readonly IAuthUserTableService _authUserService;
     private readonly AuthenticationMiddleware _authMiddleware;
 
     private static readonly AccountTier[] AllowedTargetTiers =
@@ -34,10 +36,12 @@ public class AdminUserTierFunctions
     public AdminUserTierFunctions(
         ILogger<AdminUserTierFunctions> logger,
         IUserAccountService userAccountService,
+        IAuthUserTableService authUserService,
         AuthenticationMiddleware authMiddleware)
     {
         _logger = logger;
         _userAccountService = userAccountService;
+        _authUserService = authUserService;
         _authMiddleware = authMiddleware;
     }
 
@@ -63,15 +67,22 @@ public class AdminUserTierFunctions
                 return forbidden;
             }
 
-            var all = await _userAccountService.GetAllUserAccountsAsync();
+            var allAccounts = await _userAccountService.GetAllUserAccountsAsync();
+
+            // Fetch auth users to derive (and mask) display names without exposing PII directly
+            var allAuthUsers = await _authUserService.GetAllUsersAsync();
+            var authUserNameLookup = allAuthUsers
+                .GroupBy(u => u.UserId)
+                .ToDictionary(g => g.Key, g => g.First().Name ?? string.Empty);
 
             // Project & mask (exclude admin & super users to avoid accidental edits + internal accounts)
-            var result = all
+            var result = allAccounts
                 .Where(a => a.Tier != AccountTier.Admin && a.Tier != AccountTier.SuperUser)
                 .Select(a => new UserTierAdminView
                 {
                     UserId = a.UserId, // full id (non-PII GUID) used for updates
                     MaskedUserId = MaskUserId(a.UserId),
+                    MaskedName = MaskName(authUserNameLookup.TryGetValue(a.UserId, out var name) ? name : string.Empty),
                     Tier = a.Tier,
                     AnalysesUsed = a.AnalysesUsed,
                     ActiveReports = a.ActiveReports,
@@ -165,7 +176,7 @@ public class AdminUserTierFunctions
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(new
             {
-                Data = new { UserId = account.UserId, Tier = account.Tier.ToString(), MaskedUserId = MaskUserId(account.UserId) },
+                Data = new { UserId = account.UserId, Tier = account.Tier.ToString(), MaskedUserId = MaskUserId(account.UserId) }, // Name intentionally not returned on update response
                 Success = true,
                 Message = "User tier updated successfully"
             });
@@ -189,10 +200,21 @@ public class AdminUserTierFunctions
         return userId[..4] + "****" + userId[^4..];
     }
 
+    private static string MaskName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "(unknown)";
+        // Keep first and (if long enough) last character, mask middle to avoid PII exposure
+        if (name.Length <= 2)
+            return name[0] + "***";
+        return name[0] + new string('*', Math.Min(6, name.Length - 2)) + name[^1];
+    }
+
     public class UserTierAdminView
     {
         public string UserId { get; set; } = string.Empty; // full id for updates
         public string MaskedUserId { get; set; } = string.Empty; // display only
+    public string MaskedName { get; set; } = string.Empty; // masked display name
         public AccountTier Tier { get; set; }
         public int AnalysesUsed { get; set; }
         public int FeedQueriesUsed { get; set; }

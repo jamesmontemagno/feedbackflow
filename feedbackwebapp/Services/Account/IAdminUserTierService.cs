@@ -22,6 +22,7 @@ public class AdminUserTierInfo
 {
     public string UserId { get; set; } = string.Empty; // full id for updates
     public string MaskedUserId { get; set; } = string.Empty; // display only
+    public string MaskedName { get; set; } = string.Empty; // masked display name from auth user
     public AccountTier Tier { get; set; }
     public int AnalysesUsed { get; set; }
     public int FeedQueriesUsed { get; set; }

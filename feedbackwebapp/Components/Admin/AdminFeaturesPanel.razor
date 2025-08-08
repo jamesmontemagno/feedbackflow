@@ -1,0 +1,41 @@
+@namespace FeedbackWebApp.Components.Admin
+
+@* Compact admin features panel *@
+<div class="admin-features-panel card border-warning mb-4">
+    <div class="card-header py-2 d-flex align-items-center gap-2">
+        <i class="bi bi-gear-fill text-warning"></i>
+        <strong class="text-warning-emphasis">Admin Tools</strong>
+    </div>
+    <div class="card-body py-3">
+        <div class="row g-3">
+            <div class="col-6 col-md-3">
+                <a href="/admin" class="admin-feature-tile d-block text-decoration-none">
+                    <div class="icon-wrapper"><i class="bi bi-speedometer2"></i></div>
+                    <div class="title">Dashboard</div>
+                    <div class="desc">Metrics & usage</div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="/admin/api-keys" class="admin-feature-tile d-block text-decoration-none">
+                    <div class="icon-wrapper"><i class="bi bi-key"></i></div>
+                    <div class="title">API Keys</div>
+                    <div class="desc">User key mgmt</div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="/admin/user-tiers" class="admin-feature-tile d-block text-decoration-none">
+                    <div class="icon-wrapper"><i class="bi bi-people"></i></div>
+                    <div class="title">User Tiers</div>
+                    <div class="desc">Plans & limits</div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="/admin/reports" class="admin-feature-tile d-block text-decoration-none">
+                    <div class="icon-wrapper"><i class="bi bi-file-earmark-bar-graph"></i></div>
+                    <div class="title">Reports</div>
+                    <div class="desc">Automation</div>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

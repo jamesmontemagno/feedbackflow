@@ -1,0 +1,78 @@
+.admin-user-tiers-table {
+    width: 100%;
+    margin-bottom: 0;
+    background: var(--card-bg);
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.admin-user-tiers-table thead th {
+    background: rgba(var(--bg-secondary-rgb), 0.8);
+    color: var(--text-primary);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: .5px;
+    border-bottom: 2px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.admin-user-tiers-table tbody tr:hover td {
+    background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.05) 0%, rgba(var(--primary-color-rgb), 0.10) 100%);
+    transition: background .25s ease;
+}
+
+.admin-user-tiers-table td, .admin-user-tiers-table th {
+    vertical-align: middle;
+    border-color: var(--border-color);
+}
+
+.admin-user-tiers-table code {
+    background: var(--code-bg, rgba(var(--bg-secondary-rgb), 0.5));
+    padding: 0.15rem 0.35rem;
+    border-radius: var(--border-radius);
+    font-size: .75rem;
+}
+
+.admin-user-tiers-table .name-cell {
+    font-size: .8rem;
+    color: var(--text-secondary);
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.admin-user-tiers-table .usage-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    font-size: .65rem;
+    padding: .2rem .45rem;
+    border-radius: var(--border-radius-pill);
+    background: rgba(var(--primary-color-rgb), .08);
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .admin-user-tiers-table thead th {
+    background: rgba(var(--bg-secondary-rgb), 0.9);
+}
+
+[data-theme="dark"] .admin-user-tiers-table tbody tr:hover td {
+    background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.12) 0%, rgba(var(--primary-color-rgb), 0.18) 100%);
+}
+
+@media (max-width: 767.98px) {
+    .admin-user-tiers-table thead th:nth-child(3),
+    .admin-user-tiers-table thead th:nth-child(4),
+    .admin-user-tiers-table thead th:nth-child(5),
+    .admin-user-tiers-table thead th:nth-child(6),
+    .admin-user-tiers-table thead th:nth-child(7) { display: none; }
+    .admin-user-tiers-table tbody td:nth-child(3),
+    .admin-user-tiers-table tbody td:nth-child(4),
+    .admin-user-tiers-table tbody td:nth-child(5),
+    .admin-user-tiers-table tbody td:nth-child(6),
+    .admin-user-tiers-table tbody td:nth-child(7) { display: none; }
+}

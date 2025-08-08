@@ -37,10 +37,11 @@
         else
         {
             <div class="table-responsive">
-                <table class="table table-hover align-middle">
+                <table class="table table-hover align-middle admin-user-tiers-table">
                     <thead>
                         <tr>
                             <th>User</th>
+                            <th>Name</th>
                             <th>Tier</th>
                             <th class="d-none d-md-table-cell">Analyses</th>
                             <th class="d-none d-md-table-cell">Reports</th>
@@ -55,6 +56,7 @@
                         {
                             <tr>
                                 <td><code>@u.MaskedUserId</code></td>
+                                <td class="name-cell" title="@u.MaskedName">@u.MaskedName</td>
                                 <td>
                                     <select class="form-select form-select-sm" @bind="u.Tier" disabled="@isProcessing">
                                         <option value="@AccountTier.Free">Free</option>
