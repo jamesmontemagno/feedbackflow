@@ -110,12 +110,42 @@
     background: rgba(var(--primary-color-rgb), 0.25);
 }
 
+[data-theme="dark"] .admin-user-tiers-table code {
+    background: rgba(var(--bg-secondary-rgb), 0.7);
+    color: var(--text-primary);
+    border: 1px solid rgba(var(--border-color-rgb), 0.3);
+}
+
+[data-theme="dark"] .admin-user-tiers-table .form-select {
+    background-color: rgba(var(--bg-secondary-rgb), 0.6);
+    border-color: rgba(var(--border-color-rgb), 0.4);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .admin-user-tiers-table .form-select:focus {
+    background-color: rgba(var(--bg-secondary-rgb), 0.7);
+    border-color: rgba(var(--primary-color-rgb), 0.6);
+    box-shadow: 0 0 0 0.15rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+[data-theme="dark"] .admin-user-tiers-table .name-cell {
+    color: var(--text-secondary);
+}
+
 [data-theme="dark"] .admin-user-tiers-toolbar .filter-input-wrapper input {
-    background: rgba(var(--bg-secondary-rgb), .35);
+    background: rgba(var(--bg-secondary-rgb), .4);
+    color: var(--text-primary);
+    border-color: rgba(var(--border-color-rgb), 0.4);
 }
 
 [data-theme="dark"] .admin-user-tiers-toolbar .filter-input-wrapper input:focus {
+    background: rgba(var(--bg-secondary-rgb), .5);
     box-shadow: 0 0 0 .15rem rgba(var(--primary-color-rgb), .35);
+    border-color: rgba(var(--primary-color-rgb), .6);
+}
+
+[data-theme="dark"] .admin-user-tiers-toolbar .filter-input-wrapper input::placeholder {
+    color: var(--text-tertiary);
 }
 
 @media (max-width: 767.98px) {
