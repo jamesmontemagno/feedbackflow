@@ -116,6 +116,105 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 - Include responsive adjustments at the bottom of CSS files
 - Group related CSS rules together with clear comments
 
+### Table Styling Patterns
+For consistent table design across admin interfaces, follow these established patterns:
+
+**HTML Structure:**
+```html
+<div class="table-responsive">
+    <table class="table table-hover align-middle admin-[component]-table">
+        <thead>
+            <tr>
+                <th scope="col">Column Name</th>
+                <th scope="col" class="d-none d-md-table-cell">Hidden on Mobile</th>
+                <th scope="col" class="text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    <div class="item-name">Primary Content</div>
+                </td>
+                <td class="d-none d-md-table-cell">
+                    <span class="item-date">
+                        <i class="bi bi-calendar me-1"></i>
+                        Secondary Content
+                    </span>
+                </td>
+                <td class="text-center">
+                    <div class="action-buttons">
+                        <button class="btn btn-sm btn-outline-primary" title="Action">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+```
+
+**CSS Class Structure:**
+- `.admin-[component]-table` - Main table class with custom styling
+- `.table-responsive` - Bootstrap wrapper for horizontal scrolling
+- `.d-none .d-md-table-cell` - Responsive column hiding
+- `.action-buttons` - Container for action button groups
+- `.status-badge` - Styled status indicators with theme support
+- `.item-date` - Date/time display with icons
+- `.item-name` - Primary content styling
+
+**Key CSS Properties:**
+```css
+.admin-[component]-table {
+    width: 100%;
+    margin-bottom: 0;
+    background: var(--card-bg);
+}
+
+.admin-[component]-table th {
+    background: rgba(var(--bg-secondary-rgb), 0.8);
+    color: var(--text-primary);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.admin-[component]-table tbody tr:hover td {
+    background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.05) 0%, rgba(var(--primary-color-rgb), 0.1) 100%);
+}
+```
+
+**Status Badge Pattern:**
+```css
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--border-radius-pill);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    gap: 0.25rem;
+    transition: all 0.3s ease;
+}
+```
+
+**Dark Theme Requirements:**
+- Use `[data-theme="dark"]` selector for dark mode overrides
+- Apply enhanced contrast for table hover states
+- Ensure status badges maintain readability in both themes
+- Use CSS variables exclusively, never hard-coded colors
+
+**Responsive Breakpoints:**
+- `@media (max-width: 991.98px)` - Tablet adjustments
+- `@media (max-width: 767.98px)` - Mobile layout changes
+- `@media (max-width: 575.98px)` - Small mobile optimizations
+
+See AdminReports.razor and AdminApiKeyManagement.razor for reference implementations.
+
 ## Code Style
 - Prefer async/await over direct Task handling
 - Use nullable reference types

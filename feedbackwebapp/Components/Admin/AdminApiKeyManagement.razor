@@ -85,16 +85,16 @@
 
             <!-- API Keys Table -->
             <div class="table-responsive">
-                <table class="table table-hover">
+                <table class="table table-hover align-middle admin-api-keys-table">
                     <thead>
                         <tr>
-                            <th>API Key</th>
-                            <th>User ID</th>
-                            <th>Name</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Last Used</th>
-                            <th class="text-center">Actions</th>
+                            <th scope="col">API Key</th>
+                            <th scope="col">User ID</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">Status</th>
+                            <th scope="col" class="d-none d-md-table-cell">Created</th>
+                            <th scope="col" class="d-none d-lg-table-cell">Last Used</th>
+                            <th scope="col" class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -107,45 +107,56 @@
                                 <td>
                                     <span class="user-id-masked">@apiKey.UserId</span>
                                 </td>
-                                <td>@apiKey.Name</td>
                                 <td>
-                                    <span class="badge @(apiKey.IsEnabled ? "bg-success" : "bg-secondary")">
+                                    <div class="api-key-name">@apiKey.Name</div>
+                                </td>
+                                <td>
+                                    <span class="status-badge @(apiKey.IsEnabled ? "status-enabled" : "status-disabled")">
                                         <i class="bi bi-@(apiKey.IsEnabled ? "check-circle" : "x-circle") me-1"></i>
                                         @(apiKey.IsEnabled ? "Enabled" : "Disabled")
                                     </span>
                                 </td>
-                                <td>
-                                    <span class="text-muted">@apiKey.CreatedAt.ToString("MMM dd, yyyy")</span>
+                                <td class="d-none d-md-table-cell">
+                                    <span class="api-key-date">
+                                        <i class="bi bi-calendar me-1"></i>
+                                        @apiKey.CreatedAt.ToString("MMM d")
+                                    </span>
                                     <br>
-                                    <small class="text-muted">@GetRelativeTime(apiKey.CreatedAt)</small>
+                                    <small class="api-key-date-relative">@GetRelativeTime(apiKey.CreatedAt)</small>
                                 </td>
-                                <td>
+                                <td class="d-none d-lg-table-cell">
                                     @if (apiKey.LastUsedAt.HasValue)
                                     {
-                                        <span class="text-muted">@apiKey.LastUsedAt.Value.ToString("MMM dd, yyyy")</span>
+                                        <span class="api-key-date">
+                                            <i class="bi bi-clock me-1"></i>
+                                            @apiKey.LastUsedAt.Value.ToString("MMM d")
+                                        </span>
                                         <br>
-                                        <small class="text-muted">@GetRelativeTime(apiKey.LastUsedAt.Value)</small>
+                                        <small class="api-key-date-relative">@GetRelativeTime(apiKey.LastUsedAt.Value)</small>
                                     }
                                     else
                                     {
-                                        <span class="text-muted">Never used</span>
+                                        <span class="api-key-date-never">Never used</span>
                                     }
                                 </td>
                                 <td class="text-center">
-                                    <button type="button" 
-                                            class="btn btn-sm @(apiKey.IsEnabled ? "btn-outline-warning" : "btn-outline-success")"
-                                            @onclick="() => ToggleApiKeyStatus(apiKey)"
-                                            disabled="@isProcessing">
-                                        @if (isProcessing && processingKey == apiKey.Key)
-                                        {
-                                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                                        }
-                                        else
-                                        {
-                                            <i class="bi bi-@(apiKey.IsEnabled ? "pause" : "play") me-1"></i>
-                                        }
-                                        @(apiKey.IsEnabled ? "Disable" : "Enable")
-                                    </button>
+                                    <div class="action-buttons">
+                                        <button type="button" 
+                                                class="btn btn-sm @(apiKey.IsEnabled ? "btn-outline-warning" : "btn-outline-success")"
+                                                @onclick="() => ToggleApiKeyStatus(apiKey)"
+                                                disabled="@isProcessing"
+                                                title="@(apiKey.IsEnabled ? "Disable API Key" : "Enable API Key")">
+                                            @if (isProcessing && processingKey == apiKey.Key)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-@(apiKey.IsEnabled ? "pause" : "play") me-1"></i>
+                                            }
+                                            @(apiKey.IsEnabled ? "Disable" : "Enable")
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         }
