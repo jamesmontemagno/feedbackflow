@@ -7,6 +7,7 @@
 @using FeedbackWebApp.Components.Shared
 @using SharedDump.Models.Account
 @using SharedDump.Utils.Account
+@using SharedDump.Utils
 @using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Components.Web
 @inject IUserManagementService UserManagementService
@@ -102,6 +103,13 @@
                                         <p class="form-control-plaintext">@userInfo.Email</p>
                                     </div>
                                 }
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Account ID <small class="text-muted">(for support)</small></label>
+                                    <p class="form-control-plaintext">
+                                        <span class="badge bg-light text-dark font-monospace">@StringUtilities.GetFirst5Digits(userInfo?.UserId)</span>
+                                        <small class="text-muted ms-2">First 5 characters of your account ID for support reference</small>
+                                    </p>
+                                </div>
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Authentication Provider</label>
                                     <p class="form-control-plaintext">
