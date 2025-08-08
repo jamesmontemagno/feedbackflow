@@ -27,4 +27,36 @@ public class StringUtilitiesTests
         Assert.AreEqual("", StringUtilities.Slugify(null));
         Assert.AreEqual("", StringUtilities.Slugify(""));
     }
+
+    [TestMethod]
+    public void GetFirst5Digits_NormalUserId_ReturnsFirst5Characters()
+    {
+        var userId = "abcdefghijk123456";
+        var result = StringUtilities.GetFirst5Digits(userId);
+        Assert.AreEqual("abcde", result);
+    }
+
+    [TestMethod]
+    public void GetFirst5Digits_ShortUserId_ReturnsFullUserId()
+    {
+        var userId = "abc";
+        var result = StringUtilities.GetFirst5Digits(userId);
+        Assert.AreEqual("abc", result);
+    }
+
+    [TestMethod]
+    public void GetFirst5Digits_ExactlyFiveCharacters_ReturnsAllCharacters()
+    {
+        var userId = "abcde";
+        var result = StringUtilities.GetFirst5Digits(userId);
+        Assert.AreEqual("abcde", result);
+    }
+
+    [TestMethod]
+    public void GetFirst5Digits_NullOrEmpty_ReturnsNA()
+    {
+        Assert.AreEqual("N/A", StringUtilities.GetFirst5Digits(null));
+        Assert.AreEqual("N/A", StringUtilities.GetFirst5Digits(""));
+        Assert.AreEqual("N/A", StringUtilities.GetFirst5Digits("   "));
+    }
 }
