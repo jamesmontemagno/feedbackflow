@@ -34,6 +34,10 @@
     background: rgba(var(--primary-color-rgb), 0.25);
 }
 
+.admin-user-tiers-table tbody tr {
+    background: var(--card-bg);
+}
+
 .admin-user-tiers-table tbody tr:hover td {
     background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.05) 0%, rgba(var(--primary-color-rgb), 0.10) 100%);
     transition: background .25s ease;
@@ -42,6 +46,7 @@
 .admin-user-tiers-table td, .admin-user-tiers-table th {
     vertical-align: middle;
     border-color: var(--border-color);
+    background: inherit;
 }
 
 .admin-user-tiers-table code {
@@ -98,8 +103,16 @@
     color: var(--text-secondary);
 }
 
+[data-theme="dark"] .admin-user-tiers-table {
+    background: var(--card-bg);
+}
+
 [data-theme="dark"] .admin-user-tiers-table thead th {
     background: rgba(var(--bg-secondary-rgb), 0.9);
+}
+
+[data-theme="dark"] .admin-user-tiers-table tbody tr {
+    background: var(--card-bg);
 }
 
 [data-theme="dark"] .admin-user-tiers-table tbody tr:hover td {
