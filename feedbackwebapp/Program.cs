@@ -130,6 +130,24 @@ builder.Services.AddScoped<IAdminApiKeyService>(serviceProvider =>
         return new AdminApiKeyService(httpClientFactory, headerService, logger, configuration);
     }
 });
+
+// Register Admin User Tier Service
+builder.Services.AddScoped<IAdminUserTierService>(serviceProvider =>
+{
+    if (useMocks)
+    {
+        var logger = serviceProvider.GetRequiredService<ILogger<MockAdminUserTierService>>();
+        return new MockAdminUserTierService(logger);
+    }
+    else
+    {
+        var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
+        var headerService = serviceProvider.GetRequiredService<IAuthenticationHeaderService>();
+        var logger = serviceProvider.GetRequiredService<ILogger<AdminUserTierService>>();
+        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+        return new AdminUserTierService(httpClientFactory, headerService, logger, configuration);
+    }
+});
 builder.Services.AddScoped<IHistoryService, HistoryService>();
 builder.Services.AddScoped<ISharedHistoryServiceProvider, SharedHistoryServiceProvider>();
 builder.Services.AddScoped<IExportService, ExportService>();

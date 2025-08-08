@@ -1,0 +1,151 @@
+@namespace FeedbackWebApp.Components.Admin
+@using FeedbackWebApp.Services.Account
+@using SharedDump.Models.Account
+@inject IAdminUserTierService AdminUserTierService
+@inject IToastService ToastService
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-people me-2"></i>
+            User Tier Management
+        </h5>
+        <small class="text-muted">Modify user tiers (Free, Pro, Pro+). No personal data shown.</small>
+    </div>
+    <div class="card-body">
+        @if (isLoading)
+        {
+            <div class="d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                <span>Loading users...</span>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                @errorMessage
+            </div>
+        }
+        else if (users == null || !users.Any())
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                No users available.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Tier</th>
+                            <th class="d-none d-md-table-cell">Analyses</th>
+                            <th class="d-none d-md-table-cell">Reports</th>
+                            <th class="d-none d-lg-table-cell">Feed Q.</th>
+                            <th class="d-none d-lg-table-cell">API Used</th>
+                            <th class="d-none d-lg-table-cell">Created</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var u in users.OrderByDescending(u => u.CreatedAt))
+                        {
+                            <tr>
+                                <td><code>@u.MaskedUserId</code></td>
+                                <td>
+                                    <select class="form-select form-select-sm" @bind="u.Tier" disabled="@isProcessing">
+                                        <option value="@AccountTier.Free">Free</option>
+                                        <option value="@AccountTier.Pro">Pro</option>
+                                        <option value="@AccountTier.ProPlus">Pro+</option>
+                                    </select>
+                                </td>
+                                <td class="d-none d-md-table-cell">@u.AnalysesUsed</td>
+                                <td class="d-none d-md-table-cell">@u.ActiveReports</td>
+                                <td class="d-none d-lg-table-cell">@u.FeedQueriesUsed</td>
+                                <td class="d-none d-lg-table-cell">@u.ApiUsed</td>
+                                <td class="d-none d-lg-table-cell">@u.CreatedAt.ToString("MMM d")</td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => UpdateTier(u)" disabled="@isProcessing" title="Update tier">
+                                        @if (isProcessing && processingUser == u.UserId)
+                                        {
+                                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-save"></i>
+                                        }
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<AdminUserTierInfo>? users;
+    private bool isLoading = true;
+    private bool isProcessing = false;
+    private string? processingUser;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+            users = await AdminUserTierService.GetAllUserTiersAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading users: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task UpdateTier(AdminUserTierInfo user)
+    {
+        try
+        {
+            isProcessing = true;
+            processingUser = user.UserId;
+            StateHasChanged();
+
+            var success = await AdminUserTierService.UpdateUserTierAsync(user.UserId, user.Tier);
+            if (success)
+            {
+                await ToastService.ShowToastAsync($"Updated tier to {user.Tier}", ToastType.Success);
+            }
+            else
+            {
+                await ToastService.ShowToastAsync("Failed to update tier", ToastType.Danger);
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastService.ShowToastAsync($"Error updating tier: {ex.Message}", ToastType.Danger);
+        }
+        finally
+        {
+            isProcessing = false;
+            processingUser = null;
+            StateHasChanged();
+        }
+    }
+}
