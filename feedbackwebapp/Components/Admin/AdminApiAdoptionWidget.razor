@@ -96,7 +96,7 @@ else
                                 </div>
                                 <div class="api-user-info">
                                     <div class="api-user-header">
-                                        <span class="api-user-id">@user.MaskedUserId</span>
+                                        <span class="api-user-id">@(user.MaskedUserId.Length > 5 ? user.MaskedUserId.Substring(0, 5) : user.MaskedUserId)</span>
                                         <span class="tier-badge tier-badge-@user.Tier.ToLower()">@user.Tier</span>
                                     </div>
                                     <div class="api-user-stats">

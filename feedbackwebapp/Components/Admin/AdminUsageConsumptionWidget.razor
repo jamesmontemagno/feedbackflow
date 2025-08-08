@@ -82,7 +82,7 @@ else
                                     </div>
                                     <div class="tier-usage-stats">
                                         <span class="tier-usage-numbers">
-                                            @tierMetric.Value.TotalUsed.ToString("N0") / @(tierMetric.Value.UserCount * tierMetric.Value.TierLimit).ToString("N0")
+                                            @tierMetric.Value.TotalUsed.ToString("N0") / @((tierMetric.Value.UserCount * tierMetric.Value.TierLimit).ToString("N0"))
                                         </span>
                                         <span class="tier-usage-percentage">@tierMetric.Value.UtilizationPercentage.ToString("F1")%</span>
                                     </div>
@@ -143,7 +143,7 @@ else
                                 </div>
                                 <div class="top-user-info">
                                     <div class="top-user-header">
-                                        <span class="top-user-id">@user.MaskedUserId</span>
+                                        <span class="top-user-id">@(user.MaskedUserId.Length > 5 ? user.MaskedUserId.Substring(0, 5) : user.MaskedUserId)</span>
                                         <span class="tier-badge tier-badge-@user.Tier.ToLower()">@user.Tier</span>
                                     </div>
                                     <div class="top-user-usage">
