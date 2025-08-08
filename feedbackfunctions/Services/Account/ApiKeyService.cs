@@ -158,6 +158,50 @@ public class ApiKeyService : IApiKeyService
         }
     }
 
+    public async Task<List<ApiKey>> GetAllApiKeysAsync()
+    {
+        try
+        {
+            var apiKeys = new List<ApiKey>();
+            await foreach (var entity in _tableClient.QueryAsync<ApiKeyEntity>())
+            {
+                var apiKey = entity?.ToApiKey();
+                if (apiKey != null)
+                {
+                    apiKeys.Add(apiKey);
+                }
+            }
+            return apiKeys.OrderByDescending(k => k.CreatedAt).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting all API keys");
+            return new List<ApiKey>();
+        }
+    }
+
+    public async Task<bool> UpdateApiKeyStatusAsync(string apiKey, bool isEnabled)
+    {
+        try
+        {
+            var entity = await _tableClient.GetEntityIfExistsAsync<ApiKeyEntity>("apikeys", apiKey);
+            if (entity.HasValue)
+            {
+                var apiKeyEntity = entity.Value;
+                apiKeyEntity.IsEnabled = isEnabled;
+                await _tableClient.UpdateEntityAsync(apiKeyEntity, apiKeyEntity.ETag);
+                _logger.LogInformation("Updated API key {ApiKey} status to {IsEnabled}", apiKey[..8] + "...", isEnabled);
+                return true;
+            }
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating API key status");
+            return false;
+        }
+    }
+
     private static string GenerateApiKey()
     {
         // Generate a secure random API key

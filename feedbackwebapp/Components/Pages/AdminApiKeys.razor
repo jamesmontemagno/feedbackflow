@@ -1,0 +1,102 @@
+@page "/admin/api-keys"
+@using FeedbackWebApp.Services.Authentication
+@using FeedbackWebApp.Services.Account
+@using SharedDump.Models.Account
+@inject IAuthenticationService AuthService
+@inject IAccountServiceProvider AccountServiceProvider
+@inject IAdminApiKeyService AdminApiKeyService
+@inject IToastService ToastService
+@inject NavigationManager Navigation
+
+@namespace FeedbackWebApp.Components.Pages
+
+<PageTitle>Admin API Keys - FeedbackFlow</PageTitle>
+
+<div class="container my-4">
+    @if (isLoading)
+    {
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading admin API keys...</p>
+        </div>
+    }
+    else if (!isAdmin)
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-shield-exclamation me-2"></i>
+            <strong>Access Denied:</strong> This page is only available to administrators.
+        </div>
+    }
+    else
+    {
+        <div class="d-flex justify-content-between align-items-center mb-4 admin-header">
+            <div>
+                <h1 class="feedbackflow-title mb-2">
+                    <i class="bi bi-key me-2"></i>
+                    API Key Management
+                </h1>
+                <p class="text-muted mb-0">Manage user API keys, enable/disable access, and monitor usage statistics</p>
+            </div>
+            <a href="/account" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>
+                Back to Admin
+            </a>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                @errorMessage
+            </div>
+        }
+
+        <FeedbackWebApp.Components.Admin.AdminApiKeyManagement />
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private bool isAdmin = false;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+
+            // Check if user is authenticated and is admin
+            var isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (!isAuthenticated)
+            {
+                Navigation.NavigateTo("/");
+                return;
+            }
+
+            // Check admin status
+            var accountService = AccountServiceProvider.GetService();
+            var accountResult = await accountService.GetUserAccountAndLimitsAsync();
+            if (accountResult.HasValue)
+            {
+                isAdmin = accountResult.Value.account?.Tier == AccountTier.Admin || 
+                         accountResult.Value.account?.Tier == AccountTier.SuperUser;
+            }
+            else
+            {
+                isAdmin = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading admin API keys: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

@@ -112,6 +112,24 @@ builder.Services.AddScoped<IAdminDashboardService>(serviceProvider =>
         return new AdminDashboardService(httpClient, headerService, logger, configuration);
     }
 });
+
+// Register Admin API Key Service
+builder.Services.AddScoped<IAdminApiKeyService>(serviceProvider =>
+{
+    if (useMocks)
+    {
+        var logger = serviceProvider.GetRequiredService<ILogger<MockAdminApiKeyService>>();
+        return new MockAdminApiKeyService(logger);
+    }
+    else
+    {
+        var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
+        var headerService = serviceProvider.GetRequiredService<IAuthenticationHeaderService>();
+        var logger = serviceProvider.GetRequiredService<ILogger<AdminApiKeyService>>();
+        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+        return new AdminApiKeyService(httpClientFactory, headerService, logger, configuration);
+    }
+});
 builder.Services.AddScoped<IHistoryService, HistoryService>();
 builder.Services.AddScoped<ISharedHistoryServiceProvider, SharedHistoryServiceProvider>();
 builder.Services.AddScoped<IExportService, ExportService>();

@@ -11,4 +11,8 @@ public interface IApiKeyService
     Task<bool> DeleteApiKeyAsync(string userId);
     Task<bool> ValidateApiKeyAsync(string apiKey);
     Task UpdateLastUsedAsync(string apiKey);
+    
+    // Admin methods
+    Task<List<ApiKey>> GetAllApiKeysAsync();
+    Task<bool> UpdateApiKeyStatusAsync(string apiKey, bool isEnabled);
 }
