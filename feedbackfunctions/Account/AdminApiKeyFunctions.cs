@@ -59,7 +59,7 @@ public class AdminApiKeyFunctions
                 return notFoundResponse;
             }
 
-            if (userAccount.Tier != AccountTier.Admin && userAccount.Tier != AccountTier.SuperUser)
+            if (userAccount.Tier != AccountTier.Admin)
             {
                 var forbiddenResponse = req.CreateResponse(HttpStatusCode.Forbidden);
                 await forbiddenResponse.WriteAsJsonAsync(new
@@ -131,7 +131,7 @@ public class AdminApiKeyFunctions
                 return notFoundResponse;
             }
 
-            if (userAccount.Tier != AccountTier.Admin && userAccount.Tier != AccountTier.SuperUser)
+            if (userAccount.Tier != AccountTier.Admin)
             {
                 var forbiddenResponse = req.CreateResponse(HttpStatusCode.Forbidden);
                 await forbiddenResponse.WriteAsJsonAsync(new

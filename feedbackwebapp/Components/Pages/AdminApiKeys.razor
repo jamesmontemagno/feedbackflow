@@ -82,8 +82,7 @@
             var accountResult = await accountService.GetUserAccountAndLimitsAsync();
             if (accountResult.HasValue)
             {
-                isAdmin = accountResult.Value.account?.Tier == AccountTier.Admin || 
-                         accountResult.Value.account?.Tier == AccountTier.SuperUser;
+                isAdmin = accountResult.Value.account?.Tier == AccountTier.Admin;
             }
             else
             {
