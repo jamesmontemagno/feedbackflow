@@ -19,6 +19,21 @@
     z-index: 1;
 }
 
+.admin-user-tiers-table thead th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background .2s ease, color .2s ease;
+}
+
+.admin-user-tiers-table thead th.sortable:hover {
+    background: rgba(var(--primary-color-rgb), 0.15);
+    color: var(--text-primary);
+}
+
+.admin-user-tiers-table thead th.sortable:active {
+    background: rgba(var(--primary-color-rgb), 0.25);
+}
+
 .admin-user-tiers-table tbody tr:hover td {
     background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.05) 0%, rgba(var(--primary-color-rgb), 0.10) 100%);
     transition: background .25s ease;
@@ -34,6 +49,33 @@
     padding: 0.15rem 0.35rem;
     border-radius: var(--border-radius);
     font-size: .75rem;
+}
+
+.small-sort { font-size: .6rem; opacity: .8; }
+
+.admin-user-tiers-toolbar .filter-input-wrapper {
+    min-width: 180px;
+}
+
+.admin-user-tiers-toolbar .filter-input-wrapper i {
+    position: absolute;
+    top: 50%;
+    left: .5rem;
+    transform: translateY(-50%);
+    font-size: .9rem;
+    color: var(--text-secondary);
+    pointer-events: none;
+}
+
+.admin-user-tiers-toolbar .filter-input-wrapper input {
+    padding-left: 1.65rem;
+    background: var(--input-bg, rgba(var(--bg-secondary-rgb), .5));
+    border: 1px solid var(--border-color);
+}
+
+.admin-user-tiers-toolbar .filter-input-wrapper input:focus {
+    box-shadow: 0 0 0 .15rem rgba(var(--primary-color-rgb), .25);
+    border-color: rgba(var(--primary-color-rgb), .6);
 }
 
 .admin-user-tiers-table .name-cell {
@@ -62,6 +104,18 @@
 
 [data-theme="dark"] .admin-user-tiers-table tbody tr:hover td {
     background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.12) 0%, rgba(var(--primary-color-rgb), 0.18) 100%);
+}
+
+[data-theme="dark"] .admin-user-tiers-table thead th.sortable:hover {
+    background: rgba(var(--primary-color-rgb), 0.25);
+}
+
+[data-theme="dark"] .admin-user-tiers-toolbar .filter-input-wrapper input {
+    background: rgba(var(--bg-secondary-rgb), .35);
+}
+
+[data-theme="dark"] .admin-user-tiers-toolbar .filter-input-wrapper input:focus {
+    box-shadow: 0 0 0 .15rem rgba(var(--primary-color-rgb), .35);
 }
 
 @media (max-width: 767.98px) {
