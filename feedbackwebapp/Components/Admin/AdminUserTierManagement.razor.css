@@ -161,6 +161,15 @@
     color: var(--text-tertiary);
 }
 
+/* Force primary text color for metric columns in dark mode */
+[data-theme="dark"] .admin-user-tiers-table tbody td:nth-child(4),
+[data-theme="dark"] .admin-user-tiers-table tbody td:nth-child(5),
+[data-theme="dark"] .admin-user-tiers-table tbody td:nth-child(6),
+[data-theme="dark"] .admin-user-tiers-table tbody td:nth-child(7),
+[data-theme="dark"] .admin-user-tiers-table tbody td:nth-child(8) {
+    color: var(--text-primary);
+}
+
 @media (max-width: 767.98px) {
     .admin-user-tiers-table thead th:nth-child(3),
     .admin-user-tiers-table thead th:nth-child(4),
