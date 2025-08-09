@@ -26,6 +26,7 @@
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 @inject FeedbackWebApp.Services.Authentication.IAuthenticationService AuthService
+@inject FeedbackWebApp.Services.Authentication.IAuthenticationHeaderService AuthHeaderService
 
 <PageTitle>Content Feeds - FeedbackFlow</PageTitle>
 
@@ -253,7 +254,8 @@
                     var youtubeService = ContentFeedProvider.CreateYouTubeService(
                         youtubeFeedForm.Topic,
                         youtubeFeedForm.Days,
-                        youtubeFeedForm.Tag);
+                        youtubeFeedForm.Tag,
+                        AuthHeaderService);
                     youtubeVideos = await youtubeService.FetchContent();
                     break;
 
@@ -262,12 +264,13 @@
                     var redditService = ContentFeedProvider.CreateRedditService(
                         redditFeedForm.Subreddit,
                         redditFeedForm.Days,
-                        redditFeedForm.SortBy);
+                        redditFeedForm.SortBy,
+                        AuthHeaderService);
                     redditThreads = await redditService.FetchContent();
                     break;
 
                 case "hackernews" when hackerNewsFeedForm is not null:
-                    var hnService = ContentFeedProvider.CreateHackerNewsService();
+                    var hnService = ContentFeedProvider.CreateHackerNewsService(null, AuthHeaderService);
                     hackerNewsItems = await hnService.FetchContent();
                     break;
             }

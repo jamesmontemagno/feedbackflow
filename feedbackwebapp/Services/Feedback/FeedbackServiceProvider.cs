@@ -45,7 +45,9 @@ public class FeedbackServiceProvider
         return _useMocks
             ? new MockGitHubFeedbackService(_http, _configuration, _userSettings, _authHeaderService, onStatusUpdate)
             : new GitHubFeedbackService(_http, _configuration, _userSettings, _authHeaderService, url, onStatusUpdate);
-    }    public IRedditFeedbackService CreateRedditService(string threadId, FeedbackStatusUpdate? onStatusUpdate = null)
+    }
+
+    public IRedditFeedbackService CreateRedditService(string threadId, FeedbackStatusUpdate? onStatusUpdate = null)
     {
         return _useMocks
             ? new MockRedditFeedbackService(_http, _configuration, _userSettings, _authHeaderService, onStatusUpdate)
