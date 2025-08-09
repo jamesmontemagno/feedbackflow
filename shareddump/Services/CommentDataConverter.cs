@@ -97,8 +97,11 @@ public static class CommentDataConverter
     /// <summary>
     /// Converts Reddit thread data to comment threads
     /// </summary>
-    public static List<CommentThread> ConvertReddit(List<RedditThreadModel> threads)
+    public static List<CommentThread> ConvertReddit(RedditThreadModel thread)
     {
+        var threads = new List<RedditThreadModel>();
+        threads.Add(thread);
+
         return threads.Select(thread => new CommentThread
         {
             Id = thread.Id,
@@ -455,7 +458,7 @@ public static class CommentDataConverter
         return additionalData switch
         {
             List<YouTubeOutputVideo> videos => ConvertYouTube(videos),
-            List<RedditThreadModel> threads => ConvertReddit(threads),
+            RedditThreadModel threads => ConvertReddit(threads),
             List<GithubIssueModel> issues => ConvertGitHubIssues(issues),
             List<GithubDiscussionModel> discussions => ConvertGitHubDiscussions(discussions),
             DevBlogsArticleModel article => ConvertDevBlogs(article),

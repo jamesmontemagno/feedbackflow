@@ -128,8 +128,10 @@
                                 {
                                     <GitHubFeedback Issues="@null" PullRequests="@null" Discussions="@discussions" />
                                 }
-                                else if (source.AdditionalData is List<RedditThreadModel> threads)
+                                else if (source.AdditionalData is List<RedditThreadModel> thread)
                                 {
+                                    var threads = new List<RedditThreadModel>();
+                                    threads.Add(thread);
                                     <RedditComments Threads="@threads" />
                                 }
                                 else if (source.AdditionalData is TwitterFeedbackResponse twitterResponse)
