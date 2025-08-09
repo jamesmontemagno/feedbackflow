@@ -1,4 +1,74 @@
-.admin-user-tiers-table {
+.admin-user-tiers-table tr.changed-row td {
+    background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.08) 0%, rgba(var(--primary-color-rgb), 0.15) 100%);
+    transition: background-color .3s ease;
+}
+
+.admin-user-tiers-table tr.changed-row select.form-select {
+    border-color: rgba(var(--primary-color-rgb), 0.6);
+    box-shadow: 0 0 0 .15rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+.admin-tier-confirm-modal {
+    background: var(--card-bg);
+    color: var(--text-primary);
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--border-color);
+}
+
+.admin-tier-confirm-modal .modal-header {
+    background: var(--primary-gradient);
+    color: var(--text-on-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.admin-tier-confirm-modal .modal-title i {
+    opacity: .85;
+}
+
+.admin-tier-confirm-modal .btn-close {
+    filter: var(--btn-close-filter);
+}
+
+.diff-box {
+    background: rgba(var(--bg-secondary-rgb), 0.6);
+    padding: .75rem 1rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    font-size: .9rem;
+}
+
+.diff-row + .diff-row {
+    margin-top: .35rem;
+}
+
+.diff-row .label {
+    width: 5.25rem;
+    display: inline-block;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.diff-row .prev-value {
+    color: var(--text-secondary);
+}
+
+.diff-row .new-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .admin-user-tiers-table tr.changed-row td {
+    background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.15) 0%, rgba(var(--primary-color-rgb), 0.25) 100%);
+}
+
+[data-theme="dark"] .diff-box {
+    background: rgba(var(--bg-secondary-rgb), 0.4);
+}
+
+@media (max-width: 575.98px) {
+    .diff-row .label { width: 4.5rem; }
+}.admin-user-tiers-table {
     width: 100%;
     margin-bottom: 0;
     background: var(--card-bg);

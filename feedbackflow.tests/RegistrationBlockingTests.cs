@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using NSubstitute;
+using System.Collections.Generic;
 
 namespace FeedbackFlow.Tests;
 
@@ -11,30 +10,33 @@ public class RegistrationBlockingTests
     [TestMethod]
     public void AllowsRegistration_DefaultsToTrue()
     {
-        // Arrange
-        var configuration = Substitute.For<IConfiguration>();
-        configuration.GetValue<bool>("AllowsRegistration", true).Returns(true);
+        // Arrange: no explicit key set; expect fallback default true
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>())
+            .Build();
 
         // Act
-        var result = configuration.GetValue<bool>("AllowsRegistration", true);
+        var result = configuration.GetValue("AllowsRegistration", true);
 
         // Assert
-        Assert.IsTrue(result, "AllowsRegistration should default to true");
-        configuration.Received(1).GetValue<bool>("AllowsRegistration", true);
+        Assert.IsTrue(result, "AllowsRegistration should default to true when not configured");
     }
 
     [TestMethod]
     public void AllowsRegistration_CanBeSetToFalse()
     {
-        // Arrange
-        var configuration = Substitute.For<IConfiguration>();
-        configuration.GetValue<bool>("AllowsRegistration", true).Returns(false);
+        // Arrange: explicit false value
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["AllowsRegistration"] = "false"
+            })
+            .Build();
 
         // Act
-        var result = configuration.GetValue<bool>("AllowsRegistration", true);
+        var result = configuration.GetValue("AllowsRegistration", true);
 
         // Assert
-        Assert.IsFalse(result, "AllowsRegistration should be able to be set to false");
-        configuration.Received(1).GetValue<bool>("AllowsRegistration", true);
+        Assert.IsFalse(result, "AllowsRegistration should be false when configured false");
     }
 }
