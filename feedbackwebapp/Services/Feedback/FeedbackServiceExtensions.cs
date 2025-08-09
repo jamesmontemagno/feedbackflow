@@ -11,7 +11,7 @@ internal static class FeedbackServiceExtensions
     {
         if (service is FeedbackService concrete && !string.IsNullOrWhiteSpace(prompt))
         {
-            concrete.TemporaryPrompt = prompt;
+            concrete.SetTemporaryPrompt(prompt);
         }
         return service;
     }
