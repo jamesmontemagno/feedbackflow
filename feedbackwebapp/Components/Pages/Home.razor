@@ -19,6 +19,7 @@
 @using SharedDump.Models.GitHub
 @using SharedDump.Models.HackerNews
 @using SharedDump.Models.Reddit
+@using SharedDump.Models.TwitterFeedback
 @using SharedDump.Models.YouTube
 @using SharedDump.Utils
 
@@ -130,6 +131,10 @@
                                 else if (source.AdditionalData is List<RedditThreadModel> threads)
                                 {
                                     <RedditComments Threads="@threads" />
+                                }
+                                else if (source.AdditionalData is TwitterFeedbackResponse twitterResponse)
+                                {
+                                    <TwitterFeedbackResults Response="@twitterResponse" />
                                 }
                                 else if (source.AdditionalData is DevBlogsArticleModel article)
                                 {
