@@ -1,62 +1,85 @@
 @namespace FeedbackWebApp.Components.Feedback.Results
 @using SharedDump.Models
 @using SharedDump.Utils
-@using Microsoft.AspNetCore.Components.Web.Virtualization
 
 @if (Threads?.Any() == true)
 {
-    @if (GroupBySourceType)
-    {
-        @foreach (var group in GetGroupedThreads())
+    <div class="thread-results">
+        @foreach (var thread in Threads)
         {
-            var visual = SourceVisualMapping.GetVisual(group.Key);
-            <div class="thread-group mb-4">
-                <div class="thread-group-header">
-                    <h4 class="h6 mb-3">
-                        <i class="bi @visual.Icon @visual.CssClass me-2" aria-hidden="true"></i>
-                        @group.Key (@group.Count())
-                    </h4>
+            var visual = SourceVisualMapping.GetVisual(thread.SourceType);
+            
+            <div class="card thread-card shadow-sm mb-4" @key="thread.Id">
+                <div class="card-header thread-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="bi @visual.Icon @visual.CssClass me-2" aria-hidden="true"></i>
+                            @if (!string.IsNullOrEmpty(thread.Url))
+                            {
+                                <a href="@thread.Url" target="_blank" class="text-decoration-none text-white">
+                                    @thread.Title
+                                </a>
+                            }
+                            else
+                            {
+                                @thread.Title
+                            }
+                        </h5>
+                        
+                        <div class="d-flex align-items-center gap-2">
+                            @if (!string.IsNullOrEmpty(thread.Url))
+                            {
+                                <a href="@thread.Url" target="_blank" class="btn btn-sm btn-outline-light">
+                                    <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>
+                                    View
+                                </a>
+                            }
+                            
+                            @if (thread.Comments.Any())
+                            {
+                                <button class="btn btn-sm btn-outline-light" @onclick="() => ToggleComments(thread.Id)">
+                                    <i class="bi bi-chat-text me-1" aria-hidden="true"></i>
+                                    @(IsExpanded(thread.Id) ? "Hide" : "Show") (@thread.Comments.Count)
+                                </button>
+                            }
+                        </div>
+                    </div>
+                    
+                    <div class="mt-2">
+                        <small class="text-white-50">
+                            By @thread.Author • @thread.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")
+                        </small>
+                    </div>
                 </div>
-                @foreach (var thread in group)
+
+                @if (!string.IsNullOrEmpty(thread.Description))
                 {
-                    <ThreadCard Thread="thread" 
-                               ThreadHeaderExtra="ThreadHeaderExtra"
-                               MaxCommentDepthToAutoExpand="MaxCommentDepthToAutoExpand"
-                               CompactComments="CompactComments"
-                               OnToggleComments="ToggleComments"
-                               IsExpanded="IsThreadExpanded(thread.Id)" />
+                    <div class="card-body">
+                        <div class="thread-description">
+                            @thread.Description
+                        </div>
+                    </div>
+                }
+
+                @if (thread.Comments.Any() && IsExpanded(thread.Id))
+                {
+                    <div class="card-body thread-comments">
+                        <h6 class="mb-3">
+                            <i class="bi bi-chat-dots me-2" aria-hidden="true"></i>
+                            Comments (@thread.Comments.Count)
+                        </h6>
+                        
+                        <div class="comments-container">
+                            @foreach (var comment in thread.Comments)
+                            {
+                                <ThreadComment Comment="comment" />
+                            }
+                        </div>
+                    </div>
                 }
             </div>
         }
-    }
-    else
-    {
-        <div class="thread-results">
-            @if (EnableVirtualization && ShouldUseVirtualization())
-            {
-                <Virtualize Items="Threads.ToList()" Context="thread" ItemSize="@VirtualizationItemSize">
-                    <ThreadCard Thread="thread" 
-                               ThreadHeaderExtra="ThreadHeaderExtra"
-                               MaxCommentDepthToAutoExpand="MaxCommentDepthToAutoExpand"
-                               CompactComments="CompactComments"
-                               OnToggleComments="ToggleComments"
-                               IsExpanded="IsThreadExpanded(thread.Id)" />
-                </Virtualize>
-            }
-            else
-            {
-                @foreach (var thread in GetFilteredThreads())
-                {
-                    <ThreadCard Thread="thread" 
-                               ThreadHeaderExtra="ThreadHeaderExtra"
-                               MaxCommentDepthToAutoExpand="MaxCommentDepthToAutoExpand"
-                               CompactComments="CompactComments"
-                               OnToggleComments="ToggleComments"
-                               IsExpanded="IsThreadExpanded(thread.Id)" />
-                }
-            }
-        </div>
-    }
+    </div>
 }
 else if (Threads is not null)
 {
@@ -70,73 +93,23 @@ else if (Threads is not null)
     [Parameter, EditorRequired]
     public IEnumerable<CommentThread> Threads { get; set; } = null!;
 
-    [Parameter]
-    public bool EnableVirtualization { get; set; } = true;
-
-    [Parameter]
-    public int VirtualizationItemSize { get; set; } = 120;
-
-    [Parameter]
-    public int VirtualizationThreshold { get; set; } = 50;
-
-    [Parameter]
-    public RenderFragment<CommentThread>? ThreadHeaderExtra { get; set; }
-
-    [Parameter]
-    public Func<CommentThread, bool>? ThreadFilter { get; set; }
-
-    [Parameter]
-    public bool GroupBySourceType { get; set; } = false;
-
-    [Parameter]
-    public int MaxCommentDepthToAutoExpand { get; set; } = 3;
-
-    [Parameter]
-    public bool CompactComments { get; set; } = false;
-
-    private HashSet<string> ExpandedThreads { get; } = new();
+    private HashSet<string> expandedThreads = new();
 
     private void ToggleComments(string threadId)
     {
-        if (ExpandedThreads.Contains(threadId))
+        if (expandedThreads.Contains(threadId))
         {
-            ExpandedThreads.Remove(threadId);
+            expandedThreads.Remove(threadId);
         }
         else
         {
-            ExpandedThreads.Add(threadId);
+            expandedThreads.Add(threadId);
         }
         StateHasChanged();
     }
 
-    private bool IsThreadExpanded(string threadId)
+    private bool IsExpanded(string threadId)
     {
-        return ExpandedThreads.Contains(threadId);
-    }
-
-    private IEnumerable<CommentThread> GetFilteredThreads()
-    {
-        return ThreadFilter is not null ? Threads.Where(ThreadFilter) : Threads;
-    }
-
-    private IEnumerable<IGrouping<string, CommentThread>> GetGroupedThreads()
-    {
-        return GetFilteredThreads().GroupBy(t => t.SourceType);
-    }
-
-    private bool ShouldUseVirtualization()
-    {
-        var totalComments = Threads.Sum(t => CountTotalComments(t));
-        return totalComments > VirtualizationThreshold;
-    }
-
-    private int CountTotalComments(CommentThread thread)
-    {
-        return thread.Comments.Count + thread.Comments.Sum(CountNestedComments);
-    }
-
-    private int CountNestedComments(CommentData comment)
-    {
-        return comment.Replies.Count + comment.Replies.Sum(CountNestedComments);
+        return expandedThreads.Contains(threadId);
     }
 }

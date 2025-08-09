@@ -25,6 +25,9 @@ public class UserSettingsService
         
         // Manual prompt property - separate from universal prompt
         public string ManualPrompt { get; set; } = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("manual");
+        
+        // Feature flags
+        public bool UseUnifiedThreads { get; set; } = false;
     }
 
     public UserSettingsService(IJSRuntime jsRuntime, IConfiguration configuration)
@@ -117,6 +120,25 @@ public class UserSettingsService
     {
         var settings = await GetSettingsAsync();
         settings.LastFeatureAnnouncementShown = DateTime.UtcNow;
+        await SaveSettingsAsync(settings);
+    }
+
+    public async Task<bool> ShouldUseUnifiedThreadsAsync()
+    {
+        // Check configuration first (for global override)
+        var configValue = _configuration.GetValue<bool?>("Features:UnifiedThreads");
+        if (configValue.HasValue)
+            return configValue.Value;
+
+        // Fall back to user settings
+        var settings = await GetSettingsAsync();
+        return settings.UseUnifiedThreads;
+    }
+
+    public async Task SetUseUnifiedThreadsAsync(bool useUnifiedThreads)
+    {
+        var settings = await GetSettingsAsync();
+        settings.UseUnifiedThreads = useUnifiedThreads;
         await SaveSettingsAsync(settings);
     }
 
