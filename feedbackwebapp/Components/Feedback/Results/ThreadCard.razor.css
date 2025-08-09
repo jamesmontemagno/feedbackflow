@@ -1,0 +1,2 @@
+/* ThreadCard uses the same styles as ThreadResults */
+@import url('./ThreadResults.razor.css');

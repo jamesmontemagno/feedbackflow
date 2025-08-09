@@ -1,0 +1,142 @@
+@namespace FeedbackWebApp.Components.Feedback.Results
+@using SharedDump.Models
+@using SharedDump.Utils
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+
+@if (Threads?.Any() == true)
+{
+    @if (GroupBySourceType)
+    {
+        @foreach (var group in GetGroupedThreads())
+        {
+            var visual = SourceVisualMapping.GetVisual(group.Key);
+            <div class="thread-group mb-4">
+                <div class="thread-group-header">
+                    <h4 class="h6 mb-3">
+                        <i class="bi @visual.Icon @visual.CssClass me-2" aria-hidden="true"></i>
+                        @group.Key (@group.Count())
+                    </h4>
+                </div>
+                @foreach (var thread in group)
+                {
+                    <ThreadCard Thread="thread" 
+                               ThreadHeaderExtra="ThreadHeaderExtra"
+                               MaxCommentDepthToAutoExpand="MaxCommentDepthToAutoExpand"
+                               CompactComments="CompactComments"
+                               OnToggleComments="ToggleComments"
+                               IsExpanded="IsThreadExpanded(thread.Id)" />
+                }
+            </div>
+        }
+    }
+    else
+    {
+        <div class="thread-results">
+            @if (EnableVirtualization && ShouldUseVirtualization())
+            {
+                <Virtualize Items="Threads.ToList()" Context="thread" ItemSize="@VirtualizationItemSize">
+                    <ThreadCard Thread="thread" 
+                               ThreadHeaderExtra="ThreadHeaderExtra"
+                               MaxCommentDepthToAutoExpand="MaxCommentDepthToAutoExpand"
+                               CompactComments="CompactComments"
+                               OnToggleComments="ToggleComments"
+                               IsExpanded="IsThreadExpanded(thread.Id)" />
+                </Virtualize>
+            }
+            else
+            {
+                @foreach (var thread in GetFilteredThreads())
+                {
+                    <ThreadCard Thread="thread" 
+                               ThreadHeaderExtra="ThreadHeaderExtra"
+                               MaxCommentDepthToAutoExpand="MaxCommentDepthToAutoExpand"
+                               CompactComments="CompactComments"
+                               OnToggleComments="ToggleComments"
+                               IsExpanded="IsThreadExpanded(thread.Id)" />
+                }
+            }
+        </div>
+    }
+}
+else if (Threads is not null)
+{
+    <div class="alert alert-info mt-4" role="alert">
+        <i class="bi bi-info-circle me-2" aria-hidden="true"></i>
+        No discussions or comments found.
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public IEnumerable<CommentThread> Threads { get; set; } = null!;
+
+    [Parameter]
+    public bool EnableVirtualization { get; set; } = true;
+
+    [Parameter]
+    public int VirtualizationItemSize { get; set; } = 120;
+
+    [Parameter]
+    public int VirtualizationThreshold { get; set; } = 50;
+
+    [Parameter]
+    public RenderFragment<CommentThread>? ThreadHeaderExtra { get; set; }
+
+    [Parameter]
+    public Func<CommentThread, bool>? ThreadFilter { get; set; }
+
+    [Parameter]
+    public bool GroupBySourceType { get; set; } = false;
+
+    [Parameter]
+    public int MaxCommentDepthToAutoExpand { get; set; } = 3;
+
+    [Parameter]
+    public bool CompactComments { get; set; } = false;
+
+    private HashSet<string> ExpandedThreads { get; } = new();
+
+    private void ToggleComments(string threadId)
+    {
+        if (ExpandedThreads.Contains(threadId))
+        {
+            ExpandedThreads.Remove(threadId);
+        }
+        else
+        {
+            ExpandedThreads.Add(threadId);
+        }
+        StateHasChanged();
+    }
+
+    private bool IsThreadExpanded(string threadId)
+    {
+        return ExpandedThreads.Contains(threadId);
+    }
+
+    private IEnumerable<CommentThread> GetFilteredThreads()
+    {
+        return ThreadFilter is not null ? Threads.Where(ThreadFilter) : Threads;
+    }
+
+    private IEnumerable<IGrouping<string, CommentThread>> GetGroupedThreads()
+    {
+        return GetFilteredThreads().GroupBy(t => t.SourceType);
+    }
+
+    private bool ShouldUseVirtualization()
+    {
+        var totalComments = Threads.Sum(t => CountTotalComments(t));
+        return totalComments > VirtualizationThreshold;
+    }
+
+    private int CountTotalComments(CommentThread thread)
+    {
+        return thread.Comments.Count + thread.Comments.Sum(CountNestedComments);
+    }
+
+    private int CountNestedComments(CommentData comment)
+    {
+        return comment.Replies.Count + comment.Replies.Sum(CountNestedComments);
+    }
+}

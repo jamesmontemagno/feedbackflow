@@ -1,0 +1,138 @@
+@namespace FeedbackWebApp.Components.Feedback.Results
+@using SharedDump.Models
+@using SharedDump.Utils
+
+@if (Comment is not null)
+{
+    <div class="thread-comment @(GetCommentDepthClass()) @(Compact ? "compact" : "")" @key="Comment.Id">
+        <div class="comment-header d-flex justify-content-between align-items-start">
+            <div class="comment-author-info d-flex align-items-center">
+                <i class="bi bi-person-circle text-muted me-2 comment-avatar" aria-hidden="true"></i>
+                <div class="comment-details">
+                    <div class="comment-author fw-medium">@Comment.Author</div>
+                    <div class="comment-meta d-flex align-items-center gap-2 text-muted small">
+                        <time datetime="@Comment.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")" title="@Comment.CreatedAt.ToLocalTime().ToString("g")">
+                            @GetFormattedDate(Comment.CreatedAt)
+                        </time>
+                        @if (Comment.Score.HasValue)
+                        {
+                            <span class="comment-score" title="Score/Upvotes">
+                                <i class="bi bi-arrow-up-circle me-1" aria-hidden="true"></i>@Comment.Score.Value
+                            </span>
+                        }
+                        @if (Comment.Url is not null)
+                        {
+                            <a href="@Comment.Url" target="_blank" class="comment-link text-decoration-none" title="View original comment">
+                                <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+            @if (Comment.Replies.Any() && Depth < MaxDepthToAutoExpand)
+            {
+                <button class="btn btn-sm btn-outline-secondary comment-toggle" 
+                        @onclick="ToggleExpansion" 
+                        aria-expanded="@IsExpanded.ToString().ToLowerInvariant()"
+                        title="@(IsExpanded ? "Collapse replies" : $"Show {Comment.Replies.Count} replies")">
+                    <i class="bi @(IsExpanded ? "bi-chevron-up" : "bi-chevron-down")" aria-hidden="true"></i>
+                    <span class="visually-hidden">@(IsExpanded ? "Collapse" : "Expand") @Comment.Replies.Count replies</span>
+                </button>
+            }
+        </div>
+        
+        <div class="comment-content mt-2">
+            @if (IsHtmlContent)
+            {
+                @((MarkupString)Comment.Content)
+            }
+            else
+            {
+                @Comment.Content
+            }
+        </div>
+
+        @if (Comment.Replies.Any())
+        {
+            @if (Depth >= MaxDepthToAutoExpand && !IsExpanded)
+            {
+                <div class="comment-load-more mt-3">
+                    <button class="btn btn-sm btn-outline-primary" @onclick="ToggleExpansion">
+                        <i class="bi bi-plus-circle me-1" aria-hidden="true"></i>
+                        Show @Comment.Replies.Count more replies
+                    </button>
+                </div>
+            }
+            else if (IsExpanded || Depth < MaxDepthToAutoExpand)
+            {
+                <div class="comment-replies mt-3" role="group" aria-label="Replies to comment by @Comment.Author">
+                    @foreach (var reply in Comment.Replies)
+                    {
+                        <ThreadComment Comment="reply" 
+                                     Depth="Depth + 1" 
+                                     MaxDepthToAutoExpand="MaxDepthToAutoExpand"
+                                     Compact="Compact" />
+                    }
+                </div>
+            }
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public CommentData Comment { get; set; } = null!;
+
+    [Parameter]
+    public int Depth { get; set; } = 0;
+
+    [Parameter]
+    public int MaxDepthToAutoExpand { get; set; } = 3;
+
+    [Parameter]
+    public bool Compact { get; set; } = false;
+
+    private bool IsExpanded { get; set; } = false;
+
+    private bool IsHtmlContent => Comment.Metadata?.ContainsKey("IsHtml") == true && 
+                                 Comment.Metadata["IsHtml"] is bool isHtml && isHtml;
+
+    protected override void OnInitialized()
+    {
+        // Auto-expand if within depth limit
+        IsExpanded = Depth < MaxDepthToAutoExpand;
+    }
+
+    private void ToggleExpansion()
+    {
+        IsExpanded = !IsExpanded;
+        StateHasChanged();
+    }
+
+    private string GetCommentDepthClass()
+    {
+        return Depth switch
+        {
+            0 => "comment-depth-0",
+            1 => "comment-depth-1 ms-3",
+            2 => "comment-depth-2 ms-4",
+            3 => "comment-depth-3 ms-5",
+            _ => $"comment-depth-deep ms-5 border-start border-2 ps-3"
+        };
+    }
+
+    private string GetFormattedDate(DateTime date)
+    {
+        var localDate = date.ToLocalTime();
+        var now = DateTime.Now;
+        var diff = now - localDate;
+
+        return diff.TotalDays switch
+        {
+            < 1 when diff.TotalHours < 1 => $"{(int)diff.TotalMinutes}m ago",
+            < 1 => $"{(int)diff.TotalHours}h ago",
+            < 7 => $"{(int)diff.TotalDays}d ago",
+            _ => localDate.ToString("MMM dd, yyyy")
+        };
+    }
+}
