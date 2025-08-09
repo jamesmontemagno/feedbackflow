@@ -97,12 +97,9 @@ public static class CommentDataConverter
     /// <summary>
     /// Converts Reddit thread data to comment threads
     /// </summary>
-    public static List<CommentThread> ConvertReddit(RedditThreadModel thread)
+    public static CommentThread ConvertReddit(RedditThreadModel thread)
     {
-        var threads = new List<RedditThreadModel>();
-        threads.Add(thread);
-
-        return threads.Select(thread => new CommentThread
+        return new CommentThread
         {
             Id = thread.Id,
             Title = thread.Title,
@@ -120,7 +117,16 @@ public static class CommentDataConverter
                 ["Permalink"] = thread.Permalink
             },
             Comments = ConvertRedditComments(thread.Comments)
-        }).ToList();
+        };
+    }
+
+    // Overload to support previous list-based usage patterns
+    public static List<CommentThread> ConvertReddit(List<RedditThreadModel> threads)
+    {
+        var list = new List<CommentThread>(threads.Count);
+        foreach (var t in threads)
+            list.Add(ConvertReddit(t));
+        return list;
     }
 
     private static List<CommentData> ConvertRedditComments(List<RedditCommentModel> comments)
@@ -458,7 +464,8 @@ public static class CommentDataConverter
         return additionalData switch
         {
             List<YouTubeOutputVideo> videos => ConvertYouTube(videos),
-            RedditThreadModel threads => ConvertReddit(threads),
+            RedditThreadModel redditThread => new List<CommentThread> { ConvertReddit(redditThread) },
+            List<RedditThreadModel> redditThreads => ConvertReddit(redditThreads),
             List<GithubIssueModel> issues => ConvertGitHubIssues(issues),
             List<GithubDiscussionModel> discussions => ConvertGitHubDiscussions(discussions),
             DevBlogsArticleModel article => ConvertDevBlogs(article),
