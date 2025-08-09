@@ -1,0 +1,208 @@
+/* Thread Comment Styling */
+.thread-comment {
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    background: var(--card-bg);
+    border-radius: var(--border-radius-sm);
+    border: 1px solid rgba(var(--border-color-rgb), 0.1);
+    transition: all 0.3s ease;
+}
+
+.thread-comment:hover {
+    background: rgba(var(--primary-color-rgb), 0.02);
+    border-color: rgba(var(--primary-color-rgb), 0.15);
+}
+
+/* Compact mode */
+.thread-comment.compact {
+    padding: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.thread-comment.compact .comment-content {
+    font-size: 0.9rem;
+}
+
+/* Comment header */
+.comment-header {
+    margin-bottom: 0.5rem;
+}
+
+.comment-author {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.comment-meta {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.comment-avatar {
+    font-size: 1.25rem;
+    opacity: 0.7;
+}
+
+.comment-score {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.375rem;
+    background: rgba(var(--primary-color-rgb), 0.1);
+    border-radius: var(--border-radius-pill);
+    font-weight: 500;
+    color: var(--primary-color);
+}
+
+.comment-link {
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}
+
+.comment-link:hover {
+    opacity: 1;
+    color: var(--primary-color);
+}
+
+/* Comment content */
+.comment-content {
+    color: var(--text-primary);
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+
+.comment-content p:last-child {
+    margin-bottom: 0;
+}
+
+/* Comment toggle button */
+.comment-toggle {
+    border-color: rgba(var(--text-secondary-rgb), 0.3);
+    color: var(--text-secondary);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+}
+
+.comment-toggle:hover {
+    background: rgba(var(--primary-color-rgb), 0.1);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* Depth-based indentation and styling */
+.comment-depth-0 {
+    border-left: 3px solid var(--primary-color);
+}
+
+.comment-depth-1 {
+    border-left: 2px solid rgba(var(--primary-color-rgb), 0.6);
+}
+
+.comment-depth-2 {
+    border-left: 2px solid rgba(var(--primary-color-rgb), 0.4);
+}
+
+.comment-depth-3 {
+    border-left: 2px solid rgba(var(--primary-color-rgb), 0.3);
+}
+
+.comment-depth-deep {
+    opacity: 0.9;
+}
+
+/* Replies container */
+.comment-replies {
+    position: relative;
+}
+
+.comment-replies::before {
+    content: '';
+    position: absolute;
+    left: -0.75rem;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, 
+        rgba(var(--primary-color-rgb), 0.3) 0%, 
+        rgba(var(--primary-color-rgb), 0.1) 100%);
+}
+
+/* Load more button */
+.comment-load-more {
+    padding-left: 1rem;
+}
+
+.comment-load-more .btn {
+    font-size: 0.85rem;
+    padding: 0.375rem 0.75rem;
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .thread-comment {
+    border-color: rgba(var(--border-color-rgb), 0.2);
+}
+
+[data-theme="dark"] .thread-comment:hover {
+    background: rgba(var(--primary-color-rgb), 0.05);
+    border-color: rgba(var(--primary-color-rgb), 0.2);
+}
+
+[data-theme="dark"] .comment-score {
+    background: rgba(var(--primary-color-rgb), 0.15);
+}
+
+[data-theme="dark"] .comment-toggle {
+    border-color: rgba(var(--text-secondary-rgb), 0.4);
+}
+
+[data-theme="dark"] .comment-toggle:hover {
+    background: rgba(var(--primary-color-rgb), 0.15);
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+    .thread-comment {
+        padding: 0.5rem;
+    }
+    
+    .comment-depth-1 {
+        margin-left: 0.75rem !important;
+    }
+    
+    .comment-depth-2 {
+        margin-left: 1rem !important;
+    }
+    
+    .comment-depth-3 {
+        margin-left: 1.25rem !important;
+    }
+    
+    .comment-depth-deep {
+        margin-left: 1.25rem !important;
+    }
+    
+    .comment-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem !important;
+    }
+    
+    .comment-avatar {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .thread-comment.compact {
+        padding: 0.375rem;
+    }
+    
+    .comment-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .comment-toggle {
+        align-self: flex-end;
+    }
+}

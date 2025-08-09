@@ -22,6 +22,7 @@
 @using SharedDump.Models.TwitterFeedback
 @using SharedDump.Models.YouTube
 @using SharedDump.Utils
+@using SharedDump.Services
 
 @inject IConfiguration Configuration
 @inject FeedbackServiceProvider ServiceProvider
@@ -108,42 +109,55 @@
                     @* Display additional data from FeedbackSourceData list *@
                     @if (feedbackSources != null && feedbackSources.Any())
                     {
-                        foreach (var source in feedbackSources)
+                        @if (useUnifiedThreads)
                         {
-                            if (source.AdditionalData != null)
+                            @* Use unified threading components *@
+                            var allThreads = GetUnifiedThreadsFromSources(feedbackSources);
+                            if (allThreads.Any())
                             {
-                                @if (source.AdditionalData is List<YouTubeOutputVideo> videos)
+                                <ThreadResults Threads="allThreads" GroupBySourceType="true" />
+                            }
+                        }
+                        else
+                        {
+                            @* Use legacy platform-specific components *@
+                            foreach (var source in feedbackSources)
+                            {
+                                if (source.AdditionalData != null)
                                 {
-                                    <YouTubeComments Videos="@videos" />
-                                }
-                                else if (source.AdditionalData is List<HackerNewsAnalysis> analyses)
-                                {
-                                    <HackerNewsResults Analyses="@analyses" />
-                                }
-                                else if (source.AdditionalData is List<GithubIssueModel> issues)
-                                {
-                                    <GitHubFeedback Issues="@issues" PullRequests="@null" Discussions="@null" />
-                                }
-                                else if (source.AdditionalData is List<GithubDiscussionModel> discussions)
-                                {
-                                    <GitHubFeedback Issues="@null" PullRequests="@null" Discussions="@discussions" />
-                                }
-                                else if (source.AdditionalData is RedditThreadModel redditThread)
-                                {
-                                    var redditThreads = new List<RedditThreadModel> { redditThread };
-                                    <RedditComments Threads="@redditThreads" />
-                                }
-                                else if (source.AdditionalData is TwitterFeedbackResponse twitterResponse)
-                                {
-                                    <TwitterFeedbackResults Response="@twitterResponse" />
-                                }
-                                else if (source.AdditionalData is DevBlogsArticleModel article)
-                                {
-                                    <DevBlogsFeedbackResults Article="@article" />
-                                }
-                                else if(source.AdditionalData is BlueSkyFeedbackResponse blueSkyFeedbackResponse)
-                                {
-                                    <BlueSkyFeedbackResults Response="@blueSkyFeedbackResponse" />
+                                    @if (source.AdditionalData is List<YouTubeOutputVideo> videos)
+                                    {
+                                        <YouTubeComments Videos="@videos" />
+                                    }
+                                    else if (source.AdditionalData is List<HackerNewsAnalysis> analyses)
+                                    {
+                                        <HackerNewsResults Analyses="@analyses" />
+                                    }
+                                    else if (source.AdditionalData is List<GithubIssueModel> issues)
+                                    {
+                                        <GitHubFeedback Issues="@issues" PullRequests="@null" Discussions="@null" />
+                                    }
+                                    else if (source.AdditionalData is List<GithubDiscussionModel> discussions)
+                                    {
+                                        <GitHubFeedback Issues="@null" PullRequests="@null" Discussions="@discussions" />
+                                    }
+                                    else if (source.AdditionalData is RedditThreadModel redditThread)
+                                    {
+                                        var redditThreads = new List<RedditThreadModel> { redditThread };
+                                        <RedditComments Threads="@redditThreads" />
+                                    }
+                                    else if (source.AdditionalData is TwitterFeedbackResponse twitterResponse)
+                                    {
+                                        <TwitterFeedbackResults Response="@twitterResponse" />
+                                    }
+                                    else if (source.AdditionalData is DevBlogsArticleModel article)
+                                    {
+                                        <DevBlogsFeedbackResults Article="@article" />
+                                    }
+                                    else if(source.AdditionalData is BlueSkyFeedbackResponse blueSkyFeedbackResponse)
+                                    {
+                                        <BlueSkyFeedbackResults Response="@blueSkyFeedbackResponse" />
+                                    }
                                 }
                             }
                         }
@@ -173,6 +187,7 @@
     private string currentStatusMessage = "";
     private string? initialSource;
     private string? initialId;
+    private bool useUnifiedThreads = false;
 
     private async Task HandleAuthenticatedWithDetails((bool success, bool justLoggedIn) details)
     {
@@ -486,6 +501,9 @@
             }
         }
 
+        // Load feature flag for unified threads
+        useUnifiedThreads = await UserSettings.ShouldUseUnifiedThreadsAsync();
+
         await base.OnInitializedAsync();
     }
 
@@ -561,6 +579,22 @@
         // Refresh the page to restart the authentication flow
         await Task.Delay(100); // Small delay to allow UI to update
         NavigationManager.NavigateTo("/", forceLoad: true);
+    }
+
+    private List<SharedDump.Models.CommentThread> GetUnifiedThreadsFromSources(List<FeedbackSourceData> sources)
+    {
+        var allThreads = new List<SharedDump.Models.CommentThread>();
+
+        foreach (var source in sources)
+        {
+            if (source.AdditionalData != null)
+            {
+                var convertedThreads = CommentDataConverter.ConvertAdditionalData(source.AdditionalData);
+                allThreads.AddRange(convertedThreads);
+            }
+        }
+
+        return allThreads;
     }
 
     public void Dispose()
