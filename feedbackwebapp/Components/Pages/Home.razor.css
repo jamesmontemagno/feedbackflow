@@ -66,3 +66,36 @@
         transform: translateX(0);
     }
 }
+
+/* Temporary Prompt Indicator */
+.temp-prompt-indicator {
+    border-left: 4px solid rgba(var(--primary-color-rgb), 0.6);
+    background: rgba(var(--bg-secondary-rgb), 0.6);
+    backdrop-filter: blur(4px);
+    position: relative;
+    overflow: hidden;
+}
+
+.temp-prompt-indicator .temp-prompt-icon {
+    color: var(--warning-color);
+    font-size: 1.25rem;
+    line-height: 1;
+    margin-top: 2px;
+}
+
+.temp-prompt-indicator strong {
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+}
+
+.temp-prompt-preview {
+    font-family: var(--font-monospace, monospace);
+    max-height: 4.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+[data-theme="dark"] .temp-prompt-indicator {
+    background: rgba(var(--bg-secondary-rgb), 0.4);
+    border-left-color: rgba(var(--primary-color-rgb), 0.8);
+}
