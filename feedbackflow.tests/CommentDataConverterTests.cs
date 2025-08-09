@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharedDump.Models;
+using SharedDump.Models.TwitterFeedback;
 using SharedDump.Models.YouTube;
 using SharedDump.Services;
 using System;
@@ -74,6 +75,96 @@ namespace FeedbackFlow.Tests
             Assert.IsNotNull(orphanedComment, "Orphaned comment should be present at root level");
             Assert.IsTrue(orphanedComment.Content.StartsWith("[Reply to unavailable comment]"), 
                 "Orphaned comment should be marked accordingly");
+        }
+
+        [TestMethod]
+        public void ConvertTwitter_WithTweetAndReplies_ConvertsCorrectly()
+        {
+            // Arrange
+            var twitterResponse = new TwitterFeedbackResponse
+            {
+                Items = new List<TwitterFeedbackItem>
+                {
+                    new TwitterFeedbackItem
+                    {
+                        Id = "123",
+                        Author = "testuser",
+                        AuthorName = "Test User",
+                        AuthorUsername = "testuser",
+                        Content = "This is a test tweet",
+                        TimestampUtc = new DateTime(2025, 6, 1, 12, 0, 0),
+                        ParentId = null,
+                        Replies = new List<TwitterFeedbackItem>
+                        {
+                            new TwitterFeedbackItem
+                            {
+                                Id = "456",
+                                Author = "replier",
+                                AuthorName = "Replier",
+                                AuthorUsername = "replier",
+                                Content = "This is a reply",
+                                TimestampUtc = new DateTime(2025, 6, 1, 12, 30, 0),
+                                ParentId = "123"
+                            }
+                        }
+                    }
+                },
+                ProcessedTweetCount = 2,
+                MayBeIncomplete = false,
+                RateLimitInfo = null
+            };
+
+            // Act
+            var result = CommentDataConverter.ConvertTwitter(twitterResponse);
+
+            // Assert
+            Assert.AreEqual(1, result.Count, "Should have one thread for the tweet");
+            
+            var thread = result[0];
+            Assert.AreEqual("123", thread.Id, "Thread ID should match tweet ID");
+            Assert.AreEqual("Test User", thread.Author, "Thread author should be display name");
+            Assert.AreEqual("Twitter", thread.SourceType, "Source type should be Twitter");
+            Assert.AreEqual("This is a test tweet", thread.Description, "Thread description should match tweet content");
+            
+            // Check metadata
+            Assert.IsTrue(thread.Metadata.ContainsKey("ProcessedTweetCount"), "Should include processed tweet count");
+            Assert.AreEqual(2, thread.Metadata["ProcessedTweetCount"], "Processed tweet count should match");
+            
+            // Check comments (replies)
+            Assert.AreEqual(1, thread.Comments.Count, "Should have one reply");
+            var reply = thread.Comments[0];
+            Assert.AreEqual("456", reply.Id, "Reply ID should match");
+            Assert.AreEqual("Replier", reply.Author, "Reply author should be display name");
+            Assert.AreEqual("This is a reply", reply.Content, "Reply content should match");
+        }
+
+        [TestMethod]
+        public void ConvertAdditionalData_WithTwitterResponse_CallsTwitterConverter()
+        {
+            // Arrange
+            var twitterResponse = new TwitterFeedbackResponse
+            {
+                Items = new List<TwitterFeedbackItem>
+                {
+                    new TwitterFeedbackItem
+                    {
+                        Id = "123",
+                        Author = "testuser",
+                        AuthorName = "Test User",
+                        Content = "Test tweet",
+                        TimestampUtc = DateTime.UtcNow,
+                        ParentId = null
+                    }
+                },
+                ProcessedTweetCount = 1
+            };
+
+            // Act
+            var result = CommentDataConverter.ConvertAdditionalData(twitterResponse);
+
+            // Assert
+            Assert.AreEqual(1, result.Count, "Should convert TwitterFeedbackResponse");
+            Assert.AreEqual("Twitter", result[0].SourceType, "Should have correct source type");
         }
     }
 }

@@ -51,6 +51,7 @@
 
 @code {
     [Parameter] public string? TweetUrlOrId { get; set; }
+    [Parameter] public TwitterFeedbackResponse? Response { get; set; }
     [Parameter] public EventCallback OnBack { get; set; }
 
     private ITwitterFeedbackService? _service;
@@ -75,6 +76,13 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        // If Response is provided directly, use it
+        if (Response != null)
+        {
+            _feedback = Response;
+            return;
+        }
+        
         if (string.IsNullOrWhiteSpace(TweetUrlOrId))
         {
             return;

@@ -1085,8 +1085,8 @@ public class FeedbackFunctions
     {
         if (data is RedditThreadModel thread)
         {
-            var threads = SharedDump.Services.CommentDataConverter.ConvertReddit(new List<RedditThreadModel> { thread });
-            return ConvertCommentThreadsToText(threads);
+            var threadConverted = SharedDump.Services.CommentDataConverter.ConvertReddit(thread);
+            return ConvertCommentThreadsToText(new List<CommentThread> { threadConverted });
         }
         return JsonSerializer.Serialize(data);
     }

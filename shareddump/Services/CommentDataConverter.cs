@@ -4,6 +4,7 @@ using SharedDump.Models.DevBlogs;
 using SharedDump.Models.GitHub;
 using SharedDump.Models.HackerNews;
 using SharedDump.Models.Reddit;
+using SharedDump.Models.TwitterFeedback;
 using SharedDump.Models.YouTube;
 
 namespace SharedDump.Services;
@@ -96,9 +97,9 @@ public static class CommentDataConverter
     /// <summary>
     /// Converts Reddit thread data to comment threads
     /// </summary>
-    public static List<CommentThread> ConvertReddit(List<RedditThreadModel> threads)
+    public static CommentThread ConvertReddit(RedditThreadModel thread)
     {
-        return threads.Select(thread => new CommentThread
+        return new CommentThread
         {
             Id = thread.Id,
             Title = thread.Title,
@@ -116,7 +117,16 @@ public static class CommentDataConverter
                 ["Permalink"] = thread.Permalink
             },
             Comments = ConvertRedditComments(thread.Comments)
-        }).ToList();
+        };
+    }
+
+    // Overload to support previous list-based usage patterns
+    public static List<CommentThread> ConvertReddit(List<RedditThreadModel> threads)
+    {
+        var list = new List<CommentThread>(threads.Count);
+        foreach (var t in threads)
+            list.Add(ConvertReddit(t));
+        return list;
     }
 
     private static List<CommentData> ConvertRedditComments(List<RedditCommentModel> comments)
@@ -401,6 +411,52 @@ public static class CommentDataConverter
     }
 
     /// <summary>
+    /// Converts Twitter/X feedback data to comment threads
+    /// </summary>
+    public static List<CommentThread> ConvertTwitter(TwitterFeedbackResponse response)
+    {
+        // Group root tweets and their replies
+        var rootTweets = response.Items.Where(item => string.IsNullOrEmpty(item.ParentId)).ToList();
+        
+        return rootTweets.Select(tweet => new CommentThread
+        {
+            Id = tweet.Id,
+            Title = TruncateForTitle(tweet.Content),
+            Description = tweet.Content,
+            Author = tweet.AuthorName ?? tweet.Author,
+            CreatedAt = tweet.TimestampUtc,
+            Url = string.Empty, // URL not provided in the model
+            SourceType = "Twitter",
+            Metadata = new Dictionary<string, object>
+            {
+                ["AuthorUsername"] = tweet.AuthorUsername ?? tweet.Author,
+                ["ProcessedTweetCount"] = response.ProcessedTweetCount,
+                ["MayBeIncomplete"] = response.MayBeIncomplete,
+                ["RateLimitInfo"] = response.RateLimitInfo ?? string.Empty
+            },
+            Comments = tweet.Replies != null ? ConvertTwitterComments(tweet.Replies) : new List<CommentData>()
+        }).ToList();
+    }
+
+    private static List<CommentData> ConvertTwitterComments(List<TwitterFeedbackItem> items)
+    {
+        return items.Select(item => new CommentData
+        {
+            Id = item.Id,
+            ParentId = item.ParentId,
+            Author = item.AuthorName ?? item.Author,
+            Content = item.Content,
+            CreatedAt = item.TimestampUtc,
+            Score = 0, // Twitter doesn't provide score/likes in this model
+            Replies = item.Replies != null ? ConvertTwitterComments(item.Replies) : new List<CommentData>(),
+            Metadata = new Dictionary<string, object>
+            {
+                ["AuthorUsername"] = item.AuthorUsername ?? item.Author
+            }
+        }).ToList();
+    }
+
+    /// <summary>
     /// Converts mixed additional data to comment threads based on type
     /// </summary>
     public static List<CommentThread> ConvertAdditionalData(object? additionalData)
@@ -408,11 +464,13 @@ public static class CommentDataConverter
         return additionalData switch
         {
             List<YouTubeOutputVideo> videos => ConvertYouTube(videos),
-            List<RedditThreadModel> threads => ConvertReddit(threads),
+            RedditThreadModel redditThread => new List<CommentThread> { ConvertReddit(redditThread) },
+            List<RedditThreadModel> redditThreads => ConvertReddit(redditThreads),
             List<GithubIssueModel> issues => ConvertGitHubIssues(issues),
             List<GithubDiscussionModel> discussions => ConvertGitHubDiscussions(discussions),
             DevBlogsArticleModel article => ConvertDevBlogs(article),
             BlueSkyFeedbackResponse response => ConvertBlueSky(response),
+            TwitterFeedbackResponse twitterResponse => ConvertTwitter(twitterResponse),
             List<HackerNewsItem> stories => ConvertHackerNews(stories),
             _ => new List<CommentThread>()
         };

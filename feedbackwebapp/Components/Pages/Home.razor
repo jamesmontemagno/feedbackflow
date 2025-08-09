@@ -19,6 +19,7 @@
 @using SharedDump.Models.GitHub
 @using SharedDump.Models.HackerNews
 @using SharedDump.Models.Reddit
+@using SharedDump.Models.TwitterFeedback
 @using SharedDump.Models.YouTube
 @using SharedDump.Utils
 
@@ -127,9 +128,14 @@
                                 {
                                     <GitHubFeedback Issues="@null" PullRequests="@null" Discussions="@discussions" />
                                 }
-                                else if (source.AdditionalData is List<RedditThreadModel> threads)
+                                else if (source.AdditionalData is RedditThreadModel redditThread)
                                 {
-                                    <RedditComments Threads="@threads" />
+                                    var redditThreads = new List<RedditThreadModel> { redditThread };
+                                    <RedditComments Threads="@redditThreads" />
+                                }
+                                else if (source.AdditionalData is TwitterFeedbackResponse twitterResponse)
+                                {
+                                    <TwitterFeedbackResults Response="@twitterResponse" />
                                 }
                                 else if (source.AdditionalData is DevBlogsArticleModel article)
                                 {
