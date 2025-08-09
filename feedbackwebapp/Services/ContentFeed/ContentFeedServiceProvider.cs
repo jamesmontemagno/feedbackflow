@@ -21,24 +21,24 @@ public class ContentFeedServiceProvider
         _hackerNewsCache = new HackerNewsCache(cache);
     }
 
-    public IYouTubeContentFeedService CreateYouTubeService(string topic, int days, string? tag = null)
+    public IYouTubeContentFeedService CreateYouTubeService(string topic, int days, string? tag = null, Authentication.IAuthenticationHeaderService? authHeaderService = null)
     {
         return _useMocks
             ? new MockYouTubeContentFeedService(_http, _configuration)
-            : new YouTubeContentFeedService(topic, days, tag, _http, _configuration);
+            : new YouTubeContentFeedService(topic, days, tag, _http, _configuration, authHeaderService ?? throw new InvalidOperationException("Auth header service required"));
     }
 
-    public IRedditContentFeedService CreateRedditService(string subreddit, int days, string sortBy)
+    public IRedditContentFeedService CreateRedditService(string subreddit, int days, string sortBy, Authentication.IAuthenticationHeaderService? authHeaderService = null)
     {
         return _useMocks
             ? new MockRedditContentFeedService(_http, _configuration)
-            : new RedditContentFeedService(subreddit, days, sortBy, _http, _configuration);
+            : new RedditContentFeedService(subreddit, days, sortBy, _http, _configuration, authHeaderService ?? throw new InvalidOperationException("Auth header service required"));
     }
 
-    public IHackerNewsContentFeedService CreateHackerNewsService(string[]? keywords = null)
+    public IHackerNewsContentFeedService CreateHackerNewsService(string[]? keywords = null, Authentication.IAuthenticationHeaderService? authHeaderService = null)
     {
         return _useMocks
             ? new MockHackerNewsContentFeedService(_http, _configuration)
-            : new HackerNewsContentFeedService(keywords, _http, _configuration, _hackerNewsCache);
+            : new HackerNewsContentFeedService(keywords, _http, _configuration, _hackerNewsCache, authHeaderService ?? throw new InvalidOperationException("Auth header service required"));
     }
 }

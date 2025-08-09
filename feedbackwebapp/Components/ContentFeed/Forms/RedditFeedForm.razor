@@ -50,8 +50,15 @@
 </div>
 
 @code {
-    private const string StorageKey = "RedditFeedFormState";
+    private const string StorageKey = "RedditFeedFormState2";
     private bool showValidation = false;
+
+    private class PersistedState
+    {
+        public string? Subreddit { get; set; }
+        public string? SortBy { get; set; }
+        public int Days { get; set; }
+    }
 
     [Parameter]
     public string Subreddit { get; set; } = "";
@@ -81,19 +88,22 @@
 
     private async Task LoadFromLocalStorageAsync()
     {
-        var state = await UserSettingsService.GetFromLocalStorageAsync<dynamic>(StorageKey);
-        if (state != null)
+        try
         {
-            try
+            var state = await UserSettingsService.GetFromLocalStorageAsync<PersistedState>(StorageKey);
+            if (state is not null)
             {
-                Subreddit = state.GetProperty("Subreddit").GetString() ?? "";
-                SortBy = state.GetProperty("SortBy").GetString() ?? "hot";
-                Days = state.GetProperty("Days").GetInt32();
+                if (!string.IsNullOrWhiteSpace(state.Subreddit))
+                    Subreddit = state.Subreddit;
+                if (!string.IsNullOrWhiteSpace(state.SortBy))
+                    SortBy = state.SortBy;
+                if (state.Days is >= 1 and <= 30)
+                    Days = state.Days;
             }
-            catch
-            {
-                // If there's any error reading the stored value, we'll keep the defaults
-            }
+        }
+        catch
+        {
+            // Ignore deserialization issues and keep defaults
         }
     }
 }

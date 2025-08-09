@@ -14,8 +14,9 @@ public class YouTubeContentFeedService : ContentFeedService, IYouTubeContentFeed
         int days,
         string? tag,
         IHttpClientFactory http,
-        IConfiguration configuration)
-        : base(http, configuration)
+        IConfiguration configuration,
+        Authentication.IAuthenticationHeaderService authHeaderService)
+        : base(http, configuration, authHeaderService)
     {
         _topic = topic;
         _days = days;
@@ -38,7 +39,8 @@ public class YouTubeContentFeedService : ContentFeedService, IYouTubeContentFeed
             query += $"&tag={Uri.EscapeDataString(_tag)}";
         }
         
-        return await Http.GetFromJsonAsync<List<YouTubeOutputVideo>>(query) 
-            ?? new List<YouTubeOutputVideo>();
+    var response = await SendAuthenticatedRequestWithUsageLimitCheckAsync(query);
+    var videos = await response.Content.ReadFromJsonAsync<List<YouTubeOutputVideo>>();
+    return videos ?? new List<YouTubeOutputVideo>();
     }
 }

@@ -47,8 +47,16 @@
 </div>
 
 @code {
-    private const string StorageKey = "YouTubeFeedFormState";
+    private const string StorageKey = "YouTubeFeedFormState2";
     private bool showValidation = false;
+
+    // Strongly typed persisted state to avoid dynamic JsonElement issues
+    private class PersistedState
+    {
+        public string? Topic { get; set; }
+        public string? Tag { get; set; }
+        public int Days { get; set; }
+    }
 
     [Parameter]
     public string Topic { get; set; } = "";
@@ -78,19 +86,22 @@
 
     private async Task LoadFromLocalStorageAsync()
     {
-        var state = await UserSettingsService.GetFromLocalStorageAsync<dynamic>(StorageKey);
-        if (state != null)
+        try
         {
-            try
+            var state = await UserSettingsService.GetFromLocalStorageAsync<PersistedState>(StorageKey);
+            if (state is not null)
             {
-                Topic = state.GetProperty("Topic").GetString() ?? "";
-                Tag = state.GetProperty("Tag").GetString();
-                Days = state.GetProperty("Days").GetInt32();
+                if (!string.IsNullOrWhiteSpace(state.Topic))
+                    Topic = state.Topic;
+                if (!string.IsNullOrWhiteSpace(state.Tag))
+                    Tag = state.Tag;
+                if (state.Days is >= 1 and <= 30)
+                    Days = state.Days;
             }
-            catch
-            {
-                // If there's any error reading the stored value, we'll keep the defaults
-            }
+        }
+        catch
+        {
+            // Ignore deserialization issues and keep defaults
         }
     }
 }

@@ -14,8 +14,9 @@ public class RedditContentFeedService : ContentFeedService, IRedditContentFeedSe
         int days,
         string sortBy,
         IHttpClientFactory http,
-        IConfiguration configuration)
-        : base(http, configuration)
+        IConfiguration configuration,
+        Authentication.IAuthenticationHeaderService authHeaderService)
+        : base(http, configuration, authHeaderService)
     {
         _subreddit = subreddit;
         _days = days;
@@ -32,8 +33,9 @@ public class RedditContentFeedService : ContentFeedService, IRedditContentFeedSe
         var redditCode = Configuration["FeedbackApi:FunctionsKey"] 
             ?? throw new InvalidOperationException("Reddit API code not configured");
 
-        return await Http.GetFromJsonAsync<List<RedditThreadModel>>(
-            $"{BaseUrl}/api/GetTrendingRedditThreads?code={Uri.EscapeDataString(redditCode)}&subreddit={Uri.EscapeDataString(_subreddit)}&days={_days}&sort={_sortBy}")
-            ?? new List<RedditThreadModel>();
+    var requestUrl = $"{BaseUrl}/api/GetTrendingRedditThreads?code={Uri.EscapeDataString(redditCode)}&subreddit={Uri.EscapeDataString(_subreddit)}&days={_days}&sort={_sortBy}";
+    var response = await SendAuthenticatedRequestWithUsageLimitCheckAsync(requestUrl);
+    var threads = await response.Content.ReadFromJsonAsync<List<RedditThreadModel>>();
+    return threads ?? new List<RedditThreadModel>();
     }
 }

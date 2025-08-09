@@ -12,8 +12,9 @@ public class HackerNewsContentFeedService : ContentFeedService, IHackerNewsConte
         string[]? keywords,
         IHttpClientFactory http,
         IConfiguration configuration,
-        HackerNewsCache cache)
-        : base(http, configuration)
+        HackerNewsCache cache,
+        Authentication.IAuthenticationHeaderService authHeaderService)
+        : base(http, configuration, authHeaderService)
     {
         _keywords = keywords;
         _cache = cache;
@@ -40,11 +41,12 @@ public class HackerNewsContentFeedService : ContentFeedService, IHackerNewsConte
         var hackerNewsCode = Configuration["FeedbackApi:FunctionsKey"] 
             ?? throw new InvalidOperationException("HackerNews API code not configured");
 
-        var articles = await Http.GetFromJsonAsync<List<HackerNewsItem>>(
-            _keywords != null && _keywords.Length > 0
-                ? $"{BaseUrl}/api/SearchHackerNewsArticles?code={Uri.EscapeDataString(hackerNewsCode)}&keywords={Uri.EscapeDataString(string.Join(",", _keywords))}"
-                : $"{BaseUrl}/api/SearchHackerNewsArticles?code={Uri.EscapeDataString(hackerNewsCode)}") 
-            ?? new List<HackerNewsItem>();
+        var requestUrl = _keywords != null && _keywords.Length > 0
+            ? $"{BaseUrl}/api/SearchHackerNewsArticles?code={Uri.EscapeDataString(hackerNewsCode)}&keywords={Uri.EscapeDataString(string.Join(",", _keywords))}"
+            : $"{BaseUrl}/api/SearchHackerNewsArticles?code={Uri.EscapeDataString(hackerNewsCode)}";
+
+        var response = await SendAuthenticatedRequestWithUsageLimitCheckAsync(requestUrl);
+        var articles = await response.Content.ReadFromJsonAsync<List<HackerNewsItem>>() ?? new List<HackerNewsItem>();
 
         _cache.CacheArticles(articles);
         return articles;

@@ -31,6 +31,7 @@ public class AuthUserManagement : IDisposable
     private readonly BlobServiceClient _blobServiceClient;
     private readonly TableServiceClient _tableServiceClient;
     private readonly SemaphoreSlim _registrationSemaphore = new SemaphoreSlim(1, 1);
+    private readonly bool _allowsRegistration;
 
     public AuthUserManagement(
         ILogger<AuthUserManagement> logger,
@@ -43,6 +44,9 @@ public class AuthUserManagement : IDisposable
         _authMiddleware = authMiddleware;
         _userService = userService;
         _userAccountService = userAccountService;
+        
+        // Get registration setting with default to true
+        _allowsRegistration = configuration.GetValue<bool>("AllowsRegistration", true);
         
         // Create storage clients using connection string, following the pattern from other services
         var storageConnection = configuration["ProductionStorage"] ??
@@ -62,6 +66,15 @@ public class AuthUserManagement : IDisposable
     public async Task<HttpResponseData> RegisterUserAsync(
         [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
+        // Check if registration is allowed
+        if (!_allowsRegistration)
+        {
+            _logger.LogWarning("Registration attempt blocked - AllowsRegistration is set to false");
+            var disabledResponse = req.CreateResponse(HttpStatusCode.Forbidden);
+            await disabledResponse.WriteStringAsync("Registration is currently disabled");
+            return disabledResponse;
+        }
+
         // Use semaphore to prevent double registration
         await _registrationSemaphore.WaitAsync();
         try

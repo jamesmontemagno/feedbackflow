@@ -1,0 +1,308 @@
+@namespace FeedbackWebApp.Components.Admin
+@using FeedbackWebApp.Services.Account
+@using SharedDump.Models.Account
+@inject IAdminUserTierService AdminUserTierService
+@inject IToastService ToastService
+
+<div class="card">
+    <div class="card-header d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2">
+        <div>
+            <h5 class="card-title mb-0">
+                <i class="bi bi-people me-2"></i>
+                User Tier Management
+            </h5>
+            <small class="text-muted">Modify user tiers (Free, Pro, Pro+). No personal data shown.</small>
+        </div>
+        <div class="admin-user-tiers-toolbar d-flex align-items-center gap-2">
+            <div class="position-relative filter-input-wrapper">
+                <i class="bi bi-search"></i>
+                <input class="form-control form-control-sm" placeholder="Filter user id" @bind="userIdFilter" @bind:event="oninput" />
+            </div>
+            <div class="text-muted small d-none d-md-inline">@FilteredCount / @TotalCount</div>
+        </div>
+    </div>
+    <div class="card-body">
+        @if (isLoading)
+        {
+            <div class="d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                <span>Loading users...</span>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                @errorMessage
+            </div>
+        }
+        else if (users == null || !users.Any())
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                No users available.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle admin-user-tiers-table">
+                    <thead>
+                        <tr>
+                            <th @onclick="() => ChangeSort(SortColumn.User)" role="button" class="sortable" aria-sort="@GetAriaSort(SortColumn.User)">
+                                User @SortIndicator(SortColumn.User)
+                            </th>
+                            <th @onclick="() => ChangeSort(SortColumn.Name)" role="button" class="sortable" aria-sort="@GetAriaSort(SortColumn.Name)">
+                                Name @SortIndicator(SortColumn.Name)
+                            </th>
+                            <th @onclick="() => ChangeSort(SortColumn.Tier)" role="button" class="sortable" aria-sort="@GetAriaSort(SortColumn.Tier)">
+                                Tier @SortIndicator(SortColumn.Tier)
+                            </th>
+                            <th class="d-none d-md-table-cell sortable" @onclick="() => ChangeSort(SortColumn.Analyses)" role="button" aria-sort="@GetAriaSort(SortColumn.Analyses)">Analyses @SortIndicator(SortColumn.Analyses)</th>
+                            <th class="d-none d-md-table-cell sortable" @onclick="() => ChangeSort(SortColumn.Reports)" role="button" aria-sort="@GetAriaSort(SortColumn.Reports)">Reports @SortIndicator(SortColumn.Reports)</th>
+                            <th class="d-none d-lg-table-cell sortable" @onclick="() => ChangeSort(SortColumn.FeedQueries)" role="button" aria-sort="@GetAriaSort(SortColumn.FeedQueries)">Feed Q. @SortIndicator(SortColumn.FeedQueries)</th>
+                            <th class="d-none d-lg-table-cell sortable" @onclick="() => ChangeSort(SortColumn.ApiUsed)" role="button" aria-sort="@GetAriaSort(SortColumn.ApiUsed)">API Used @SortIndicator(SortColumn.ApiUsed)</th>
+                            <th class="d-none d-lg-table-cell sortable" @onclick="() => ChangeSort(SortColumn.Created)" role="button" aria-sort="@GetAriaSort(SortColumn.Created)">Created @SortIndicator(SortColumn.Created)</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var u in DisplayedUsers)
+                        {
+                            var isChanged = IsTierChanged(u);
+                            <tr class="@((isChanged ? "changed-row" : null))">
+                                <td><code>@u.MaskedUserId</code></td>
+                                <td class="name-cell" title="@u.MaskedName">@u.MaskedName</td>
+                                <td>
+                                    <select class="form-select form-select-sm" @bind="u.Tier" @bind:after="() => OnTierChanged(u)" disabled="@isProcessing">
+                                        <option value="@AccountTier.Free">Free</option>
+                                        <option value="@AccountTier.Pro">Pro</option>
+                                        <option value="@AccountTier.ProPlus">Pro+</option>
+                                    </select>
+                                </td>
+                                <td class="d-none d-md-table-cell">@u.AnalysesUsed</td>
+                                <td class="d-none d-md-table-cell">@u.ActiveReports</td>
+                                <td class="d-none d-lg-table-cell">@u.FeedQueriesUsed</td>
+                                <td class="d-none d-lg-table-cell">@u.ApiUsed</td>
+                                <td class="d-none d-lg-table-cell">@u.CreatedAt.ToString("MMM d")</td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => PromptConfirmChange(u)" disabled="@(!isChanged || isProcessing)" title="Save tier change">
+                                        @if (isProcessing && processingUser == u.UserId)
+                                        {
+                                            <span class="spinner-border spinner-border-sm" role="status"></span>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-save"></i>
+                                        }
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@if (showConfirmDialog && pendingUserChange != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content admin-tier-confirm-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title d-flex align-items-center gap-2"><i class="bi bi-shield-check"></i> Confirm Tier Change</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseDialog"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">You're about to change the tier for user <code>@pendingUserChange.MaskedUserId</code>.</p>
+                    <div class="diff-box">
+                        <div class="diff-row">
+                            <span class="label">Previous:</span>
+                            <span class="prev-value"><i class="bi bi-arrow-left-right me-1"></i>@originalTiers[pendingUserChange.UserId]</span>
+                        </div>
+                        <div class="diff-row">
+                            <span class="label">New:</span>
+                            <span class="new-value">@pendingUserChange.Tier</span>
+                        </div>
+                    </div>
+                    <div class="alert alert-warning small mt-3 mb-0"><i class="bi bi-exclamation-triangle-fill me-1"></i> This action updates limits immediately.</div>
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <button class="btn btn-outline-secondary" @onclick="CloseDialog">Cancel</button>
+                    <button class="btn btn-primary" @onclick="ConfirmTierChangeAsync" disabled="@isProcessing">
+                        @if (isProcessing)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        <i class="bi bi-save me-1"></i> Confirm Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private List<AdminUserTierInfo>? users;
+    private bool isLoading = true;
+    private bool isProcessing = false;
+    private string? processingUser;
+    private string errorMessage = string.Empty;
+    private string userIdFilter = string.Empty;
+    private Dictionary<string, AccountTier> originalTiers = new();
+    private bool showConfirmDialog = false;
+    private AdminUserTierInfo? pendingUserChange;
+
+    private SortColumn currentSort = SortColumn.Created;
+    private bool sortAscending = false; // default newest first
+
+    private enum SortColumn { User, Name, Tier, Analyses, Reports, FeedQueries, ApiUsed, Created }
+
+    private IEnumerable<AdminUserTierInfo> DisplayedUsers => ApplySort(ApplyFilter(users ?? Enumerable.Empty<AdminUserTierInfo>()));
+
+    private int TotalCount => users?.Count ?? 0;
+    private int FilteredCount => DisplayedUsers.Count();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+            users = await AdminUserTierService.GetAllUserTiersAsync();
+            originalTiers = users?.ToDictionary(u => u.UserId, u => u.Tier) ?? new();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading users: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private IEnumerable<AdminUserTierInfo> ApplyFilter(IEnumerable<AdminUserTierInfo> source)
+    {
+        if (string.IsNullOrWhiteSpace(userIdFilter)) return source;
+        var term = userIdFilter.Trim();
+        return source.Where(u => (u.MaskedUserId?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (u.UserId?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false));
+    }
+
+    private IEnumerable<AdminUserTierInfo> ApplySort(IEnumerable<AdminUserTierInfo> source)
+    {
+        Func<AdminUserTierInfo, object?> key = currentSort switch
+        {
+            SortColumn.User => u => u.MaskedUserId,
+            SortColumn.Name => u => u.MaskedName,
+            SortColumn.Tier => u => u.Tier,
+            SortColumn.Analyses => u => u.AnalysesUsed,
+            SortColumn.Reports => u => u.ActiveReports,
+            SortColumn.FeedQueries => u => u.FeedQueriesUsed,
+            SortColumn.ApiUsed => u => u.ApiUsed,
+            SortColumn.Created => u => u.CreatedAt,
+            _ => u => u.CreatedAt
+        };
+
+        var ordered = sortAscending ? source.OrderBy(key) : source.OrderByDescending(key);
+        return ordered.ThenBy(u => u.MaskedUserId); // deterministic secondary
+    }
+
+    private void ChangeSort(SortColumn column)
+    {
+        if (currentSort == column)
+        {
+            sortAscending = !sortAscending;
+        }
+        else
+        {
+            currentSort = column;
+            sortAscending = column == SortColumn.Created ? false : true; // default sensible
+        }
+    }
+
+    private MarkupString SortIndicator(SortColumn column)
+    {
+        if (currentSort != column) return (MarkupString)"";
+        var icon = sortAscending ? "bi-caret-up-fill" : "bi-caret-down-fill";
+        return (MarkupString)$"<i class=\"bi {icon} ms-1 small-sort\"></i>";
+    }
+
+    private string GetAriaSort(SortColumn column)
+        => currentSort == column ? (sortAscending ? "ascending" : "descending") : "none";
+
+    private async Task UpdateTier(AdminUserTierInfo user)
+    {
+        try
+        {
+            isProcessing = true;
+            processingUser = user.UserId;
+            StateHasChanged();
+
+            var success = await AdminUserTierService.UpdateUserTierAsync(user.UserId, user.Tier);
+            if (success)
+            {
+                await ToastService.ShowToastAsync($"Updated tier to {user.Tier}", ToastType.Success);
+            }
+            else
+            {
+                await ToastService.ShowToastAsync("Failed to update tier", ToastType.Danger);
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastService.ShowToastAsync($"Error updating tier: {ex.Message}", ToastType.Danger);
+        }
+        finally
+        {
+            isProcessing = false;
+            processingUser = null;
+            StateHasChanged();
+        }
+    }
+
+    private bool IsTierChanged(AdminUserTierInfo user)
+        => originalTiers.TryGetValue(user.UserId, out var original) && original != user.Tier;
+
+    private void OnTierChanged(AdminUserTierInfo user)
+    {
+        // Just trigger re-render; additional logic could be added later
+        StateHasChanged();
+    }
+
+    private void PromptConfirmChange(AdminUserTierInfo user)
+    {
+        pendingUserChange = user;
+        showConfirmDialog = true;
+    }
+
+    private void CloseDialog()
+    {
+        showConfirmDialog = false;
+        pendingUserChange = null;
+    }
+
+    private async Task ConfirmTierChangeAsync()
+    {
+        if (pendingUserChange == null)
+            return;
+
+        var user = pendingUserChange;
+        showConfirmDialog = false;
+        await UpdateTier(user);
+        if (!string.IsNullOrEmpty(user.UserId))
+        {
+            originalTiers[user.UserId] = user.Tier; // update baseline after successful update
+        }
+    }
+}

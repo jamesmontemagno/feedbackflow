@@ -61,7 +61,6 @@
                                             <i class="bi bi-star-fill me-1"></i>
                                             Super User
                                         </span>
-                                        <p class="text-muted small mt-1 mb-0">Administrative Account</p>
                                     </div>
                                 }
                                 else if (userAccount?.Tier == AccountTier.Admin)
@@ -512,78 +511,8 @@
                        <!-- Admin Features -->
                         @if (userAccount?.Tier == AccountTier.Admin)
                         {
-                            <div class="row mb-4">
-                                <div class="col-md-4">
-                                    <h5 class="text-warning">
-                                        <i class="bi bi-gear-fill me-2"></i>
-                                        Admin Features
-                                    </h5>
-                                    <p class="text-muted small">
-                                        Administrative tools and configuration options.
-                                    </p>
-                                </div>
-                                <div class="col-md-8">
-                                    <div class="card border-warning">
-                                        <div class="card-body p-3">
-                                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                                <div>
-                                                    <h6 class="mb-1">
-                                                        <i class="bi bi-speedometer2 me-2"></i>
-                                                        Admin Dashboard
-                                                    </h6>
-                                                    <p class="text-muted small mb-0">
-                                                        View system metrics, user analytics, usage statistics, and API adoption data.
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <a href="/admin" class="btn btn-warning">
-                                                        <i class="bi bi-arrow-right me-1"></i>
-                                                        View
-                                                    </a>
-                                                </div>
-                                            </div>
-                                            <hr class="my-3">
-                                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                                <div>
-                                                    <h6 class="mb-1">
-                                                        <i class="bi bi-key me-2"></i>
-                                                        API Key Management
-                                                    </h6>
-                                                    <p class="text-muted small mb-0">
-                                                        View and manage user API keys, enable/disable access, and monitor usage statistics.
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <a href="/admin/api-keys" class="btn btn-warning">
-                                                        <i class="bi bi-arrow-right me-1"></i>
-                                                        Manage
-                                                    </a>
-                                                </div>
-                                            </div>
-                                            <hr class="my-3">
-                                            <div class="d-flex align-items-center justify-content-between">
-                                                <div>
-                                                    <h6 class="mb-1">
-                                                        <i class="bi bi-file-earmark-bar-graph me-2"></i>
-                                                        Admin Reports
-                                                    </h6>
-                                                    <p class="text-muted small mb-0">
-                                                        Create and manage automated custom reports for GitHub repositories and Reddit subreddits.
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <a href="/admin/reports" class="btn btn-warning">
-                                                        <i class="bi bi-arrow-right me-1"></i>
-                                                        Manage
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <hr class="my-4">
+                            <AdminFeaturesPanel />
+                            <hr class="my-4" />
                         }
 
                         <!-- Danger Zone -->
