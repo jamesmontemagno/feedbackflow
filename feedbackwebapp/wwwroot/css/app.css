@@ -1029,3 +1029,17 @@ Shared styles for responsive action menus across components
         padding: 0.25rem 0.375rem !important;
     }
 }
+
+/* 
+=================================
+MOBILE HEADING ICON UTILITIES
+=================================
+*/
+
+/* Hide optional decorative icons in card headings on very small screens to free horizontal space */
+@media (max-width: 360px) {
+    .heading-icon-optional {
+        display: none !important;
+    }
+}
+}
