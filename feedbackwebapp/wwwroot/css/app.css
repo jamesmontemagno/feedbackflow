@@ -1037,6 +1037,19 @@ Shared styles for responsive action menus across components
 
 /* 
 =================================
+MOBILE HEADING ICON UTILITIES
+=================================
+*/
+
+/* Hide optional decorative icons in card headings on very small screens to free horizontal space */
+@media (max-width: 360px) {
+    .heading-icon-optional {
+        display: none !important;
+    }
+}
+
+/*
+=======
 TABLE COMPACT UTILITY
 =================================
 Responsive utility class for denser table layouts on mobile devices
