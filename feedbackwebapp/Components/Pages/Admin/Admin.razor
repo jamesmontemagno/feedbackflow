@@ -7,6 +7,7 @@
 @inject IAuthenticationService AuthService
 @inject IAccountServiceProvider AccountServiceProvider
 @inject IToastService ToastService
+@inject NavigationManager NavigationManager
 @namespace FeedbackWebApp.Components.Pages.Admin
 
 <PageTitle>Admin - FeedbackFlow</PageTitle>
@@ -40,7 +41,7 @@
         <div class="alert alert-danger" role="alert">
             <i class="bi bi-exclamation-triangle me-2"></i>
             <strong>Error:</strong> @errorMessage
-            <button class="btn btn-sm btn-outline-danger ms-2" @onclick="InitializeAsync">
+            <button class="btn btn-sm btn-outline-danger ms-2" @onclick="ValidateAdminAsync">
                 <i class="bi bi-arrow-clockwise"></i> Retry
             </button>
         </div>
@@ -60,25 +61,60 @@
     private bool isAuthenticated = false;
     private bool isAdmin = false;
     private string errorMessage = string.Empty;
+    private bool _firstRenderProcessed = false;
 
-    protected override async Task OnInitializedAsync()
+    // Initial render sets loading state; actual auth happens in OnAfterRenderAsync
+    protected override void OnInitialized()
     {
-        await InitializeAsync();
+        isLoading = true;
     }
 
-    private async Task InitializeAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_firstRenderProcessed)
+        {
+            _firstRenderProcessed = true;
+            await RunAuthFlowAsync();
+        }
+    }
+
+    private async Task RunAuthFlowAsync()
     {
         try
         {
             isLoading = true;
-            errorMessage = string.Empty;
+            StateHasChanged();
 
             isAuthenticated = await AuthService.IsAuthenticatedAsync();
             if (!isAuthenticated)
             {
+                // Redirect to home (login) similar to Reports page pattern
+                NavigationManager.NavigateTo("/");
                 return;
             }
 
+            await ValidateAdminAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            if (ToastService is not null)
+            {
+                await ToastService.ShowErrorAsync("Failed to validate admin access");
+            }
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ValidateAdminAsync()
+    {
+        try
+        {
+            errorMessage = string.Empty;
             var accountService = AccountServiceProvider.GetService();
             var accountResult = await accountService.GetUserAccountAndLimitsAsync();
             if (accountResult.HasValue)
@@ -94,15 +130,6 @@
         catch (Exception ex)
         {
             errorMessage = ex.Message;
-            if (ToastService is not null)
-            {
-                await ToastService.ShowErrorAsync("Failed to validate admin access");
-            }
-        }
-        finally
-        {
-            isLoading = false;
-            StateHasChanged();
         }
     }
 }
