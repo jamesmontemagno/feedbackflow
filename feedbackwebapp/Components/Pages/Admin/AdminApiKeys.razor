@@ -8,11 +8,18 @@
 @inject IToastService ToastService
 @inject NavigationManager Navigation
 
-@namespace FeedbackWebApp.Components.Pages
+@using FeedbackWebApp.Components.Admin
+@using FeedbackWebApp.Components.Shared
+@namespace FeedbackWebApp.Components.Pages.Admin
 
 <PageTitle>Admin API Keys - FeedbackFlow</PageTitle>
 
 <div class="container my-4">
+    <div class="mb-3">
+        <a href="/admin" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Admin Home
+        </a>
+    </div>
     @if (isLoading)
     {
         <div class="text-center py-4">
@@ -39,12 +46,7 @@
                 </h1>
                 <p class="text-muted mb-0">Manage user API keys, enable/disable access, and monitor usage statistics</p>
             </div>
-            <a href="/account-settings" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left me-2"></i>
-                Back to Admin
-            </a>
         </div>
-
         @if (!string.IsNullOrEmpty(errorMessage))
         {
             <div class="alert alert-danger" role="alert">
@@ -52,8 +54,7 @@
                 @errorMessage
             </div>
         }
-
-        <FeedbackWebApp.Components.Admin.AdminApiKeyManagement />
+        <AdminApiKeyManagement />
     }
 </div>
 
@@ -68,34 +69,13 @@
         {
             isLoading = true;
             errorMessage = string.Empty;
-
-            // Check if user is authenticated and is admin
             var isAuthenticated = await AuthService.IsAuthenticatedAsync();
-            if (!isAuthenticated)
-            {
-                Navigation.NavigateTo("/");
-                return;
-            }
-
-            // Check admin status
+            if (!isAuthenticated) { Navigation.NavigateTo("/"); return; }
             var accountService = AccountServiceProvider.GetService();
             var accountResult = await accountService.GetUserAccountAndLimitsAsync();
-            if (accountResult.HasValue)
-            {
-                isAdmin = accountResult.Value.account?.Tier == AccountTier.Admin;
-            }
-            else
-            {
-                isAdmin = false;
-            }
+            if (accountResult.HasValue) { isAdmin = accountResult.Value.account?.Tier == AccountTier.Admin; }
         }
-        catch (Exception ex)
-        {
-            errorMessage = $"Error loading admin API keys: {ex.Message}";
-        }
-        finally
-        {
-            isLoading = false;
-        }
+        catch (Exception ex) { errorMessage = $"Error loading admin API keys: {ex.Message}"; }
+        finally { isLoading = false; }
     }
 }

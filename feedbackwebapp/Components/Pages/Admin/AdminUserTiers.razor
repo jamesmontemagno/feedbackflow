@@ -5,14 +5,20 @@
 @inject IAuthenticationService AuthService
 @inject IAccountServiceProvider AccountServiceProvider
 @inject IAdminUserTierService AdminUserTierService
-@inject IToastService ToastService
 @inject NavigationManager Navigation
 
-@namespace FeedbackWebApp.Components.Pages
+@using FeedbackWebApp.Components.Admin
+@using FeedbackWebApp.Components.Shared
+@namespace FeedbackWebApp.Components.Pages.Admin
 
 <PageTitle>Admin User Tiers - FeedbackFlow</PageTitle>
 
 <div class="container my-4">
+    <div class="mb-3">
+        <a href="/admin" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Admin Home
+        </a>
+    </div>
     @if (isLoading)
     {
         <div class="text-center py-4">
@@ -39,12 +45,7 @@
                 </h1>
                 <p class="text-muted mb-0">Modify user tiers (Free, Pro, Pro+) without exposing any personal data.</p>
             </div>
-            <a href="/account-settings" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left me-2"></i>
-                Back to Admin
-            </a>
         </div>
-
         @if (!string.IsNullOrEmpty(errorMessage))
         {
             <div class="alert alert-danger" role="alert">
@@ -52,8 +53,7 @@
                 @errorMessage
             </div>
         }
-
-        <FeedbackWebApp.Components.Admin.AdminUserTierManagement />
+        <AdminUserTierManagement />
     }
 </div>
 
@@ -61,35 +61,5 @@
     private bool isLoading = true;
     private bool isAdmin = false;
     private string errorMessage = string.Empty;
-
-    protected override async Task OnInitializedAsync()
-    {
-        try
-        {
-            isLoading = true;
-            errorMessage = string.Empty;
-
-            var isAuthenticated = await AuthService.IsAuthenticatedAsync();
-            if (!isAuthenticated)
-            {
-                Navigation.NavigateTo("/");
-                return;
-            }
-
-            var accountService = AccountServiceProvider.GetService();
-            var accountResult = await accountService.GetUserAccountAndLimitsAsync();
-            if (accountResult.HasValue)
-            {
-                isAdmin = accountResult.Value.account?.Tier == AccountTier.Admin;
-            }
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Error loading admin user tiers: {ex.Message}";
-        }
-        finally
-        {
-            isLoading = false;
-        }
-    }
+    protected override async Task OnInitializedAsync(){ try { isLoading = true; errorMessage = string.Empty; var isAuthenticated = await AuthService.IsAuthenticatedAsync(); if (!isAuthenticated){ Navigation.NavigateTo("/"); return; } var accountService = AccountServiceProvider.GetService(); var accountResult = await accountService.GetUserAccountAndLimitsAsync(); if (accountResult.HasValue){ isAdmin = accountResult.Value.account?.Tier == AccountTier.Admin; } } catch (Exception ex){ errorMessage = $"Error loading admin user tiers: {ex.Message}"; } finally { isLoading = false; } }
 }

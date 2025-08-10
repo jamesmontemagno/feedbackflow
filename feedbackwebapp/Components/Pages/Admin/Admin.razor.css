@@ -1,0 +1,60 @@
+/* Admin landing page styles (scoped) */
+
+.admin-landing-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.75rem;
+}
+
+.admin-landing-header .feedbackflow-title {
+    margin: 0;
+    font-size: 2rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.admin-landing-sections {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.25rem;
+}
+
+/* Feature panel adjustments (applies to children inside AdminFeaturesPanel root) */
+:deep(.admin-feature-card) {
+    transition: transform 0.25s ease, box-shadow 0.3s ease;
+    border-radius: var(--border-radius-lg);
+}
+
+:deep(.admin-feature-card:hover) {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 18px rgba(var(--primary-color-rgb), 0.25);
+}
+
+:deep(.admin-feature-card .card-header) {
+    background: var(--primary-gradient);
+    color: var(--text-on-primary, #fff);
+    font-weight: 600;
+}
+
+/* Subtle fade-in */
+.admin-landing-root {
+    animation: adminFadeIn 0.4s ease;
+}
+
+@keyframes adminFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Dark theme tweaks */
+[data-theme="dark"] :deep(.admin-feature-card:hover) {
+    box-shadow: 0 6px 20px rgba(var(--primary-color-rgb), 0.35);
+}
+
+/* Responsive */
+@media (max-width: 575.98px) {
+    .admin-landing-header .feedbackflow-title { font-size: 1.6rem; }
+    .admin-landing-sections { grid-template-columns: 1fr; }
+}

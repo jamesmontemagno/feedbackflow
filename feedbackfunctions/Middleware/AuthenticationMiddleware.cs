@@ -142,6 +142,13 @@ public class AuthenticationMiddleware
             var bypassAuth = _configuration.GetValue<bool>("Authentication:BypassInDevelopment", false);
             var isDevelopment = _configuration.GetValue<string>("ASPNETCORE_ENVIRONMENT") == "Development";
             
+
+            if (!_configuration.GetValue<bool>("AllowsRegistration", true))
+            {
+                _logger.LogWarning("Registration attempt blocked - AllowsRegistration is set to false");
+                return null;
+            }
+
             if (bypassAuth && isDevelopment)
             {
                 _logger.LogInformation("Authentication bypassed for development environment");
