@@ -242,7 +242,7 @@
 
     private async Task PerformReanalysis()
     {
-        if (!canReanalyze || cachedComments == null)
+        if (!canReanalyze || cachedComments is null)
             return;
 
         currentStatus = FeedbackProcessStatus.AnalyzingComments;
