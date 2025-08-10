@@ -217,6 +217,7 @@ See AdminReports.razor and AdminApiKeyManagement.razor for reference implementat
 
 ## Code Style
 - Prefer async/await over direct Task handling
+- When checking for nul in C# prefer to use `is null` or `is not null`
 - Use nullable reference types
 - Use var over explicit type declarations 
 - Always implement IDisposable when dealing with event handlers or subscriptions
