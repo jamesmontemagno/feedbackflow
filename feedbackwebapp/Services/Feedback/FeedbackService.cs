@@ -24,6 +24,10 @@ public abstract class FeedbackService : IFeedbackService
     protected readonly IAuthenticationHeaderService AuthHeaderService;
     protected readonly string BaseUrl;
     protected readonly FeedbackStatusUpdate? OnStatusUpdate;
+    /// <summary>
+    /// A temporary, per-request prompt override supplied from the UI that is NOT persisted in user settings.
+    /// </summary>
+    internal string? TemporaryPrompt { get; set; }
 
     protected FeedbackService(
         IHttpClientFactory http, 
@@ -65,6 +69,15 @@ public abstract class FeedbackService : IFeedbackService
         return await AnalyzeComments(comments, commentCount, additionalData);
     }
 
+    public void SetTemporaryPrompt(string? prompt)
+    {
+        TemporaryPrompt = string.IsNullOrWhiteSpace(prompt) ? null : prompt.Trim();
+    }
+
+    public void ClearTemporaryPrompt() => TemporaryPrompt = null;
+
+    public string? GetTemporaryPrompt() => TemporaryPrompt;
+
     protected void UpdateStatus(FeedbackProcessStatus status, string message)
     {
         OnStatusUpdate?.Invoke(status, message);
@@ -99,12 +112,15 @@ public abstract class FeedbackService : IFeedbackService
         var settings = await _userSettings.GetSettingsAsync();
         string? customPrompt = null;
 
-        // If an explicit custom prompt is provided, use it (for manual mode)
-        if (!string.IsNullOrEmpty(explicitCustomPrompt))
+        // Precedence UPDATED: temporary prompt (UI) > explicit parameter (manual) > user settings
+        if (!string.IsNullOrWhiteSpace(TemporaryPrompt))
+        {
+            customPrompt = TemporaryPrompt;
+        }
+        else if (!string.IsNullOrEmpty(explicitCustomPrompt))
         {
             customPrompt = explicitCustomPrompt;
         }
-        // Otherwise, check user settings for custom prompts
         else if (settings.UseCustomPrompts)
         {
             customPrompt = settings.UniversalPrompt;
@@ -144,12 +160,15 @@ public abstract class FeedbackService : IFeedbackService
         var settings = await _userSettings.GetSettingsAsync();
         string? customPrompt = null;
 
-        // If an explicit custom prompt is provided, use it (for manual mode)
-        if (!string.IsNullOrEmpty(explicitCustomPrompt))
+        // Precedence UPDATED: temporary prompt (UI) > explicit parameter (manual) > user settings
+        if (!string.IsNullOrWhiteSpace(TemporaryPrompt))
+        {
+            customPrompt = TemporaryPrompt;
+        }
+        else if (!string.IsNullOrEmpty(explicitCustomPrompt))
         {
             customPrompt = explicitCustomPrompt;
         }
-        // Otherwise, check user settings for custom prompts
         else if (settings.UseCustomPrompts)
         {
             customPrompt = settings.UniversalPrompt;

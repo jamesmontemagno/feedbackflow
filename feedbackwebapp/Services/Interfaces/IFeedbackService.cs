@@ -57,6 +57,24 @@ public interface IFeedbackService
 	/// </summary>
 	/// <returns>Analysis result in markdown format and any additional data</returns>
 	Task<(string markdownResult, object? additionalData)> GetFeedback();
+
+	/// <summary>
+	/// Sets a temporary, non-persisted prompt override for the next analysis run.
+	/// Passing null or empty clears the temporary prompt.
+	/// </summary>
+	/// <param name="prompt">Prompt text or null to clear</param>
+	void SetTemporaryPrompt(string? prompt);
+
+	/// <summary>
+	/// Clears the temporary prompt override.
+	/// </summary>
+	void ClearTemporaryPrompt();
+
+	/// <summary>
+	/// Gets the currently active temporary prompt (if any).
+	/// </summary>
+	/// <returns>The temporary prompt string or null</returns>
+	string? GetTemporaryPrompt();
 }
 
 /// <summary>

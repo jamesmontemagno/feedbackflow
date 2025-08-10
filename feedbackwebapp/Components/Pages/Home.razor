@@ -83,6 +83,33 @@
                         <ManualFeedbackInput @ref="manualInputForm" IsDisabled="@isLoading" />
                     }
 
+                    @* Customize Prompt (only for Auto mode; manual mode has its own system prompt input) *@
+                    @if (selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <div class="mt-3">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="TogglePromptEditor" disabled="@isLoading">
+                                <i class="bi bi-sliders me-1"></i>
+                                @(showPromptEditor ? "Hide Custom Prompt" : "Customize Prompt")
+                            </button>
+                        </div>
+                        @if (showPromptEditor)
+                        {
+                            <div class="mt-3 custom-prompt-editor">
+                                <label class="form-label fw-semibold">Custom Analysis Prompt (won't be saved)</label>
+                                <textarea class="form-control" rows="5" @bind="customPrompt" @bind:event="oninput" placeholder="Add extra instructions for this analysis only..." disabled="@isLoading"></textarea>
+                                <div class="form-text d-flex justify-content-between">
+                                    <span>This prompt is temporary and will reset when you leave or refresh.</span>
+                                    @if (!string.IsNullOrWhiteSpace(customPrompt))
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ResetCustomPrompt" disabled="@isLoading" title="Clear temporary prompt">
+                                            <i class="bi bi-x-circle"></i> Reset
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+
                     <SubmitButton ShowWhenSource="@selectedSource" IsLoading="@isLoading" OnSubmit="SubmitFeedbackRequest" />
                     
                     @if (isLoading)
@@ -188,6 +215,42 @@
     private string? initialSource;
     private string? initialId;
     private bool useUnifiedThreads = false;
+    private bool showPromptEditor = false;
+    private string customPrompt = string.Empty; // Temporary, not persisted
+
+    private static string Truncate(string value, int max)
+        => string.IsNullOrEmpty(value) || value.Length <= max ? value : value.Substring(0, max) + "...";
+
+    private void TogglePromptEditor()
+    {
+        showPromptEditor = !showPromptEditor;
+        if (showPromptEditor && string.IsNullOrWhiteSpace(customPrompt) && selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
+        {
+            // Prefill with universal/system prompt from settings if available
+            _ = PrefillPromptFromSettingsAsync();
+        }
+    }
+
+    private async Task PrefillPromptFromSettingsAsync()
+    {
+        try
+        {
+            var settings = await UserSettings.GetSettingsAsync();
+            if (!string.IsNullOrWhiteSpace(settings.UniversalPrompt))
+            {
+                customPrompt = settings.UniversalPrompt;
+                StateHasChanged();
+            }
+        }
+        catch { /* swallow - non critical */ }
+    }
+
+    private Task ResetCustomPrompt()
+    {
+        customPrompt = string.Empty;
+        showPromptEditor = false;
+        return Task.CompletedTask;
+    }
 
     private async Task HandleAuthenticatedWithDetails((bool success, bool justLoggedIn) details)
     {
@@ -408,6 +471,19 @@
                 _ => throw new InvalidOperationException("Please select a feedback source")
             };
 
+            // Apply temporary prompt via new API so precedence is clear
+            if (selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!string.IsNullOrWhiteSpace(customPrompt))
+                {
+                    service.SetTemporaryPrompt(customPrompt);
+                }
+                else
+                {
+                    service.ClearTemporaryPrompt();
+                }
+            }
+
             var (result, additionalData) = await service.GetFeedback();
             markdownResult = result;
             currentAdditionalData = additionalData;
@@ -602,4 +678,8 @@
         // Unsubscribe from registration error events
         RegistrationErrorService.RegistrationErrorOccurred -= OnRegistrationErrorOccurred;
     }
+}
+
+@code {
+    // Extension helper pattern inside the same file (scoped) to avoid broad changes
 }
