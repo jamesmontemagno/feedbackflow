@@ -1,0 +1,83 @@
+@namespace FeedbackWebApp.Components.Feedback.Results
+@using SharedDump.Models
+@using SharedDump.Utils
+
+@if (Comment is not null)
+{
+    <div class="thread-comment @GetDepthClass() mb-3" @key="Comment.Id">
+        <div class="d-flex justify-content-between align-items-start">
+            <div class="comment-author-info flex-grow-1">
+                <div class="d-flex align-items-center mb-1">
+                    <i class="bi bi-person-circle text-muted me-2" aria-hidden="true"></i>
+                    <strong class="comment-author">@Comment.Author</strong>
+                    @if (Comment.Score.HasValue)
+                    {
+                        <span class="comment-score badge badge-secondary ms-2">
+                            <i class="bi bi-arrow-up me-1" aria-hidden="true"></i>@Comment.Score.Value
+                        </span>
+                    }
+                </div>
+                <small class="text-muted">
+                    @Comment.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy 'at' h:mm tt")
+                </small>
+            </div>
+            
+            @if (Comment.Replies.Any())
+            {
+                <button class="btn btn-sm btn-outline-secondary" 
+                        @onclick="ToggleReplies"
+                        title="@(showReplies ? "Hide replies" : $"Show {Comment.Replies.Count} replies")">
+                    <i class="bi @(showReplies ? "bi-chevron-up" : "bi-chevron-down")" aria-hidden="true"></i>
+                    @Comment.Replies.Count
+                </button>
+            }
+        </div>
+        
+        <div class="comment-content mt-2">
+            @Comment.Content
+        </div>
+
+        @if (Comment.Replies.Any() && showReplies)
+        {
+            <div class="comment-replies mt-3">
+                @foreach (var reply in Comment.Replies)
+                {
+                    <ThreadComment Comment="reply" Depth="Depth + 1" />
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public CommentData Comment { get; set; } = null!;
+
+    [Parameter]
+    public int Depth { get; set; } = 0;
+
+    private bool showReplies = false;
+
+    protected override void OnInitialized()
+    {
+        // Auto-expand replies for top-level comments only
+        showReplies = Depth == 0;
+    }
+
+    private void ToggleReplies()
+    {
+        showReplies = !showReplies;
+        StateHasChanged();
+    }
+
+    private string GetDepthClass()
+    {
+        return Depth switch
+        {
+            0 => "comment-depth-0",
+            1 => "comment-depth-1 ms-3",
+            2 => "comment-depth-2 ms-4", 
+            _ => "comment-depth-deep ms-5"
+        };
+    }
+}

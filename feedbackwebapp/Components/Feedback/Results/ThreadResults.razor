@@ -1,0 +1,215 @@
+@namespace FeedbackWebApp.Components.Feedback.Results
+@using SharedDump.Models
+@using SharedDump.Utils
+
+@if (Threads?.Any() == true)
+{
+    <div class="thread-results">
+        @if (GroupBySourceType)
+        {
+            @foreach (var group in Threads.GroupBy(t => t.SourceType).OrderBy(g => g.Key))
+            {
+                var visual = SourceVisualMapping.GetVisual(group.Key);
+                
+                <div class="source-group mb-5">
+                    <div class="source-group-header mb-3">
+                        <h4 class="mb-0">
+                            <i class="bi @visual.Icon @visual.CssClass me-2" aria-hidden="true"></i>
+                            @group.Key (@group.Count())
+                        </h4>
+                    </div>
+                    
+                    @foreach (var thread in group)
+                    {
+                        <div class="card thread-card shadow-sm mb-4" @key="thread.Id">
+                            <div class="card-header thread-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h5 class="card-title mb-0">
+                                        @if (!string.IsNullOrEmpty(thread.Url))
+                                        {
+                                            <a href="@thread.Url" target="_blank" class="text-decoration-none text-white">
+                                                @TruncateTitle(thread.Title)
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            @TruncateTitle(thread.Title)
+                                        }
+                                    </h5>
+                                    
+                                    <div class="d-flex align-items-center gap-2">
+                                        @if (!string.IsNullOrEmpty(thread.Url))
+                                        {
+                                            <a href="@thread.Url" target="_blank" class="btn btn-sm btn-outline-light">
+                                                <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>
+                                                View
+                                            </a>
+                                        }
+                                        
+                                        @if (thread.Comments.Any())
+                                        {
+                                            <button class="btn btn-sm btn-outline-light" @onclick="() => ToggleComments(thread.Id)">
+                                                <i class="bi bi-chat-text me-1" aria-hidden="true"></i>
+                                                @(IsExpanded(thread.Id) ? "Hide" : "Show") (@GetTotalCommentCount(thread.Comments))
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-2">
+                                    <small class="text-white-50">
+                                        By @thread.Author • @thread.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")
+                                    </small>
+                                </div>
+                            </div>
+
+                            @if (thread.Comments.Any() && IsExpanded(thread.Id))
+                            {
+                                <div class="card-body thread-comments">
+                                    <h6 class="mb-3">
+                                        <i class="bi bi-chat-dots me-2" aria-hidden="true"></i>
+                                        Comments (@GetTotalCommentCount(thread.Comments))
+                                    </h6>
+                                    
+                                    <div class="comments-container">
+                                        @foreach (var comment in thread.Comments)
+                                        {
+                                            <ThreadComment Comment="comment" />
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            @foreach (var thread in Threads)
+            {
+                var visual = SourceVisualMapping.GetVisual(thread.SourceType);
+                
+                <div class="card thread-card shadow-sm mb-4" @key="thread.Id">
+                    <div class="card-header thread-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="bi @visual.Icon @visual.CssClass me-2" aria-hidden="true"></i>
+                                @if (!string.IsNullOrEmpty(thread.Url))
+                                {
+                                    <a href="@thread.Url" target="_blank" class="text-decoration-none text-white">
+                                        @TruncateTitle(thread.Title)
+                                    </a>
+                                }
+                                else
+                                {
+                                    @TruncateTitle(thread.Title)
+                                }
+                            </h5>
+                            
+                            <div class="d-flex align-items-center gap-2">
+                                @if (!string.IsNullOrEmpty(thread.Url))
+                                {
+                                    <a href="@thread.Url" target="_blank" class="btn btn-sm btn-outline-light">
+                                        <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>
+                                        View
+                                    </a>
+                                }
+                                
+                                @if (thread.Comments.Any())
+                                {
+                                    <button class="btn btn-sm btn-outline-light" @onclick="() => ToggleComments(thread.Id)">
+                                        <i class="bi bi-chat-text me-1" aria-hidden="true"></i>
+                                        @(IsExpanded(thread.Id) ? "Hide" : "Show") (@GetTotalCommentCount(thread.Comments))
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                        
+                        <div class="mt-2">
+                            <small class="text-white-50">
+                                By @thread.Author • @thread.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")
+                            </small>
+                        </div>
+                    </div>
+
+                    @if (thread.Comments.Any() && IsExpanded(thread.Id))
+                    {
+                        <div class="card-body thread-comments">
+                            <h6 class="mb-3">
+                                <i class="bi bi-chat-dots me-2" aria-hidden="true"></i>
+                                Comments (@GetTotalCommentCount(thread.Comments))
+                            </h6>
+                            
+                            <div class="comments-container">
+                                @foreach (var comment in thread.Comments)
+                                {
+                                    <ThreadComment Comment="comment" />
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+}
+else if (Threads is not null)
+{
+    <div class="alert alert-info mt-4" role="alert">
+        <i class="bi bi-info-circle me-2" aria-hidden="true"></i>
+        No discussions or comments found.
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public IEnumerable<CommentThread> Threads { get; set; } = null!;
+
+    [Parameter]
+    public bool GroupBySourceType { get; set; } = false;
+
+    private HashSet<string> expandedThreads = new();
+
+    private void ToggleComments(string threadId)
+    {
+        if (expandedThreads.Contains(threadId))
+        {
+            expandedThreads.Remove(threadId);
+        }
+        else
+        {
+            expandedThreads.Add(threadId);
+        }
+        StateHasChanged();
+    }
+
+    private bool IsExpanded(string threadId)
+    {
+        return expandedThreads.Contains(threadId);
+    }
+
+    /// <summary>
+    /// Truncates the title to a maximum of 50 characters
+    /// </summary>
+    private string TruncateTitle(string title)
+    {
+        if (string.IsNullOrEmpty(title) || title.Length <= 50)
+            return title ?? "Untitled";
+        
+        return title.Substring(0, 50) + "...";
+    }
+
+    /// <summary>
+    /// Recursively counts all comments including nested replies
+    /// </summary>
+    private int GetTotalCommentCount(List<CommentData> comments)
+    {
+        var count = comments.Count;
+        foreach (var comment in comments)
+        {
+            count += GetTotalCommentCount(comment.Replies);
+        }
+        return count;
+    }
+}

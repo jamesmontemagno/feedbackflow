@@ -25,6 +25,7 @@ public class UserSettingsService
         
         // Manual prompt property - separate from universal prompt
         public string ManualPrompt { get; set; } = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("manual");
+        
     }
 
     public UserSettingsService(IJSRuntime jsRuntime, IConfiguration configuration)
