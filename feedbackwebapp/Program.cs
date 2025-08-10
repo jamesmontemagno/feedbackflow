@@ -176,6 +176,18 @@ app.UseHttpsRedirection();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
+// Conditionally expose robots.txt only for non-production environments.
+// In Production we want to allow crawling (so we serve nothing / 404 which permits crawling by default).
+// In Staging or Development we return a disallow-all robots file.
+if (!app.Environment.IsProduction())
+{
+    app.MapGet("/robots.txt", async context =>
+    {
+        context.Response.ContentType = "text/plain";
+        // File content maintained in wwwroot/robots.staging.txt
+        await context.Response.SendFileAsync(Path.Combine(app.Environment.WebRootPath, "robots.staging.txt"));
+    });
+}
 app.MapRazorComponents<FeedbackWebApp.Components.App>()
     .AddInteractiveServerRenderMode();
 
