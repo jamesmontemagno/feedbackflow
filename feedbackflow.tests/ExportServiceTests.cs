@@ -141,7 +141,7 @@ public class ExportServiceTests
     public async Task ExportAsync_UnsupportedFormat_ThrowsArgumentException()
     {
         // Act & Assert
-        await Assert.ThrowsExceptionAsync<ArgumentException>(
+        await Assert.ThrowsExactlyAsync<ArgumentException>(
             () => _exportService.ExportAsync(_testItems, (ExportFormat)999));
     }
 

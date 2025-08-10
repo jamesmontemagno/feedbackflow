@@ -23,11 +23,7 @@ public class ApiKeyServiceTests
 
     [TestMethod]
     public void GenerateApiKey_ShouldCreateValidKey()
-    {
-        // Test that API key generation creates a key with the proper prefix
-        var testUserId = "test-user-123";
-        var testName = "Test API Key";
-        
+    {   
         // Create an API key manually using the same logic
         var randomBytes = new byte[32];
         using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())

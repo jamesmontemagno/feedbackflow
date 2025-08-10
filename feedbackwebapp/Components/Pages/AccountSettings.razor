@@ -112,16 +112,16 @@
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Authentication Provider</label>
                                     <p class="form-control-plaintext">
-                                        <span class="badge bg-secondary">@userInfo.AuthProvider</span>
+                                        <span class="badge bg-secondary">@userInfo?.AuthProvider</span>
                                     </p>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Account Created</label>
-                                    <p class="form-control-plaintext">@userInfo.CreatedAt.ToString("MMMM d, yyyy 'at' h:mm tt")</p>
+                                    <p class="form-control-plaintext">@userInfo?.CreatedAt.ToString("MMMM d, yyyy 'at' h:mm tt")</p>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Last Login</label>
-                                    <p class="form-control-plaintext">@userInfo.LastLoginAt.ToString("MMMM d, yyyy 'at' h:mm tt")</p>
+                                    <p class="form-control-plaintext">@userInfo?.LastLoginAt.ToString("MMMM d, yyyy 'at' h:mm tt")</p>
                                 </div>
                             </div>
                         </div>

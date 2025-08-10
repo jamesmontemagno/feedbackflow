@@ -190,12 +190,18 @@
             
             metrics = await AdminDashboardService.GetDashboardMetricsAsync();
             
-            ToastService.ShowSuccessAsync("Admin dashboard metrics refreshed successfully");
+            if(ToastService is not null)
+            {
+                await ToastService.ShowInfoAsync("Admin dashboard metrics loaded successfully");
+            }
         }
         catch (UnauthorizedAccessException ex)
         {
             errorMessage = ex.Message;
-            ToastService.ShowErrorAsync("Access denied: Admin privileges required");
+            if(ToastService is not null)
+            {
+                await ToastService.ShowErrorAsync("Access denied: Admin privileges required");
+            }
         }
         catch (Exception ex)
         {
@@ -208,7 +214,10 @@
             else
             {
                 errorMessage = $"Failed to load dashboard metrics: {ex.Message}";
-                ToastService.ShowErrorAsync("Failed to load admin dashboard");
+                if(ToastService is not null)
+                {
+                    await ToastService.ShowErrorAsync("Failed to load admin dashboard");
+                }
             }
         }
         finally

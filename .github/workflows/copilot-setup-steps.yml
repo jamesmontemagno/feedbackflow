@@ -27,3 +27,6 @@ jobs:
   
       - name: Install dependencies
         run: dotnet restore FeedbackFlow.slnx
+      
+      - name: Install Aspire CLI
+        run: dotnet tool install -g Aspire.Cli

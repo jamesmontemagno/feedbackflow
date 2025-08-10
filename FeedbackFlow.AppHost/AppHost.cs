@@ -11,9 +11,9 @@ var storage = builder.AddAzureStorage("ff-storage")
 
 var blobs = storage.AddBlobs("ff-blobs");
 // Create the blob containers, these names matter.
-blobs.AddBlobContainer("shared-analyses");
-blobs.AddBlobContainer("reports");
-blobs.AddBlobContainer("hackernews-cache");
+storage.AddBlobContainer("shared-analyses");
+storage.AddBlobContainer("reports");
+storage.AddBlobContainer("hackernews-cache");
 
 var tables = storage.AddTables("ff-tables");
 

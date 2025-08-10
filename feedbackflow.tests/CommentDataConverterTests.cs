@@ -127,15 +127,15 @@ namespace FeedbackFlow.Tests
             Assert.AreEqual("This is a test tweet", thread.Description, "Thread description should match tweet content");
             
             // Check metadata
-            Assert.IsTrue(thread.Metadata.ContainsKey("ProcessedTweetCount"), "Should include processed tweet count");
-            Assert.AreEqual(2, thread.Metadata["ProcessedTweetCount"], "Processed tweet count should match");
-            
+            Assert.IsTrue(thread?.Metadata?.ContainsKey("ProcessedTweetCount"), "Should include processed tweet count");
+            Assert.AreEqual(2, thread?.Metadata?["ProcessedTweetCount"], "Processed tweet count should match");
+
             // Check comments (replies)
-            Assert.AreEqual(1, thread.Comments.Count, "Should have one reply");
-            var reply = thread.Comments[0];
-            Assert.AreEqual("456", reply.Id, "Reply ID should match");
-            Assert.AreEqual("Replier", reply.Author, "Reply author should be display name");
-            Assert.AreEqual("This is a reply", reply.Content, "Reply content should match");
+            Assert.AreEqual(1, thread?.Comments?.Count, "Should have one reply");
+            var reply = thread?.Comments?[0];
+            Assert.AreEqual("456", reply?.Id, "Reply ID should match");
+            Assert.AreEqual("Replier", reply?.Author, "Reply author should be display name");
+            Assert.AreEqual("This is a reply", reply?.Content, "Reply content should match");
         }
 
         [TestMethod]

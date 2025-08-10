@@ -5,7 +5,7 @@ namespace FeedbackFlow.Tests;
 [TestClass]
 public class DevBlogsUrlValidatorTests
 {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(null, false)]
     [DataRow("", false)]
     [DataRow("https://devblogs.microsoft.com/", false)]
