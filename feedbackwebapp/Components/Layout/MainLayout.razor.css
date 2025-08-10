@@ -119,6 +119,7 @@
     padding: 0.25rem 0.15rem;
     border-radius: 12px;
     min-width: 44px; /* Keep for accessibility */
+    min-height: 44px; /* Ensure adequate tap target height */
     position: relative;
     overflow: hidden;
 }

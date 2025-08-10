@@ -1,0 +1,70 @@
+/* Temporary diagnostic CSS for accessibility audit */
+/* Add debug-tap-targets class to any element to visualize tap target sizes */
+
+.debug-tap-targets,
+.debug-tap-targets * {
+    outline: 2px solid red !important;
+    outline-offset: 2px !important;
+}
+
+.debug-tap-targets .action-btn,
+.debug-tap-targets .header-action-btn,
+.debug-tap-targets .mobile-nav-item,
+.debug-tap-targets .btn,
+.debug-tap-targets button,
+.debug-tap-targets a,
+.debug-tap-targets [role="button"],
+.debug-tap-targets .clickable,
+.debug-tap-targets .toggle,
+.debug-tap-targets .usage-metric {
+    outline: 3px solid lime !important;
+    outline-offset: 1px !important;
+    position: relative !important;
+}
+
+.debug-tap-targets .action-btn::after,
+.debug-tap-targets .header-action-btn::after,
+.debug-tap-targets .mobile-nav-item::after,
+.debug-tap-targets .btn::after,
+.debug-tap-targets button::after,
+.debug-tap-targets a::after,
+.debug-tap-targets [role="button"]::after,
+.debug-tap-targets .clickable::after,
+.debug-tap-targets .toggle::after,
+.debug-tap-targets .usage-metric::after {
+    content: attr(class) " | " attr(data-size) !important;
+    position: absolute !important;
+    top: -30px !important;
+    left: 0 !important;
+    background: rgba(0, 255, 0, 0.9) !important;
+    color: black !important;
+    font-size: 10px !important;
+    padding: 2px 4px !important;
+    white-space: nowrap !important;
+    z-index: 9999 !important;
+    border-radius: 2px !important;
+    font-family: monospace !important;
+    pointer-events: none !important;
+}
+
+/* Show minimum 44x44px reference box */
+.debug-tap-targets .tap-target-44::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    width: 44px !important;
+    height: 44px !important;
+    background: rgba(255, 255, 0, 0.3) !important;
+    border: 2px dashed orange !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 9998 !important;
+    pointer-events: none !important;
+}
+
+/* Print size info for debugging */
+@media print {
+    .debug-tap-targets * {
+        outline: none !important;
+    }
+}

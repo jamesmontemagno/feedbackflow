@@ -282,7 +282,9 @@
     
     .action-buttons .btn {
         font-size: 0.75rem;
-        padding: 0.375rem 0.75rem;
+        padding: 0.5rem 0.75rem;
+        min-width: 44px;
+        min-height: 44px;
     }
 }
 
@@ -305,5 +307,13 @@
     .user-id-masked {
         font-size: 0.7rem;
         padding: 0.15rem 0.3rem;
+    }
+    
+    /* Ensure action buttons maintain accessibility on smallest screens */
+    .action-buttons .btn {
+        font-size: 0.7rem;
+        padding: 0.5rem 0.625rem;
+        min-width: 44px;
+        min-height: 44px;
     }
 }
