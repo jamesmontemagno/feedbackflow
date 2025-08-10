@@ -37,6 +37,12 @@
     --platform-pill-border: var(--border-color);
     --platform-pill-text: var(--text-secondary);
     
+    /* Spacing scale */
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 1rem;
+    --space-lg: 1.5rem;
+    
     /* Additional variables for components */
     --card-bg: var(--bg-secondary);
     --card-bg-rgb: var(--bg-secondary-rgb);
@@ -81,6 +87,12 @@
     --platform-pill-bg: var(--bg-secondary);
     --platform-pill-border: var(--border-color);
     --platform-pill-text: var(--text-secondary);
+    
+    /* Spacing scale */
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 1rem;
+    --space-lg: 1.5rem;
     
     /* Additional variables for components */
     --card-bg: var(--bg-secondary);

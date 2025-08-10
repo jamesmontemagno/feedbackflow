@@ -135,6 +135,12 @@
     background-color: var(--border-color);
 }
 
+/* Dark theme support for progress group */
+[data-theme="dark"] .progress-group .health-percentage {
+    background: rgba(var(--primary-color-rgb), 0.15);
+    color: var(--primary-color);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .metric-card {
@@ -163,5 +169,60 @@
     
     .growth-value {
         align-self: flex-end;
+    }
+}
+
+/* Progress group pattern for mobile compression */
+@media (max-width: 575.98px) {
+    .progress-group {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+    }
+    
+    .progress-group .health-metric {
+        margin-top: 0 !important;
+        padding: var(--space-xs) 0;
+        gap: var(--space-xs);
+        border-bottom: none;
+    }
+    
+    .progress-group .health-metric:first-child {
+        padding-top: 0;
+    }
+    
+    .progress-group .health-metric:last-child {
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+    
+    .progress-group .progress {
+        margin-bottom: var(--space-xs) !important;
+        height: 6px;
+    }
+    
+    .progress-group .health-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin-bottom: var(--space-xs);
+        font-size: 0.85rem;
+    }
+    
+    .progress-group .health-percentage {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--primary-color);
+        background: rgba(var(--primary-color-rgb), 0.1);
+        padding: 0.1rem 0.4rem;
+        border-radius: var(--border-radius-pill);
+        margin-left: var(--space-sm);
+    }
+    
+    .progress-group .text-muted {
+        font-size: 0.7rem;
+        margin: 0;
+        line-height: 1.1;
     }
 }
