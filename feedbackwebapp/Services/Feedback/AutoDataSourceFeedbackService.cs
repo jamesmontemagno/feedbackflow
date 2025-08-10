@@ -4,10 +4,15 @@ using SharedDump.Utils;
 
 namespace FeedbackWebApp.Services.Feedback;
 
-public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeedbackService
+public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeedbackService, ICachableFeedbackService
 {
     private readonly string[] _urls;
     private readonly FeedbackServiceProvider _serviceProvider;
+    
+    /// <summary>
+    /// Last fetched comments snapshot for caching/reanalysis support
+    /// </summary>
+    public (string comments, int commentCount, object? additionalData)? LastCommentsSnapshot { get; private set; }
 
     public AutoDataSourceFeedbackService(
         IHttpClientFactory http,
@@ -98,7 +103,12 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         var combinedComments = string.Join("\n\n", allComments);
 
         // Return the combined comments, total count, and the source data
-        return (combinedComments, totalCommentCount, sourceData);
+        var result = (combinedComments, totalCommentCount, sourceData);
+        
+        // Cache the snapshot for potential reanalysis
+        LastCommentsSnapshot = (combinedComments, totalCommentCount, (object?)sourceData);
+        
+        return result;
     }   
     
      public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)

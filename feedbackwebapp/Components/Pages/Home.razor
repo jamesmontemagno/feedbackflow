@@ -76,7 +76,7 @@
                 <div class="card-body">
                     @if (selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
                     {
-                        <AutoDataSourceForm @ref="autoDataSourceForm" IsDisabled="@isLoading" />
+                        <AutoDataSourceForm @ref="autoDataSourceForm" IsDisabled="@isLoading" OnUrlsChanged="HandleUrlsChanged" />
                     }
                     else if (selectedSource.Equals("Manual", StringComparison.OrdinalIgnoreCase))
                     {
@@ -110,7 +110,7 @@
                         }
                     }
 
-                    <SubmitButton ShowWhenSource="@selectedSource" IsLoading="@isLoading" OnSubmit="SubmitFeedbackRequest" />
+                    <SubmitButton ShowWhenSource="@selectedSource" IsLoading="@isLoading" OnSubmit="SubmitFeedbackRequest" ButtonText="@(canReanalyze ? "Reanalyze" : "Analyze Comments")" />
                     
                     @if (isLoading)
                     {
@@ -153,6 +153,7 @@
     private AutoDataSourceForm? autoDataSourceForm;
     private ManualFeedbackInput? manualInputForm;
     private string selectedSource = "Auto";
+    private string? lastSelectedSource = "Auto";  // Track for invalidation
     private string markdownResult = "";
     private string error = "";
     private bool isLoading = false;
@@ -170,6 +171,18 @@
     private string? initialId;
     private bool showPromptEditor = false;
     private string customPrompt = string.Empty; // Temporary, not persisted
+    
+    // Reanalyze caching state
+    private string[]? lastAnalyzedUrls;
+    private string? cachedComments;
+    private int cachedCommentCount;
+    private object? cachedAdditionalData;
+    
+    // Computed property for reanalyze capability
+    private bool canReanalyze => cachedComments != null && 
+                                lastAnalyzedUrls != null && 
+                                selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase) &&
+                                UrlsUnchanged();
 
     private static string Truncate(string value, int max)
         => string.IsNullOrEmpty(value) || value.Length <= max ? value : value.Substring(0, max) + "...";
@@ -203,6 +216,94 @@
         customPrompt = string.Empty;
         showPromptEditor = false;
         return Task.CompletedTask;
+    }
+
+    // URL normalization and comparison helpers for reanalyze feature
+    private string[] NormalizeUrls(IEnumerable<string> urls) => urls
+        .Where(u => !string.IsNullOrWhiteSpace(u))
+        .Select(u => u.Trim().ToLowerInvariant()) // Normalize casing  
+        .Distinct()
+        .OrderBy(u => u)
+        .ToArray();
+
+    private bool UrlsUnchanged()
+    {
+        var current = NormalizeUrls(autoDataSourceForm?.GetUrls() ?? Enumerable.Empty<string>());
+        return lastAnalyzedUrls != null && current.SequenceEqual(lastAnalyzedUrls);
+    }
+
+    private void InvalidateCache()
+    {
+        lastAnalyzedUrls = null;
+        cachedComments = null;
+        cachedCommentCount = 0;
+        cachedAdditionalData = null;
+    }
+
+    private async Task PerformReanalysis()
+    {
+        if (!canReanalyze || cachedComments == null)
+            return;
+
+        currentStatus = FeedbackProcessStatus.AnalyzingComments;
+        currentStatusMessage = "Reanalyzing feedback...";
+        StateHasChanged();
+
+        // Create a new service for reanalysis
+        var service = ServiceProvider.CreateAutoDataSourceService(
+            autoDataSourceForm?.GetUrls().ToArray() ?? Array.Empty<string>(),
+            HandleStatusUpdate);
+
+        // Apply temporary prompt
+        if (!string.IsNullOrWhiteSpace(customPrompt))
+        {
+            service.SetTemporaryPrompt(customPrompt);
+        }
+        else
+        {
+            service.ClearTemporaryPrompt();
+        }
+
+        // Call AnalyzeComments directly with cached data
+        var (result, additionalData) = await service.AnalyzeComments(cachedComments, cachedCommentCount, cachedAdditionalData);
+        markdownResult = result;
+        currentAdditionalData = additionalData;
+
+        // Handle feedbackSources for Auto source type
+        if (additionalData is List<FeedbackSourceData> sources)
+        {
+            feedbackSources = sources;
+        }
+    }
+
+    private Task HandleUrlsChanged(List<string> urls)
+    {
+        // Invalidate cache when URLs change
+        if (selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
+        {
+            var normalizedUrls = NormalizeUrls(urls);
+            if (lastAnalyzedUrls != null && !normalizedUrls.SequenceEqual(lastAnalyzedUrls))
+            {
+                InvalidateCache();
+            }
+        }
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        
+        // Check if source changed and invalidate cache if needed
+        if (lastSelectedSource != null && !string.Equals(lastSelectedSource, selectedSource, StringComparison.OrdinalIgnoreCase))
+        {
+            if (!selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
+            {
+                InvalidateCache();
+            }
+        }
+        lastSelectedSource = selectedSource;
     }
 
     private async Task HandleAuthenticatedWithDetails((bool success, bool justLoggedIn) details)
@@ -410,6 +511,13 @@
                     error = accessError;
                     return;
                 }
+                
+                // Check if we can reanalyze with cached data
+                if (canReanalyze)
+                {
+                    await PerformReanalysis();
+                    return;
+                }
             }
 
             IFeedbackService service = selectedSource switch
@@ -445,6 +553,17 @@
             if (selectedSource == "Auto" && additionalData is List<FeedbackSourceData> sources)
             {
                 feedbackSources = sources;
+                
+                // Capture cache data for potential reanalysis if this is an ICachableFeedbackService
+                if (service is ICachableFeedbackService cachableService && cachableService.LastCommentsSnapshot.HasValue)
+                {
+                    var snapshot = cachableService.LastCommentsSnapshot.Value;
+                    var urls = autoDataSourceForm?.GetUrls() ?? new List<string>();
+                    lastAnalyzedUrls = NormalizeUrls(urls);
+                    cachedComments = snapshot.comments;
+                    cachedCommentCount = snapshot.commentCount;
+                    cachedAdditionalData = snapshot.additionalData;
+                }
             }
         }
         catch (UsageLimitExceededException ex)

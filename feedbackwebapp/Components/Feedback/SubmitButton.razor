@@ -8,7 +8,7 @@
         }
         else
         {
-            <span>Analyze Comments</span>
+            <span>@ButtonText</span>
         }
     </button>
 }
@@ -17,11 +17,12 @@
     [Parameter]
     public string ShowWhenSource { get; set; } = "";
 
+    [Parameter]
+    public string ButtonText { get; set; } = "Analyze Comments";
 
     [Parameter]
     public bool IsLoading { get; set; }
     
-
     [Parameter]
     public EventCallback OnSubmit { get; set; }
 }
