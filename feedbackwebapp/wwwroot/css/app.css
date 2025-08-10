@@ -1035,6 +1035,75 @@ Shared styles for responsive action menus across components
     }
 }
 
+/* 
+=================================
+TABLE COMPACT UTILITY
+=================================
+Responsive utility class for denser table layouts on mobile devices
+*/
+
+/* Desktop: No changes - preserve default Bootstrap table styling */
+.table-compact {
+    /* Base class - desktop styling unchanged */
+}
+
+/* Tablet: Reduce padding for better row density */
+@media (max-width: 767.98px) {
+    .table-compact td,
+    .table-compact th {
+        padding: 0.4rem 0.5rem !important;
+    }
+    
+    /* Add subtle row dividers for improved scannability when padding is reduced */
+    .table-compact tbody tr {
+        border-bottom: 1px solid var(--border-color) !important;
+    }
+    
+    /* Maintain button touch targets for accessibility */
+    .table-compact .btn {
+        min-height: 32px;
+        min-width: 32px;
+        padding: 0.375rem 0.5rem;
+    }
+    
+    /* Maintain select dropdown touch targets */
+    .table-compact .form-select {
+        min-height: 32px;
+        padding: 0.375rem 0.5rem;
+    }
+}
+
+/* Mobile: Further reduce font size for maximum density */
+@media (max-width: 575.98px) {
+    .table-compact {
+        font-size: 0.85rem;
+    }
+    
+    /* Ensure headers remain readable */
+    .table-compact thead th {
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Adjust button text size but maintain touch targets */
+    .table-compact .btn {
+        font-size: 0.8rem;
+        min-height: 32px;
+        min-width: 32px;
+    }
+    
+    /* Adjust select text size but maintain touch targets */
+    .table-compact .form-select {
+        font-size: 0.8rem;
+        min-height: 32px;
+    }
+}
+
+/* Dark theme compatibility */
+[data-theme="dark"] .table-compact tbody tr {
+    border-bottom-color: var(--border-color) !important;
+  
 /* Mobile Compact Spacing Scale - Applied at small viewports for better content density */
 @media (max-width: 575.98px) {
     /* Reduce card padding for mobile density */
