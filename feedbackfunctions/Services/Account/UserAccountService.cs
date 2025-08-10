@@ -148,7 +148,7 @@ public class UserAccountService : IUserAccountService
         {
             AccountTier.Free => new AccountLimits 
             { 
-                AnalysisLimit = GetConfigValue("AccountTiers:Free:AnalysisLimit", 10),
+                AnalysisLimit = GetConfigValue("AccountTiers:Free:AnalysisLimit", 15),
                 ReportLimit = GetConfigValue("AccountTiers:Free:ReportLimit", 1),
                 FeedQueryLimit = GetConfigValue("AccountTiers:Free:FeedQueryLimit", 20),
                 ApiLimit = 0, // Free tier doesn't support API access

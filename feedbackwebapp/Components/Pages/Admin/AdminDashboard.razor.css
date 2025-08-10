@@ -1,0 +1,144 @@
+/* Moved Admin Dashboard Specific Styles (relocated from Pages root) */
+
+.admin-header {
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 1rem;
+}
+
+/* Segmented tabs */
+.segmented-tabs {
+    display: inline-flex;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-pill);
+    padding: 0.35rem;
+    gap: 0.25rem;
+    box-shadow: var(--card-shadow);
+    position: relative;
+    overflow: hidden;
+}
+
+.segmented-tabs .segment {
+    position: relative;
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    padding: 0.6rem 1.1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: var(--border-radius-pill);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    line-height: 1;
+    transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+    outline: none;
+}
+
+.segmented-tabs .segment i { font-size: 1rem; }
+
+.segmented-tabs .segment:hover:not(.active) {
+    background: rgba(var(--primary-color-rgb), 0.08);
+    color: var(--primary-color);
+}
+
+.segmented-tabs .segment:focus-visible {
+    box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.4);
+}
+
+.segmented-tabs .segment.active {
+    background: var(--primary-gradient);
+    color: var(--on-primary-color, #fff);
+    font-weight: 600;
+    box-shadow: 0 4px 10px -2px rgba(var(--primary-color-rgb), 0.4);
+}
+
+.segmented-tabs .segment.active i { color: inherit; }
+
+.segmented-tabs .segment:active:not(.active) {
+    transform: scale(0.96);
+}
+
+/* Animated highlight (optional future enhancement) */
+.segmented-tabs::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background: linear-gradient(120deg, rgba(var(--primary-color-rgb),0.15), transparent 60%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+.segmented-tabs:hover::after { opacity: 1; }
+
+.admin-tab-content { min-height: 500px; }
+
+/* Dark theme support */
+[data-theme="dark"] .admin-header {
+    border-bottom-color: var(--primary-color);
+}
+
+[data-theme="dark"] .admin-nav-tabs {
+    border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .admin-nav-tabs .nav-link {
+    color: var(--text-color);
+}
+
+[data-theme="dark"] .admin-nav-tabs .nav-link:hover {
+    color: var(--primary-color);
+    background: rgba(var(--primary-color-rgb), 0.15);
+}
+
+[data-theme="dark"] .admin-nav-tabs .nav-link.active {
+    color: var(--primary-color);
+    background: rgba(var(--primary-color-rgb), 0.15);
+    border-color: var(--primary-color);
+}
+
+[data-theme="dark"] .segmented-tabs {
+    background: rgba(var(--bg-secondary-rgb), 0.6);
+    backdrop-filter: blur(6px);
+}
+
+[data-theme="dark"] .segmented-tabs .segment:hover:not(.active) {
+    background: rgba(var(--primary-color-rgb), 0.15);
+}
+
+[data-theme="dark"] .segmented-tabs .segment.active {
+    box-shadow: 0 4px 14px -2px rgba(var(--primary-color-rgb), 0.55);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .admin-header .d-flex {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .segmented-tabs {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: stretch;
+    }
+
+    .segmented-tabs .segment {
+        flex: 1 1 calc(50% - 0.5rem);
+        justify-content: center;
+        padding: 0.55rem 0.75rem;
+        font-size: 0.85rem;
+    }
+
+    .segmented-tabs .segment i { display: none; }
+}
+
+/* Prefers reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .segmented-tabs .segment { transition: none; }
+    .segmented-tabs::after { transition: none; }
+}

@@ -1,0 +1,87 @@
+/* Admin API Keys page styles (scoped) */
+
+.api-keys-header {
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.api-keys-header .feedbackflow-title {
+    font-size: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0 0 0.25rem 0;
+}
+
+.api-keys-description {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+:deep(.admin-api-keys-table) {
+    width: 100%;
+    background: var(--card-bg);
+    border-collapse: collapse;
+}
+
+:deep(.admin-api-keys-table th) {
+    background: rgba(var(--bg-secondary-rgb), 0.8);
+    text-transform: uppercase;
+    font-weight: 600;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    color: var(--text-primary);
+    padding: 0.6rem 0.75rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+:deep(.admin-api-keys-table td) {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+:deep(.admin-api-keys-table tbody tr:hover td) {
+    background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.05) 0%, rgba(var(--primary-color-rgb), 0.1) 100%);
+    transition: background 0.3s ease;
+}
+
+:deep(.key-status-badge) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: var(--border-radius-pill);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(var(--primary-color-rgb), 0.1);
+    color: var(--primary-color);
+    border: 1px solid rgba(var(--primary-color-rgb), 0.3);
+}
+
+:deep(.key-status-badge.revoked) {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    border-color: rgba(220, 53, 69, 0.3);
+}
+
+/* Action buttons */
+:deep(.api-key-actions .btn) { transition: all 0.25s ease; }
+:deep(.api-key-actions .btn:hover) { transform: translateY(-2px); }
+
+/* Dark theme adjustments */
+[data-theme="dark"] :deep(.admin-api-keys-table th) { background: rgba(var(--bg-secondary-rgb), 0.4); }
+[data-theme="dark"] :deep(.admin-api-keys-table tbody tr:hover td) { background: rgba(var(--primary-color-rgb), 0.15); }
+
+/* Responsive */
+@media (max-width: 767.98px) {
+    .api-keys-header .feedbackflow-title { font-size: 1.6rem; }
+    :deep(.admin-api-keys-table th), :deep(.admin-api-keys-table td) { font-size: 0.75rem; padding: 0.45rem 0.5rem; }
+}
+
+@media (max-width: 575.98px) {
+    :deep(.api-key-actions) { display: flex; flex-direction: column; gap: 0.35rem; }
+}

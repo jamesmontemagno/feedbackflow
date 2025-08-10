@@ -1,6 +1,11 @@
 This page tracks the latest features and improvements added to FeedbackFlow.
 
-## � August 2025
+## 📆 August 2025
+
+### 🍿 Analysis Improvements
+
+- Custom prompts for each analysis request, use the universal, or customize it
+- Reanalyze with custom prompts without having to waste credits re-gathering comments
 
 ### 🔐 Authentication & Cloud Backup
 
@@ -34,7 +39,7 @@ Your existing data is safe and accessible:
 
 - 🏠 **Local Data Preserved**: All your existing local analysis history remains available
 
-## �📆 June 2025
+## 📆 June 2025
 
 ### 📊 Custom Reports
 

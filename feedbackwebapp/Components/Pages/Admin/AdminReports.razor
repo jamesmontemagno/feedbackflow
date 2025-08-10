@@ -1,0 +1,188 @@
+@page "/admin/reports"
+@using FeedbackWebApp.Services
+@using FeedbackWebApp.Services.Authentication
+@using FeedbackWebApp.Services.Account
+@using SharedDump.Models.Reports
+@using SharedDump.Models.Account
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components
+@inject FeedbackWebApp.Services.IAdminReportConfigService AdminReportConfigService
+@inject IAuthenticationService AuthService
+@inject IAccountServiceProvider AccountServiceProvider
+@inject IToastService ToastService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+
+@using FeedbackWebApp.Components.Admin
+@using FeedbackWebApp.Components.Shared
+@namespace FeedbackWebApp.Components.Pages.Admin
+
+<PageTitle>Admin Reports - FeedbackFlow</PageTitle>
+
+<div class="container my-4">
+    <div class="mb-3">
+        <a href="/admin" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Admin Home
+        </a>
+    </div>
+    @if (isLoading)
+    {
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading admin reports...</p>
+        </div>
+    }
+    else if (!isAdmin)
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-shield-exclamation me-2"></i>
+            <strong>Access Denied:</strong> This page is only available to administrators.
+        </div>
+    }
+    else
+    {
+        <div class="d-flex justify-content-between align-items-center mb-4 admin-header">
+            <div>
+                <h1 class="feedbackflow-title mb-2">
+                    <i class="bi bi-gear-fill me-2"></i>
+                    Admin Reports
+                </h1>
+                <p class="text-muted mb-0">Manage automated report configurations for administrators</p>
+            </div>
+            <button class="btn btn-primary btn-create-report" @onclick="ShowCreateModal">
+                <i class="bi bi-plus-circle me-2"></i>
+                New Report Config
+            </button>
+        </div>
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                @errorMessage
+            </div>
+        }
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-gear-fill me-1"></i>
+                        Admin Report Configurations
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                @if (configs.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle admin-reports-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Type</th>
+                                    <th scope="col">Source</th>
+                                    <th scope="col" class="d-none d-md-table-cell">Email</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col" class="d-none d-lg-table-cell">Created</th>
+                                    <th scope="col" class="d-none d-xl-table-cell">Last Run</th>
+                                    <th scope="col" class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var config in configs)
+                                {
+                                    <tr>
+                                        <td><div class="report-name">@config.Name</div></td>
+                                        <td>
+                                            <span class="source-badge @config.Type.ToLowerInvariant()">
+                                                <i class="bi @(config.Type == "reddit" ? "bi-reddit" : "bi-github") me-1"></i>
+                                                @config.Type
+                                            </span>
+                                        </td>
+                                        <td>
+                                            @if (config.Type == "reddit") { <span class="report-sub-source">r/@config.Subreddit</span>; }
+                                            else if (config.Type == "github") { <span class="report-sub-source">@config.Owner/@config.Repo</span>; }
+                                        </td>
+                                        <td class="d-none d-md-table-cell"><span class="report-email">@config.EmailRecipient</span></td>
+                                        <td>
+                                            @if (config.IsActive) { <span class="status-badge status-active"><i class="bi bi-check-circle me-1"></i>Active</span>; }
+                                            else { <span class="status-badge status-inactive"><i class="bi bi-pause-circle me-1"></i>Inactive</span>; }
+                                        </td>
+                                        <td class="d-none d-lg-table-cell"><span class="report-date"><i class="bi bi-calendar me-1"></i>@config.CreatedAt.ToString("MMM d")</span></td>
+                                        <td class="d-none d-xl-table-cell">
+                                            @if (config.LastProcessedAt.HasValue) { <span class="report-date"><i class="bi bi-clock me-1"></i>@config.LastProcessedAt.Value.ToString("MMM d")</span>; }
+                                            else { <span class="report-date-never">Never</span>; }
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="action-buttons">
+                                                <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => EditConfig(config)" title="Edit Configuration"><i class="bi bi-pencil"></i></button>
+                                                <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteConfig(config)" title="Delete Configuration"><i class="bi bi-trash"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>No admin report configurations found. <button type="button" class="btn btn-link p-0 alert-link" @onclick="ShowCreateModal">Create your first configuration</button> to get started.</div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@if (showModal)
+{
+    <div class="modal fade show admin-modal" style="display: block;" tabindex="-1">
+        <div class="modal-backdrop fade show"></div>
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@if (editingConfig == null){<text><i class="bi bi-plus-circle me-2"></i>Create New Report Config</text>} else {<text><i class="bi bi-pencil me-2"></i>Edit Report Config</text>}</h5>
+                    <button type="button" class="btn-close" @onclick="HideModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@currentConfig" OnValidSubmit="SaveConfig">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger" />
+                        <div class="mb-3"><label class="form-label">Report Name <span class="text-danger">*</span></label><InputText @bind-Value="currentConfig.Name" class="form-control" placeholder="e.g., Weekly Feedback Report" /></div>
+                        <div class="mb-3"><label class="form-label">Report Type <span class="text-danger">*</span></label><InputSelect @bind-Value="currentConfig.Type" class="form-select" @onchange="OnTypeChanged"><option value="">Select report type...</option><option value="reddit">Reddit</option><option value="github">GitHub</option></InputSelect></div>
+                        @if (currentConfig.Type == "reddit") { <div class="mb-3"><label class="form-label">Subreddit <span class="text-danger">*</span></label><InputText @bind-Value="currentConfig.Subreddit" class="form-control" placeholder="e.g., dotnet" /><div class="form-text">Enter the subreddit name without the "r/" prefix</div>@if (string.IsNullOrWhiteSpace(currentConfig.Subreddit)){<div class="text-danger">Subreddit is required for Reddit reports</div>}</div> }
+                        else if (currentConfig.Type == "github") { <div class="row"><div class="col-md-6 mb-3"><label class="form-label">Owner <span class="text-danger">*</span></label><InputText @bind-Value="currentConfig.Owner" class="form-control" placeholder="e.g., microsoft" />@if (string.IsNullOrWhiteSpace(currentConfig.Owner)){<div class="text-danger">Owner is required for GitHub reports</div>}</div><div class="col-md-6 mb-3"><label class="form-label">Repository <span class="text-danger">*</span></label><InputText @bind-Value="currentConfig.Repo" class="form-control" placeholder="e.g., dotnet" />@if (string.IsNullOrWhiteSpace(currentConfig.Repo)){<div class="text-danger">Repository is required for GitHub reports</div>}</div></div> }
+                        <div class="mb-3"><label class="form-label">Email Recipient <span class="text-danger">*</span></label><InputText @bind-Value="currentConfig.EmailRecipient" type="email" class="form-control" placeholder="admin@company.com" /><div class="form-text">Email address where the report will be sent</div></div>
+                        <div class="mb-3"><div class="form-check"><InputCheckbox @bind-Value="currentConfig.IsActive" class="form-check-input" id="isActiveCheck" /><label class="form-check-label" for="isActiveCheck">Active (report will be generated and sent)</label></div></div>
+                        <div class="modal-footer"><button type="button" class="btn btn-secondary" @onclick="HideModal">Cancel</button><button type="submit" class="btn btn-primary" disabled="@isSaving">@if (isSaving){<span class="spinner-border spinner-border-sm me-2" role="status"></span>}@if (editingConfig == null){<span>Create Report Config</span>} else {<span>Update Report Config</span>}</button></div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private bool isAdmin = false;
+    private string errorMessage = string.Empty;
+    private List<AdminReportConfigModel> configs = new();
+    private bool showModal = false;
+    private bool isSaving = false;
+    private AdminReportConfigModel? editingConfig = null;
+    private AdminReportConfigModel currentConfig = new();
+    protected override async Task OnInitializedAsync(){ try { isLoading = true; errorMessage = string.Empty; var isAuthenticated = await AuthService.IsAuthenticatedAsync(); if (!isAuthenticated){ Navigation.NavigateTo("/"); return; } var accountService = AccountServiceProvider.GetService(); var accountResult = await accountService.GetUserAccountAndLimitsAsync(); if (accountResult.HasValue){ isAdmin = accountResult.Value.account?.Tier == AccountTier.Admin; } if (isAdmin){ await LoadConfigs(); } } catch (Exception ex){ errorMessage = $"Error loading admin reports: {ex.Message}"; } finally { isLoading = false; } }
+    private async Task LoadConfigs(){ try { configs = await AdminReportConfigService.GetAllConfigsAsync(); } catch (Exception ex){ errorMessage = $"Error loading report configurations: {ex.Message}"; } }
+    private void ShowCreateModal(){ editingConfig = null; currentConfig = new AdminReportConfigModel { IsActive = true }; showModal = true; }
+    private void EditConfig(AdminReportConfigModel config){ editingConfig = config; currentConfig = new AdminReportConfigModel { Id = config.Id, Name = config.Name, Type = config.Type, Subreddit = config.Subreddit, Owner = config.Owner, Repo = config.Repo, EmailRecipient = config.EmailRecipient, IsActive = config.IsActive, ETag = config.ETag }; showModal = true; }
+    private void HideModal(){ showModal = false; editingConfig = null; currentConfig = new(); }
+    private void OnTypeChanged(ChangeEventArgs e){ var newType = e.Value?.ToString(); if (newType != currentConfig.Type){ currentConfig.Subreddit = string.Empty; currentConfig.Owner = string.Empty; currentConfig.Repo = string.Empty; } }
+    private async Task SaveConfig(){ try { isSaving = true; errorMessage = string.Empty; if (string.IsNullOrWhiteSpace(currentConfig.Name)){ errorMessage = "Report name is required."; await ToastService.ShowErrorAsync("Report name is required"); return;} if (string.IsNullOrWhiteSpace(currentConfig.Type)){ errorMessage = "Report type is required."; await ToastService.ShowErrorAsync("Report type is required"); return;} if (string.IsNullOrWhiteSpace(currentConfig.EmailRecipient)){ errorMessage = "Email recipient is required."; await ToastService.ShowErrorAsync("Email recipient is required"); return;} if (currentConfig.Type == "reddit" && string.IsNullOrWhiteSpace(currentConfig.Subreddit)){ errorMessage = "Subreddit is required for Reddit reports."; await ToastService.ShowErrorAsync("Subreddit is required for Reddit reports"); return;} if (currentConfig.Type == "github" && (string.IsNullOrWhiteSpace(currentConfig.Owner) || string.IsNullOrWhiteSpace(currentConfig.Repo))){ errorMessage = "Owner and Repository are required for GitHub reports."; await ToastService.ShowErrorAsync("Owner and Repository are required for GitHub reports"); return;} if (editingConfig == null){ var createdConfig = await AdminReportConfigService.CreateConfigAsync(currentConfig); configs.Add(createdConfig); await ToastService.ShowSuccessAsync("Report configuration created successfully!"); } else { var updatedConfig = await AdminReportConfigService.UpdateConfigAsync(currentConfig); var index = configs.FindIndex(c => c.Id == updatedConfig.Id); if (index >= 0){ configs[index] = updatedConfig; } await ToastService.ShowSuccessAsync("Report configuration updated successfully!"); } HideModal(); }
+        catch (Exception ex){ var detailedError = ex.InnerException?.Message ?? ex.Message; errorMessage = $"Error saving report configuration: {detailedError}"; await ToastService.ShowErrorAsync($"Failed to save: {detailedError}"); Console.WriteLine($"SaveConfig Error Details:\n  Message: {ex.Message}\n  InnerException: {ex.InnerException?.Message}\n  StackTrace: {ex.StackTrace}"); if (ex.InnerException != null) Console.WriteLine($"  InnerException StackTrace: {ex.InnerException.StackTrace}"); }
+        finally { isSaving = false; } }
+    private async Task DeleteConfig(AdminReportConfigModel config){ try { var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete the report configuration '{config.Name}'? This action cannot be undone."); if (confirmed){ var success = await AdminReportConfigService.DeleteConfigAsync(config.Id); if (success){ configs.Remove(config); await ToastService.ShowSuccessAsync("Report configuration deleted successfully!"); } else { await ToastService.ShowErrorAsync("Failed to delete report configuration"); } } }
+        catch (Exception ex){ errorMessage = $"Error deleting report configuration: {ex.Message}"; await ToastService.ShowErrorAsync("Failed to delete report configuration"); Console.WriteLine($"DeleteConfig Error Details:\n  Message: {ex.Message}\n  InnerException: {ex.InnerException?.Message}\n  StackTrace: {ex.StackTrace}"); if (ex.InnerException != null) Console.WriteLine($"  InnerException StackTrace: {ex.InnerException.StackTrace}"); } }
+}

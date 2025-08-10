@@ -1,6 +1,8 @@
-@page "/admin"
+@page "/admin/dashboard"
 @using FeedbackWebApp.Services
 @using FeedbackWebApp.Services.Account
+@using FeedbackWebApp.Components.Admin
+@using FeedbackWebApp.Components.Shared
 @using SharedDump.Models.Admin
 @using SharedDump.Models.Account
 @using SharedDump.Utils
@@ -9,11 +11,16 @@
 @inject IToastService ToastService
 @inject NavigationManager Navigation
 
-@namespace FeedbackWebApp.Components.Pages
+@namespace FeedbackWebApp.Components.Pages.Admin
 
 <PageTitle>Admin Dashboard - FeedbackFlow</PageTitle>
 
 <div class="container my-4">
+    <div class="mb-3">
+        <a href="/admin" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Admin Home
+        </a>
+    </div>
     @if (isLoading)
     {
         <div class="text-center py-4">
@@ -70,70 +77,33 @@
             </div>
         </div>
 
-        <!-- Tab Navigation -->
-        <ul class="nav nav-tabs admin-nav-tabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link @(activeTab == "overview" ? "active" : "")" type="button" 
-                        @onclick='() => SetActiveTab("overview")'>
-                    <i class="bi bi-graph-up me-2"></i>Overview
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link @(activeTab == "users" ? "active" : "")" type="button" 
-                        @onclick='() => SetActiveTab("users")'>
-                    <i class="bi bi-people me-2"></i>User Distribution
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link @(activeTab == "usage" ? "active" : "")" type="button" 
-                        @onclick='() => SetActiveTab("usage")'>
-                    <i class="bi bi-bar-chart me-2"></i>Usage Consumption
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link @(activeTab == "api" ? "active" : "")" type="button" 
-                        @onclick='() => SetActiveTab("api")'>
-                    <i class="bi bi-code-slash me-2"></i>API Adoption
-                </button>
-            </li>
-        </ul>
+        <div class="segmented-tabs mb-4" role="tablist" aria-label="Admin Dashboard Sections">
+            <button type="button" class="segment @(activeTab == "overview" ? "active" : null)" role="tab" aria-selected="@(activeTab == "overview")" aria-controls="overview-panel" id="overview-tab" @onclick='() => SetActiveTab("overview")' @onkeydown='e => OnTabKeyDown(e,"overview")'>
+                <i class="bi bi-graph-up"></i><span>Overview</span>
+            </button>
+            <button type="button" class="segment @(activeTab == "users" ? "active" : null)" role="tab" aria-selected="@(activeTab == "users")" aria-controls="users-panel" id="users-tab" @onclick='() => SetActiveTab("users")' @onkeydown='e => OnTabKeyDown(e,"users")'>
+                <i class="bi bi-people"></i><span>User Distribution</span>
+            </button>
+            <button type="button" class="segment @(activeTab == "usage" ? "active" : null)" role="tab" aria-selected="@(activeTab == "usage")" aria-controls="usage-panel" id="usage-tab" @onclick='() => SetActiveTab("usage")' @onkeydown='e => OnTabKeyDown(e,"usage")'>
+                <i class="bi bi-bar-chart"></i><span>Usage Consumption</span>
+            </button>
+            <button type="button" class="segment @(activeTab == "api" ? "active" : null)" role="tab" aria-selected="@(activeTab == "api")" aria-controls="api-panel" id="api-tab" @onclick='() => SetActiveTab("api")' @onkeydown='e => OnTabKeyDown(e,"api")'>
+                <i class="bi bi-code-slash"></i><span>API Adoption</span>
+            </button>
+        </div>
 
-        <!-- Tab Content -->
         <div class="tab-content admin-tab-content mt-4">
-            <!-- Overview Tab -->
-            @if (activeTab == "overview")
-            {
-                <AdminOverviewWidget Metrics="metrics" />
-            }
-            
-            <!-- User Distribution Tab -->
-            @if (activeTab == "users")
-            {
-                <AdminUserDistributionWidget UserStats="metrics?.UserStats" />
-            }
-            
-            <!-- Usage Consumption Tab -->
-            @if (activeTab == "usage")
-            {
-                <AdminUsageConsumptionWidget UsageStats="metrics?.UsageStats" />
-            }
-            
-            <!-- API Adoption Tab -->
-            @if (activeTab == "api")
-            {
-                <AdminApiAdoptionWidget ApiStats="metrics?.ApiStats" />
-            }
+            @if (activeTab == "overview") { <div id="overview-panel" role="tabpanel" aria-labelledby="overview-tab"><AdminOverviewWidget Metrics="metrics" /></div> }
+            @if (activeTab == "users") { <div id="users-panel" role="tabpanel" aria-labelledby="users-tab"><AdminUserDistributionWidget UserStats="metrics?.UserStats" /></div> }
+            @if (activeTab == "usage") { <div id="usage-panel" role="tabpanel" aria-labelledby="usage-tab"><AdminUsageConsumptionWidget UsageStats="metrics?.UsageStats" /></div> }
+            @if (activeTab == "api") { <div id="api-panel" role="tabpanel" aria-labelledby="api-tab"><AdminApiAdoptionWidget ApiStats="metrics?.ApiStats" /></div> }
         </div>
     }
 </div>
 
-<!-- Usage Limit Dialog -->
 @if (showUsageLimitDialog && usageLimitError != null)
 {
-    <UsageLimitDialog 
-        UsageError="usageLimitError"
-        IsVisible="showUsageLimitDialog"
-        OnClose="() => showUsageLimitDialog = false" />
+    <UsageLimitDialog UsageError="usageLimitError" IsVisible="showUsageLimitDialog" OnClose="() => showUsageLimitDialog = false" />
 }
 
 @code {
@@ -143,8 +113,6 @@
     private string errorMessage = string.Empty;
     private string activeTab = "overview";
     private AdminDashboardMetrics? metrics;
-    
-    // Usage limit error handling
     private bool showUsageLimitDialog = false;
     private UsageValidationResult? usageLimitError = null;
 
@@ -153,19 +121,12 @@
         try
         {
             isLoading = true;
-            
-            // Check admin status
             var accountService = AccountServiceProvider.GetService();
             var accountResult = await accountService.GetUserAccountAndLimitsAsync();
             if (accountResult.HasValue)
             {
                 isAdmin = accountResult.Value.account?.Tier == AccountTier.Admin;
             }
-            else
-            {
-                isAdmin = false;
-            }
-
             if (isAdmin)
             {
                 await LoadDashboard();
@@ -187,25 +148,16 @@
         {
             isRefreshing = true;
             errorMessage = string.Empty;
-            
             metrics = await AdminDashboardService.GetDashboardMetricsAsync();
-            
-            if(ToastService is not null)
-            {
-                await ToastService.ShowInfoAsync("Admin dashboard metrics loaded successfully");
-            }
+            if(ToastService is not null) { await ToastService.ShowInfoAsync("Admin dashboard metrics loaded successfully"); }
         }
         catch (UnauthorizedAccessException ex)
         {
             errorMessage = ex.Message;
-            if(ToastService is not null)
-            {
-                await ToastService.ShowErrorAsync("Access denied: Admin privileges required");
-            }
+            if(ToastService is not null) { await ToastService.ShowErrorAsync("Access denied: Admin privileges required"); }
         }
         catch (Exception ex)
         {
-            // Check if this is a usage limit error
             if (UsageLimitErrorHelper.TryParseUsageLimitError(ex.Message, out var limitError))
             {
                 usageLimitError = limitError;
@@ -214,10 +166,7 @@
             else
             {
                 errorMessage = $"Failed to load dashboard metrics: {ex.Message}";
-                if(ToastService is not null)
-                {
-                    await ToastService.ShowErrorAsync("Failed to load admin dashboard");
-                }
+                if(ToastService is not null) { await ToastService.ShowErrorAsync("Failed to load admin dashboard"); }
             }
         }
         finally
@@ -226,8 +175,25 @@
         }
     }
 
-    private void SetActiveTab(string tab)
+    private void SetActiveTab(string tab) => activeTab = tab;
+
+    private void OnTabKeyDown(KeyboardEventArgs e, string currentTab)
     {
-        activeTab = tab;
+        if (e.Key == "ArrowRight" || e.Key == "ArrowLeft")
+        {
+            var order = new List<string> { "overview", "users", "usage", "api" };
+            var index = order.IndexOf(currentTab);
+            if (index == -1) return;
+            if (e.Key == "ArrowRight") index = (index + 1) % order.Count; else index = (index - 1 + order.Count) % order.Count;
+            SetActiveTab(order[index]);
+        }
+        else if (e.Key == "Home")
+        {
+            SetActiveTab("overview");
+        }
+        else if (e.Key == "End")
+        {
+            SetActiveTab("api");
+        }
     }
 }
