@@ -5,79 +5,170 @@
 @if (Threads?.Any() == true)
 {
     <div class="thread-results">
-        @foreach (var thread in Threads)
+        @if (GroupBySourceType)
         {
-            var visual = SourceVisualMapping.GetVisual(thread.SourceType);
-            
-            <div class="card thread-card shadow-sm mb-4" @key="thread.Id">
-                <div class="card-header thread-header">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">
+            @foreach (var group in Threads.GroupBy(t => t.SourceType).OrderBy(g => g.Key))
+            {
+                var visual = SourceVisualMapping.GetVisual(group.Key);
+                
+                <div class="source-group mb-5">
+                    <div class="source-group-header mb-3">
+                        <h4 class="mb-0">
                             <i class="bi @visual.Icon @visual.CssClass me-2" aria-hidden="true"></i>
-                            @if (!string.IsNullOrEmpty(thread.Url))
-                            {
-                                <a href="@thread.Url" target="_blank" class="text-decoration-none text-white">
-                                    @thread.Title
-                                </a>
-                            }
-                            else
-                            {
-                                @thread.Title
-                            }
-                        </h5>
-                        
-                        <div class="d-flex align-items-center gap-2">
-                            @if (!string.IsNullOrEmpty(thread.Url))
-                            {
-                                <a href="@thread.Url" target="_blank" class="btn btn-sm btn-outline-light">
-                                    <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>
-                                    View
-                                </a>
-                            }
-                            
-                            @if (thread.Comments.Any())
-                            {
-                                <button class="btn btn-sm btn-outline-light" @onclick="() => ToggleComments(thread.Id)">
-                                    <i class="bi bi-chat-text me-1" aria-hidden="true"></i>
-                                    @(IsExpanded(thread.Id) ? "Hide" : "Show") (@thread.Comments.Count)
-                                </button>
-                            }
-                        </div>
+                            @group.Key (@group.Count())
+                        </h4>
                     </div>
                     
-                    <div class="mt-2">
-                        <small class="text-white-50">
-                            By @thread.Author • @thread.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")
-                        </small>
-                    </div>
-                </div>
+                    @foreach (var thread in group)
+                    {
+                        <div class="card thread-card shadow-sm mb-4" @key="thread.Id">
+                            <div class="card-header thread-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h5 class="card-title mb-0">
+                                        @if (!string.IsNullOrEmpty(thread.Url))
+                                        {
+                                            <a href="@thread.Url" target="_blank" class="text-decoration-none text-white">
+                                                @thread.Title
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            @thread.Title
+                                        }
+                                    </h5>
+                                    
+                                    <div class="d-flex align-items-center gap-2">
+                                        @if (!string.IsNullOrEmpty(thread.Url))
+                                        {
+                                            <a href="@thread.Url" target="_blank" class="btn btn-sm btn-outline-light">
+                                                <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>
+                                                View
+                                            </a>
+                                        }
+                                        
+                                        @if (thread.Comments.Any())
+                                        {
+                                            <button class="btn btn-sm btn-outline-light" @onclick="() => ToggleComments(thread.Id)">
+                                                <i class="bi bi-chat-text me-1" aria-hidden="true"></i>
+                                                @(IsExpanded(thread.Id) ? "Hide" : "Show") (@thread.Comments.Count)
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-2">
+                                    <small class="text-white-50">
+                                        By @thread.Author • @thread.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")
+                                    </small>
+                                </div>
+                            </div>
 
-                @if (!string.IsNullOrEmpty(thread.Description))
-                {
-                    <div class="card-body">
-                        <div class="thread-description">
-                            @thread.Description
-                        </div>
-                    </div>
-                }
-
-                @if (thread.Comments.Any() && IsExpanded(thread.Id))
-                {
-                    <div class="card-body thread-comments">
-                        <h6 class="mb-3">
-                            <i class="bi bi-chat-dots me-2" aria-hidden="true"></i>
-                            Comments (@thread.Comments.Count)
-                        </h6>
-                        
-                        <div class="comments-container">
-                            @foreach (var comment in thread.Comments)
+                            @if (!string.IsNullOrEmpty(thread.Description))
                             {
-                                <ThreadComment Comment="comment" />
+                                <div class="card-body">
+                                    <div class="thread-description">
+                                        @thread.Description
+                                    </div>
+                                </div>
+                            }
+
+                            @if (thread.Comments.Any() && IsExpanded(thread.Id))
+                            {
+                                <div class="card-body thread-comments">
+                                    <h6 class="mb-3">
+                                        <i class="bi bi-chat-dots me-2" aria-hidden="true"></i>
+                                        Comments (@thread.Comments.Count)
+                                    </h6>
+                                    
+                                    <div class="comments-container">
+                                        @foreach (var comment in thread.Comments)
+                                        {
+                                            <ThreadComment Comment="comment" />
+                                        }
+                                    </div>
+                                </div>
                             }
                         </div>
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            @foreach (var thread in Threads)
+            {
+                var visual = SourceVisualMapping.GetVisual(thread.SourceType);
+                
+                <div class="card thread-card shadow-sm mb-4" @key="thread.Id">
+                    <div class="card-header thread-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="bi @visual.Icon @visual.CssClass me-2" aria-hidden="true"></i>
+                                @if (!string.IsNullOrEmpty(thread.Url))
+                                {
+                                    <a href="@thread.Url" target="_blank" class="text-decoration-none text-white">
+                                        @thread.Title
+                                    </a>
+                                }
+                                else
+                                {
+                                    @thread.Title
+                                }
+                            </h5>
+                            
+                            <div class="d-flex align-items-center gap-2">
+                                @if (!string.IsNullOrEmpty(thread.Url))
+                                {
+                                    <a href="@thread.Url" target="_blank" class="btn btn-sm btn-outline-light">
+                                        <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>
+                                        View
+                                    </a>
+                                }
+                                
+                                @if (thread.Comments.Any())
+                                {
+                                    <button class="btn btn-sm btn-outline-light" @onclick="() => ToggleComments(thread.Id)">
+                                        <i class="bi bi-chat-text me-1" aria-hidden="true"></i>
+                                        @(IsExpanded(thread.Id) ? "Hide" : "Show") (@thread.Comments.Count)
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                        
+                        <div class="mt-2">
+                            <small class="text-white-50">
+                                By @thread.Author • @thread.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy")
+                            </small>
+                        </div>
                     </div>
-                }
-            </div>
+
+                    @if (!string.IsNullOrEmpty(thread.Description))
+                    {
+                        <div class="card-body">
+                            <div class="thread-description">
+                                @thread.Description
+                            </div>
+                        </div>
+                    }
+
+                    @if (thread.Comments.Any() && IsExpanded(thread.Id))
+                    {
+                        <div class="card-body thread-comments">
+                            <h6 class="mb-3">
+                                <i class="bi bi-chat-dots me-2" aria-hidden="true"></i>
+                                Comments (@thread.Comments.Count)
+                            </h6>
+                            
+                            <div class="comments-container">
+                                @foreach (var comment in thread.Comments)
+                                {
+                                    <ThreadComment Comment="comment" />
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
         }
     </div>
 }
@@ -92,6 +183,9 @@ else if (Threads is not null)
 @code {
     [Parameter, EditorRequired]
     public IEnumerable<CommentThread> Threads { get; set; } = null!;
+
+    [Parameter]
+    public bool GroupBySourceType { get; set; } = false;
 
     private HashSet<string> expandedThreads = new();
 

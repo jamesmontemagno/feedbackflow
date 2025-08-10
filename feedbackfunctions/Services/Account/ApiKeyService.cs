@@ -46,7 +46,7 @@ public class ApiKeyService : IApiKeyService
         try
         {
             var response = await _tableClient.GetEntityIfExistsAsync<ApiKeyEntity>("apikeys", apiKey);
-            return response.HasValue ? response.Value.ToApiKey() : null;
+            return response.HasValue ? response.Value?.ToApiKey() : null;
         }
         catch (Exception ex)
         {
@@ -145,7 +145,7 @@ public class ApiKeyService : IApiKeyService
         try
         {
             var entity = await _tableClient.GetEntityIfExistsAsync<ApiKeyEntity>("apikeys", apiKey);
-            if (entity.HasValue)
+            if (entity.HasValue && entity.Value != null)
             {
                 var apiKeyEntity = entity.Value;
                 apiKeyEntity.LastUsedAt = DateTime.UtcNow;
@@ -185,7 +185,7 @@ public class ApiKeyService : IApiKeyService
         try
         {
             var entity = await _tableClient.GetEntityIfExistsAsync<ApiKeyEntity>("apikeys", apiKey);
-            if (entity.HasValue)
+            if (entity.HasValue && entity.Value != null)
             {
                 var apiKeyEntity = entity.Value;
                 apiKeyEntity.IsEnabled = isEnabled;
