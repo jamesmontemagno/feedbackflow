@@ -28,12 +28,12 @@
                                         @if (!string.IsNullOrEmpty(thread.Url))
                                         {
                                             <a href="@thread.Url" target="_blank" class="text-decoration-none text-white">
-                                                @thread.Title
+                                                @TruncateTitle(thread.Title)
                                             </a>
                                         }
                                         else
                                         {
-                                            @thread.Title
+                                            @TruncateTitle(thread.Title)
                                         }
                                     </h5>
                                     
@@ -50,7 +50,7 @@
                                         {
                                             <button class="btn btn-sm btn-outline-light" @onclick="() => ToggleComments(thread.Id)">
                                                 <i class="bi bi-chat-text me-1" aria-hidden="true"></i>
-                                                @(IsExpanded(thread.Id) ? "Hide" : "Show") (@thread.Comments.Count)
+                                                @(IsExpanded(thread.Id) ? "Hide" : "Show") (@GetTotalCommentCount(thread.Comments))
                                             </button>
                                         }
                                     </div>
@@ -63,21 +63,12 @@
                                 </div>
                             </div>
 
-                            @if (!string.IsNullOrEmpty(thread.Description) && !ShouldHideDescription(thread))
-                            {
-                                <div class="card-body">
-                                    <div class="thread-description">
-                                        @thread.Description
-                                    </div>
-                                </div>
-                            }
-
                             @if (thread.Comments.Any() && IsExpanded(thread.Id))
                             {
                                 <div class="card-body thread-comments">
                                     <h6 class="mb-3">
                                         <i class="bi bi-chat-dots me-2" aria-hidden="true"></i>
-                                        Comments (@thread.Comments.Count)
+                                        Comments (@GetTotalCommentCount(thread.Comments))
                                     </h6>
                                     
                                     <div class="comments-container">
@@ -107,12 +98,12 @@
                                 @if (!string.IsNullOrEmpty(thread.Url))
                                 {
                                     <a href="@thread.Url" target="_blank" class="text-decoration-none text-white">
-                                        @thread.Title
+                                        @TruncateTitle(thread.Title)
                                     </a>
                                 }
                                 else
                                 {
-                                    @thread.Title
+                                    @TruncateTitle(thread.Title)
                                 }
                             </h5>
                             
@@ -129,7 +120,7 @@
                                 {
                                     <button class="btn btn-sm btn-outline-light" @onclick="() => ToggleComments(thread.Id)">
                                         <i class="bi bi-chat-text me-1" aria-hidden="true"></i>
-                                        @(IsExpanded(thread.Id) ? "Hide" : "Show") (@thread.Comments.Count)
+                                        @(IsExpanded(thread.Id) ? "Hide" : "Show") (@GetTotalCommentCount(thread.Comments))
                                     </button>
                                 }
                             </div>
@@ -142,21 +133,12 @@
                         </div>
                     </div>
 
-                    @if (!string.IsNullOrEmpty(thread.Description) && !ShouldHideDescription(thread))
-                    {
-                        <div class="card-body">
-                            <div class="thread-description">
-                                @thread.Description
-                            </div>
-                        </div>
-                    }
-
                     @if (thread.Comments.Any() && IsExpanded(thread.Id))
                     {
                         <div class="card-body thread-comments">
                             <h6 class="mb-3">
                                 <i class="bi bi-chat-dots me-2" aria-hidden="true"></i>
-                                Comments (@thread.Comments.Count)
+                                Comments (@GetTotalCommentCount(thread.Comments))
                             </h6>
                             
                             <div class="comments-container">
@@ -207,9 +189,27 @@ else if (Threads is not null)
         return expandedThreads.Contains(threadId);
     }
 
-    private bool ShouldHideDescription(CommentThread thread)
+    /// <summary>
+    /// Truncates the title to a maximum of 50 characters
+    /// </summary>
+    private string TruncateTitle(string title)
     {
-        // Hide descriptions for GitHub issues and discussions as they're often redundant with comments
-        return thread.SourceType == "GitHub Issue" || thread.SourceType == "GitHub Discussion";
+        if (string.IsNullOrEmpty(title) || title.Length <= 50)
+            return title ?? "Untitled";
+        
+        return title.Substring(0, 50) + "...";
+    }
+
+    /// <summary>
+    /// Recursively counts all comments including nested replies
+    /// </summary>
+    private int GetTotalCommentCount(List<CommentData> comments)
+    {
+        var count = comments.Count;
+        foreach (var comment in comments)
+        {
+            count += GetTotalCommentCount(comment.Replies);
+        }
+        return count;
     }
 }
