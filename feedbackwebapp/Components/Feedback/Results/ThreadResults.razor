@@ -63,7 +63,7 @@
                                 </div>
                             </div>
 
-                            @if (!string.IsNullOrEmpty(thread.Description))
+                            @if (!string.IsNullOrEmpty(thread.Description) && !ShouldHideDescription(thread))
                             {
                                 <div class="card-body">
                                     <div class="thread-description">
@@ -142,7 +142,7 @@
                         </div>
                     </div>
 
-                    @if (!string.IsNullOrEmpty(thread.Description))
+                    @if (!string.IsNullOrEmpty(thread.Description) && !ShouldHideDescription(thread))
                     {
                         <div class="card-body">
                             <div class="thread-description">
@@ -205,5 +205,11 @@ else if (Threads is not null)
     private bool IsExpanded(string threadId)
     {
         return expandedThreads.Contains(threadId);
+    }
+
+    private bool ShouldHideDescription(CommentThread thread)
+    {
+        // Hide descriptions for GitHub issues and discussions as they're often redundant with comments
+        return thread.SourceType == "GitHub Issue" || thread.SourceType == "GitHub Discussion";
     }
 }

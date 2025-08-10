@@ -312,7 +312,24 @@ public static class CommentDataConverter
                 ["ProcessedPostCount"] = response.ProcessedPostCount,
                 ["MayBeIncomplete"] = response.MayBeIncomplete
             },
-            Comments = ConvertBlueSkyComments(response.Items.Where(item => item.ParentId == post.Id).ToList())
+            Comments = ConvertBlueSkyCommentsRecursive(response.Items, post.Id)
+        }).ToList();
+    }
+
+    private static List<CommentData> ConvertBlueSkyCommentsRecursive(List<BlueSkyFeedbackItem> allItems, string parentId)
+    {
+        var directReplies = allItems.Where(item => item.ParentId == parentId).ToList();
+        
+        return directReplies.Select(item => new CommentData
+        {
+            Id = item.Id,
+            ParentId = item.ParentId,
+            Author = item.AuthorName ?? item.Author,
+            Content = item.Content,
+            CreatedAt = item.TimestampUtc,
+            Metadata = !string.IsNullOrEmpty(item.AuthorUsername) ? 
+                new Dictionary<string, object> { ["AuthorUsername"] = item.AuthorUsername } : null,
+            Replies = ConvertBlueSkyCommentsRecursive(allItems, item.Id) // Recursive call for nested replies
         }).ToList();
     }
 
@@ -324,20 +341,7 @@ public static class CommentDataConverter
         return content.Substring(0, maxLength) + "...";
     }
 
-    private static List<CommentData> ConvertBlueSkyComments(List<BlueSkyFeedbackItem> items)
-    {
-        return items.Select(item => new CommentData
-        {
-            Id = item.Id,
-            ParentId = item.ParentId,
-            Author = item.AuthorName ?? item.Author,
-            Content = item.Content,
-            CreatedAt = item.TimestampUtc,
-            Metadata = !string.IsNullOrEmpty(item.AuthorUsername) ? 
-                new Dictionary<string, object> { ["AuthorUsername"] = item.AuthorUsername } : null,
-            Replies = item.Replies != null ? ConvertBlueSkyComments(item.Replies) : new List<CommentData>()
-        }).ToList();
-    }
+
 
     /// <summary>
     /// Converts HackerNews item data to comment threads

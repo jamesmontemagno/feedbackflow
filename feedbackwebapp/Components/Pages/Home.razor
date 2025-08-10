@@ -136,57 +136,11 @@
                     @* Display additional data from FeedbackSourceData list *@
                     @if (feedbackSources != null && feedbackSources.Any())
                     {
-                        @if (useUnifiedThreads)
+                        @* Use unified threading components *@
+                        var allThreads = GetUnifiedThreadsFromSources(feedbackSources);
+                        if (allThreads.Any())
                         {
-                            @* Use unified threading components *@
-                            var allThreads = GetUnifiedThreadsFromSources(feedbackSources);
-                            if (allThreads.Any())
-                            {
-                                <ThreadResults Threads="allThreads" GroupBySourceType="true" />
-                            }
-                        }
-                        else
-                        {
-                            @* Use legacy platform-specific components *@
-                            foreach (var source in feedbackSources)
-                            {
-                                if (source.AdditionalData != null)
-                                {
-                                    @if (source.AdditionalData is List<YouTubeOutputVideo> videos)
-                                    {
-                                        <YouTubeComments Videos="@videos" />
-                                    }
-                                    else if (source.AdditionalData is List<HackerNewsAnalysis> analyses)
-                                    {
-                                        <HackerNewsResults Analyses="@analyses" />
-                                    }
-                                    else if (source.AdditionalData is List<GithubIssueModel> issues)
-                                    {
-                                        <GitHubFeedback Issues="@issues" PullRequests="@null" Discussions="@null" />
-                                    }
-                                    else if (source.AdditionalData is List<GithubDiscussionModel> discussions)
-                                    {
-                                        <GitHubFeedback Issues="@null" PullRequests="@null" Discussions="@discussions" />
-                                    }
-                                    else if (source.AdditionalData is RedditThreadModel redditThread)
-                                    {
-                                        var redditThreads = new List<RedditThreadModel> { redditThread };
-                                        <RedditComments Threads="@redditThreads" />
-                                    }
-                                    else if (source.AdditionalData is TwitterFeedbackResponse twitterResponse)
-                                    {
-                                        <TwitterFeedbackResults Response="@twitterResponse" />
-                                    }
-                                    else if (source.AdditionalData is DevBlogsArticleModel article)
-                                    {
-                                        <DevBlogsFeedbackResults Article="@article" />
-                                    }
-                                    else if(source.AdditionalData is BlueSkyFeedbackResponse blueSkyFeedbackResponse)
-                                    {
-                                        <BlueSkyFeedbackResults Response="@blueSkyFeedbackResponse" />
-                                    }
-                                }
-                            }
+                            <ThreadResults Threads="allThreads" GroupBySourceType="true" />
                         }
                     }
                 </div>
@@ -214,7 +168,6 @@
     private string currentStatusMessage = "";
     private string? initialSource;
     private string? initialId;
-    private bool useUnifiedThreads = false;
     private bool showPromptEditor = false;
     private string customPrompt = string.Empty; // Temporary, not persisted
 
@@ -577,9 +530,6 @@
             }
         }
 
-        // Load feature flag for unified threads
-        useUnifiedThreads = await UserSettings.ShouldUseUnifiedThreadsAsync();
-
         await base.OnInitializedAsync();
     }
 
@@ -665,7 +615,18 @@
         {
             if (source.AdditionalData != null)
             {
-                var convertedThreads = CommentDataConverter.ConvertAdditionalData(source.AdditionalData);
+                List<SharedDump.Models.CommentThread> convertedThreads;
+                
+                // Handle HackerNewsAnalysis specifically since it's in the web app project
+                if (source.AdditionalData is List<HackerNewsAnalysis> analyses)
+                {
+                    convertedThreads = HackerNewsCommentConverter.ConvertHackerNewsAnalysis(analyses);
+                }
+                else
+                {
+                    convertedThreads = CommentDataConverter.ConvertAdditionalData(source.AdditionalData);
+                }
+                
                 allThreads.AddRange(convertedThreads);
             }
         }
