@@ -219,7 +219,7 @@ public class AdminReportProcessorFunction
                         throw new InvalidOperationException($"Subreddit is required for Reddit report config {config.Id}");
                     }
                     
-                    report = await _reportGenerator.GenerateRedditReportAsync(config.Subreddit);
+                    report = await _reportGenerator.GenerateRedditReportAsync(config.Subreddit, storeToBlob: true);
                 }
                 else if (config.Type.Equals("github", StringComparison.OrdinalIgnoreCase))
                 {
@@ -228,7 +228,7 @@ public class AdminReportProcessorFunction
                         throw new InvalidOperationException($"Owner and Repo are required for GitHub report config {config.Id}");
                     }
                     
-                    report = await _reportGenerator.GenerateGitHubReportAsync(config.Owner, config.Repo);
+                    report = await _reportGenerator.GenerateGitHubReportAsync(config.Owner, config.Repo, storeToBlob: true);
                 }
                 else
                 {
