@@ -146,7 +146,7 @@ public class WebUrlHelperTests
         var result = WebUrlHelper.BuildReportQueryUrl(configuration, reportId);
 
         // Assert
-        Assert.AreEqual($"https://test.com/?id={reportId}", result);
+    Assert.AreEqual($"https://test.com/report/{reportId}", result);
     }
 
     [TestMethod]
@@ -165,7 +165,7 @@ public class WebUrlHelperTests
         var result = WebUrlHelper.BuildReportQueryUrl(configuration, reportId, "email");
 
         // Assert
-        Assert.AreEqual($"https://test.com/report/{reportId}&source=email", result);
+    Assert.AreEqual($"https://test.com/report/{reportId}?source=email", result);
     }
 
     [TestMethod]
@@ -179,6 +179,6 @@ public class WebUrlHelperTests
         var result = WebUrlHelper.BuildReportQueryUrl(configuration, reportId, "email");
 
         // Assert
-        Assert.AreEqual($"https://www.feedbackflow.app/?id={reportId}&source=email", result);
+    Assert.AreEqual($"https://www.feedbackflow.app/report/{reportId}?source=email", result);
     }
 }

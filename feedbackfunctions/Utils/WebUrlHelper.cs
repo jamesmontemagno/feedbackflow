@@ -67,14 +67,15 @@ public static class WebUrlHelper
     /// <returns>The complete URL to view the report with query parameters</returns>
     public static string BuildReportQueryUrl(IConfiguration configuration, Guid reportId, string? source = null)
     {
-        var baseUrl = GetWebUrl(configuration);
+        var baseUrl = GetWebUrl(configuration).TrimEnd('/');
         var url = $"{baseUrl}/report/{reportId}";
-        
+
         if (!string.IsNullOrEmpty(source))
         {
-            url += $"&source={source}";
+            // Ensure proper query separator
+            url += url.Contains('?') ? $"&source={source}" : $"?source={source}";
         }
-        
+
         return url;
     }
 }
