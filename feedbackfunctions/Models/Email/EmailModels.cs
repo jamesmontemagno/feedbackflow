@@ -38,14 +38,3 @@ public class EmailDeliveryStatus
     public string ErrorMessage { get; set; } = string.Empty;
     public DateTime SentAt { get; set; }
 }
-
-public class WeeklyReportEmailModel
-{
-    public string RecipientEmail { get; set; } = string.Empty;
-    public string RecipientName { get; set; } = string.Empty;
-    public string ReportTitle { get; set; } = string.Empty;
-    public ReportModel? ReportData { get; set; }
-    public DateTime WeekStartDate { get; set; }
-    public DateTime WeekEndDate { get; set; }
-    public bool IsAdminReport { get; set; } = false;
-}

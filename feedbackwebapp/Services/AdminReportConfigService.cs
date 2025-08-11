@@ -22,6 +22,7 @@ namespace FeedbackWebApp.Services;
 /// - POST   /api/CreateAdminReportConfig             - Create a new admin report configuration
 /// - PUT    /api/UpdateAdminReportConfig?id={id}     - Update an existing admin report configuration
 /// - DELETE /api/DeleteAdminReportConfig?id={id}     - Delete an admin report configuration
+/// - POST   /api/SendAdminReportNow?id={id}          - Send a specific admin report immediately
 /// </summary>
 
 public class AdminReportConfigService : IAdminReportConfigService
@@ -217,6 +218,34 @@ public class AdminReportConfigService : IAdminReportConfigService
         {
             _logger.LogError(ex, "Error deleting admin report config: {Id}", id);
             throw;
+        }
+    }
+
+    public async Task<bool> SendNowAsync(string id)
+    {
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post,
+                $"{_baseUrl}/api/SendAdminReportNow?id={Uri.EscapeDataString(id)}&code={Uri.EscapeDataString(_functionsKey)}");
+            await _headerService.AddAuthenticationHeadersAsync(request);
+
+            var response = await _httpClient.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                return true;
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Failed to send admin report now. Status: {StatusCode}, Error: {Error}",
+                    response.StatusCode, errorContent);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending admin report now: {Id}", id);
+            return false;
         }
     }
 }

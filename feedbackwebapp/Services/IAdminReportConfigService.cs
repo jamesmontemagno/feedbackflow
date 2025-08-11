@@ -8,4 +8,5 @@ public interface IAdminReportConfigService
     Task<AdminReportConfigModel> CreateConfigAsync(AdminReportConfigModel config);
     Task<AdminReportConfigModel> UpdateConfigAsync(AdminReportConfigModel config);
     Task<bool> DeleteConfigAsync(string id);
+    Task<bool> SendNowAsync(string id);
 }
