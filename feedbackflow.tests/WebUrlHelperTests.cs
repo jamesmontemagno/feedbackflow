@@ -165,7 +165,7 @@ public class WebUrlHelperTests
         var result = WebUrlHelper.BuildReportQueryUrl(configuration, reportId, "email");
 
         // Assert
-        Assert.AreEqual($"https://test.com/?id={reportId}&source=email", result);
+        Assert.AreEqual($"https://test.com/report/{reportId}&source=email", result);
     }
 
     [TestMethod]

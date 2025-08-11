@@ -50,10 +50,10 @@ public class AdminReportProcessorFunction
 
     /// <summary>
     /// Process all active admin report configurations
-    /// Runs every Tuesday at 2:00 AM UTC (1 hour after weekly reports at 1:00 AM)
+    /// Runs every Monday at 3:00 PM UTC (after reports are generated at 11:00 AM)
     /// </summary>
     [Function("ProcessAdminReports")]
-    public async Task ProcessAdminReportsAsync([TimerTrigger("0 0 2 * * 2")] TimerInfo timer)
+    public async Task ProcessAdminReportsAsync([TimerTrigger("0 0 15 * * 1")] TimerInfo timer)
     {
         _logger.LogInformation("ProcessAdminReports function triggered at {TriggerTime}", DateTime.UtcNow);
 

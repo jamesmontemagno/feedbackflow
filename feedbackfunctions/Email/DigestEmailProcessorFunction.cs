@@ -60,12 +60,12 @@ public class DigestEmailProcessorFunction
     }
 
     /// <summary>
-    /// Weekly email processor - runs every Monday at 12:00 PM UTC (after reports are generated at 11:00 AM)
+    /// Weekly email processor - runs every Monday at 2:00 PM UTC (after reports are generated at 11:00 AM)
     /// Processes both individual report emails and weekly digest emails based on user preferences
     /// </summary>
     [Function("WeeklyEmailProcessor")]
     public async Task ProcessWeeklyEmails(
-        [TimerTrigger("0 0 12 * * 1")] TimerInfo timer)
+        [TimerTrigger("0 0 14 * * 1")] TimerInfo timer)
     {
         _logger.LogInformation("Starting weekly email processing at {Time}", DateTime.UtcNow);
         
@@ -152,11 +152,9 @@ public class DigestEmailProcessorFunction
                         _logger.LogDebug("Skipping individual emails for user {UserId} - user prefers digest emails", userId);
                         continue;
                     }
-                    
+
                     // Get user's email address
-                    var emailAddress = !string.IsNullOrEmpty(userAccountEntity.Value.PreferredEmail) 
-                        ? userAccountEntity.Value.PreferredEmail 
-                        : userId;
+                    var emailAddress = userAccountEntity.Value.PreferredEmail;
 
                     // Validate email address
                     if (!_emailService.IsValidEmailAddress(emailAddress))
@@ -286,9 +284,7 @@ public class DigestEmailProcessorFunction
                     }
                     
                     // Get user's email address
-                    var emailAddress = !string.IsNullOrEmpty(userAccountEntity.Value.PreferredEmail) 
-                        ? userAccountEntity.Value.PreferredEmail 
-                        : userId;
+                    var emailAddress = userAccountEntity.Value.PreferredEmail;
 
                     // Validate email address
                     if (!_emailService.IsValidEmailAddress(emailAddress))

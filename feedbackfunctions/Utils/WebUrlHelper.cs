@@ -68,7 +68,7 @@ public static class WebUrlHelper
     public static string BuildReportQueryUrl(IConfiguration configuration, Guid reportId, string? source = null)
     {
         var baseUrl = GetWebUrl(configuration);
-        var url = $"{baseUrl}/?id={reportId}";
+        var url = $"{baseUrl}/report/{reportId}";
         
         if (!string.IsNullOrEmpty(source))
         {
