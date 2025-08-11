@@ -16,6 +16,7 @@ using FeedbackFunctions.Attributes;
 using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Services.Account;
 using SharedDump.Models.Account;
+using Microsoft.Extensions.Configuration;
 
 namespace FeedbackFunctions.Reports;
 
@@ -32,6 +33,7 @@ public class AdminReportProcessorFunction
     private readonly ReportGenerator _reportGenerator;
     private readonly AuthenticationMiddleware _authMiddleware;
     private readonly IUserAccountService _userAccountService;
+    private readonly IConfiguration _configuration;
 
     public AdminReportProcessorFunction(
         ILogger<AdminReportProcessorFunction> logger,
@@ -51,6 +53,7 @@ public class AdminReportProcessorFunction
         _emailService = emailService;
         _authMiddleware = authMiddleware;
         _userAccountService = userAccountService;
+        _configuration = configuration;
         
         // Initialize ReportGenerator with required dependencies
         var storageConnection = configuration["ProductionStorage"] ?? 
@@ -284,21 +287,33 @@ public class AdminReportProcessorFunction
     {
         try
         {
-            var emailModel = new WeeklyReportEmailModel
+
+            var emailRequest = new ReportEmailRequest
             {
                 RecipientEmail = config.EmailRecipient,
-                RecipientName = "Administrator", // Generic name for admin emails
-                ReportTitle = config.Name,
-                ReportData = report,
-                WeekStartDate = DateTime.UtcNow.AddDays(-7), // Last week
-                WeekEndDate = DateTime.UtcNow,
-                IsAdminReport = true // Flag to indicate this is an admin report
+                RecipientName = config.Name, // Could enhance with actual user name
+                ReportId = report.Id.ToString(),
+                ReportTitle = $"{report.Source} Report - {report.SubSource}",
+                ReportSummary = $"Your {report.Source} report has been generated",
+                ReportUrl = WebUrlHelper.BuildReportUrl(_configuration, report.Id), // Adjust URL as needed
+                ReportType = report.Source,
+                GeneratedAt = report.GeneratedAt.DateTime,
+                HtmlContent = report.HtmlContent
             };
 
-            await _emailService.SendWeeklyReportEmailAsync(emailModel);
-            
-            _logger.LogInformation("Admin report email sent successfully for config {ConfigId} to {Email}", 
-                config.Id, config.EmailRecipient);
+            var deliveryStatus = await _emailService.SendReportEmailAsync(emailRequest);
+
+            if (deliveryStatus.Status == Azure.Communication.Email.EmailSendStatus.Succeeded || 
+                deliveryStatus.Status == Azure.Communication.Email.EmailSendStatus.Running)
+            {
+                _logger.LogInformation("Successfully sent individual report email to {Email} for report {ReportId}", 
+                    config.EmailRecipient, report.Id);
+            }
+            else
+            {
+                _logger.LogWarning("Failed to send individual report email to {Email} for report {ReportId}: {Error}", 
+                    config.EmailRecipient, report.Id, deliveryStatus.ErrorMessage);
+            }
         }
         catch (Exception ex)
         {

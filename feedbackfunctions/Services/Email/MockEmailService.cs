@@ -50,24 +50,6 @@ public class MockEmailService : IEmailService
         };
     }
 
-    public async Task<EmailDeliveryStatus> SendWeeklyReportEmailAsync(WeeklyReportEmailModel emailModel)
-    {
-        await Task.Delay(600); // Simulate network delay
-
-        _logger.LogInformation("Mock Email: Sending {ReportType} report to {Email} ({Name})", 
-            emailModel.IsAdminReport ? "admin" : "weekly", emailModel.RecipientEmail, emailModel.RecipientName);
-        _logger.LogInformation("Mock Email: Report title: {Title}", emailModel.ReportTitle);
-        _logger.LogInformation("Mock Email: Report period: {Start} - {End}", 
-            emailModel.WeekStartDate.ToString("MMM dd"), emailModel.WeekEndDate.ToString("MMM dd, yyyy"));
-
-        return new EmailDeliveryStatus
-        {
-            OperationId = $"mock-weekly-{Guid.NewGuid()}",
-            Status = EmailSendStatus.Succeeded,
-            SentAt = DateTime.UtcNow
-        };
-    }
-
     public async Task<EmailDeliveryStatus> GetDeliveryStatusAsync(string operationId)
     {
         await Task.Delay(100); // Simulate network delay

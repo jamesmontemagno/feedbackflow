@@ -16,11 +16,6 @@ public interface IEmailService
     Task<EmailDeliveryStatus> SendWeeklyDigestAsync(string recipientEmail, string recipientName, List<ReportModel> reports);
     
     /// <summary>
-    /// Sends a weekly report email to the specified recipient
-    /// </summary>
-    Task<EmailDeliveryStatus> SendWeeklyReportEmailAsync(WeeklyReportEmailModel emailModel);
-    
-    /// <summary>
     /// Gets the delivery status of a previously sent email
     /// </summary>
     Task<EmailDeliveryStatus> GetDeliveryStatusAsync(string operationId);
