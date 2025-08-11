@@ -122,4 +122,19 @@ public class MockAdminReportConfigService : IAdminReportConfigService
         _logger.LogInformation("Mock: Deleted admin report config '{Name}' with ID {Id}", existingConfig.Name, id);
         return true;
     }
+
+    public async Task<bool> SendNowAsync(string id)
+    {
+        await Task.Delay(200);
+        var existingConfig = _mockConfigs.FirstOrDefault(c => c.Id == id);
+        if (existingConfig == null)
+        {
+            _logger.LogWarning("Mock: Attempted to send now for non-existent admin report config with ID {Id}", id);
+            return false;
+        }
+
+        existingConfig.LastProcessedAt = DateTimeOffset.UtcNow;
+        _logger.LogInformation("Mock: Sent admin report now for '{Name}' (ID {Id}) to {Email}", existingConfig.Name, id, existingConfig.EmailRecipient);
+        return true;
+    }
 }

@@ -119,6 +119,13 @@
                                         <td class="text-center">
                                             <div class="action-buttons">
                                                 <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => EditConfig(config)" title="Edit Configuration"><i class="bi bi-pencil"></i></button>
+                                                <button class="btn btn-sm btn-outline-success me-1" @onclick="() => SendNow(config)" disabled="@isSending" title="Send Now">
+                                                    @if (isSending && sendingId == config.Id)
+                                                    {
+                                                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                                    }
+                                                    <i class="bi bi-send"></i>
+                                                </button>
                                                 <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteConfig(config)" title="Delete Configuration"><i class="bi bi-trash"></i></button>
                                             </div>
                                         </td>
@@ -172,6 +179,8 @@
     private List<AdminReportConfigModel> configs = new();
     private bool showModal = false;
     private bool isSaving = false;
+    private bool isSending = false;
+    private string? sendingId = null;
     private AdminReportConfigModel? editingConfig = null;
     private AdminReportConfigModel currentConfig = new();
     protected override async Task OnInitializedAsync(){ try { isLoading = true; errorMessage = string.Empty; var isAuthenticated = await AuthService.IsAuthenticatedAsync(); if (!isAuthenticated){ Navigation.NavigateTo("/"); return; } var accountService = AccountServiceProvider.GetService(); var accountResult = await accountService.GetUserAccountAndLimitsAsync(); if (accountResult.HasValue){ isAdmin = accountResult.Value.account?.Tier == AccountTier.Admin; } if (isAdmin){ await LoadConfigs(); } } catch (Exception ex){ errorMessage = $"Error loading admin reports: {ex.Message}"; } finally { isLoading = false; } }
@@ -185,4 +194,33 @@
         finally { isSaving = false; } }
     private async Task DeleteConfig(AdminReportConfigModel config){ try { var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete the report configuration '{config.Name}'? This action cannot be undone."); if (confirmed){ var success = await AdminReportConfigService.DeleteConfigAsync(config.Id); if (success){ configs.Remove(config); await ToastService.ShowSuccessAsync("Report configuration deleted successfully!"); } else { await ToastService.ShowErrorAsync("Failed to delete report configuration"); } } }
         catch (Exception ex){ errorMessage = $"Error deleting report configuration: {ex.Message}"; await ToastService.ShowErrorAsync("Failed to delete report configuration"); Console.WriteLine($"DeleteConfig Error Details:\n  Message: {ex.Message}\n  InnerException: {ex.InnerException?.Message}\n  StackTrace: {ex.StackTrace}"); if (ex.InnerException != null) Console.WriteLine($"  InnerException StackTrace: {ex.InnerException.StackTrace}"); } }
+
+    private async Task SendNow(AdminReportConfigModel config)
+    {
+        try
+        {
+            isSending = true;
+            sendingId = config.Id;
+            var success = await AdminReportConfigService.SendNowAsync(config.Id);
+            if (success)
+            {
+                await ToastService.ShowSuccessAsync($"Report sent to {config.EmailRecipient}");
+                // Refresh the configs to update LastProcessedAt
+                await LoadConfigs();
+            }
+            else
+            {
+                await ToastService.ShowErrorAsync("Failed to send report. Please try again.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastService.ShowErrorAsync($"Error sending report: {ex.Message}");
+        }
+        finally
+        {
+            isSending = false;
+            sendingId = null;
+        }
+    }
 }

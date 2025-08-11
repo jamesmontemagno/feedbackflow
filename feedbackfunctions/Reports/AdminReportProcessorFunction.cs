@@ -1,4 +1,5 @@
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using FeedbackFunctions.Services.Reports;
 using FeedbackFunctions.Services.Email;
@@ -9,6 +10,12 @@ using FeedbackFunctions.Utils;
 using SharedDump.Models.Reports;
 using FeedbackFunctions.Models.Email;
 using Azure.Storage.Blobs;
+using System.Net;
+using Microsoft.AspNetCore.WebUtilities;
+using FeedbackFunctions.Attributes;
+using FeedbackFunctions.Middleware;
+using FeedbackFunctions.Services.Account;
+using SharedDump.Models.Account;
 
 namespace FeedbackFunctions.Reports;
 
@@ -23,6 +30,8 @@ public class AdminReportProcessorFunction
     private readonly IReportCacheService _cacheService;
     private readonly IEmailService _emailService;
     private readonly ReportGenerator _reportGenerator;
+    private readonly AuthenticationMiddleware _authMiddleware;
+    private readonly IUserAccountService _userAccountService;
 
     public AdminReportProcessorFunction(
         ILogger<AdminReportProcessorFunction> logger,
@@ -31,13 +40,17 @@ public class AdminReportProcessorFunction
         IEmailService emailService,
         IRedditService redditService,
         IGitHubService githubService,
-        IFeedbackAnalyzerService analyzerService,
-        Microsoft.Extensions.Configuration.IConfiguration configuration)
+    IFeedbackAnalyzerService analyzerService,
+    Microsoft.Extensions.Configuration.IConfiguration configuration,
+    AuthenticationMiddleware authMiddleware,
+    IUserAccountService userAccountService)
     {
         _logger = logger;
         _adminReportConfigService = adminReportConfigService;
         _cacheService = cacheService;
         _emailService = emailService;
+        _authMiddleware = authMiddleware;
+        _userAccountService = userAccountService;
         
         // Initialize ReportGenerator with required dependencies
         var storageConnection = configuration["ProductionStorage"] ?? 
@@ -95,6 +108,75 @@ public class AdminReportProcessorFunction
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in ProcessAdminReports function");
+        }
+    }
+
+    /// <summary>
+    /// HTTP-trigger to process and send a single admin report immediately by configuration ID
+    /// </summary>
+    [Function("SendAdminReportNow")]
+    [Authorize]
+    public async Task<HttpResponseData> SendAdminReportNow(
+        [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
+    {
+        try
+        {
+            // Authenticate and ensure admin access
+            var authenticatedUser = await _authMiddleware.GetUserAsync(req);
+            if (authenticatedUser is null)
+            {
+                var unauthorized = req.CreateResponse(HttpStatusCode.Unauthorized);
+                await unauthorized.WriteStringAsync("Authentication required");
+                return unauthorized;
+            }
+
+            var userAccount = await _userAccountService.GetUserAccountAsync(authenticatedUser.UserId);
+            if (userAccount?.Tier != AccountTier.Admin)
+            {
+                var forbidden = req.CreateResponse(HttpStatusCode.Forbidden);
+                await forbidden.WriteStringAsync("Admin access required");
+                return forbidden;
+            }
+
+            // Parse query string for id
+            var query = QueryHelpers.ParseQuery(req.Url.Query);
+            if (!query.TryGetValue("id", out var idValues))
+            {
+                var bad = req.CreateResponse(HttpStatusCode.BadRequest);
+                await bad.WriteStringAsync("Missing required query parameter 'id'.");
+                return bad;
+            }
+
+            var id = idValues.ToString();
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                var bad = req.CreateResponse(HttpStatusCode.BadRequest);
+                await bad.WriteStringAsync("Invalid 'id' value.");
+                return bad;
+            }
+
+            _logger.LogInformation("SendAdminReportNow invoked for config {ConfigId}", id);
+
+            var config = await _adminReportConfigService.GetConfigAsync(id);
+            if (config is null)
+            {
+                var notFound = req.CreateResponse(HttpStatusCode.NotFound);
+                await notFound.WriteStringAsync("Admin report configuration not found.");
+                return notFound;
+            }
+
+            await ProcessSingleAdminReportAsync(config);
+
+            var ok = req.CreateResponse(HttpStatusCode.OK);
+            await ok.WriteAsJsonAsync(new { success = true, id });
+            return ok;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in SendAdminReportNow endpoint");
+            var error = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await error.WriteStringAsync("Failed to send admin report. Please try again later.");
+            return error;
         }
     }
 
