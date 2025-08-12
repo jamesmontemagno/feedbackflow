@@ -204,7 +204,7 @@ public class AuthenticationMiddleware
             }
             
             // Extract profile image URL based on provider
-                var profileImageUrl = GetProfileImageUrl(clientPrincipal.GetEffectiveIdentityProvider(), clientPrincipal.Claims);
+            var profileImageUrl = GetProfileImageUrl(clientPrincipal.GetEffectiveIdentityProvider(), clientPrincipal.Claims);
 
             // Only require providerUserId - email is now optional
             if (string.IsNullOrEmpty(providerUserId))
