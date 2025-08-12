@@ -257,11 +257,18 @@ else
         });
     }
 
+    bool loggingIn = false;
     private async Task LoginWithProvider(string provider)
     {
+        if(loggingIn)
+        {
+            // Prevent multiple login attempts
+            return;
+        }
         try
         {
             // Set login attempt flag to indicate user is trying to log in
+            loggingIn = true;
             await JSRuntime.InvokeVoidAsync("localStorage.setItem", "feedbackflow_loginattempt", "true");
             
             // Store current URL for redirect after authentication
@@ -280,6 +287,11 @@ else
             await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "feedbackflow_loginattempt");
             authError = $"Error initiating login: {ex.Message}";
             StateHasChanged();
+        }
+        finally
+        {
+            // Reset login attempt flag after operation
+            loggingIn = false;
         }
     }
 
