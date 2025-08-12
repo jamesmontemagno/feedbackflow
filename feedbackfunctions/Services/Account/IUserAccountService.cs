@@ -17,6 +17,15 @@ public interface IUserAccountService
     Task<bool> DeleteUserAccountAsync(string userId);
     Task<int> ResetAllMonthlyUsageAsync();
 
+    /// <summary>
+    /// Atomically create the user account if it does not already exist. If it exists, optionally updates the preferred email.
+    /// Always returns the current persisted user account state.
+    /// </summary>
+    /// <param name="userAccount">Template user account to create (used only when creating).</param>
+    /// <param name="preferredEmailOverride">If provided and the account exists with a different preferred email, updates it.</param>
+    /// <returns>The existing or newly created user account.</returns>
+    Task<UserAccount> CreateUserAccountIfNotExistsAsync(UserAccount userAccount, string? preferredEmailOverride = null);
+
     // Limits and Validation
     AccountLimits GetLimitsForTier(AccountTier tier);
     Task<UsageValidationResult> ValidateUsageAsync(string userId, UsageType usageType);

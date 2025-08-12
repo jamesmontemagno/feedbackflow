@@ -55,6 +55,89 @@ public class UserAccountService : IUserAccountService
         await _userAccountsTable.UpsertEntityAsync(entity);
     }
 
+    /// <inheritdoc />
+    public async Task<UserAccount> CreateUserAccountIfNotExistsAsync(UserAccount userAccount, string? preferredEmailOverride = null)
+    {
+        // Attempt fast path read
+        var existing = await _userAccountsTable.GetEntityIfExistsAsync<UserAccountEntity>(userAccount.UserId, "account");
+        if (existing.HasValue)
+        {
+            // Update email if override provided and different
+            if (!string.IsNullOrWhiteSpace(preferredEmailOverride) &&
+                !string.Equals(existing.Value?.PreferredEmail ?? string.Empty, preferredEmailOverride, StringComparison.OrdinalIgnoreCase))
+            {
+                var existingEntity = existing.Value!; // HasValue ensured
+                var entityToUpdate = existingEntity;
+                if (!string.IsNullOrWhiteSpace(preferredEmailOverride))
+                {
+                    entityToUpdate.PreferredEmail = preferredEmailOverride;
+                }
+                try
+                {
+                    await _userAccountsTable.UpdateEntityAsync(entityToUpdate, entityToUpdate.ETag);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Race updating preferred email for user {UserId}", userAccount.UserId);
+                }
+                existing = await _userAccountsTable.GetEntityIfExistsAsync<UserAccountEntity>(userAccount.UserId, "account");
+            }
+            return MapEntityToModel(existing.Value!);
+        }
+
+        // Prepare new entity
+        var newEntity = MapModelToEntity(userAccount);
+        if (!string.IsNullOrWhiteSpace(preferredEmailOverride))
+        {
+            newEntity.PreferredEmail = preferredEmailOverride!;
+        }
+
+        try
+        {
+            // Use AddEntity (not upsert) to ensure failure if it already exists between read & write
+            await _userAccountsTable.AddEntityAsync(newEntity);
+            _logger?.LogInformation("Created new UserAccountEntity for {UserId}", userAccount.UserId);
+            return MapEntityToModel(newEntity);
+        }
+        catch (Azure.RequestFailedException rfe) when (rfe.Status == 409)
+        {
+            // Conflict means someone else created it concurrently; read it back
+            _logger?.LogInformation("UserAccountEntity already exists for {UserId} (race)", userAccount.UserId);
+            var afterConflict = await _userAccountsTable.GetEntityIfExistsAsync<UserAccountEntity>(userAccount.UserId, "account");
+            if (afterConflict.HasValue)
+            {
+                // Optionally update email
+                if (!string.IsNullOrWhiteSpace(preferredEmailOverride) &&
+                    !string.Equals(afterConflict.Value?.PreferredEmail ?? string.Empty, preferredEmailOverride, StringComparison.OrdinalIgnoreCase))
+                {
+                    var conflictEntity = afterConflict.Value!; // HasValue ensured
+                    var entityToUpdate = conflictEntity;
+                    if (!string.IsNullOrWhiteSpace(preferredEmailOverride))
+                    {
+                        entityToUpdate.PreferredEmail = preferredEmailOverride;
+                    }
+                    try
+                    {
+                        await _userAccountsTable.UpdateEntityAsync(entityToUpdate, entityToUpdate.ETag);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Race updating preferred email for user {UserId} after conflict", userAccount.UserId);
+                    }
+                    afterConflict = await _userAccountsTable.GetEntityIfExistsAsync<UserAccountEntity>(userAccount.UserId, "account");
+                }
+                return MapEntityToModel(afterConflict.Value!);
+            }
+            // Fallback: return provided model (should not happen)
+            return userAccount;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to create UserAccountEntity for {UserId}", userAccount.UserId);
+            throw;
+        }
+    }
+
     public async Task<bool> DeleteUserAccountAsync(string userId)
     {
         try

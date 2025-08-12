@@ -134,7 +134,7 @@ public class AuthenticationMiddleware
     /// </summary>
     /// <param name="req">HTTP request with authentication headers</param>
     /// <returns>Newly created authenticated user or null if creation failed</returns>
-    public async Task<AuthenticatedUser?> CreateUserAsync(HttpRequestData req)
+    public async Task<AuthenticatedUser?> CreateUserAsync(HttpRequestData req, string? preferredEmail)
     {
         try
         {
@@ -197,9 +197,14 @@ public class AuthenticationMiddleware
                 _logger.LogInformation("[DEBUG] GitHub user '{GitHubLogin}' has no email address available", githubLogin);
                 email = null; // Explicitly set to null for GitHub users without email
             }
+
+            if(email is null)
+            {
+                email = preferredEmail; // Use the provided preferred email if available
+            }
             
             // Extract profile image URL based on provider
-            var profileImageUrl = GetProfileImageUrl(clientPrincipal.GetEffectiveIdentityProvider(), clientPrincipal.Claims);
+                var profileImageUrl = GetProfileImageUrl(clientPrincipal.GetEffectiveIdentityProvider(), clientPrincipal.Claims);
 
             // Only require providerUserId - email is now optional
             if (string.IsNullOrEmpty(providerUserId))
@@ -235,25 +240,6 @@ public class AuthenticationMiddleware
             _logger.LogError(ex, "Error creating user");
             return null;
         }
-    }
-
-    /// <summary>
-    /// Get or create an authenticated user from the request headers (deprecated - use GetUserAsync or CreateUserAsync)
-    /// </summary>
-    /// <param name="req">HTTP request with authentication headers</param>
-    /// <returns>Authenticated user or null if not authenticated</returns>
-    [Obsolete("Use GetUserAsync for authentication or CreateUserAsync for user registration instead")]
-    public async Task<AuthenticatedUser?> GetOrCreateUserAsync(HttpRequestData req)
-    {
-        // For backward compatibility, first try to get existing user
-        var existingUser = await GetUserAsync(req);
-        if (existingUser != null)
-        {
-            return existingUser;
-        }
-
-        // If user doesn't exist, create new user
-        return await CreateUserAsync(req);
     }
 
     /// <summary>
