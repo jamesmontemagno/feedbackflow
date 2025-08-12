@@ -144,3 +144,79 @@
     border-color: rgba(var(--primary-color-rgb), 0.5);
     box-shadow: 0 2px 6px rgba(0,0,0,0.4);
 }
+
+/* Survey prompt (desktop only via markup) */
+.survey-prompt {
+    font-size: 0.85rem;
+    background: rgba(var(--bg-secondary-rgb), 0.55);
+    border: 1px dashed var(--border-color);
+    padding: 0.6rem 0.85rem;
+    border-radius: var(--border-radius);
+    color: var(--text-secondary);
+    position: relative;
+    backdrop-filter: blur(4px) saturate(140%);
+    transition: background-color .3s ease, border-color .3s ease, color .3s ease;
+}
+
+.survey-prompt:hover {
+    background: rgba(var(--bg-secondary-rgb), 0.75);
+    border-color: rgba(var(--primary-color-rgb), 0.4);
+}
+
+.survey-prompt .survey-link {
+    font-weight: 600;
+    text-decoration: none;
+    padding: 0.3rem 0.65rem;
+    border-radius: var(--border-radius-pill);
+    background: rgba(var(--primary-color-rgb), 0.15);
+    color: var(--primary-color);
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 1px solid rgba(var(--primary-color-rgb), 0.35);
+    transition: all .25s ease;
+}
+
+.survey-prompt .survey-link:hover, .survey-prompt .survey-link:focus {
+    background: rgba(var(--primary-color-rgb), 0.25);
+    border-color: rgba(var(--primary-color-rgb), 0.5);
+    color: var(--primary-color);
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+.survey-prompt .survey-icon {
+    font-size: 1rem;
+    color: var(--primary-color);
+    opacity: 0.85;
+    transition: transform .4s ease;
+}
+
+.survey-prompt:hover .survey-icon {
+    transform: scale(1.1) rotate(-5deg);
+}
+
+.survey-text { 
+    opacity: .85; 
+}
+
+@media (max-width: 991.98px) {
+    /* Ensure no accidental display on tablets/mobiles if classes change */
+    .survey-prompt { display: none !important; }
+}
+
+[data-theme="dark"] .survey-prompt {
+    background: rgba(var(--bg-secondary-rgb), 0.4);
+    border-color: rgba(var(--primary-color-rgb), 0.25);
+}
+
+[data-theme="dark"] .survey-prompt .survey-link {
+    background: rgba(var(--primary-color-rgb), 0.25);
+    border-color: rgba(var(--primary-color-rgb), 0.4);
+}
+
+[data-theme="dark"] .survey-prompt .survey-link:hover {
+    background: rgba(var(--primary-color-rgb), 0.35);
+    border-color: rgba(var(--primary-color-rgb), 0.55);
+}

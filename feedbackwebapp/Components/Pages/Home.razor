@@ -146,6 +146,16 @@
                             <ThreadResults Threads="allThreads" GroupBySourceType="true" />
                         }
                     }
+
+                    @* Discrete survey link (desktop only) appears after first successful analysis if not yet completed *@
+                    @if (showSurveyPrompt && !surveyCompleted && !string.IsNullOrEmpty(markdownResult))
+                    {
+                        <div class="survey-prompt d-none d-md-flex align-items-center gap-2 mt-4 fade-in" role="complementary" aria-label="Feedback survey">
+                            <i class="bi bi-chat-square-heart survey-icon" aria-hidden="true"></i>
+                            <span class="survey-text">Help shape FeedbackFlow – 30s survey:</span>
+                            <a href="https://forms.microsoft.com/r/E9qW97wtmx" target="_blank" rel="noopener noreferrer" class="survey-link" @onclick="HandleSurveyClicked">Take Survey</a>
+                        </div>
+                    }
                 </div>
             </div>
         }
@@ -174,6 +184,10 @@
     private string? initialId;
     private bool showPromptEditor = false;
     private string customPrompt = string.Empty; // Temporary, not persisted
+    
+    // Survey state
+    private bool surveyCompleted = false; // true if user already clicked survey link
+    private bool showSurveyPrompt = false; // controls visibility (desktop only via CSS classes above)
     
     // Reanalyze caching state
     private string[]? lastAnalyzedUrls;
@@ -577,6 +591,11 @@
             isLoading = false;
             currentStatus = FeedbackProcessStatus.Completed;
             currentStatusMessage = "";
+            // Show survey prompt only after at least one analysis completes successfully & user hasn't taken it
+            if (!surveyCompleted && !string.IsNullOrWhiteSpace(markdownResult))
+            {
+                showSurveyPrompt = true;
+            }
             StateHasChanged();
         }
     }
@@ -641,6 +660,17 @@
     {
         if (firstRender)
         {
+            // Initialize JS helper & load survey completed flag from localStorage
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("eval", @"window.feedbackflowSurvey = window.feedbackflowSurvey || {
+    key: 'ff_survey_completed_v1',
+    isCompleted: function(){ try { return localStorage.getItem(this.key) === '1'; } catch(e){ return false; } },
+    setCompleted: function(){ try { localStorage.setItem(this.key, '1'); } catch(e){} }
+};");
+                surveyCompleted = await JSRuntime.InvokeAsync<bool>("eval", "window.feedbackflowSurvey.isCompleted()");
+            }
+            catch { /* non critical */ }
             // Handle authentication error logging after render
             var uri = new Uri(NavigationManager.Uri);
             var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
@@ -742,6 +772,17 @@
     {
         // Unsubscribe from registration error events
         RegistrationErrorService.RegistrationErrorOccurred -= OnRegistrationErrorOccurred;
+    }
+
+    private async Task HandleSurveyClicked(MouseEventArgs _)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("eval", "window.feedbackflowSurvey && window.feedbackflowSurvey.setCompleted()");
+            surveyCompleted = true;
+            showSurveyPrompt = false;
+        }
+        catch { /* ignore */ }
     }
 }
 

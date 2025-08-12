@@ -4,8 +4,16 @@ This page tracks the latest features and improvements added to FeedbackFlow.
 
 ### 🍿 Analysis Improvements
 
-- Custom prompts for each analysis request, use the universal, or customize it
-- Reanalyze with custom prompts without having to waste credits re-gathering comments
+- ✏️ Custom prompts for each analysis request, use the universal, or customize it
+- ♻️ Reanalyze with custom prompts without having to waste credits re-gathering comments
+
+### 🔌 API Access
+- Pro+ users can access the API for advanced integrations and automation.
+- [Learn more](https://github.com/jamesmontemagno/feedbackflow/blob/main/docs/api-usage.md)
+
+### 🧠 MCP Server
+- Pro+ users can now deploy their own FeedbackFlow MCP (Model Context Protocol) server for integrating into AI applications. 
+- [Learn more](https://github.com/jamesmontemagno/feedbackflow/blob/main/docs/mcp-feedbackflow-server.md)
 
 ### 🔐 Authentication & Cloud Backup
 
