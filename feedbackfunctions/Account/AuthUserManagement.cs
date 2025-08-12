@@ -126,7 +126,7 @@ public class AuthUserManagement : IDisposable
             }
 
             // Create or get authenticated user from middleware
-            var authenticatedUser = await _authMiddleware.CreateUserAsync(req);
+            var authenticatedUser = await _authMiddleware.CreateUserAsync(req, preferredEmail);
             if (authenticatedUser == null)
             {
                 _logger.LogWarning("Failed to create or authenticate user for RegisterUser request");
@@ -134,6 +134,9 @@ public class AuthUserManagement : IDisposable
                 await unauthorizedResponse.WriteStringAsync("User authentication or registration failed");
                 return unauthorizedResponse;
             }
+
+            // Simulate some asynchronous work
+            await Task.Delay(1000);
 
             // Use preferred email if provided, otherwise fall back to authenticated user email
             var finalEmail = !string.IsNullOrEmpty(preferredEmail) ? preferredEmail : authenticatedUser.Email;
@@ -148,46 +151,29 @@ public class AuthUserManagement : IDisposable
             {
                 _logger.LogInformation("Creating UserAccount record for new user {UserId}", authenticatedUser.UserId);
 
-                // Check if user account already exists
-                var existingUserAccount = await _userAccountService.GetUserAccountAsync(authenticatedUser.UserId);
-                if (existingUserAccount == null)
-                {
-                    var tier = AccountTier.Free;
-                    // Check if the user is from a whitelisted domain
-                    if (!string.IsNullOrWhiteSpace(authenticatedUser.Email) &&
+                var tier = AccountTier.Free;
+                if (!string.IsNullOrWhiteSpace(authenticatedUser.Email) &&
                     (authenticatedUser.Email.EndsWith("@microsoft.com", StringComparison.InvariantCultureIgnoreCase) ||
-                    authenticatedUser.Email.EndsWith("@github.com", StringComparison.InvariantCultureIgnoreCase)))
-                    {
-                        tier = AccountTier.Pro;
-                    }
-
-                    // Create new user account with default Free tier
-                    var userAccount = new UserAccount
-                    {
-                        UserId = authenticatedUser.UserId,
-                        Tier = tier,
-                        SubscriptionStart = DateTime.UtcNow,
-                        CreatedAt = DateTime.UtcNow,
-                        LastResetDate = DateTime.UtcNow,
-                        AnalysesUsed = 0,
-                        FeedQueriesUsed = 0,
-                        ActiveReports = 0,
-                        PreferredEmail = finalEmail ?? string.Empty
-                    };
-                    await _userAccountService.UpsertUserAccountAsync(userAccount);
-                }
-                else
+                     authenticatedUser.Email.EndsWith("@github.com", StringComparison.InvariantCultureIgnoreCase)))
                 {
-                    // Update existing account with latest email if needed
-                    if (!string.IsNullOrEmpty(finalEmail))
-                    {
-                        existingUserAccount.PreferredEmail = finalEmail;
-                        await _userAccountService.UpsertUserAccountAsync(existingUserAccount);
-                        _logger.LogInformation("Updated existing UserAccount with preferred email: {Email}", finalEmail);
-                    }
+                    tier = AccountTier.Pro;
                 }
 
-                _logger.LogInformation("Successfully created UserAccount record for user {UserId} with Free tier", authenticatedUser.UserId);
+                var templateAccount = new UserAccount
+                {
+                    UserId = authenticatedUser.UserId,
+                    Tier = tier,
+                    SubscriptionStart = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow,
+                    LastResetDate = DateTime.UtcNow,
+                    AnalysesUsed = 0,
+                    FeedQueriesUsed = 0,
+                    ActiveReports = 0,
+                    PreferredEmail = finalEmail ?? string.Empty
+                };
+
+                var persistedAccount = await _userAccountService.CreateUserAccountIfNotExistsAsync(templateAccount, finalEmail);
+                _logger.LogInformation("UserAccount record ready for user {UserId} (Tier: {Tier})", authenticatedUser.UserId, persistedAccount.Tier);
             }
             catch (Exception ex)
             {

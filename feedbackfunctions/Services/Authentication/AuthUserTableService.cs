@@ -96,6 +96,10 @@ public class AuthUserTableService : IAuthUserTableService
     {
         try
         {
+            var existing = await GetUserByProviderAsync(user.AuthProvider, user.ProviderUserId);
+            if (existing is not null)
+                return existing;
+            
             var response = await _userTableClient.UpsertEntityAsync(user);
             _logger.LogInformation("User {UserId} created/updated successfully", user.UserId);
             return user;

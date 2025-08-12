@@ -309,12 +309,13 @@
         lastSelectedSource = selectedSource;
     }
 
+    bool isAuthenticating = false;
     private async Task HandleAuthenticatedWithDetails((bool success, bool justLoggedIn) details)
     {
         isAuthenticated = details.success;
         StateHasChanged();
 
-        if (details.success)
+        if (details.success && !isAuthenticating)
         {
             // Only handle post-login registration if the user just logged in
             // This avoids unnecessary backend calls when user was already authenticated
@@ -322,6 +323,7 @@
             {
                 try
                 {
+                    isAuthenticating = true;
                     await AuthService.HandlePostLoginRegistrationAsync();
                 }
                 catch (Exception ex)
@@ -329,6 +331,10 @@
                     // Log but don't fail the authentication flow if registration has issues
                     Console.WriteLine($"Post-login registration warning: {ex.Message}");
                 }
+                finally
+                {
+                    isAuthenticating = false;
+                }
             }
 
             await HandleQueryNav();
@@ -336,31 +342,7 @@
         }
     }
 
-    private async Task HandleAuthenticated(bool success)
-    {
-        isAuthenticated = success;
-        StateHasChanged();
-
-        if (success)
-        {
-            // Handle post-login registration for OAuth providers (GitHub, Google, etc.)
-            // This ensures users are properly registered in the backend after OAuth login
-            // With caching enabled, this won't make excessive API calls
-            try
-            {
-                await AuthService.HandlePostLoginRegistrationAsync();
-            }
-            catch (Exception ex)
-            {
-                // Log but don't fail the authentication flow if registration has issues
-                Console.WriteLine($"Post-login registration warning: {ex.Message}");
-            }
-
-            await HandleQueryNav();
-            //await CheckForNewFeatures();
-        }
-    }
-
+   
     private async Task CheckForNewFeatures()
     {
 
