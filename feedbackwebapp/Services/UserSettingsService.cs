@@ -20,6 +20,9 @@ public class UserSettingsService
         public string? PreferredVoice { get; set; }
         public DateTime? LastFeatureAnnouncementShown { get; set; }
         
+    // Whether the user has already clicked the external feedback survey link
+    public bool HasCompletedSurvey { get; set; } = false;
+        
         // New universal prompt property
         public string UniversalPrompt { get; set; } = SharedDump.AI.FeedbackAnalyzerService.GetUniversalPrompt();
         
@@ -66,6 +69,8 @@ public class UserSettingsService
                 _cachedSettings.ManualPrompt = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("manual");
                 needsMigration = true;
             }
+
+            // Migration: Ensure HasCompletedSurvey property exists (default false). If missing (older stored JSON), deserializer sets default false automatically.
 
             // Save if any migration was needed
             if (needsMigration)
@@ -119,6 +124,23 @@ public class UserSettingsService
         var settings = await GetSettingsAsync();
         settings.LastFeatureAnnouncementShown = DateTime.UtcNow;
         await SaveSettingsAsync(settings);
+    }
+
+    // Survey helpers
+    public async Task<bool> HasCompletedSurveyAsync()
+    {
+        var settings = await GetSettingsAsync();
+        return settings.HasCompletedSurvey;
+    }
+
+    public async Task MarkSurveyCompletedAsync()
+    {
+        var settings = await GetSettingsAsync();
+        if (!settings.HasCompletedSurvey)
+        {
+            settings.HasCompletedSurvey = true;
+            await SaveSettingsAsync(settings);
+        }
     }
 
     public async Task<DateTime?> GetLastLoginAtAsync()

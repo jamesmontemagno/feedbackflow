@@ -136,6 +136,17 @@
                         UserInput="@GetUserInputForSource()"
                         AdditionalData="@GetAdditionalDataForAnalysis()" /> 
 
+                    @* Discreet survey link (desktop only) *@
+                    @if (showSurveyLink)
+                    {
+                        <div class="mt-3 d-none d-lg-block">
+                            <a class="feedback-survey-link" href="https://forms.microsoft.com/r/E9qW97wtmx" target="_blank" rel="noopener" @onclick="HandleSurveyClick">
+                                <i class="bi bi-chat-square-heart me-1"></i>
+                                Enjoying FeedbackFlow? Quick 30s survey
+                            </a>
+                        </div>
+                    }
+
                     @* Display additional data from FeedbackSourceData list *@
                     @if (feedbackSources != null && feedbackSources.Any())
                     {
@@ -174,6 +185,7 @@
     private string? initialId;
     private bool showPromptEditor = false;
     private string customPrompt = string.Empty; // Temporary, not persisted
+    private bool showSurveyLink = false; // After successful analysis and if not previously completed
     
     // Reanalyze caching state
     private string[]? lastAnalyzedUrls;
@@ -484,6 +496,7 @@
             isLoading = true;
             currentStatus = FeedbackProcessStatus.GatheringComments;
             currentStatusMessage = "Starting analysis...";
+            showSurveyLink = false; // hide while processing
 
             // For Auto source, check Twitter access before submitting
             if (selectedSource == "Auto")
@@ -577,6 +590,19 @@
             isLoading = false;
             currentStatus = FeedbackProcessStatus.Completed;
             currentStatusMessage = "";
+            // Decide whether to show survey link: only if success, have result, and user hasn't completed
+            if (string.IsNullOrEmpty(error) && !string.IsNullOrWhiteSpace(markdownResult))
+            {
+                try
+                {
+                    var settings = await UserSettings.GetSettingsAsync();
+                    if (!settings.HasCompletedSurvey)
+                    {
+                        showSurveyLink = true;
+                    }
+                }
+                catch { /* ignore */ }
+            }
             StateHasChanged();
         }
     }
@@ -742,6 +768,17 @@
     {
         // Unsubscribe from registration error events
         RegistrationErrorService.RegistrationErrorOccurred -= OnRegistrationErrorOccurred;
+    }
+
+    private async Task HandleSurveyClick(MouseEventArgs _)
+    {
+        // Mark survey as completed and hide link
+        showSurveyLink = false;
+        try
+        {
+            await UserSettings.MarkSurveyCompletedAsync();
+        }
+        catch { /* ignore */ }
     }
 }
 
