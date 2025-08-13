@@ -144,32 +144,3 @@
     border-color: rgba(var(--primary-color-rgb), 0.5);
     box-shadow: 0 2px 6px rgba(0,0,0,0.4);
 }
-
-/* Discreet survey link styling */
-.feedback-survey-link {
-    font-size: 0.8rem;
-    opacity: 0.7;
-    text-decoration: none;
-    transition: opacity 0.2s ease, color 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    color: var(--text-color, #333);
-}
-
-.feedback-survey-link:hover {
-    opacity: 1;
-    color: var(--primary-color);
-    text-decoration: none;
-    background: rgba(var(--primary-color-rgb), 0.08);
-}
-
-[data-theme="dark"] .feedback-survey-link {
-    color: var(--text-color, #ddd);
-}
-
-[data-theme="dark"] .feedback-survey-link:hover {
-    background: rgba(var(--primary-color-rgb), 0.18);
-}

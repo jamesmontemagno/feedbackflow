@@ -137,15 +137,7 @@
                         AdditionalData="@GetAdditionalDataForAnalysis()" /> 
 
                     @* Discreet survey link (desktop only) *@
-                    @if (showSurveyLink)
-                    {
-                        <div class="mt-3 d-none d-lg-block">
-                            <a class="feedback-survey-link" href="https://forms.microsoft.com/r/E9qW97wtmx" target="_blank" rel="noopener" @onclick="HandleSurveyClick">
-                                <i class="bi bi-chat-square-heart me-1"></i>
-                                Enjoying FeedbackFlow? Quick 30s survey
-                            </a>
-                        </div>
-                    }
+                    <SurveyLink IsVisible="@showSurveyLink" OnSurveyClicked="@OnSurveyLinkClicked" />
 
                     @* Display additional data from FeedbackSourceData list *@
                     @if (feedbackSources != null && feedbackSources.Any())
@@ -770,15 +762,12 @@
         RegistrationErrorService.RegistrationErrorOccurred -= OnRegistrationErrorOccurred;
     }
 
-    private async Task HandleSurveyClick(MouseEventArgs _)
+    private Task OnSurveyLinkClicked()
     {
-        // Mark survey as completed and hide link
+        // Hide the survey link in the parent component
         showSurveyLink = false;
-        try
-        {
-            await UserSettings.MarkSurveyCompletedAsync();
-        }
-        catch { /* ignore */ }
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 }
 

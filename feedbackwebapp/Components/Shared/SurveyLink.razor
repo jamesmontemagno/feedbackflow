@@ -1,0 +1,39 @@
+@namespace FeedbackWebApp.Components.Shared
+@using Microsoft.AspNetCore.Components.Web
+@inject FeedbackWebApp.Services.UserSettingsService UserSettings
+
+@* Discreet survey link (desktop only) *@
+@if (IsVisible)
+{
+    <div class="mt-3 d-none d-lg-block">
+        <a class="feedback-survey-link" href="https://forms.microsoft.com/r/E9qW97wtmx" target="_blank" rel="noopener" @onclick="HandleSurveyClick">
+            <i class="bi bi-chat-square-heart me-1"></i>
+            Enjoying FeedbackFlow? Quick 30s survey
+        </a>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; } = false;
+    [Parameter] public EventCallback OnSurveyClicked { get; set; }
+
+    private async Task HandleSurveyClick(MouseEventArgs _)
+    {
+        // Mark survey as completed
+        try
+        {
+            await UserSettings.MarkSurveyCompletedAsync();
+        }
+        catch { /* ignore */ }
+        
+        // Hide the link by updating IsVisible
+        IsVisible = false;
+        StateHasChanged();
+        
+        // Notify parent component if callback is provided
+        if (OnSurveyClicked.HasDelegate)
+        {
+            await OnSurveyClicked.InvokeAsync();
+        }
+    }
+}
