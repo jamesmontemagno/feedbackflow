@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Http;
 using SharedDump.Models.Authentication;
@@ -48,6 +49,10 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
     // Semaphore to ensure only one authentication check happens at a time
     private readonly SemaphoreSlim _authSemaphore = new SemaphoreSlim(1, 1);
     private readonly SemaphoreSlim _registrationSemaphore = new SemaphoreSlim(1, 1);
+    
+    // User-specific semaphores for preventing duplicate registrations per user
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _userRegistrationSemaphores = new();
+    private readonly object _semaphoreCleanupLock = new object();
 
     public event EventHandler<bool>? AuthenticationStateChanged;
 
@@ -900,31 +905,37 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
     {
         await _userSettingsService.LogAuthDebugAsync("HandlePostLoginRegistrationAsync called");
         
-        // Use semaphore to prevent double registration
-        await _registrationSemaphore.WaitAsync();
+        // First, get the user to determine user-specific semaphore
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (httpContext == null)
+        {
+            await _userSettingsService.LogAuthErrorAsync("HttpContext not available for post-login registration");
+            _logger.LogWarning("HttpContext not available for post-login registration");
+            return false;
+        }
+
+        // Check if user is authenticated via OAuth providers (not password auth)
+        var user = await GetEasyAuthUserAsync();
+        if (user == null)
+        {
+            await _userSettingsService.LogAuthDebugAsync("No authenticated user found for post-login registration");
+            _logger.LogDebug("No authenticated user found for post-login registration");
+            return false;
+        }
+        
+        // Create user-specific key for semaphore
+        var userKey = $"{user.AuthProvider}:{user.ProviderUserId}";
+        var userSemaphore = GetOrCreateUserSemaphore(userKey);
+        
+        // Use user-specific semaphore to prevent double registration for the same user
+        await userSemaphore.WaitAsync();
         try
         {
-            var httpContext = _httpContextAccessor.HttpContext;
-            if (httpContext == null)
-            {
-                await _userSettingsService.LogAuthErrorAsync("HttpContext not available for post-login registration");
-                _logger.LogWarning("HttpContext not available for post-login registration");
-                return false;
-            }
-
-            // Check if user is authenticated via OAuth providers (not password auth)
-            var user = await GetEasyAuthUserAsync();
-            if (user == null)
-            {
-                await _userSettingsService.LogAuthDebugAsync("No authenticated user found for post-login registration");
-                _logger.LogDebug("No authenticated user found for post-login registration");
-                return false;
-            }
-
             await _userSettingsService.LogAuthDebugAsync("Post-login registration for user", new { 
                 provider = user.AuthProvider,
                 userId = user.UserId,
-                email = user.Email
+                email = user.Email,
+                userKey = userKey
             });
 
             // Update last login time in user settings
@@ -963,7 +974,9 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
         }
         finally
         {
-            _registrationSemaphore.Release();
+            userSemaphore.Release();
+            // Clean up the semaphore if it's no longer in use
+            CleanupUserSemaphore(userKey);
         }
     }
 
@@ -1291,12 +1304,53 @@ public class ServerSideAuthService : IAuthenticationService, IDisposable
     }
 
     /// <summary>
+    /// Get or create a semaphore for a specific user
+    /// </summary>
+    /// <param name="userKey">User-specific key</param>
+    /// <returns>Semaphore for the user</returns>
+    private SemaphoreSlim GetOrCreateUserSemaphore(string userKey)
+    {
+        return _userRegistrationSemaphores.GetOrAdd(userKey, _ => new SemaphoreSlim(1, 1));
+    }
+
+    /// <summary>
+    /// Clean up user semaphore if it's no longer in use
+    /// </summary>
+    /// <param name="userKey">User-specific key</param>
+    private void CleanupUserSemaphore(string userKey)
+    {
+        // Only clean up if the semaphore is not currently being waited on
+        lock (_semaphoreCleanupLock)
+        {
+            if (_userRegistrationSemaphores.TryGetValue(userKey, out var semaphore))
+            {
+                // Check if semaphore is available (not being waited on)
+                if (semaphore.CurrentCount > 0)
+                {
+                    if (_userRegistrationSemaphores.TryRemove(userKey, out var removedSemaphore))
+                    {
+                        removedSemaphore.Dispose();
+                        _logger.LogDebug("Cleaned up semaphore for user key: {UserKey}", userKey);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// Dispose of resources
     /// </summary>
     public void Dispose()
     {
         _authSemaphore?.Dispose();
         _registrationSemaphore?.Dispose();
+        
+        // Clean up all user semaphores
+        foreach (var kvp in _userRegistrationSemaphores)
+        {
+            kvp.Value.Dispose();
+        }
+        _userRegistrationSemaphores.Clear();
     }
 }
 

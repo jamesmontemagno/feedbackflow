@@ -213,27 +213,28 @@ public class AuthenticationMiddleware
                 return null;
             }
 
-            // Check if user already exists
-            var existingUser = await _userService.GetUserByProviderAsync(provider, providerUserId);
-            if (existingUser != null)
-            {
-                existingUser.LastLoginAt = DateTime.UtcNow;
-                existingUser.ProfileImageUrl = profileImageUrl; // Update profile image URL if available
-                await _userService.CreateOrUpdateUserAsync(existingUser);
-
-                _logger.LogWarning("User already exists for {Provider} provider with ID {ProviderUserId}. Use GetUserAsync instead.", provider, providerUserId);
-                return new AuthenticatedUser(existingUser);
-            }
-
-            // Create new user
-            _logger.LogInformation("Creating new user for {Provider} provider with ID {ProviderUserId}", provider, providerUserId);
+            // Check if user already exists using atomic operation
             var user = new AuthUserEntity(provider, providerUserId, email, name)
             {
-                ProfileImageUrl = profileImageUrl
+                ProfileImageUrl = profileImageUrl,
+                LastLoginAt = DateTime.UtcNow
             };
-            await _userService.CreateOrUpdateUserAsync(user);
 
-            return new AuthenticatedUser(user);
+            // Use atomic create-if-not-exists to prevent race conditions
+            var createdOrExistingUser = await _userService.CreateUserIfNotExistsAsync(user);
+            
+            if (createdOrExistingUser.UserId != user.UserId)
+            {
+                _logger.LogInformation("Returned existing user {ExistingUserId} for {Provider} provider with ID {ProviderUserId}", 
+                    createdOrExistingUser.UserId, provider, providerUserId);
+            }
+            else
+            {
+                _logger.LogInformation("Created new user {UserId} for {Provider} provider with ID {ProviderUserId}", 
+                    createdOrExistingUser.UserId, provider, providerUserId);
+            }
+
+            return new AuthenticatedUser(createdOrExistingUser);
         }
         catch (Exception ex)
         {

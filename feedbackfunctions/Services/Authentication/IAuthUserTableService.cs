@@ -40,6 +40,14 @@ public interface IAuthUserTableService
     Task<AuthUserEntity> CreateOrUpdateUserAsync(AuthUserEntity user);
 
     /// <summary>
+    /// Create a new user atomically, returning existing user if already exists
+    /// This method handles race conditions by using atomic operations
+    /// </summary>
+    /// <param name="user">The user entity to create</param>
+    /// <returns>The created user (new or existing)</returns>
+    Task<AuthUserEntity> CreateUserIfNotExistsAsync(AuthUserEntity user);
+
+    /// <summary>
     /// Delete a user permanently from the table
     /// </summary>
     /// <param name="userId">Internal unique user ID</param>

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Text.Json;
 using Microsoft.Azure.Functions.Worker;
@@ -32,6 +33,10 @@ public class AuthUserManagement : IDisposable
     private readonly TableServiceClient _tableServiceClient;
     private readonly SemaphoreSlim _registrationSemaphore = new SemaphoreSlim(1, 1);
     private readonly bool _allowsRegistration;
+    
+    // User-specific semaphores for preventing duplicate registrations per user
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _userRegistrationSemaphores = new();
+    private readonly object _semaphoreCleanupLock = new object();
 
     public AuthUserManagement(
         ILogger<AuthUserManagement> logger,
@@ -75,11 +80,21 @@ public class AuthUserManagement : IDisposable
             return disabledResponse;
         }
 
-        // Use semaphore to prevent double registration
-        await _registrationSemaphore.WaitAsync();
+        // Use user-specific semaphore to prevent double registration for the same user
+        var userKey = GetUserRegistrationKey(req);
+        if (string.IsNullOrEmpty(userKey))
+        {
+            _logger.LogWarning("Could not determine user key for registration request");
+            var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await badRequestResponse.WriteStringAsync("Could not determine user identity for registration");
+            return badRequestResponse;
+        }
+
+        var userSemaphore = GetOrCreateUserSemaphore(userKey);
+        await userSemaphore.WaitAsync();
         try
         {
-            _logger.LogInformation("RegisterUser function triggered");
+            _logger.LogInformation("RegisterUser function triggered for user key: {UserKey}", userKey);
 
             // Try to read preferred email from request body if provided
             string? preferredEmail = null;
@@ -224,7 +239,9 @@ public class AuthUserManagement : IDisposable
         }
         finally
         {
-            _registrationSemaphore.Release();
+            userSemaphore.Release();
+            // Clean up the semaphore if it's no longer in use
+            CleanupUserSemaphore(userKey);
         }
     }
 
@@ -595,10 +612,101 @@ public class AuthUserManagement : IDisposable
     }
 
     /// <summary>
+    /// Get a user-specific registration key from the request headers
+    /// This helps identify the same user across multiple registration attempts
+    /// </summary>
+    /// <param name="req">HTTP request</param>
+    /// <returns>User-specific key or null if not determinable</returns>
+    private string? GetUserRegistrationKey(HttpRequestData req)
+    {
+        try
+        {
+            // Try to extract user identity from authentication headers
+            if (!req.Headers.TryGetValues("X-MS-CLIENT-PRINCIPAL", out var principalHeaders))
+            {
+                return null;
+            }
+
+            var principalHeader = principalHeaders.FirstOrDefault();
+            if (string.IsNullOrEmpty(principalHeader))
+            {
+                return null;
+            }
+
+            // Decode the base64-encoded principal
+            var decoded = Convert.FromBase64String(principalHeader);
+            var json = System.Text.Encoding.UTF8.GetString(decoded);
+            var clientPrincipal = JsonSerializer.Deserialize<SharedDump.Models.Authentication.ClientPrincipal>(json);
+
+            if (clientPrincipal == null)
+            {
+                return null;
+            }
+
+            // Create a stable key based on provider and provider user ID
+            var provider = clientPrincipal.GetEffectiveIdentityProvider();
+            var providerUserId = clientPrincipal.GetEffectiveUserId();
+            
+            if (string.IsNullOrEmpty(provider) || string.IsNullOrEmpty(providerUserId))
+            {
+                return null;
+            }
+
+            return $"{provider}:{providerUserId}";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to extract user registration key from request");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Get or create a semaphore for a specific user
+    /// </summary>
+    /// <param name="userKey">User-specific key</param>
+    /// <returns>Semaphore for the user</returns>
+    private SemaphoreSlim GetOrCreateUserSemaphore(string userKey)
+    {
+        return _userRegistrationSemaphores.GetOrAdd(userKey, _ => new SemaphoreSlim(1, 1));
+    }
+
+    /// <summary>
+    /// Clean up user semaphore if it's no longer in use
+    /// </summary>
+    /// <param name="userKey">User-specific key</param>
+    private void CleanupUserSemaphore(string userKey)
+    {
+        // Only clean up if the semaphore is not currently being waited on
+        lock (_semaphoreCleanupLock)
+        {
+            if (_userRegistrationSemaphores.TryGetValue(userKey, out var semaphore))
+            {
+                // Check if semaphore is available (not being waited on)
+                if (semaphore.CurrentCount > 0)
+                {
+                    if (_userRegistrationSemaphores.TryRemove(userKey, out var removedSemaphore))
+                    {
+                        removedSemaphore.Dispose();
+                        _logger.LogDebug("Cleaned up semaphore for user key: {UserKey}", userKey);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// Dispose of resources
     /// </summary>
     public void Dispose()
     {
         _registrationSemaphore?.Dispose();
+        
+        // Clean up all user semaphores
+        foreach (var kvp in _userRegistrationSemaphores)
+        {
+            kvp.Value.Dispose();
+        }
+        _userRegistrationSemaphores.Clear();
     }
 }
