@@ -525,8 +525,8 @@
     {
         try
         {
-            // Show survey link if user has report requests and hasn't completed survey
-            if (reportRequests != null && reportRequests.Any())
+            // Show survey link if survey enabled, user has report requests and hasn't completed current survey
+            if (UserSettings.IsSurveyEnabled() && reportRequests != null && reportRequests.Any())
             {
                 var hasCompletedSurvey = await UserSettings.HasCompletedSurveyAsync();
                 if (!hasCompletedSurvey)

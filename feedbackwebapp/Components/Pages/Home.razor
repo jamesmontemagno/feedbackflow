@@ -582,15 +582,18 @@
             isLoading = false;
             currentStatus = FeedbackProcessStatus.Completed;
             currentStatusMessage = "";
-            // Decide whether to show survey link: only if success, have result, and user hasn't completed
+            // Decide whether to show survey link: only if success, have result, survey enabled, and user hasn't completed current survey
             if (string.IsNullOrEmpty(error) && !string.IsNullOrWhiteSpace(markdownResult))
             {
                 try
                 {
-                    var settings = await UserSettings.GetSettingsAsync();
-                    if (!settings.HasCompletedSurvey)
+                    if (UserSettings.IsSurveyEnabled())
                     {
-                        showSurveyLink = true;
+                        var hasCompletedSurvey = await UserSettings.HasCompletedSurveyAsync();
+                        if (!hasCompletedSurvey)
+                        {
+                            showSurveyLink = true;
+                        }
                     }
                 }
                 catch { /* ignore */ }

@@ -271,8 +271,8 @@
     {
         try
         {
-            // Show survey link if user is viewing a shared analysis and hasn't completed survey
-            if (analysis != null)
+            // Show survey link if survey enabled, user is viewing a shared analysis and hasn't completed current survey
+            if (UserSettings.IsSurveyEnabled() && analysis != null)
             {
                 var hasCompletedSurvey = await UserSettings.HasCompletedSurveyAsync();
                 if (!hasCompletedSurvey)

@@ -6,7 +6,7 @@
 @if (IsVisible)
 {
     <div class="mt-3 d-none d-lg-block">
-        <a class="feedback-survey-link" href="https://forms.microsoft.com/r/E9qW97wtmx" target="_blank" rel="noopener" @onclick="HandleSurveyClick">
+        <a class="feedback-survey-link" href="@UserSettings.GetSurveyUrl()" target="_blank" rel="noopener" @onclick="HandleSurveyClick">
             <i class="bi bi-chat-square-heart me-1"></i>
             Enjoying FeedbackFlow? Quick 30s survey
         </a>

@@ -607,8 +607,8 @@
     {
         try
         {
-            // Show survey link if user has shared history items and hasn't completed survey
-            if (historyItems != null && historyItems.Count > 0)
+            // Show survey link if survey enabled, user has shared history items and hasn't completed current survey
+            if (UserSettings.IsSurveyEnabled() && historyItems != null && historyItems.Count > 0)
             {
                 var hasCompletedSurvey = await UserSettings.HasCompletedSurveyAsync();
                 if (!hasCompletedSurvey)

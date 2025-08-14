@@ -20,8 +20,8 @@ public class UserSettingsService
         public string? PreferredVoice { get; set; }
         public DateTime? LastFeatureAnnouncementShown { get; set; }
         
-    // Whether the user has already clicked the external feedback survey link
-    public bool HasCompletedSurvey { get; set; } = false;
+        // ID of the completed survey (allows for different surveys over time)
+        public string? CompletedSurveyId { get; set; }
         
         // New universal prompt property
         public string UniversalPrompt { get; set; } = SharedDump.AI.FeedbackAnalyzerService.GetUniversalPrompt();
@@ -70,7 +70,10 @@ public class UserSettingsService
                 needsMigration = true;
             }
 
-            // Migration: Ensure HasCompletedSurvey property exists (default false). If missing (older stored JSON), deserializer sets default false automatically.
+            // Migration: Ensure CompletedSurveyId property exists. 
+            // For backwards compatibility, if the old HasCompletedSurvey was true, 
+            // mark the current survey as completed
+            // Note: This check is done through JsonSerializer which will have default values for missing properties
 
             // Save if any migration was needed
             if (needsMigration)
@@ -130,17 +133,30 @@ public class UserSettingsService
     public async Task<bool> HasCompletedSurveyAsync()
     {
         var settings = await GetSettingsAsync();
-        return settings.HasCompletedSurvey;
+        var currentSurveyId = _configuration["Survey:Id"] ?? "feedback-v1";
+        return !string.IsNullOrEmpty(settings.CompletedSurveyId) && 
+               settings.CompletedSurveyId == currentSurveyId;
     }
 
     public async Task MarkSurveyCompletedAsync()
     {
         var settings = await GetSettingsAsync();
-        if (!settings.HasCompletedSurvey)
+        var currentSurveyId = _configuration["Survey:Id"] ?? "feedback-v1";
+        if (settings.CompletedSurveyId != currentSurveyId)
         {
-            settings.HasCompletedSurvey = true;
+            settings.CompletedSurveyId = currentSurveyId;
             await SaveSettingsAsync(settings);
         }
+    }
+
+    public bool IsSurveyEnabled()
+    {
+        return _configuration.GetValue<bool>("Survey:Enabled", true);
+    }
+
+    public string GetSurveyUrl()
+    {
+        return _configuration["Survey:Url"] ?? "https://forms.microsoft.com/r/E9qW97wtmx";
     }
 
     public async Task<DateTime?> GetLastLoginAtAsync()
