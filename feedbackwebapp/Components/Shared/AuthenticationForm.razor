@@ -161,6 +161,10 @@ else
     private string loadingStatus = "Starting up...";
     private string loadingSubStatus = "Initializing FeedbackFlow authentication";
     private int loadingStep = 0;
+    
+    // Registration tracking to prevent duplicates across tabs/windows
+    private bool isRegistering = false;
+    private static readonly object _registrationLock = new object();
 
     [Parameter]
     public EventCallback<bool> OnAuthenticated { get; set; }
@@ -299,15 +303,70 @@ else
     {
         isAuthenticated = success;
         
-        // Call both callbacks if they are provided
-        if (OnAuthenticated.HasDelegate)
+        // Prevent concurrent registration attempts across multiple tabs/components
+        if (success && justLoggedIn)
         {
-            await OnAuthenticated.InvokeAsync(success);
+            lock (_registrationLock)
+            {
+                if (isRegistering)
+                {
+                    // Another tab/component is already handling registration
+                    return;
+                }
+                isRegistering = true;
+            }
+            
+            try
+            {
+                // Add a unique registration flag to localStorage to coordinate across tabs
+                var registrationKey = $"feedbackflow_registration_{DateTime.UtcNow:yyyyMMddHHmmss}";
+                await JSRuntime.InvokeVoidAsync("localStorage.setItem", "feedbackflow_active_registration", registrationKey);
+                
+                // Small delay to allow other tabs to see the registration flag
+                await Task.Delay(100);
+                
+                // Check if we should still handle registration (another tab might have taken over)
+                var currentKey = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "feedbackflow_active_registration");
+                if (currentKey != registrationKey)
+                {
+                    // Another tab is handling registration
+                    return;
+                }
+                
+                // Call both callbacks if they are provided
+                if (OnAuthenticated.HasDelegate)
+                {
+                    await OnAuthenticated.InvokeAsync(success);
+                }
+                
+                if (OnAuthenticatedWithDetails.HasDelegate)
+                {
+                    await OnAuthenticatedWithDetails.InvokeAsync((success, justLoggedIn));
+                }
+                
+                // Clear the registration flag after successful handling
+                await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "feedbackflow_active_registration");
+            }
+            finally
+            {
+                lock (_registrationLock)
+                {
+                    isRegistering = false;
+                }
+            }
         }
-        
-        if (OnAuthenticatedWithDetails.HasDelegate)
+        else
         {
-            await OnAuthenticatedWithDetails.InvokeAsync((success, justLoggedIn));
+            // Call both callbacks if they are provided
+            if (OnAuthenticated.HasDelegate)
+            {
+                await OnAuthenticated.InvokeAsync(success);
+            }
+            
+            if (OnAuthenticatedWithDetails.HasDelegate)
+            {
+                await OnAuthenticatedWithDetails.InvokeAsync((success, justLoggedIn));
+            }
         }
     }
 
@@ -326,5 +385,25 @@ else
     {
         // Unsubscribe from registration error events
         RegistrationErrorService.RegistrationErrorOccurred -= OnRegistrationErrorOccurred;
+        
+        // Clean up any active registration flag on dispose
+        try
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "feedbackflow_active_registration");
+                }
+                catch
+                {
+                    // Ignore cleanup errors during dispose
+                }
+            });
+        }
+        catch
+        {
+            // Ignore cleanup errors during dispose
+        }
     }
 }
