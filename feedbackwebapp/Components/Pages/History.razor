@@ -6,6 +6,7 @@
 @inject NavigationManager NavigationManager
 @inject FeedbackWebApp.Services.IToastService ToastService
 @inject FeedbackWebApp.Services.IHistoryHelper HistoryHelper
+@inject FeedbackWebApp.Services.UserSettingsService UserSettings
 @using SharedDump.Models
 @using Markdig
 @using Microsoft.JSInterop
@@ -15,6 +16,7 @@
 @using SharedDump.Utils
 @using FeedbackWebApp.Utils
 @using FeedbackWebApp.Services
+@using FeedbackWebApp.Components.Shared
 
 @namespace FeedbackWebApp.Components.Pages
 
@@ -258,6 +260,9 @@
                 </div>
             </div>
         }
+
+        @* Discreet survey link for users with shared history *@
+        <SurveyLink IsVisible="@showSurveyLink" OnSurveyClicked="@OnSurveyLinkClicked" />
     }
 
 
@@ -293,6 +298,9 @@
 
     // Visibility management state
     private bool isUpdatingVisibility = false;
+
+    // Survey link state
+    private bool showSurveyLink = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -391,6 +399,9 @@
                 .OrderByDescending(h => h.Timestamp)
                 .ToList();
             totalItems = historyItems.Count;
+            
+            // Show survey link if user has shared history and hasn't completed survey
+            await CheckAndShowSurveyLinkAsync();
         }
         catch (Exception)
         {
@@ -590,5 +601,30 @@
             isUpdatingVisibility = false;
             StateHasChanged();
         }
+    }
+
+    private async Task CheckAndShowSurveyLinkAsync()
+    {
+        try
+        {
+            // Show survey link if survey enabled, user has shared history items and hasn't completed current survey
+            if (UserSettings.IsSurveyEnabled() && historyItems != null && historyItems.Count > 0)
+            {
+                var hasCompletedSurvey = await UserSettings.HasCompletedSurveyAsync();
+                if (!hasCompletedSurvey)
+                {
+                    showSurveyLink = true;
+                }
+            }
+        }
+        catch { /* ignore */ }
+    }
+
+    private Task OnSurveyLinkClicked()
+    {
+        // Hide the survey link in the parent component
+        showSurveyLink = false;
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 }

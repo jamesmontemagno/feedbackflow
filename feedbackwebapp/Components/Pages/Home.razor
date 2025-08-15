@@ -136,6 +136,9 @@
                         UserInput="@GetUserInputForSource()"
                         AdditionalData="@GetAdditionalDataForAnalysis()" /> 
 
+                    @* Discreet survey link (desktop only) *@
+                    <SurveyLink IsVisible="@showSurveyLink" OnSurveyClicked="@OnSurveyLinkClicked" />
+
                     @* Display additional data from FeedbackSourceData list *@
                     @if (feedbackSources != null && feedbackSources.Any())
                     {
@@ -174,6 +177,7 @@
     private string? initialId;
     private bool showPromptEditor = false;
     private string customPrompt = string.Empty; // Temporary, not persisted
+    private bool showSurveyLink = false; // After successful analysis and if not previously completed
     
     // Reanalyze caching state
     private string[]? lastAnalyzedUrls;
@@ -484,6 +488,7 @@
             isLoading = true;
             currentStatus = FeedbackProcessStatus.GatheringComments;
             currentStatusMessage = "Starting analysis...";
+            showSurveyLink = false; // hide while processing
 
             // For Auto source, check Twitter access before submitting
             if (selectedSource == "Auto")
@@ -577,6 +582,22 @@
             isLoading = false;
             currentStatus = FeedbackProcessStatus.Completed;
             currentStatusMessage = "";
+            // Decide whether to show survey link: only if success, have result, survey enabled, and user hasn't completed current survey
+            if (string.IsNullOrEmpty(error) && !string.IsNullOrWhiteSpace(markdownResult))
+            {
+                try
+                {
+                    if (UserSettings.IsSurveyEnabled())
+                    {
+                        var hasCompletedSurvey = await UserSettings.HasCompletedSurveyAsync();
+                        if (!hasCompletedSurvey)
+                        {
+                            showSurveyLink = true;
+                        }
+                    }
+                }
+                catch { /* ignore */ }
+            }
             StateHasChanged();
         }
     }
@@ -742,6 +763,14 @@
     {
         // Unsubscribe from registration error events
         RegistrationErrorService.RegistrationErrorOccurred -= OnRegistrationErrorOccurred;
+    }
+
+    private Task OnSurveyLinkClicked()
+    {
+        // Hide the survey link in the parent component
+        showSurveyLink = false;
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 }
 

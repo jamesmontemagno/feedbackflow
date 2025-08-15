@@ -2,6 +2,7 @@
 @page "/shared/{Id}"
 
 @inject FeedbackWebApp.Services.ISharedHistoryServiceProvider SharedHistoryServiceProvider
+@inject FeedbackWebApp.Services.UserSettingsService UserSettings
 @inject FeedbackWebApp.Services.IToastService ToastService
 @inject IJSRuntime JSRuntime
 @inject ILogger<Analysis> Logger
@@ -132,6 +133,9 @@
                 </div>
             </div>
         </div>
+
+        @* Discreet survey link for users viewing shared analysis *@
+        <SurveyLink IsVisible="@showSurveyLink" OnSurveyClicked="@OnSurveyLinkClicked" />
     }
 </div>
 
@@ -148,6 +152,9 @@
     private bool showCopyFailedDialog = false;
     private string failedCopyContent = string.Empty;
     private string failedCopyContentType = string.Empty;
+
+    // Survey link state
+    private bool showSurveyLink = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -183,6 +190,8 @@
             else
             {
                 Logger.LogInformation("Successfully loaded analysis {Id}", Id);
+                // Show survey link for users viewing shared analysis
+                await CheckAndShowSurveyLinkAsync();
             }
         }
         catch (Exception ex)
@@ -256,6 +265,31 @@
         failedCopyContent = string.Empty;
         failedCopyContentType = string.Empty;
         StateHasChanged();
+    }
+
+    private async Task CheckAndShowSurveyLinkAsync()
+    {
+        try
+        {
+            // Show survey link if survey enabled, user is viewing a shared analysis and hasn't completed current survey
+            if (UserSettings.IsSurveyEnabled() && analysis != null)
+            {
+                var hasCompletedSurvey = await UserSettings.HasCompletedSurveyAsync();
+                if (!hasCompletedSurvey)
+                {
+                    showSurveyLink = true;
+                }
+            }
+        }
+        catch { /* ignore */ }
+    }
+
+    private Task OnSurveyLinkClicked()
+    {
+        // Hide the survey link in the parent component
+        showSurveyLink = false;
+        StateHasChanged();
+        return Task.CompletedTask;
     }
     
     // IsValidUrl and GetYouTubeThumbnailUrl methods have been moved to UrlParsing class
