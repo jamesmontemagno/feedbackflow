@@ -80,7 +80,7 @@ public class AuthUserManagement : IDisposable
             return disabledResponse;
         }
 
-        // Use user-specific semaphore to prevent double registration for the same user
+        // Use user-specific semaphore to prevent double registration for the same user.
         var userKey = GetUserRegistrationKey(req);
         if (string.IsNullOrEmpty(userKey))
         {
