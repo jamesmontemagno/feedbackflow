@@ -23,7 +23,7 @@
             {
             <button class="btn btn-primary d-flex align-items-center justify-content-center gap-2" 
                 @onclick="@(async () => await LoginWithProvider("Microsoft"))"
-                disabled="@loggingIn">
+                disabled="@loggingIn" aria-disabled="@loggingIn">
                     <i class="bi bi-microsoft"></i>
                         Login with Microsoft
                 </button>
@@ -33,7 +33,7 @@
             {
             <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
                 @onclick="@(async () => await LoginWithProvider("Google"))"
-                disabled="@loggingIn">
+                disabled="@loggingIn" aria-disabled="@loggingIn">
                     <i class="bi bi-google"></i>
                     Login with Google
                 </button>
@@ -43,7 +43,7 @@
             {
             <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
                 @onclick="@(async () => await LoginWithProvider("GitHub"))"
-                disabled="@loggingIn">
+                disabled="@loggingIn" aria-disabled="@loggingIn">
                     <i class="bi bi-github"></i>
                     Login with GitHub
                 </button>
@@ -294,11 +294,7 @@ else
             // Clear login attempt flag on error
             await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "feedbackflow_loginattempt");
             authError = $"Error initiating login: {ex.Message}";
-        }
-        finally
-        {
-            // Reset login attempt flag after operation
-            loggingIn = false;
+            loggingIn = false; // Only reset on error so buttons stay disabled during successful navigation
             StateHasChanged();
         }
     }
