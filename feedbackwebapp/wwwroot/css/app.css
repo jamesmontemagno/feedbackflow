@@ -596,7 +596,7 @@ h1:focus {
 =================================
 BLAZOR RECONNECTION UI DARK MODE
 =================================
-Override Blazor's built-in reconnection UI for dark mode support
+@media (max-width: 575.98px) { .app-content { padding-inline: 0.1rem; } }
 */
 
 /* Blazor reconnection modal overlay */
@@ -967,17 +967,9 @@ textarea:focus,
 
 /* Mobile responsive action button sizing */
 @media (max-width: 768px) {
-    .action-btn {
-        min-width: 36px !important;
-        height: 32px !important;
-        padding: 0.375rem 0.5rem !important;
-        font-size: 0.875rem !important;
-    }
-    
-    .action-btn i {
-        font-size: 1rem !important;
-    }
-}
+    .card-header { padding: 0.55rem 0.75rem !important; }
+    .card-body { padding: 0.75rem 0.75rem !important; }
+    .card-footer { padding: 0.55rem 0.75rem !important; }
 
 @media (max-width: 576px) {
     .action-btn {
@@ -1258,13 +1250,13 @@ Responsive utility class for denser table layouts on mobile devices
    - Ensure toast container clears bottom nav
 -------------------------------------------------- */
 @media (max-width: 420px) {
-    .mobile-header { padding: 0.35rem 0.75rem; }
-    .mobile-header .mobile-page-title { font-size: 0.95rem; }
-    .mobile-bottom-nav { padding: 0.25rem 0.25rem env(safe-area-inset-bottom); }
-    .mobile-bottom-nav .mobile-nav-item span { font-size: 0.65rem; }
-    .mobile-bottom-nav .mobile-nav-item i { font-size: 1rem; }
-    body.pb-mobile-nav { padding-bottom: 3.25rem; }
-    #toast-container { bottom: calc(3.75rem + env(safe-area-inset-bottom)); }
+    .mobile-header { padding: 0.3rem 0.55rem; }
+    .mobile-header .mobile-page-title { font-size: 0.9rem; }
+    .mobile-bottom-nav { padding: 0.2rem 0.2rem env(safe-area-inset-bottom); }
+    .mobile-bottom-nav .mobile-nav-item span { font-size: 0.6rem; }
+    .mobile-bottom-nav .mobile-nav-item i { font-size: 0.95rem; }
+    body.pb-mobile-nav { padding-bottom: 3rem; }
+    #toast-container { bottom: calc(3.4rem + env(safe-area-inset-bottom)); }
 }
 
 /* --------------------------------------------------
@@ -1334,9 +1326,7 @@ body.accessibility-debug .btn::after, body.accessibility-debug a::after { conten
         padding: var(--space-sm) var(--space-md) !important;
     }
     
-    .card-body {
-        padding: var(--space-md) !important;
-    }
+    .card-body { padding: var(--space-md) !important; }
     
     .card-footer {
         padding: var(--space-sm) var(--space-md) !important;
@@ -1367,18 +1357,18 @@ body.accessibility-debug .btn::after, body.accessibility-debug a::after { conten
     .mobile-dense .mt-5 { margin-top: 1rem !important; }
 }
 
-    /* --------------------------------------------------
-       Mobile Card Group Consolidation Utility
-       Issue 132: .card-group-mobile
-       Purpose: Visually merge adjacent cards that are purely structural on small screens
-       Applies only under 576px to preserve desktop aesthetics.
-       Usage: <div class="card-group-mobile"> <div class="card">...</div><div class="card">...</div> </div>
-       Notes:
-       - Focus ring isolation is preserved by maintaining individual card focus styles.
-       - First and last cards retain outer border-radius; inner cards have radii removed for seamless stack.
-       - Shadow consolidated to wrapper via ::before pseudo-element to avoid multiple layered shadows.
-    -------------------------------------------------- */
-    @media (max-width: 575.98px) {
+/* --------------------------------------------------
+    Mobile Card Group Consolidation Utility
+    Issue 132: .card-group-mobile
+    Purpose: Visually merge adjacent cards that are purely structural on small screens
+    Applies only under 576px to preserve desktop aesthetics.
+    Usage: <div class="card-group-mobile"> <div class="card">...</div><div class="card">...</div> </div>
+    Notes:
+    - Focus ring isolation is preserved by maintaining individual card focus styles.
+    - First and last cards retain outer border-radius; inner cards have radii removed for seamless stack.
+    - Shadow consolidated to wrapper via ::before pseudo-element to avoid multiple layered shadows.
+-------------------------------------------------- */
+@media (max-width: 575.98px) {
         .card-group-mobile {
             position: relative;
             display: flex;
@@ -1447,5 +1437,5 @@ body.accessibility-debug .btn::after, body.accessibility-debug a::after { conten
             outline: 2px solid rgba(var(--primary-color-rgb), 0.5);
             outline-offset: -2px;
             z-index: 2;
-        }
     }
+}
