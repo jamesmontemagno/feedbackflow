@@ -21,8 +21,9 @@
 
             @if (enabledProviders.Contains("Microsoft"))
             {
-                <button class="btn btn-primary d-flex align-items-center justify-content-center gap-2" 
-                        @onclick="@(async () => await LoginWithProvider("Microsoft"))">
+            <button class="btn btn-primary d-flex align-items-center justify-content-center gap-2" 
+                @onclick="@(async () => await LoginWithProvider("Microsoft"))"
+                disabled="@loggingIn">
                     <i class="bi bi-microsoft"></i>
                         Login with Microsoft
                 </button>
@@ -30,8 +31,9 @@
             
             @if (enabledProviders.Contains("Google"))
             {
-                <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
-                        @onclick="@(async () => await LoginWithProvider("Google"))">
+            <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
+                @onclick="@(async () => await LoginWithProvider("Google"))"
+                disabled="@loggingIn">
                     <i class="bi bi-google"></i>
                     Login with Google
                 </button>
@@ -39,8 +41,9 @@
             
             @if (enabledProviders.Contains("GitHub"))
             {
-                <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
-                        @onclick="@(async () => await LoginWithProvider("GitHub"))">
+            <button class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2" 
+                @onclick="@(async () => await LoginWithProvider("GitHub"))"
+                disabled="@loggingIn">
                     <i class="bi bi-github"></i>
                     Login with GitHub
                 </button>
