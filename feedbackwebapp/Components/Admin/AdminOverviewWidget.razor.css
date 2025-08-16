@@ -165,3 +165,45 @@
         align-self: flex-end;
     }
 }
+
+/* Issue 133: Compact KPI Grid for small screens */
+@media (max-width: 575.98px) {
+    /* Convert outer row to CSS grid for tighter layout */
+    .kpi-grid-mobile {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-sm) var(--space-sm);
+        margin: 0 0 var(--space-md) 0;
+    }
+    .kpi-grid-mobile > .kpi-grid-item {
+        /* Remove Bootstrap column spacing interference */
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    .kpi-grid-mobile .metric-card {
+        padding: var(--space-sm) var(--space-sm);
+        gap: var(--space-sm);
+        flex-direction: column;
+        text-align: center;
+        min-height: 100%;
+    }
+    .kpi-grid-mobile .metric-icon {
+        width: 42px;
+        height: 42px;
+        font-size: 1rem;
+    }
+    .kpi-grid-mobile .metric-value {
+        font-size: clamp(1rem, 2.8vw, 1.15rem);
+    }
+    .kpi-grid-mobile .metric-label {
+        font-size: 0.7rem;
+        margin: 0.15rem 0 0.25rem 0;
+    }
+    .kpi-grid-mobile .metric-change {
+        font-size: 0.6rem;
+    }
+    /* Hide secondary change line for very limited vertical real estate */
+    @media (max-height: 650px) and (max-width: 575.98px) {
+        .kpi-grid-mobile .metric-change { display: none !important; }
+    }
+}

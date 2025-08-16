@@ -45,8 +45,9 @@
         }
         else
         {
-            <div class="table-responsive">
-                <table class="table table-hover align-middle admin-user-tiers-table table-compact">
+            <div class="responsive-table-wrapper" role="region" aria-label="User tier data horizontal scroll">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle admin-user-tiers-table table-compact has-sticky-first-col">
                     <thead>
                         <tr>
                             <th @onclick="() => ChangeSort(SortColumn.User)" role="button" class="sortable" aria-sort="@GetAriaSort(SortColumn.User)">
@@ -100,7 +101,8 @@
                             </tr>
                         }
                     </tbody>
-                </table>
+                    </table>
+                </div>
             </div>
         }
     </div>

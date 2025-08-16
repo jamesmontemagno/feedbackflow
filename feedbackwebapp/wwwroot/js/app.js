@@ -145,3 +145,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Don't treat this as a critical error - the app can function without IndexedDB
     }
 });
+
+// Issue 136: Horizontal scroll gradient visibility handling
+function initResponsiveTableWrappers() {
+    const wrappers = document.querySelectorAll('.responsive-table-wrapper');
+    wrappers.forEach(w => {
+        function updateShadows() {
+            const scrollLeft = w.scrollLeft;
+            const maxScroll = w.scrollWidth - w.clientWidth;
+            if (scrollLeft > 2) {
+                w.classList.add('show-left-shadow');
+            } else {
+                w.classList.remove('show-left-shadow');
+            }
+            if (scrollLeft < maxScroll - 2) {
+                w.classList.add('show-right-shadow');
+            } else {
+                w.classList.remove('show-right-shadow');
+            }
+        }
+        w.addEventListener('scroll', updateShadows, { passive: true });
+        // Initial
+        updateShadows();
+    });
+}
+
+window.initResponsiveTableWrappers = initResponsiveTableWrappers;
+
+document.addEventListener('DOMContentLoaded', () => {
+    try { initResponsiveTableWrappers(); } catch (e) { console.warn('Init responsive tables failed', e); }
+});
