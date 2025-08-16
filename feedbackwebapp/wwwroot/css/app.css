@@ -1250,47 +1250,59 @@ Responsive utility class for denser table layouts on mobile devices
    - Ensure toast container clears bottom nav
 -------------------------------------------------- */
 @media (max-width: 420px) {
-    .mobile-header { padding: 0.3rem 0.55rem; }
+    .mobile-header { padding: 0.3rem 0.4rem; }
     .mobile-header .mobile-page-title { font-size: 0.9rem; }
-    .mobile-bottom-nav { padding: 0.2rem 0.2rem env(safe-area-inset-bottom); }
+    .mobile-bottom-nav { padding: 0.2rem 0.15rem env(safe-area-inset-bottom); }
     .mobile-bottom-nav .mobile-nav-item span { font-size: 0.6rem; }
     .mobile-bottom-nav .mobile-nav-item i { font-size: 0.95rem; }
     body.pb-mobile-nav { padding-bottom: 3rem; }
     #toast-container { bottom: calc(3.4rem + env(safe-area-inset-bottom)); }
+    
+    /* Extra tight spacing for very small screens */
+    .app-content { padding-inline: 0.1rem !important; }
+    .card-body { padding: 0.5rem !important; }
+    .card-header, .card-footer { padding: 0.35rem 0.5rem !important; }
 }
 
 /* --------------------------------------------------
    Issue 141: .no-card-mobile utility
    - Strip card chrome for purely structural groupings on mobile
+   - Maximize content density by removing visual padding
 -------------------------------------------------- */
 @media (max-width: 575.98px) {
     .no-card-mobile .card {
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        margin-bottom: var(--space-sm) !important;
+        margin-bottom: 0.4rem !important;
     }
-    .no-card-mobile .card-header { background: transparent !important; color: var(--text-primary) !important; padding: 0 var(--space-md) var(--space-xs) !important; }
-    .no-card-mobile .card-body { padding: 0 var(--space-md) var(--space-sm) !important; }
-    .no-card-mobile .card-footer { padding: 0 var(--space-md) var(--space-sm) !important; background: transparent !important; }
+    .no-card-mobile .card-header { background: transparent !important; color: var(--text-primary) !important; padding: 0 0.3rem 0.2rem !important; }
+    .no-card-mobile .card-body { padding: 0 0.3rem 0.3rem !important; }
+    .no-card-mobile .card-footer { padding: 0 0.3rem 0.3rem !important; background: transparent !important; }
 }
 
 /* --------------------------------------------------
    Issue 142: Progress Group Compression
    - Densely packed metric blocks with consistent sizing
+   - Mobile: Minimize gaps to maximize content density
 -------------------------------------------------- */
 .progress-group { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
 .progress-group .progress-metric { flex: 1 1 180px; min-width: 140px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 0.75rem 0.85rem; position: relative; }
 .progress-group .progress-metric h6 { margin: 0 0 0.25rem 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9; }
 .progress-group .progress-value { font-weight: 600; font-size: 1.1rem; }
-@media (max-width: 575.98px) { .progress-group .progress-metric { flex: 1 1 calc(50% - var(--space-sm)); padding: 0.6rem 0.6rem; } }
+@media (max-width: 575.98px) { 
+    .progress-group { gap: 0.3rem; }
+    .progress-group .progress-metric { flex: 1 1 calc(50% - 0.15rem); padding: 0.5rem 0.5rem; min-width: 120px; } 
+}
 
 /* --------------------------------------------------
    Issue 143: Content Width Clamp & Full-Bleed Escape
    - .app-content centers and clamps width; .full-bleed escapes to viewport width
+   - Mobile: Maximize usable width with minimal padding
 -------------------------------------------------- */
-.app-content { max-width: 1120px; margin-inline: auto; width: 100%; padding-inline: 1.25rem; }
-@media (max-width: 575.98px) { .app-content { padding-inline: 0.85rem; } }
+.app-content { max-width: 1120px; margin-inline: auto; width: 100%; padding-inline: 1.1rem; }
+@media (max-width: 575.98px) { .app-content { padding-inline: 0.25rem; } }
+@media (max-width: 420px) { .app-content { padding-inline: 0.15rem; } }
 .app-content .full-bleed { width: 100vw; position: relative; left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw; }
 
 /* --------------------------------------------------
@@ -1321,21 +1333,13 @@ body.accessibility-debug .btn::after, body.accessibility-debug a::after { conten
   
 /* Mobile Compact Spacing Scale - Applied at small viewports for better content density */
 @media (max-width: 575.98px) {
-    /* Reduce card padding for mobile density */
-    .card-header {
-        padding: var(--space-sm) var(--space-md) !important;
-    }
-    
-    .card-body { padding: var(--space-md) !important; }
-    
-    .card-footer {
-        padding: var(--space-sm) var(--space-md) !important;
-    }
+    /* Reduce card padding for mobile density - prioritize content over whitespace */
+    .card-header { padding: 0.4rem 0.6rem !important; }
+    .card-body { padding: 0.6rem !important; }
+    .card-footer { padding: 0.4rem 0.6rem !important; }
     
     /* Reduce list group item padding */
-    .list-group-item {
-        padding: var(--space-sm) var(--space-md) !important;
-    }
+    .list-group-item { padding: 0.4rem 0.6rem !important; }
     
     /* Mobile dense utility class for reducing vertical spacing */
     .mobile-dense .mb-1 { margin-bottom: 0.125rem !important; }
@@ -1355,6 +1359,7 @@ body.accessibility-debug .btn::after, body.accessibility-debug a::after { conten
     .mobile-dense .mt-3 { margin-top: 0.5rem !important; }
     .mobile-dense .mt-4 { margin-top: 0.75rem !important; }
     .mobile-dense .mt-5 { margin-top: 1rem !important; }
+}
 }
 
 /* --------------------------------------------------
