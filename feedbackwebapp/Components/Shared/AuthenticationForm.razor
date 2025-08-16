@@ -276,6 +276,7 @@ else
         {
             // Set login attempt flag to indicate user is trying to log in
             loggingIn = true;
+            StateHasChanged();
             await JSRuntime.InvokeVoidAsync("localStorage.setItem", "feedbackflow_loginattempt", "true");
             
             // Store current URL for redirect after authentication
@@ -293,12 +294,12 @@ else
             // Clear login attempt flag on error
             await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "feedbackflow_loginattempt");
             authError = $"Error initiating login: {ex.Message}";
-            StateHasChanged();
         }
         finally
         {
             // Reset login attempt flag after operation
             loggingIn = false;
+            StateHasChanged();
         }
     }
 
