@@ -1,0 +1,21 @@
+@namespace FeedbackWebApp.Components.Shared
+@inherits CollapsibleSectionBase
+
+<section class="collapsible-section @(IsOpen ? "open" : "closed")" data-section-id="@SectionId">
+    <header class="collapsible-header d-flex align-items-center justify-content-between" >
+        <button class="toggle-btn btn btn-sm btn-outline-secondary d-flex align-items-center gap-2" @onclick="Toggle" aria-expanded="@IsOpen" aria-controls="@ContentId" id="@HeaderId">
+            <i class="bi @(IsOpen ? "bi-chevron-down" : "bi-chevron-right")"></i>
+            <span>@Title</span>
+        </button>
+        @if (!string.IsNullOrEmpty(SecondaryText))
+        {
+            <small class="text-muted ms-2">@SecondaryText</small>
+        }
+    </header>
+    <div id="@ContentId" class="collapsible-content" role="region" aria-labelledby="@HeaderId" style="@(IsOpen ? "max-height:999px;opacity:1;" : "max-height:0;opacity:0;")">
+        @ChildContent
+    </div>
+</section>
+
+@code {
+}
