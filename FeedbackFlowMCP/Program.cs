@@ -13,17 +13,20 @@ builder.Services
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure the port for Azure Functions custom handler
-var port = Environment.GetEnvironmentVariable("FUNCTIONS_CUSTOMHANDLER_PORT") ?? "80";
-builder.WebHost.UseUrls($"http://localhost:{port}");
+var port = Environment.GetEnvironmentVariable("FUNCTIONS_CUSTOMHANDLER_PORT") ?? "8080";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 builder.Services.AddMcpServer()
-    .WithHttpTransport()
+    .WithHttpTransport((options)=>
+    {
+        options.Stateless = true;
+    })
     .WithTools<FeedbackFlowTools>();
 
 builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
-app.MapMcp();
+app.MapMcp(pattern: "/mcp");
 
 app.Run();

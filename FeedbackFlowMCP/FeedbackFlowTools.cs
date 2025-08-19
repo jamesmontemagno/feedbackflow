@@ -7,11 +7,27 @@ namespace FeedbackFlowMCP;
 public sealed class FeedbackFlowTools
 {
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IHttpContextAccessor _httpContextAccessor;
     private const string BaseUrl = "https://api.feedbackflow.app";
-    
-    public FeedbackFlowTools(IHttpClientFactory httpClientFactory)
+
+    public FeedbackFlowTools(IHttpClientFactory httpClientFactory, IHttpContextAccessor httpContextAccessor)
     {
         _httpClientFactory = httpClientFactory;
+        _httpContextAccessor = httpContextAccessor;
+    }
+
+    string GetToken()
+    {
+        if (_httpContextAccessor?.HttpContext is null)
+        {
+            return string.Empty;
+        }
+
+        if (_httpContextAccessor.HttpContext.Request.Headers.TryGetValue("Authorization", out var token))
+        {
+            return token.ToString().Replace("Bearer ", "");
+        }
+        return string.Empty;
     }
 
     public enum AnalysisType
@@ -26,10 +42,10 @@ public sealed class FeedbackFlowTools
         [Description("The URL to analyze (GitHub, YouTube, Reddit, etc.)")] string url,
         [Description("Maximum number of comments to analyze (default: 1000)")] int maxComments = 1000,
         [Description("Custom analysis prompt (optional)")] string? customPrompt = null,
-    [Description("Output mode (optional): AnalysisOnly=0 (markdown), CommentsOnly=1 (JSON), AnalysisAndComments=2 (combined JSON)")] AnalysisType? type = null)
+        [Description("Output mode (optional): AnalysisOnly=0 (markdown), CommentsOnly=1 (JSON), AnalysisAndComments=2 (combined JSON)")] AnalysisType? type = null)
     {
-        var apiKey = Environment.GetEnvironmentVariable("FEEDBACKFLOW_API_KEY");
-        if (string.IsNullOrEmpty(apiKey))
+        var apiKey = GetToken();
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
             return "Error: FEEDBACKFLOW_API_KEY environment variable is required";
         }
@@ -71,8 +87,8 @@ public sealed class FeedbackFlowTools
         [Description("The subreddit name to analyze")] string subreddit,
         [Description("Force regeneration of cached report (default: false)")] bool force = false)
     {
-        var apiKey = Environment.GetEnvironmentVariable("FEEDBACKFLOW_API_KEY");
-        if (string.IsNullOrEmpty(apiKey))
+        var apiKey = GetToken();
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
             return "Error: FEEDBACKFLOW_API_KEY environment variable is required";
         }
@@ -109,8 +125,8 @@ public sealed class FeedbackFlowTools
         [Description("The GitHub repository in format 'owner/repo'")] string repo,
         [Description("Force regeneration of cached report (default: false)")] bool force = false)
     {
-        var apiKey = Environment.GetEnvironmentVariable("FEEDBACKFLOW_API_KEY");
-        if (string.IsNullOrEmpty(apiKey))
+        var apiKey = GetToken();
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
             return "Error: FEEDBACKFLOW_API_KEY environment variable is required";
         }
@@ -147,8 +163,8 @@ public sealed class FeedbackFlowTools
         [Description("The subreddit name to summarize")] string subreddit,
         [Description("Force regeneration of cached report (default: false)")] bool force = false)
     {
-        var apiKey = Environment.GetEnvironmentVariable("FEEDBACKFLOW_API_KEY");
-        if (string.IsNullOrEmpty(apiKey))
+        var apiKey = GetToken();
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
             return "Error: FEEDBACKFLOW_API_KEY environment variable is required";
         }
