@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: feedbackflow-mcp
+metadata:
+  template: feedbackflow-mcp@1.0.0
+services:
+  feedbackflowmcp:
+    project: .
+    language: csharp
+    host: function
