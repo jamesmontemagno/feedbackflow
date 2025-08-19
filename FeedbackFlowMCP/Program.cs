@@ -24,6 +24,7 @@ builder.Services.AddMcpServer()
     .WithTools<FeedbackFlowTools>();
 
 builder.Services.AddHttpClient();
+builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 

@@ -20,11 +20,13 @@ public sealed class FeedbackFlowTools
     {
         if (_httpContextAccessor?.HttpContext is null)
         {
+            Console.WriteLine("HttpContext is null");
             return string.Empty;
         }
 
         if (_httpContextAccessor.HttpContext.Request.Headers.TryGetValue("Authorization", out var token))
         {
+            Console.WriteLine("Authorization header found");
             return token.ToString().Replace("Bearer ", "");
         }
         return string.Empty;
@@ -47,7 +49,7 @@ public sealed class FeedbackFlowTools
         var apiKey = GetToken();
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            return "Error: FEEDBACKFLOW_API_KEY environment variable is required";
+            return "Error: Bearer token required. Get from FeedbackFlow API documentation.";
         }
 
         try
@@ -90,7 +92,7 @@ public sealed class FeedbackFlowTools
         var apiKey = GetToken();
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            return "Error: FEEDBACKFLOW_API_KEY environment variable is required";
+            return "Error: Bearer token required. Get from FeedbackFlow API documentation.";
         }
 
         try
@@ -128,7 +130,7 @@ public sealed class FeedbackFlowTools
         var apiKey = GetToken();
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            return "Error: FEEDBACKFLOW_API_KEY environment variable is required";
+            return "Error: Bearer token required. Get from FeedbackFlow API documentation.";
         }
 
         try
@@ -166,7 +168,7 @@ public sealed class FeedbackFlowTools
         var apiKey = GetToken();
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            return "Error: FEEDBACKFLOW_API_KEY environment variable is required";
+            return "Error: Bearer token required. Get from FeedbackFlow API documentation.";
         }
 
         try
