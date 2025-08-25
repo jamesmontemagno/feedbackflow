@@ -393,4 +393,142 @@ You can manage your email preferences in your account settings.
             TemplateType = EmailTemplateType.WeeklyDigest
         };
     }
+
+    public async Task<EmailDeliveryStatus> SendAdminWeeklyReportAsync(AdminWeeklyReportEmailRequest request)
+    {
+        try
+        {
+            if (!IsValidEmailAddress(request.RecipientEmail))
+            {
+                return new EmailDeliveryStatus
+                {
+                    OperationId = string.Empty,
+                    Status = EmailSendStatus.Failed,
+                    ErrorMessage = "Invalid recipient email address",
+                    SentAt = DateTime.UtcNow
+                };
+            }
+
+            var emailTemplate = GenerateAdminWeeklyReportTemplate(request);
+            
+            var emailMessage = new EmailMessage(
+                senderAddress: _senderEmail,
+                recipientAddress: request.RecipientEmail,
+                content: new EmailContent(emailTemplate.Subject)
+                {
+                    Html = emailTemplate.HtmlContent,
+                    PlainText = emailTemplate.PlainTextContent
+                }
+            );
+
+            _logger.LogInformation("Sending admin weekly report email to {Email} for week ending {WeekEnding}", 
+                request.RecipientEmail, request.ReportWeekEnding);
+
+            var response = await _emailClient.SendAsync(Azure.WaitUntil.Started, emailMessage);
+            
+            return new EmailDeliveryStatus
+            {
+                OperationId = response.Id,
+                Status = EmailSendStatus.Running,
+                SentAt = DateTime.UtcNow
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send admin weekly report email to {Email}", request.RecipientEmail);
+            
+            return new EmailDeliveryStatus
+            {
+                OperationId = string.Empty,
+                Status = EmailSendStatus.Failed,
+                ErrorMessage = ex.Message,
+                SentAt = DateTime.UtcNow
+            };
+        }
+    }
+
+    private EmailTemplate GenerateAdminWeeklyReportTemplate(AdminWeeklyReportEmailRequest request)
+    {
+        var subject = $"📊 FeedbackFlow Admin Weekly Report - {request.ReportWeekEnding:MMM d, yyyy}";
+
+        var htmlContent = EmailUtils.GenerateAdminWeeklyReportEmail(
+            request.RecipientName,
+            request.DashboardMetrics,
+            request.ReportWeekEnding,
+            request.TotalActiveReportConfigs,
+            request.ReportsGeneratedThisWeek,
+            request.TopActiveRepositories,
+            request.TopActiveSubreddits);
+
+        var plainTextContent = $@"
+FeedbackFlow Admin Weekly Report
+Week ending {request.ReportWeekEnding:MMMM d, yyyy}
+
+Hi {request.RecipientName},
+
+Here's your weekly admin summary for FeedbackFlow:
+
+OVERVIEW
+========
+• Total Users: {request.DashboardMetrics.UserStats.TotalUsers:N0}
+• Active Users (14d): {request.DashboardMetrics.UserStats.ActiveUsersLast14Days:N0} ({request.DashboardMetrics.UserStats.ActiveUsersPercentage:F1}% of total)
+• Active Report Configs: {request.TotalActiveReportConfigs:N0}
+• Reports Generated This Week: {request.ReportsGeneratedThisWeek:N0}
+
+USER DISTRIBUTION
+================";
+
+        foreach (var tier in request.DashboardMetrics.UserStats.TierDistribution)
+        {
+            plainTextContent += $"\n• {tier.Key}: {tier.Value:N0} users ({request.DashboardMetrics.UserStats.TierDistributionPercentage.GetValueOrDefault(tier.Key, 0):F1}%)";
+        }
+
+        plainTextContent += $@"
+
+USAGE ANALYTICS
+===============
+• AI Analyses Used: {request.DashboardMetrics.UsageStats.TotalAnalysesUsed:N0}
+• Feed Queries Used: {request.DashboardMetrics.UsageStats.TotalFeedQueriesUsed:N0}
+• API Calls: {request.DashboardMetrics.UsageStats.TotalApiCalls:N0}
+
+API ADOPTION
+============
+• API Enabled Users: {request.DashboardMetrics.ApiStats.TotalApiEnabledUsers:N0} ({(double)request.DashboardMetrics.ApiStats.TotalApiEnabledUsers / request.DashboardMetrics.UserStats.TotalUsers * 100:F1}% adoption)
+• Average API Calls Per User: {request.DashboardMetrics.ApiStats.AverageApiCallsPerUser:F1}";
+
+        if (request.TopActiveRepositories.Any())
+        {
+            plainTextContent += "\n\nTOP ACTIVE REPOSITORIES\n======================";
+            foreach (var repo in request.TopActiveRepositories.Take(5))
+            {
+                plainTextContent += $"\n• {repo}";
+            }
+        }
+
+        if (request.TopActiveSubreddits.Any())
+        {
+            plainTextContent += "\n\nTOP ACTIVE SUBREDDITS\n====================";
+            foreach (var subreddit in request.TopActiveSubreddits.Take(5))
+            {
+                plainTextContent += $"\n• r/{subreddit}";
+            }
+        }
+
+        plainTextContent += $@"
+
+Access the full admin dashboard for detailed insights: {WebUrlHelper.BuildUrl(_configuration, "/admin/dashboard")}
+
+---
+Generated by FeedbackFlow Admin Analytics • {DateTime.UtcNow:MMMM d, yyyy 'at' h:mm tt} UTC
+This is an automated weekly summary for FeedbackFlow administrators.
+";
+
+        return new EmailTemplate
+        {
+            Subject = subject,
+            HtmlContent = htmlContent,
+            PlainTextContent = plainTextContent,
+            TemplateType = EmailTemplateType.AdminWeeklyDigest
+        };
+    }
 }
