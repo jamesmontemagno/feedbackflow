@@ -12,7 +12,7 @@ namespace FeedbackFunctions.Reports;
 
 /// <summary>
 /// Azure Function to generate and send weekly admin reports to all administrators
-/// Runs every Sunday at 9:00 AM UTC (early morning US time)
+/// Runs every Sunday at 9:00 AM UTC (early morning US time).
 /// </summary>
 public class AdminWeeklyReportFunction
 {
