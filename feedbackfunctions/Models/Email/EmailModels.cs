@@ -1,5 +1,6 @@
 using Azure.Communication.Email;
 using SharedDump.Models.Reports;
+using SharedDump.Models.Admin;
 
 namespace FeedbackFunctions.Models.Email;
 
@@ -15,6 +16,7 @@ public enum EmailTemplateType
 {
     ReportNotification,
     WeeklyDigest,
+    AdminWeeklyDigest,
     WelcomeEmail
 }
 
@@ -29,6 +31,18 @@ public class ReportEmailRequest
     public string ReportType { get; set; } = string.Empty;
     public string HtmlContent { get; set; } = string.Empty;
     public DateTime GeneratedAt { get; set; }
+}
+
+public class AdminWeeklyReportEmailRequest
+{
+    public string RecipientEmail { get; set; } = string.Empty;
+    public string RecipientName { get; set; } = string.Empty;
+    public AdminDashboardMetrics DashboardMetrics { get; set; } = new();
+    public DateTime ReportWeekEnding { get; set; }
+    public int TotalActiveReportConfigs { get; set; }
+    public int ReportsGeneratedThisWeek { get; set; }
+    public List<string> TopActiveRepositories { get; set; } = new();
+    public List<string> TopActiveSubreddits { get; set; } = new();
 }
 
 public class EmailDeliveryStatus
