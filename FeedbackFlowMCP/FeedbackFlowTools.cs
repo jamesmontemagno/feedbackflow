@@ -39,7 +39,7 @@ public sealed class FeedbackFlowTools
         AnalysisAndComments = 2
     }
 
-    [McpServerTool, Description("Analyze feedback from various sources using AI (AutoAnalyze function). Requires API key in FEEDBACKFLOW_API_KEY environment variable.")]
+    [McpServerTool, Description("Analyze feedback from various sources using AI (AutoAnalyze function).")]
     public async Task<string> AutoAnalyzeFeedback(
         [Description("The URL to analyze (GitHub, YouTube, Reddit, etc.)")] string url,
         [Description("Maximum number of comments to analyze (default: 1000)")] int maxComments = 1000,
@@ -84,7 +84,7 @@ public sealed class FeedbackFlowTools
         }
     }
 
-    [McpServerTool, Description("Generate Reddit subreddit analysis report. Requires API key in FEEDBACKFLOW_API_KEY environment variable.")]
+    [McpServerTool, Description("Generate Reddit subreddit analysis report.")]
     public async Task<string> RedditReport(
         [Description("The subreddit name to analyze")] string subreddit,
         [Description("Force regeneration of cached report (default: false)")] bool force = false)
@@ -122,7 +122,7 @@ public sealed class FeedbackFlowTools
         }
     }
 
-    [McpServerTool, Description("Generate GitHub repository issues analysis report. Requires API key in FEEDBACKFLOW_API_KEY environment variable.")]
+    [McpServerTool, Description("Generate GitHub repository issues analysis report.")]
     public async Task<string> GitHubIssuesReport(
         [Description("The GitHub repository in format 'owner/repo'")] string repo,
         [Description("Force regeneration of cached report (default: false)")] bool force = false)
@@ -160,7 +160,7 @@ public sealed class FeedbackFlowTools
         }
     }
 
-    [McpServerTool, Description("Generate Reddit subreddit summary report. Requires API key in FEEDBACKFLOW_API_KEY environment variable.")]
+    [McpServerTool, Description("Generate Reddit subreddit summary report.")]
     public async Task<string> RedditReportSummary(
         [Description("The subreddit name to summarize")] string subreddit,
         [Description("Force regeneration of cached report (default: false)")] bool force = false)
