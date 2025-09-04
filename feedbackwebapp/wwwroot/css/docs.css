@@ -1,0 +1,33 @@
+/* Markdown / docs page styles - themed to match app.css variables */
+.markdown-content {
+    color: var(--text-primary);
+    line-height: 1.6;
+    font-size: 0.98rem;
+}
+.markdown-content h1 { color: var(--primary-color); margin-top: 0.4rem; margin-bottom: 0.6rem; }
+.markdown-content h2 { color: var(--text-primary); margin-top: 0.9rem; margin-bottom: 0.5rem; }
+.markdown-content h3 { color: var(--text-primary); margin-top: 0.8rem; margin-bottom: 0.45rem; }
+.markdown-content p, .markdown-content li { color: var(--text-secondary); }
+.markdown-content a { color: var(--link-color); text-decoration: underline; }
+.markdown-content a:hover { color: var(--link-hover-color); }
+.markdown-content pre { background: var(--code-bg); color: var(--code-color); padding: 1rem; border-radius: 12px; overflow: auto; border: 1px solid var(--border-color); }
+.markdown-content code { background: rgba(0,0,0,0.03); padding: 0.15rem 0.35rem; border-radius: 6px; color: var(--code-color); }
+.markdown-content blockquote { border-left: 4px solid var(--primary-color); padding: 0.5rem 1rem; margin: 0.5rem 0; background: rgba(var(--primary-color-rgb), 0.03); color: var(--text-primary); }
+.markdown-content table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; }
+.markdown-content th, .markdown-content td { border: 1px solid var(--border-color); padding: 0.5rem 0.75rem; }
+.markdown-content th { background: rgba(var(--primary-color-rgb), 0.06); color: var(--text-primary); }
+.markdown-content ul, .markdown-content ol { padding-left: 1.15rem; color: var(--text-secondary); }
+.markdown-content hr { border: none; border-top: 1px solid var(--border-color); margin: 1rem 0; }
+.markdown-content .footnote { font-size: 0.9rem; color: var(--text-secondary); }
+
+@media (prefers-color-scheme: dark) {
+    .markdown-content p, .markdown-content li { color: var(--text-primary); }
+    .markdown-content code { color: var(--code-color); background: rgba(255,255,255,0.02); }
+    .markdown-content pre { background: var(--code-bg); color: var(--code-color); border-color: var(--dark-border-color); }
+    .markdown-content blockquote { background: rgba(255,255,255,0.02); border-left-color: var(--primary-color); }
+}
+
+[data-theme="dark"] .markdown-content p, [data-theme="dark"] .markdown-content li { color: var(--text-primary); }
+[data-theme="dark"] .markdown-content code { color: var(--code-color); background: rgba(255,255,255,0.02); }
+[data-theme="dark"] .markdown-content pre { background: var(--code-bg); color: var(--code-color); border-color: var(--dark-border-color); }
+[data-theme="dark"] .markdown-content blockquote { background: rgba(255,255,255,0.02); border-left-color: var(--primary-color); }

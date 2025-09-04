@@ -1,0 +1,59 @@
+@page "/docs/mcp"
+@namespace FeedbackWebApp.Components.Pages.Docs
+
+@using System.IO
+@using Markdig
+@using Microsoft.AspNetCore.Components
+@inject IWebHostEnvironment Environment
+
+<title>MCP Server - FeedbackFlow</title>
+<link href="/css/docs.css" rel="stylesheet" />
+
+<div class="container-lg py-4">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="markdown-content">
+                @if (string.IsNullOrEmpty(markdownHtml))
+                {
+                    <div class="text-center py-4">
+                        <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+                        <p class="mt-2 text-muted">Loading MCP documentation...</p>
+                    </div>
+                }
+                else
+                {
+                    @((MarkupString)markdownHtml)
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string markdownHtml = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var possiblePaths = new[]
+        {
+            Path.Combine(Environment.ContentRootPath, "docs", "mcp-feedbackflow-server.md"),
+            Path.Combine(Environment.ContentRootPath, "..", "docs", "mcp-feedbackflow-server.md"),
+            Path.Combine(Environment.WebRootPath, "docs", "mcp-feedbackflow-server.md")
+        };
+
+        string? content = null;
+        foreach (var p in possiblePaths)
+        {
+            if (File.Exists(p))
+            {
+                content = await File.ReadAllTextAsync(p);
+                break;
+            }
+        }
+
+        if (content != null)
+            markdownHtml = Markdown.ToHtml(content ?? string.Empty, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build());
+        else
+            markdownHtml = "<p class=\"text-muted\">MCP documentation not found.</p>";
+    }
+}
