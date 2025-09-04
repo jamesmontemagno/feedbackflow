@@ -2,35 +2,56 @@
 @namespace FeedbackWebApp.Components.Pages.Docs
 
 @using System.IO
+@using System.Text.RegularExpressions
 @using Markdig
+@using Markdig.Extensions.AutoIdentifiers
 @using Microsoft.AspNetCore.Components
 @inject IWebHostEnvironment Environment
 
 <title>API Documentation - FeedbackFlow</title>
 <link href="/css/docs.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
 
 <div class="container-lg py-4">
     <div class="card shadow-sm">
         <div class="card-body">
-            <div class="markdown-content">
-                @if (string.IsNullOrEmpty(markdownHtml))
-                {
-                    <div class="text-center py-4">
-                        <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
-                        <p class="mt-2 text-muted">Loading API documentation...</p>
+            <div class="docs-layout">
+                <aside class="docs-toc">
+                    @if (string.IsNullOrEmpty(tocHtml))
+                    {
+                        <div class="text-muted small">Preparing contents...</div>
+                    }
+                    else
+                    {
+                        @((MarkupString)tocHtml)
+                    }
+                </aside>
+
+                <main class="docs-main">
+                    <div class="markdown-content">
+                        @if (string.IsNullOrEmpty(markdownHtml))
+                        {
+                            <div class="text-center py-4">
+                                <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+                                <p class="mt-2 text-muted">Loading API documentation...</p>
+                            </div>
+                        }
+                        else
+                        {
+                            @((MarkupString)markdownHtml)
+                        }
                     </div>
-                }
-                else
-                {
-                    @((MarkupString)markdownHtml)
-                }
+                </main>
             </div>
         </div>
     </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script>document.addEventListener('DOMContentLoaded', function(){ if(window.hljs) hljs.highlightAll(); });</script>
 </div>
 
 @code {
     private string markdownHtml = string.Empty;
+    private string tocHtml = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -52,8 +73,35 @@
         }
 
         if (content != null)
-            markdownHtml = Markdown.ToHtml(content ?? string.Empty, new MarkdownPipelineBuilder().UseAdvancedExtensions().Build());
+        {
+            var pipeline = new MarkdownPipelineBuilder()
+                .UseAdvancedExtensions()
+                .UseAutoIdentifiers(AutoIdentifierOptions.GitHub)
+                .Build();
+
+            markdownHtml = Markdown.ToHtml(content ?? string.Empty, pipeline);
+
+            // Build TOC from generated HTML headings (h1-h3)
+            var matches = Regex.Matches(markdownHtml, "<h([1-3])\\s+id=\"([^\"]+)\">(.*?)</h\\1>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            if (matches.Count > 0)
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.Append("<nav class=\"docs-toc-nav\"><ul>");
+                foreach (Match m in matches)
+                {
+                    var level = int.Parse(m.Groups[1].Value);
+                    var id = m.Groups[2].Value;
+                    var text = Regex.Replace(m.Groups[3].Value, "<.*?>", string.Empty); // strip inner tags
+                    var indent = level == 1 ? "" : (level == 2 ? " class=\"toc-h2\"" : " class=\"toc-h3\"");
+                    sb.Append($"<li{indent}><a href=\"#{id}\">{text}</a></li>");
+                }
+                sb.Append("</ul></nav>");
+                tocHtml = sb.ToString();
+            }
+        }
         else
+        {
             markdownHtml = "<p class=\"text-muted\">API documentation not found.</p>";
+        }
     }
 }

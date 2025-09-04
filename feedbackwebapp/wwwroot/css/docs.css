@@ -31,3 +31,24 @@
 [data-theme="dark"] .markdown-content code { color: var(--code-color); background: rgba(255,255,255,0.02); }
 [data-theme="dark"] .markdown-content pre { background: var(--code-bg); color: var(--code-color); border-color: var(--dark-border-color); }
 [data-theme="dark"] .markdown-content blockquote { background: rgba(255,255,255,0.02); border-left-color: var(--primary-color); }
+
+/* Docs page layout: sidebar TOC + main content */
+.docs-layout { display: grid; grid-template-columns: 240px 1fr; gap: 1.5rem; }
+.docs-toc { padding: 0.5rem 0.75rem; border-right: 1px solid var(--border-color); max-height: 70vh; overflow: auto; position: sticky; top: 1.25rem; }
+.docs-toc-nav ul { list-style: none; padding-left: 0; margin: 0; }
+.docs-toc-nav li { margin: 0.35rem 0; }
+.docs-toc-nav a { color: var(--text-secondary); text-decoration: none; font-size: 0.95rem; }
+.docs-toc-nav a:hover { color: var(--primary-color); }
+.docs-toc-nav .toc-h2 { padding-left: 0.6rem; font-size: 0.93rem; }
+.docs-toc-nav .toc-h3 { padding-left: 1.1rem; font-size: 0.9rem; }
+.docs-main { min-width: 0; }
+
+/* Responsive: stack TOC above content on smaller screens */
+@media (max-width: 991px) {
+    .docs-layout { grid-template-columns: 1fr; }
+    .docs-toc { position: relative; border-right: none; max-height: none; margin-bottom: 1rem; }
+}
+
+/* Highlight.js blocks spacing fix */
+.markdown-content pre code.hljs { display: block; padding: 0; }
+.markdown-content pre { padding: 0; }
