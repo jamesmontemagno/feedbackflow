@@ -133,7 +133,7 @@
                     var id = m.Groups[2].Value;
                     var text = Regex.Replace(m.Groups[3].Value, "<.*?>", string.Empty);
                     var indent = level == 1 ? "" : (level == 2 ? " class=\"toc-h2\"" : " class=\"toc-h3\"");
-                    sb.Append($"<li{indent}><a href=\"#{id}\" data-anchor=\"{id}\">{text}</a></li>");
+                    sb.Append($"<li{indent}><a href=\"/docs/mcp#{id}\" data-anchor=\"{id}\">{text}</a></li>");
                 }
                 sb.Append("</ul></nav>");
                 tocHtml = sb.ToString();
