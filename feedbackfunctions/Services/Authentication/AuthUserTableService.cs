@@ -112,6 +112,67 @@ public class AuthUserTableService : IAuthUserTableService
     }
 
     /// <inheritdoc />
+    public async Task<AuthUserEntity> CreateUserIfNotExistsAsync(AuthUserEntity user)
+    {
+        try
+        {
+            // First try to add the entity atomically - this will fail if it already exists
+            try
+            {
+                await _userTableClient.AddEntityAsync(user);
+                _logger.LogInformation("User {UserId} created successfully (new user)", user.UserId);
+                return user;
+            }
+            catch (Azure.RequestFailedException ex) when (ex.Status == 409)
+            {
+                // Entity already exists, fetch and return the existing one
+                _logger.LogInformation("User already exists for {Provider} provider with ID {ProviderUserId}, returning existing user", 
+                    user.AuthProvider, user.ProviderUserId);
+                
+                var existing = await GetUserByProviderAsync(user.AuthProvider, user.ProviderUserId);
+                if (existing != null)
+                {
+                    // Update the existing user's last login and profile image if provided
+                    if (user.LastLoginAt.HasValue)
+                    {
+                        existing.LastLoginAt = user.LastLoginAt;
+                    }
+                    if (!string.IsNullOrEmpty(user.ProfileImageUrl))
+                    {
+                        existing.ProfileImageUrl = user.ProfileImageUrl;
+                    }
+                    
+                    // Try to update the existing entity with new information
+                    try
+                    {
+                        await _userTableClient.UpdateEntityAsync(existing, existing.ETag);
+                        _logger.LogInformation("Updated existing user {UserId} with latest login info", existing.UserId);
+                    }
+                    catch (Exception updateEx)
+                    {
+                        // Log the error but don't fail - we can still return the existing user
+                        _logger.LogWarning(updateEx, "Failed to update existing user {UserId} with latest login info, but returning existing user", existing.UserId);
+                    }
+                    
+                    return existing;
+                }
+                else
+                {
+                    // This shouldn't happen, but handle it gracefully
+                    _logger.LogError("User entity conflict but could not retrieve existing user for {Provider} provider with ID {ProviderUserId}", 
+                        user.AuthProvider, user.ProviderUserId);
+                    throw new InvalidOperationException($"User creation conflict but existing user not found for {user.AuthProvider}:{user.ProviderUserId}");
+                }
+            }
+        }
+        catch (Exception ex) when (!(ex is Azure.RequestFailedException rfe && rfe.Status == 409))
+        {
+            _logger.LogError(ex, "Error creating user {UserId}", user.UserId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<bool> DeleteUserAsync(string userId)
     {
         try
