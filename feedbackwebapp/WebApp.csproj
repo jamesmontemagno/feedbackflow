@@ -32,6 +32,7 @@
       <Link>docs\mcp-feedbackflow-server.md</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- Removed explicit docs.css include; wwwroot content is included implicitly by SDK. -->
   </ItemGroup>
 
 </Project>
