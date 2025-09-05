@@ -1444,3 +1444,5 @@ body.accessibility-debug .btn::after, body.accessibility-debug a::after { conten
             z-index: 2;
     }
 }
+
+/* markdown styles moved to wwwroot/css/docs.css */

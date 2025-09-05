@@ -20,7 +20,8 @@
   <Project Path="FeedbackFlow.AppHost/AppHost.csproj" />
   <Project Path="FeedbackFlow.ServiceDefaults/ServiceDefaults.csproj" />
   <Project Path="feedbackflow.tests/Tests.csproj" />
-  <Project Path="FeedbackFlowMCP/FeedbackFlowMCP.csproj" />
+  <Project Path="FeedbackFlowLocalMCP/LocalMCP.csproj" />
+  <Project Path="FeedbackFlowMCP/MCP.csproj" />
   <Project Path="feedbackfunctions/Functions.csproj" />
   <Project Path="feedbackwebapp/WebApp.csproj" />
   <Project Path="shareddump/Shared.csproj" />

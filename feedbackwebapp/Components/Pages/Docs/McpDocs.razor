@@ -1,0 +1,147 @@
+@page "/docs/mcp"
+@namespace FeedbackWebApp.Components.Pages.Docs
+
+@using System.IO
+@using System.Text.RegularExpressions
+@using Markdig
+@using Markdig.Extensions.AutoIdentifiers
+@using Microsoft.AspNetCore.Components
+@inject IWebHostEnvironment Environment
+
+<title>MCP Server - FeedbackFlow</title>
+<link href="/css/docs.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+
+<div class="container-lg py-4">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="docs-layout">
+                <aside class="docs-toc">
+                    @if (string.IsNullOrEmpty(tocHtml))
+                    {
+                        <div class="text-muted small">Preparing contents...</div>
+                    }
+                    else
+                    {
+                        @((MarkupString)tocHtml)
+                    }
+                </aside>
+
+                <main class="docs-main">
+                    <div class="markdown-content" id="markdown-root">
+                        @if (string.IsNullOrEmpty(markdownHtml))
+                        {
+                            <div class="text-center py-4">
+                                <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+                                <p class="mt-2 text-muted">Loading MCP documentation...</p>
+                            </div>
+                        }
+                        else
+                        {
+                            @((MarkupString)markdownHtml)
+                        }
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.hljs) hljs.highlightAll();
+            const toc = document.querySelector('.docs-toc-nav');
+            if (toc) {
+                toc.addEventListener('click', function (e) {
+                    const a = e.target.closest('a');
+                    if (!a) return;
+                    const href = a.getAttribute('href');
+                    if (href && href.startsWith('#')) {
+                        e.preventDefault();
+                        const el = document.getElementById(href.substring(1));
+                        if (el) {
+                            history.replaceState(null, '', href);
+                            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }
+                });
+            }
+            const headings = Array.from(document.querySelectorAll('.markdown-content h1[id], .markdown-content h2[id], .markdown-content h3[id]'));
+            const linkMap = new Map();
+            if (toc) {
+                toc.querySelectorAll('a[data-anchor]').forEach(a => linkMap.set(a.getAttribute('data-anchor'), a));
+            }
+            const observer = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        linkMap.forEach(l => l.classList.remove('active'));
+                        const link = linkMap.get(entry.target.id);
+                        if (link) link.classList.add('active');
+                    }
+                });
+            }, { rootMargin: '0px 0px -65% 0px', threshold: [0, 1] });
+            headings.forEach(h => observer.observe(h));
+            if (location.hash) {
+                setTimeout(() => {
+                    const target = document.getElementById(location.hash.substring(1));
+                    if (target) target.scrollIntoView({ behavior: 'instant', block: 'start' });
+                }, 50);
+            }
+        });
+    </script>
+</div>
+
+@code {
+    private string markdownHtml = string.Empty;
+    private string tocHtml = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var possiblePaths = new[]
+        {
+            Path.Combine(Environment.ContentRootPath, "docs", "mcp-feedbackflow-server.md"),
+            Path.Combine(Environment.ContentRootPath, "..", "docs", "mcp-feedbackflow-server.md"),
+            Path.Combine(Environment.WebRootPath, "docs", "mcp-feedbackflow-server.md")
+        };
+
+        string? content = null;
+        foreach (var p in possiblePaths)
+        {
+            if (File.Exists(p))
+            {
+                content = await File.ReadAllTextAsync(p);
+                break;
+            }
+        }
+
+        if (content != null)
+        {
+            var pipeline = new MarkdownPipelineBuilder()
+                .UseAdvancedExtensions()
+                .UseAutoIdentifiers(AutoIdentifierOptions.GitHub | AutoIdentifierOptions.AutoLink)
+                .Build();
+
+            markdownHtml = Markdown.ToHtml(content ?? string.Empty, pipeline);
+
+            var matches = Regex.Matches(markdownHtml, "<h([1-3])\\s+id=\"([^\"]+)\">(.*?)</h\\1>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            if (matches.Count > 0)
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.Append("<nav class=\"docs-toc-nav\"><ul>");
+                foreach (Match m in matches)
+                {
+                    var level = int.Parse(m.Groups[1].Value);
+                    var id = m.Groups[2].Value;
+                    var text = Regex.Replace(m.Groups[3].Value, "<.*?>", string.Empty);
+                    var indent = level == 1 ? "" : (level == 2 ? " class=\"toc-h2\"" : " class=\"toc-h3\"");
+                    sb.Append($"<li{indent}><a href=\"/docs/mcp#{id}\" data-anchor=\"{id}\">{text}</a></li>");
+                }
+                sb.Append("</ul></nav>");
+                tocHtml = sb.ToString();
+            }
+        }
+        else
+        {
+            markdownHtml = "<p class=\"text-muted\">MCP documentation not found.</p>";
+        }
+    }
+}
