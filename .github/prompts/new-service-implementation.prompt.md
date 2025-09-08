@@ -1,3 +1,9 @@
+---
+mode: 4.1-beastmode
+tools: ['edit', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'usages', 'vscodeAPI', 'think', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'githubRepo', 'extensions', 'todos', 'runTests']
+---
+
+
 # New Service Implementation Guide
 
 This guide outlines the steps needed to implement a new service feature across the FeedbackFlow solution. Use this as a checklist and reference for adding any new service, whether for Feedback or ContentFeed. Adjust steps as needed for your specific scenario.
