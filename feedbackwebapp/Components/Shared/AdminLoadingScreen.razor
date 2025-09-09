@@ -1,0 +1,94 @@
+@namespace FeedbackWebApp.Components.Shared
+
+<div class="admin-loading-container">
+    <div class="admin-loading-content">
+        <!-- Main loading animation -->
+        <div class="admin-loading-center">
+            <div class="admin-gear-container">
+                <i class="bi bi-gear-fill admin-gear primary-gear"></i>
+                <i class="bi bi-gear admin-gear secondary-gear"></i>
+                <i class="bi bi-shield-check admin-shield"></i>
+            </div>
+            
+            <!-- Floating admin icons -->
+            <div class="admin-floating-icons">
+                <i class="bi bi-people-fill floating-icon" style="--delay: 0s; --float-distance: 15px;"></i>
+                <i class="bi bi-graph-up floating-icon" style="--delay: 0.5s; --float-distance: 20px;"></i>
+                <i class="bi bi-key-fill floating-icon" style="--delay: 1s; --float-distance: 18px;"></i>
+                <i class="bi bi-speedometer2 floating-icon" style="--delay: 1.5s; --float-distance: 22px;"></i>
+                <i class="bi bi-eye-fill floating-icon" style="--delay: 2s; --float-distance: 16px;"></i>
+                <i class="bi bi-lock-fill floating-icon" style="--delay: 2.5s; --float-distance: 19px;"></i>
+            </div>
+
+            <!-- Progress indicator -->
+            <div class="admin-progress-container">
+                <div class="admin-progress-bar">
+                    <div class="admin-progress-fill"></div>
+                </div>
+                <div class="admin-progress-dots">
+                    <span class="progress-dot active" style="--delay: 0.2s;"></span>
+                    <span class="progress-dot" style="--delay: 0.6s;"></span>
+                    <span class="progress-dot" style="--delay: 1.0s;"></span>
+                    <span class="progress-dot" style="--delay: 1.4s;"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading text with animation -->
+        <div class="admin-loading-text">
+            <h3 class="loading-title">@LoadingTitle</h3>
+            <p class="loading-message">@LoadingMessage</p>
+            <div class="loading-steps">
+                @if (ShowSteps)
+                {
+                    <div class="step @(currentStep >= 0 ? "active" : "")">
+                        <i class="bi bi-check-circle-fill"></i> Authenticating user
+                    </div>
+                    <div class="step @(currentStep >= 1 ? "active" : "")">
+                        <i class="bi bi-shield-check"></i> Verifying admin privileges
+                    </div>
+                    <div class="step @(currentStep >= 2 ? "active" : "")">
+                        <i class="bi bi-gear-fill"></i> Loading admin dashboard
+                    </div>
+                    <div class="step @(currentStep >= 3 ? "active" : "")">
+                        <i class="bi bi-check-all"></i> Access granted
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    
+    <!-- Background particles -->
+    <div class="admin-particles">
+        @for (int i = 0; i < 12; i++)
+        {
+            <div class="particle" style="--delay: @(i * 0.3)s; --size: @(8 + (i % 4) * 2)px; --duration: @(3 + (i % 3))s;"></div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string LoadingTitle { get; set; } = "Admin Access";
+    [Parameter] public string LoadingMessage { get; set; } = "Validating administrator privileges...";
+    [Parameter] public bool ShowSteps { get; set; } = true;
+    
+    private int currentStep = -1;
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await SimulateLoadingSteps();
+        }
+    }
+    
+    private async Task SimulateLoadingSteps()
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            await Task.Delay(800);
+            currentStep = i;
+            StateHasChanged();
+        }
+    }
+}
