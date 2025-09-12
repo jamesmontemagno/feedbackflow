@@ -7,6 +7,8 @@ namespace FeedbackWebApp.Services.Mock;
 
 public class MockAutoDataSourceFeedbackService : FeedbackService, IAutoDataSourceFeedbackService
 {
+    private bool _includeIndividualReports = false; // Default to false - only full report
+
     public MockAutoDataSourceFeedbackService(
         IHttpClientFactory http,
         IConfiguration configuration,
@@ -86,5 +88,10 @@ Comments:
         UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed successfully");
         
         return result;
+    }
+
+    public void SetIncludeIndividualReports(bool includeIndividualReports)
+    {
+        _includeIndividualReports = includeIndividualReports;
     }
 }
