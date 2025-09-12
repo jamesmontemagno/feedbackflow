@@ -708,6 +708,8 @@ public class UserAccountService : IUserAccountService
             };
         }
 
+        // TODO: calculate top reports subscribed to for users.
+
         // Calculate top users by combined usage
         stats.TopUsers = allUsers
             .Select(u => new TopUserUsage

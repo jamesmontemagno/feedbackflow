@@ -24,7 +24,7 @@ jobs:
           dotnet-version: '9.0.x'
 
       - name: Build FeedbackFlowLocalMCP
-        run: dotnet build FeedbackFlowLocalMCP/LocalMCP.csproj
+        run: dotnet build FeedbackFlowLocalMCP/FeedbackFlowLocalMCP.csproj
 
   build-and-publish:
     runs-on: ubuntu-latest
@@ -45,4 +45,4 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Publish FeedbackFlowLocalMCP as Container
-        run: dotnet publish FeedbackFlowLocalMCP/LocalMCP.csproj /t:PublishContainer -p ContainerRegistry=docker.io
+        run: dotnet publish FeedbackFlowLocalMCP/FeedbackFlowLocalMCP.csproj /t:PublishContainer -p ContainerRegistry=docker.io
