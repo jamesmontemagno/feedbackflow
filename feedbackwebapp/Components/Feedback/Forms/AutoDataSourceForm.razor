@@ -37,17 +37,23 @@
     @* Show individual reports option when multiple URLs are present! *@
     @if (Urls.Count(u => !string.IsNullOrWhiteSpace(u)) > 1)
     {
-        <div class="form-check mb-3">
-            <input class="form-check-input" 
-                   type="checkbox" 
-                   id="includeIndividualReports"
-                   @bind="IncludeIndividualReports" 
-                   disabled="@IsDisabled" />
-            <label class="form-check-label" for="includeIndividualReports">
-                Include individual reports for each URL
-            </label>
-            <div class="form-text">
-                By default, only a combined analysis is generated. Check this to also get separate analysis for each URL.
+        <div class="toggle-option-container">
+            <div class="toggle-switch">
+                <input type="checkbox" 
+                       id="includeIndividualReports"
+                       class="toggle-switch-checkbox"
+                       @bind="IncludeIndividualReports" 
+                       disabled="@IsDisabled" />
+                <label class="toggle-switch-label" for="includeIndividualReports">
+                    <span class="toggle-switch-inner"></span>
+                    <span class="toggle-switch-switch"></span>
+                </label>
+            </div>
+            <div class="toggle-content">
+                <div class="toggle-title">Include individual reports for each URL</div>
+                <div class="toggle-description">
+                    By default, only a combined analysis is generated. Enable this to also get separate analysis for each URL.
+                </div>
             </div>
         </div>
     }
