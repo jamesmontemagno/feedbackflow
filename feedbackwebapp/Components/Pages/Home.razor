@@ -79,7 +79,7 @@
                 <div class="card-body">
                     @if (selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
                     {
-                        <AutoDataSourceForm @ref="autoDataSourceForm" IsDisabled="@isLoading" OnUrlsChanged="HandleUrlsChanged" />
+                        <AutoDataSourceForm @ref="autoDataSourceForm" IsDisabled="@isLoading" OnUrlsChanged="HandleUrlsChanged" @bind-IncludeIndividualReports="includeIndividualReports" />
                     }
                     else if (selectedSource.Equals("Manual", StringComparison.OrdinalIgnoreCase))
                     {
@@ -178,6 +178,7 @@
     private bool showPromptEditor = false;
     private string customPrompt = string.Empty; // Temporary, not persisted
     private bool showSurveyLink = false; // After successful analysis and if not previously completed
+    private bool includeIndividualReports = false; // Default to false - only full report
     
     // Reanalyze caching state
     private string[]? lastAnalyzedUrls;
@@ -260,6 +261,10 @@
         var service = ServiceProvider.CreateAutoDataSourceService(
             autoDataSourceForm?.GetUrls().ToArray() ?? Array.Empty<string>(),
             HandleStatusUpdate);
+
+        // Set the individual reports flag
+        var autoService = service as IAutoDataSourceFeedbackService;
+        autoService?.SetIncludeIndividualReports(includeIndividualReports);
 
         // Apply temporary prompt
         if (!string.IsNullOrWhiteSpace(customPrompt))
@@ -521,6 +526,13 @@
                     HandleStatusUpdate),
                 _ => throw new InvalidOperationException("Please select a feedback source")
             };
+
+            // Set the individual reports flag for Auto services
+            if (selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
+            {
+                var autoService = service as IAutoDataSourceFeedbackService;
+                autoService?.SetIncludeIndividualReports(includeIndividualReports);
+            }
 
             // Apply temporary prompt via new API so precedence is clear
             if (selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))

@@ -8,6 +8,7 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
 {
     private readonly string[] _urls;
     private readonly FeedbackServiceProvider _serviceProvider;
+    private bool _includeIndividualReports = false; // Default to false - only full report
     
     /// <summary>
     /// Last fetched comments snapshot for caching/reanalysis support
@@ -111,6 +112,11 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         return result;
     }   
     
+    public void SetIncludeIndividualReports(bool includeIndividualReports)
+    {
+        _includeIndividualReports = includeIndividualReports;
+    }
+    
      public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
         if (string.IsNullOrWhiteSpace(comments))
@@ -135,7 +141,7 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
                 return ($"# {char.ToUpper(data.Source[0]) + data.Source[1..]} Feedback Analysis\n\n{markdown}", sourceData);
             }
 
-            // For multiple URLs, start with overall analysis then analyze each URL
+            // For multiple URLs, start with overall analysis, then optionally analyze each URL individually
             var analysisBySource = new List<string>();
             
             // First do the overall analysis of everything
@@ -144,18 +150,25 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
             var overallAnalysis = await AnalyzeCommentsInternalWithoutStatusUpdate("auto", allCommentsText, totalComments);
             analysisBySource.Add("## Overall Analysis\n\n" + overallAnalysis);
 
-            // Then analyze each source individually
-            for (int i = 0; i < sourceData.Count; i++)
+            // Only analyze each source individually if the user requested it
+            if (_includeIndividualReports)
             {
-                var data = sourceData[i];
-                UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {char.ToUpper(data.Source[0]) + data.Source[1..]} feedback ({i + 1}/{sourceData.Count})...");
-                var markdown = await AnalyzeCommentsInternalWithoutStatusUpdate(data.Source, data.Comments, data.CommentCount);
-                analysisBySource.Add($"## {char.ToUpper(data.Source[0]) + data.Source[1..]} Analysis\n\n{markdown}");
+                for (int i = 0; i < sourceData.Count; i++)
+                {
+                    var data = sourceData[i];
+                    UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {char.ToUpper(data.Source[0]) + data.Source[1..]} feedback ({i + 1}/{sourceData.Count})...");
+                    var markdown = await AnalyzeCommentsInternalWithoutStatusUpdate(data.Source, data.Comments, data.CommentCount);
+                    analysisBySource.Add($"## {char.ToUpper(data.Source[0]) + data.Source[1..]} Analysis\n\n{markdown}");
+                }
+                UpdateStatus(FeedbackProcessStatus.Completed, "Multi-source analysis completed");
+                var combinedAnalysis = string.Join("\n\n", analysisBySource);
+                return ($"# Multi-Source Feedback Analysis\n\n{combinedAnalysis}", sourceData);
             }
-
-            UpdateStatus(FeedbackProcessStatus.Completed, "Multi-source analysis completed");
-            var combinedAnalysis = string.Join("\n\n", analysisBySource);
-            return ($"# Multi-Source Feedback Analysis\n\n{combinedAnalysis}", sourceData);
+            else
+            {
+                UpdateStatus(FeedbackProcessStatus.Completed, "Overall analysis completed");
+                return ($"# Multi-Source Feedback Analysis\n\n{overallAnalysis}", sourceData);
+            }
         }
         
         // Fallback to regular analysis if we don't have the source data

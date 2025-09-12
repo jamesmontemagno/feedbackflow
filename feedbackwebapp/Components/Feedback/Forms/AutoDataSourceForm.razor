@@ -33,6 +33,24 @@
             type="button">
         <i class="bi bi-plus-lg"></i> Add Another URL
     </button>
+
+    @* Show individual reports option when multiple URLs are present *@
+    @if (Urls.Count(u => !string.IsNullOrWhiteSpace(u)) > 1)
+    {
+        <div class="form-check mb-3">
+            <input class="form-check-input" 
+                   type="checkbox" 
+                   id="includeIndividualReports"
+                   @bind="IncludeIndividualReports" 
+                   disabled="@IsDisabled" />
+            <label class="form-check-label" for="includeIndividualReports">
+                Include individual reports for each URL
+            </label>
+            <div class="form-text">
+                By default, only a combined analysis is generated. Check this to also get separate analysis for each URL.
+            </div>
+        </div>
+    }
 </div>
 
 @code {    
@@ -44,16 +62,23 @@
     [Parameter]
     public bool IsDisabled { get; set; }
 
+    [Parameter]
+    public bool IncludeIndividualReports { get; set; } = false;
+
+    [Parameter]
+    public EventCallback<bool> IncludeIndividualReportsChanged { get; set; }
+
     public async Task HandleUrlChange(int index, string value)
     {
         Urls[index] = value;
         await OnUrlsChanged.InvokeAsync(Urls);
+        StateHasChanged(); // Refresh to show/hide checkbox
     }
 
     private void AddUrl()
     {
         Urls.Add("");
-        StateHasChanged();
+        StateHasChanged(); // Refresh to show/hide checkbox
     }
 
     private async Task RemoveUrl(int index)
@@ -62,11 +87,13 @@
         {
             Urls.RemoveAt(index);
             await OnUrlsChanged.InvokeAsync(Urls);
-            StateHasChanged();
+            StateHasChanged(); // Refresh to show/hide checkbox
         }
     }
 
     public void RefreshUI() => StateHasChanged();
     
     public List<string> GetUrls() => Urls.Where(u => !string.IsNullOrWhiteSpace(u)).ToList();
+    
+    public bool GetIncludeIndividualReports() => IncludeIndividualReports;
 }

@@ -125,7 +125,11 @@ public interface ITwitterFeedbackService : IFeedbackService { }
 /// </remarks>
 public interface IAutoDataSourceFeedbackService : IFeedbackService
 {
-	// No need for GetFeedback declaration since it's inherited from IFeedbackService
+	/// <summary>
+	/// Sets whether to include individual reports for each URL when analyzing multiple URLs
+	/// </summary>
+	/// <param name="includeIndividualReports">True to include individual reports, false for only combined analysis</param>
+	void SetIncludeIndividualReports(bool includeIndividualReports);
 }
 
 /// <summary>
