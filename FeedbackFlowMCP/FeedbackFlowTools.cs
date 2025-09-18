@@ -16,6 +16,11 @@ public sealed class FeedbackFlowTools
         _httpContextAccessor = httpContextAccessor;
     }
 
+    string GetTokenOrEnvironmentKey()
+    {
+        return null;
+    }
+
     string GetToken()
     {
         if (_httpContextAccessor?.HttpContext is null)
