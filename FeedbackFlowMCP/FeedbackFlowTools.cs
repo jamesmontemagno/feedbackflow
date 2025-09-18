@@ -18,7 +18,21 @@ public sealed class FeedbackFlowTools
 
     string GetTokenOrEnvironmentKey()
     {
-        return null;
+        // First try to get token from Authorization header (for authenticated requests)
+        var token = GetToken();
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            return token;
+        }
+
+        // Fall back to environment variable
+        var apiKey = Environment.GetEnvironmentVariable("FEEDBACKFLOW_API_KEY");
+        if (!string.IsNullOrEmpty(apiKey))
+        {
+            return apiKey;
+        }
+
+        return string.Empty;
     }
 
     string GetToken()
@@ -44,17 +58,17 @@ public sealed class FeedbackFlowTools
         AnalysisAndComments = 2
     }
 
-    [McpServerTool, Description("Analyze feedback from various sources using AI (AutoAnalyze function).")]
+    [McpServerTool, Description("Analyze feedback from various sources using AI (AutoAnalyze function). Requires Bearer token or FEEDBACKFLOW_API_KEY environment variable.")]
     public async Task<string> AutoAnalyzeFeedback(
         [Description("The URL to analyze (GitHub, YouTube, Reddit, etc.)")] string url,
         [Description("Maximum number of comments to analyze (default: 1000)")] int maxComments = 1000,
         [Description("Custom analysis prompt (optional)")] string? customPrompt = null,
         [Description("Output mode (optional): AnalysisOnly=0 (markdown), CommentsOnly=1 (JSON), AnalysisAndComments=2 (combined JSON)")] AnalysisType? type = null)
     {
-        var apiKey = GetToken();
+        var apiKey = GetTokenOrEnvironmentKey();
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            return "Error: Bearer token required. Get from FeedbackFlow API documentation.";
+            return "Error: Bearer token or FEEDBACKFLOW_API_KEY environment variable required. Get from FeedbackFlow API documentation.";
         }
 
         try
@@ -89,15 +103,15 @@ public sealed class FeedbackFlowTools
         }
     }
 
-    [McpServerTool, Description("Generate Reddit subreddit analysis report.")]
+    [McpServerTool, Description("Generate Reddit subreddit analysis report. Requires Bearer token or FEEDBACKFLOW_API_KEY environment variable.")]
     public async Task<string> RedditReport(
         [Description("The subreddit name to analyze")] string subreddit,
         [Description("Force regeneration of cached report (default: false)")] bool force = false)
     {
-        var apiKey = GetToken();
+        var apiKey = GetTokenOrEnvironmentKey();
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            return "Error: Bearer token required. Get from FeedbackFlow API documentation.";
+            return "Error: Bearer token or FEEDBACKFLOW_API_KEY environment variable required. Get from FeedbackFlow API documentation.";
         }
 
         try
@@ -127,15 +141,15 @@ public sealed class FeedbackFlowTools
         }
     }
 
-    [McpServerTool, Description("Generate GitHub repository issues analysis report.")]
+    [McpServerTool, Description("Generate GitHub repository issues analysis report. Requires Bearer token or FEEDBACKFLOW_API_KEY environment variable.")]
     public async Task<string> GitHubIssuesReport(
         [Description("The GitHub repository in format 'owner/repo'")] string repo,
         [Description("Force regeneration of cached report (default: false)")] bool force = false)
     {
-        var apiKey = GetToken();
+        var apiKey = GetTokenOrEnvironmentKey();
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            return "Error: Bearer token required. Get from FeedbackFlow API documentation.";
+            return "Error: Bearer token or FEEDBACKFLOW_API_KEY environment variable required. Get from FeedbackFlow API documentation.";
         }
 
         try
@@ -165,15 +179,15 @@ public sealed class FeedbackFlowTools
         }
     }
 
-    [McpServerTool, Description("Generate Reddit subreddit summary report.")]
+    [McpServerTool, Description("Generate Reddit subreddit summary report. Requires Bearer token or FEEDBACKFLOW_API_KEY environment variable.")]
     public async Task<string> RedditReportSummary(
         [Description("The subreddit name to summarize")] string subreddit,
         [Description("Force regeneration of cached report (default: false)")] bool force = false)
     {
-        var apiKey = GetToken();
+        var apiKey = GetTokenOrEnvironmentKey();
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            return "Error: Bearer token required. Get from FeedbackFlow API documentation.";
+            return "Error: Bearer token or FEEDBACKFLOW_API_KEY environment variable required. Get from FeedbackFlow API documentation.";
         }
 
         try
