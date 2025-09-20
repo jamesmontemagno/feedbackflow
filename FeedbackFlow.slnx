@@ -21,8 +21,8 @@
   <Project Path="FeedbackFlow.ServiceDefaults/ServiceDefaults.csproj" />
   <Project Path="feedbackflow.tests/Tests.csproj" />
   <Project Path="FeedbackFlow.MCP.Shared/FeedbackFlow.MCP.Shared.csproj" />
-  <Project Path="FeedbackFlowLocalMCP/FeedbackFlowLocalMCP.csproj" />
-  <Project Path="FeedbackFlowMCP/FeedbackFlowMCP.csproj" />
+  <Project Path="FeedbackFlow.MCP.Local/FeedbackFlow.MCP.Local.csproj" />
+  <Project Path="FeedbackFlow.MCP.Remote/FeedbackFlow.MCP.Remote.csproj" />
   <Project Path="feedbackfunctions/Functions.csproj" />
   <Project Path="feedbackwebapp/WebApp.csproj" />
   <Project Path="shareddump/Shared.csproj" />

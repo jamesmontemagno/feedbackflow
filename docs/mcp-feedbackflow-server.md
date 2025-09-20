@@ -15,10 +15,10 @@ All output is returned as plain text or JSON exactly as provided by the public F
 Pull and run the official image (ensure your API key is exported first):
 ```bash
 # 1. Pull image
-docker pull jamesmontemagno/feedbackflowmcp:latest
+docker pull jamesmontemagno/feedbackflow-mcp-local:latest
 
 # 2. Run container (foreground)
-docker run -i --rm -e FEEDBACKFLOW_API_KEY=ff_your_key_here jamesmontemagno/feedbackflowmcp:latest
+docker run -i --rm -e FEEDBACKFLOW_API_KEY=ff_your_key_here jamesmontemagno/feedbackflow-mcp-local:latest
 ```
 `-i` keeps STDIN open for MCP JSON‑RPC. No network port is exposed (communication exclusively over stdio).
 
@@ -28,13 +28,13 @@ Linux/macOS (`run-feedbackflow-mcp.sh`):
 #!/usr/bin/env bash
 docker run -i --rm \
   -e FEEDBACKFLOW_API_KEY="${FEEDBACKFLOW_API_KEY}" \
-  jamesmontemagno/feedbackflowmcp:latest
+  jamesmontemagno/feedbackflow-mcp-local:latest
 ```
 PowerShell (`run-feedbackflow-mcp.ps1`):
 ```powershell
 docker run -i --rm `
   -e FEEDBACKFLOW_API_KEY=$Env:FEEDBACKFLOW_API_KEY `
-  jamesmontemagno/feedbackflowmcp:latest
+  jamesmontemagno/feedbackflow-mcp-local:latest
 ```
 
 ## Requirements
@@ -82,7 +82,7 @@ If your VS Code setup (via an MCP-enabled extension) supports a user-level JSON 
         "--rm",
         "-e",
         "FEEDBACKFLOW_API_KEY",
-        "jamesmontemagno/feedbackflowmcp:latest"
+        "jamesmontemagno/feedbackflow-mcp-local:latest"
       ],
       "env": {
         "FEEDBACKFLOW_API_KEY": "${input:feedbackflow_api_key}"
@@ -111,7 +111,7 @@ If you prefer running the local project directly (useful while debugging):
       "args": [
         "run",
         "--project",
-        "FeedbackFlowMCP/FeedbackFlowMCP.csproj"
+        "FeedbackFlow.MCP.Remote/FeedbackFlow.MCP.Remote.csproj"
       ],
       "env": {
         "FEEDBACKFLOW_API_KEY": "${input:feedbackflow_api_key}"
@@ -137,7 +137,7 @@ If you prefer running the local project directly (useful while debugging):
         "--rm",
         "-e",
         "FEEDBACKFLOW_API_KEY=${FEEDBACKFLOW_API_KEY}",
-        "jamesmontemagno/feedbackflowmcp:latest"
+        "jamesmontemagno/feedbackflow-mcp-local:latest"
       ],
       "problemMatcher": []
     },
@@ -148,7 +148,7 @@ If you prefer running the local project directly (useful while debugging):
       "args": [
         "run",
         "--project",
-        "FeedbackFlowMCP/FeedbackFlowMCP.csproj"
+        "FeedbackFlow.MCP.Remote/FeedbackFlow.MCP.Remote.csproj"
       ],
       "options": {
         "env": {
@@ -176,7 +176,7 @@ Add `.vscode/launch.json` if you want breakpoints in `FeedbackFlowTools`:
       "args": [
         "run",
         "--project",
-        "FeedbackFlowMCP/FeedbackFlowMCP.csproj"
+        "FeedbackFlow.MCP.Remote/FeedbackFlow.MCP.Remote.csproj"
       ],
       "env": {
         "FEEDBACKFLOW_API_KEY": "ff_your_key_here"
@@ -188,11 +188,11 @@ Add `.vscode/launch.json` if you want breakpoints in `FeedbackFlowTools`:
 ```
 
 ## Visual Studio Usage
-1. Set `FeedbackFlowMCP` as Startup Project.
+1. Set `FeedbackFlow.MCP.Remote` as Startup Project.
 2. Add `FEEDBACKFLOW_API_KEY=ff_your_key_here` under Project Properties > Debug > Environment Variables.
 3. F5 to debug (breakpoints in `FeedbackFlowTools` supported) or Ctrl+F5 to run.
 4. If integrating with an external MCP-aware tool that launches commands, point it to:
-   - `dotnet run --project <full path>/FeedbackFlowMCP/FeedbackFlowMCP.csproj`
+   - `dotnet run --project <full path>/FeedbackFlow.MCP.Remote/FeedbackFlow.MCP.Remote.csproj`
 5. For Docker-based launching from Visual Studio, use a custom external tool entry or a simple batch/script file wrapping the `docker run` command.
 
 ## Tool Reference
@@ -268,13 +268,13 @@ When integrating, parse JSON bodies for `ErrorCode` to gracefully handle quota e
 
 ## Updating
 ```bash
-docker pull jamesmontemagno/feedbackflowmcp:latest
+docker pull jamesmontemagno/feedbackflow-mcp-local:latest
 ```
 Restart the MCP client/extension to use the updated image.
 
 ## Local (Optional) Development Run
 ```bash
-dotnet run --project FeedbackFlowMCP/FeedbackFlowMCP.csproj
+dotnet run --project FeedbackFlow.MCP.Remote/FeedbackFlow.MCP.Remote.csproj
 ```
 
 ## Security Tips
@@ -293,7 +293,7 @@ dotnet run --project FeedbackFlowMCP/FeedbackFlowMCP.csproj
 ## Image Information
 | Detail | Value |
 |--------|-------|
-| Image | `jamesmontemagno/feedbackflowmcp:latest` |
+| Image | `jamesmontemagno/feedbackflow-mcp-local:latest` |
 | Base | .NET 9 runtime (console) |
 | Version Tags | `latest` (rolling) – use a digest or future version tag for pinning |
 | Protocol | MCP (JSON-RPC over stdio) |
