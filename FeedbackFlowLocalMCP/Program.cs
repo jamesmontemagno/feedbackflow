@@ -1,16 +1,15 @@
-﻿﻿using Microsoft.Extensions.Hosting;
-using FeedbackFlowMCP;
+using Microsoft.Extensions.Hosting;
+using FeedbackFlow.MCP.Shared;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Server;
-using System.ComponentModel;
 
 var builder = Host.CreateEmptyApplicationBuilder(settings: null);
 builder.Services
     .AddMcpServer()
     .WithStdioServerTransport()
-    .WithTools<FeedbackFlowTools>();
+    .WithTools<FeedbackFlowToolsShared>();
 
 builder.Services.AddHttpClient();
-
+builder.Services.AddScoped<IAuthenticationProvider, LocalAuthenticationProvider>();
 
 await builder.Build().RunAsync();

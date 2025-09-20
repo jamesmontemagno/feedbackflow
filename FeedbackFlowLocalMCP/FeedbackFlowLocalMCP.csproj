@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\shareddump\Shared.csproj" />
+    <ProjectReference Include="..\FeedbackFlow.MCP.Shared\FeedbackFlow.MCP.Shared.csproj" />
   </ItemGroup>
 
 </Project>
