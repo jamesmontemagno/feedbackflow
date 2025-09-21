@@ -15,10 +15,10 @@ All output is returned as plain text or JSON exactly as provided by the public F
 Pull and run the official image (ensure your API key is exported first):
 ```bash
 # 1. Pull image
-docker pull jamesmontemagno/feedbackflow-mcp-local:latest
+docker pull jamesmontemagno/feedbackflowmcp:latest
 
 # 2. Run container (foreground)
-docker run -i --rm -e FEEDBACKFLOW_API_KEY=ff_your_key_here jamesmontemagno/feedbackflow-mcp-local:latest
+docker run -i --rm -e FEEDBACKFLOW_API_KEY=ff_your_key_here jamesmontemagno/feedbackflowmcp:latest
 ```
 `-i` keeps STDIN open for MCP JSON‑RPC. No network port is exposed (communication exclusively over stdio).
 
@@ -28,13 +28,13 @@ Linux/macOS (`run-feedbackflow-mcp.sh`):
 #!/usr/bin/env bash
 docker run -i --rm \
   -e FEEDBACKFLOW_API_KEY="${FEEDBACKFLOW_API_KEY}" \
-  jamesmontemagno/feedbackflow-mcp-local:latest
+  jamesmontemagno/feedbackflowmcp:latest
 ```
 PowerShell (`run-feedbackflow-mcp.ps1`):
 ```powershell
 docker run -i --rm `
   -e FEEDBACKFLOW_API_KEY=$Env:FEEDBACKFLOW_API_KEY `
-  jamesmontemagno/feedbackflow-mcp-local:latest
+  jamesmontemagno/feedbackflowmcp:latest
 ```
 
 ## Requirements
@@ -82,7 +82,7 @@ If your VS Code setup (via an MCP-enabled extension) supports a user-level JSON 
         "--rm",
         "-e",
         "FEEDBACKFLOW_API_KEY",
-        "jamesmontemagno/feedbackflow-mcp-local:latest"
+        "jamesmontemagno/feedbackflowmcp:latest"
       ],
       "env": {
         "FEEDBACKFLOW_API_KEY": "${input:feedbackflow_api_key}"
@@ -137,7 +137,7 @@ If you prefer running the local project directly (useful while debugging):
         "--rm",
         "-e",
         "FEEDBACKFLOW_API_KEY=${FEEDBACKFLOW_API_KEY}",
-        "jamesmontemagno/feedbackflow-mcp-local:latest"
+        "jamesmontemagno/feedbackflowmcp:latest"
       ],
       "problemMatcher": []
     },
@@ -268,7 +268,7 @@ When integrating, parse JSON bodies for `ErrorCode` to gracefully handle quota e
 
 ## Updating
 ```bash
-docker pull jamesmontemagno/feedbackflow-mcp-local:latest
+docker pull jamesmontemagno/feedbackflowmcp:latest
 ```
 Restart the MCP client/extension to use the updated image.
 
@@ -293,7 +293,7 @@ dotnet run --project FeedbackFlow.MCP.Remote/FeedbackFlow.MCP.Remote.csproj
 ## Image Information
 | Detail | Value |
 |--------|-------|
-| Image | `jamesmontemagno/feedbackflow-mcp-local:latest` |
+| Image | `jamesmontemagno/feedbackflowmcp:latest` |
 | Base | .NET 9 runtime (console) |
 | Version Tags | `latest` (rolling) – use a digest or future version tag for pinning |
 | Protocol | MCP (JSON-RPC over stdio) |

@@ -10,7 +10,7 @@
 
     <PropertyGroup>
     <EnableSdkContainerSupport>true</EnableSdkContainerSupport>
-    <ContainerRepository>jamesmontemagno/feedbackflow-mcp-local</ContainerRepository>
+    <ContainerRepository>jamesmontemagno/feedbackflowmcp</ContainerRepository>
     <ContainerFamily>alpine</ContainerFamily>
     <RuntimeIdentifiers>linux-x64;linux-arm64</RuntimeIdentifiers>
   </PropertyGroup>
