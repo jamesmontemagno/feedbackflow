@@ -5,6 +5,7 @@ A lightweight Model Context Protocol (MCP) server exposing FeedbackFlow analysis
 ## What You Get
 Tools exposed to an MCP-compatible client:
 - `autoanalyze_feedback` – Run AI analysis on a single feedback source URL (GitHub issue, PR/discussion, YouTube video, Reddit post, Hacker News story, etc.)
+- `get_comments` – Fetch only raw normalized comments (JSON) from a feedback source without AI analysis
 - `github_issues_report` – Generate a repository issues/discussions activity report
 - `reddit_report` – Full subreddit activity & insights report
 - `reddit_report_summary` – Condensed subreddit summary
@@ -204,19 +205,25 @@ Add `.vscode/launch.json` if you want breakpoints in `FeedbackFlowTools`:
 | `customPrompt` | string | No | Override default analysis prompt (applies only to type=0 or 2) |
 | `type` | int/enum | No | Output mode enum: 0=AnalysisOnly (markdown), 1=CommentsOnly (comments JSON), 2=AnalysisAndComments (combined JSON) |
 
-### 2. github_issues_report
+### 2. get_comments
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `url` | string | Yes | Feedback source URL (GitHub issue/PR/discussion, YouTube video, Reddit post, HN story, etc.) |
+| `maxComments` | int | No | Maximum number of comments to retrieve (default: 1000) |
+
+### 3. github_issues_report
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `repo` | string | Yes | `owner/repo` identifier |
 | `force` | bool | No | Regenerate ignoring cache (may consume more quota) |
 
-### 3. reddit_report
+### 4. reddit_report
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `subreddit` | string | Yes | Subreddit name (omit `r/`) |
 | `force` | bool | No | Regenerate ignoring cache |
 
-### 4. reddit_report_summary
+### 5. reddit_report_summary
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `subreddit` | string | Yes | Subreddit name (omit `r/`) |
@@ -226,6 +233,7 @@ Add `.vscode/launch.json` if you want breakpoints in `FeedbackFlowTools`:
 | Tool | Typical Default Output | Alt Modes |
 |------|------------------------|----------|
 | autoanalyze_feedback | Markdown analysis (AnalysisOnly / type=0) | JSON (CommentsOnly / type=1, AnalysisAndComments / type=2) |
+| get_comments | JSON (raw normalized comments only) | — |
 | github_issues_report | Markdown (narrative) | — |
 | reddit_report | Markdown (detailed sections) | — |
 | reddit_report_summary | Markdown (condensed) | — |
@@ -248,6 +256,7 @@ Add `.vscode/launch.json` if you want breakpoints in `FeedbackFlowTools`:
 ```json
 {"jsonrpc":"2.0","id":1,"method":"tools/list"}
 {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"autoanalyze_feedback","arguments":{"url":"https://github.com/dotnet/runtime/issues/1"}}}
+{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_comments","arguments":{"url":"https://github.com/dotnet/runtime/issues/1","maxComments":500}}}
 ```
 
 ## Typical Flow

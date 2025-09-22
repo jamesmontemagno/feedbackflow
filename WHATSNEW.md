@@ -2,6 +2,11 @@ This page tracks the latest features and improvements added to FeedbackFlow.
 
 ## 📆 August 2025
 
+### 🔧 MCP Server Enhancements
+
+- **GetComments Tool**: New MCP tool for retrieving raw normalized comments (JSON) without AI analysis
+- **Code Refactoring**: Improved MCP server maintainability with shared HTTP request logic
+
 ### 🍿 Analysis Improvements
 
 - Custom prompts for each analysis request, use the universal, or customize it
