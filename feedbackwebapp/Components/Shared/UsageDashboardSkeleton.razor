@@ -1,0 +1,23 @@
+@namespace FeedbackWebApp.Components.Shared
+@using FeedbackWebApp.Components.Shared
+
+<div class="usage-dashboard">
+    <!-- Tier badge skeleton -->
+    <div class="skeleton skeleton-block" style="height: 32px; width: 120px; margin-bottom: 1rem;"></div>
+    
+    <!-- Usage metrics skeleton -->
+    <div class="usage-metrics">
+        <div class="row g-3">
+            @for (int i = 0; i < 4; i++)
+            {
+                <div class="col-md-6 col-lg-3">
+                    <div class="skeleton skeleton-metric">
+                        <div class="skeleton skeleton-block" style="height: 20px; width: 80%; margin-bottom: 0.5rem;"></div>
+                        <div class="skeleton skeleton-block" style="height: 32px; width: 60%; margin-bottom: 0.25rem;"></div>
+                        <div class="skeleton skeleton-block" style="height: 16px; width: 90%;"></div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>

@@ -1,0 +1,58 @@
+@namespace FeedbackWebApp.Components.Shared
+
+<div class="admin-metrics-skeleton">
+    <!-- KPI Cards Skeleton -->
+    <div class="row g-4 mb-4 kpi-grid-mobile">
+        @for (int i = 0; i < 4; i++)
+        {
+            <div class="col-lg-3 col-md-6 kpi-grid-item">
+                <div class="metric-card skeleton-card">
+                    <div class="d-flex align-items-center">
+                        <!-- Icon placeholder -->
+                        <div class="skeleton skeleton-circle" style="width: 48px; height: 48px; margin-right: 1rem;"></div>
+                        <div class="flex-grow-1">
+                            <!-- Value skeleton -->
+                            <div class="skeleton skeleton-block" style="height: 32px; width: 70%; margin-bottom: 0.5rem;"></div>
+                            <!-- Label skeleton -->
+                            <div class="skeleton skeleton-block" style="height: 16px; width: 90%; margin-bottom: 0.25rem;"></div>
+                            <!-- Change skeleton -->
+                            <div class="skeleton skeleton-block" style="height: 14px; width: 60%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+    
+    <!-- Additional sections skeletons -->
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card skeleton-card">
+                <div class="card-header">
+                    <div class="skeleton skeleton-block" style="height: 20px; width: 70%;"></div>
+                </div>
+                <div class="card-body">
+                    @for (int i = 0; i < 5; i++)
+                    {
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="skeleton skeleton-block" style="height: 16px; width: 65%;"></div>
+                            <div class="skeleton skeleton-block" style="height: 16px; width: 25%;"></div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card skeleton-card">
+                <div class="card-header">
+                    <div class="skeleton skeleton-block" style="height: 20px; width: 80%;"></div>
+                </div>
+                <div class="card-body">
+                    <!-- Chart placeholder -->
+                    <div class="skeleton skeleton-block" style="height: 200px; width: 100%;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

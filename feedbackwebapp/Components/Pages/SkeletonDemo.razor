@@ -1,0 +1,111 @@
+@page "/skeleton-demo"
+@using FeedbackWebApp.Components.Shared
+@namespace FeedbackWebApp.Components.Pages
+
+<PageTitle>Skeleton Loading Demo - FeedbackFlow</PageTitle>
+
+<div class="container my-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-magic me-2"></i>
+                        Skeleton Loading Demo
+                    </h4>
+                    <p class="mb-0">Demonstrating skeleton loading components for better perceived performance</p>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex gap-2 mb-4">
+                        <button class="btn btn-outline-primary" @onclick="ToggleAccountSkeleton">
+                            @(showAccountSkeleton ? "Hide" : "Show") Account Settings Skeleton
+                        </button>
+                        <button class="btn btn-outline-success" @onclick="ToggleUsageSkeleton">
+                            @(showUsageSkeleton ? "Hide" : "Show") Usage Dashboard Skeleton
+                        </button>
+                        <button class="btn btn-outline-info" @onclick="ToggleTierSkeleton">
+                            @(showTierSkeleton ? "Hide" : "Show") Tier Comparison Skeleton
+                        </button>
+                        <button class="btn btn-outline-warning" @onclick="ToggleAdminSkeleton">
+                            @(showAdminSkeleton ? "Hide" : "Show") Admin Metrics Skeleton
+                        </button>
+                    </div>
+
+                    @if (showAccountSkeleton)
+                    {
+                        <div class="mb-5">
+                            <h5 class="text-primary mb-3">Account Settings Loading State</h5>
+                            <div class="border rounded p-3">
+                                <!-- Account Information Skeleton -->
+                                <div class="row mb-4">
+                                    <div class="col-md-4">
+                                        <div class="skeleton skeleton-heading"></div>
+                                        <div class="skeleton skeleton-block" style="height: 32px; width: 120px; margin-bottom: 1rem;"></div>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <div class="skeleton skeleton-block" style="height: 16px; width: 40%; margin-bottom: 1rem;"></div>
+                                        <div class="skeleton skeleton-block" style="height: 16px; width: 60%; margin-bottom: 1rem;"></div>
+                                        <div class="skeleton skeleton-block" style="height: 16px; width: 50%; margin-bottom: 1rem;"></div>
+                                        <div class="skeleton skeleton-block" style="height: 16px; width: 55%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @if (showUsageSkeleton)
+                    {
+                        <div class="mb-5">
+                            <h5 class="text-success mb-3">Usage Dashboard Loading State</h5>
+                            <div class="border rounded p-3">
+                                <UsageDashboardSkeleton />
+                            </div>
+                        </div>
+                    }
+
+                    @if (showTierSkeleton)
+                    {
+                        <div class="mb-5">
+                            <h5 class="text-info mb-3">Tier Comparison Loading State</h5>
+                            <div class="border rounded p-3">
+                                <TierComparisonSkeleton />
+                            </div>
+                        </div>
+                    }
+
+                    @if (showAdminSkeleton)
+                    {
+                        <div class="mb-5">
+                            <h5 class="text-warning mb-3">Admin Metrics Loading State</h5>
+                            <div class="border rounded p-3">
+                                <AdminMetricsSkeleton />
+                            </div>
+                        </div>
+                    }
+
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-info-circle me-2"></i>Features Demonstrated</h6>
+                        <ul class="mb-0">
+                            <li><strong>Shimmer Animation:</strong> Smooth gradient animation (disabled with <code>prefers-reduced-motion</code>)</li>
+                            <li><strong>Space Reservation:</strong> Prevents layout shifts by reserving exact space content will occupy</li>
+                            <li><strong>Dark Theme Support:</strong> Enhanced contrast with adjusted alpha values</li>
+                            <li><strong>Component Reusability:</strong> Modular skeleton components for consistent loading patterns</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool showAccountSkeleton = false;
+    private bool showUsageSkeleton = false;
+    private bool showTierSkeleton = false;
+    private bool showAdminSkeleton = false;
+
+    private void ToggleAccountSkeleton() => showAccountSkeleton = !showAccountSkeleton;
+    private void ToggleUsageSkeleton() => showUsageSkeleton = !showUsageSkeleton;
+    private void ToggleTierSkeleton() => showTierSkeleton = !showTierSkeleton;
+    private void ToggleAdminSkeleton() => showAdminSkeleton = !showAdminSkeleton;
+}

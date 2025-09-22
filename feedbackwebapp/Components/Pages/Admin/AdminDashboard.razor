@@ -23,12 +23,7 @@
     </div>
     @if (isLoading)
     {
-        <div class="text-center py-4">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2 text-muted">Loading admin dashboard...</p>
-        </div>
+        <AdminMetricsSkeleton />
     }
     else if (!isAdmin)
     {

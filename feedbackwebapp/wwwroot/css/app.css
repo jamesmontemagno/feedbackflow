@@ -1308,16 +1308,41 @@ Responsive utility class for denser table layouts on mobile devices
 /* --------------------------------------------------
    Issue 144: Skeleton Loading Utilities
    - Generic skeleton shimmer for loading states
+   - Dark theme optimized with enhanced contrast
 -------------------------------------------------- */
 @keyframes skeleton-shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-.skeleton { position: relative; background: linear-gradient(110deg, rgba(var(--primary-color-rgb),0.08) 25%, rgba(var(--primary-color-rgb),0.16) 37%, rgba(var(--primary-color-rgb),0.08) 63%); background-size: 200% 100%; animation: skeleton-shimmer 1.5s ease-in-out infinite; border-radius: 6px; }
+.skeleton { 
+    position: relative; 
+    background: linear-gradient(110deg, rgba(var(--primary-color-rgb),0.08) 25%, rgba(var(--primary-color-rgb),0.16) 37%, rgba(var(--primary-color-rgb),0.08) 63%); 
+    background-size: 200% 100%; 
+    animation: skeleton-shimmer 1.5s ease-in-out infinite; 
+    border-radius: 6px; 
+}
 .skeleton.inline { display: inline-block; line-height: 1; }
 .skeleton-text { height: 0.9rem; width: 100%; margin-bottom: 0.45rem; }
 .skeleton-circle { border-radius: 50%; }
 .skeleton-heading { height: 1.4rem; width: 50%; margin-bottom: 0.75rem; }
 .skeleton-table-row { display: grid; grid-template-columns: repeat(auto-fit,minmax(60px,1fr)); column-gap: 0.75rem; row-gap: 0.4rem; margin-bottom: 0.65rem; }
 .skeleton-table-row .cell { height: 0.85rem; }
-@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; background-position: 0 0; } }
+
+/* Additional skeleton utilities for components */
+.skeleton-line { height: 1rem; width: 100%; margin-bottom: 0.5rem; }
+.skeleton-line.short { width: 75%; }
+.skeleton-line.medium { width: 85%; }
+.skeleton-line.long { width: 95%; }
+.skeleton-block { width: 100%; margin-bottom: 1rem; }
+.skeleton-card { min-height: 120px; }
+.skeleton-metric { height: 80px; }
+
+/* Dark theme enhanced contrast */
+[data-theme="dark"] .skeleton { 
+    background: linear-gradient(110deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.12) 37%, rgba(255,255,255,0.06) 63%); 
+}
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) { 
+    .skeleton { animation: none; background-position: 0 0; } 
+}
 
 /* Table specific skeleton wrapper */
 .table-skeleton-placeholder { padding: 0.75rem 0.5rem; }

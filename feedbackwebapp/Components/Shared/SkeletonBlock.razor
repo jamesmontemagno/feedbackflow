@@ -1,0 +1,32 @@
+@namespace FeedbackWebApp.Components.Shared
+
+<div class="skeleton skeleton-block @CssClass" style="@GetStyle()">
+    @if (!string.IsNullOrEmpty(ChildContent?.ToString()))
+    {
+        @ChildContent
+    }
+</div>
+
+@code {
+    [Parameter] public string? Height { get; set; }
+    [Parameter] public string? Width { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string GetStyle()
+    {
+        var styles = new List<string>();
+        
+        if (!string.IsNullOrEmpty(Height))
+        {
+            styles.Add($"height: {Height}");
+        }
+        
+        if (!string.IsNullOrEmpty(Width))
+        {
+            styles.Add($"width: {Width}");
+        }
+        
+        return string.Join("; ", styles);
+    }
+}

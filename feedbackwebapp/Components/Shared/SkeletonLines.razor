@@ -1,0 +1,27 @@
+@namespace FeedbackWebApp.Components.Shared
+
+<div class="skeleton-lines">
+    @for (int i = 0; i < Count; i++)
+    {
+        <div class="skeleton skeleton-line @GetLineClass(i)"></div>
+    }
+</div>
+
+@code {
+    [Parameter] public int Count { get; set; } = 3;
+    [Parameter] public bool VaryWidth { get; set; } = true;
+
+    private string GetLineClass(int index)
+    {
+        if (!VaryWidth) return "";
+        
+        // Vary line widths for natural appearance
+        return (index % 3) switch
+        {
+            0 => "long",
+            1 => "medium", 
+            2 => "short",
+            _ => ""
+        };
+    }
+}

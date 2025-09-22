@@ -1,16 +1,13 @@
 @namespace FeedbackWebApp.Components.Account
 @using FeedbackWebApp.Components.Account
+@using FeedbackWebApp.Components.Shared
 @using SharedDump.Models.Account
 @using SharedDump.Utils.Account
 
 <div class="usage-dashboard">
     @if (IsLoading)
     {
-        <div class="text-center py-3">
-            <div class="spinner-border spinner-border-sm text-primary" role="status">
-                <span class="visually-hidden">Loading account information...</span>
-            </div>
-        </div>
+        <UsageDashboardSkeleton />
     }
     else if (UserAccount != null && Limits != null)
     {

@@ -1,15 +1,12 @@
 @namespace FeedbackWebApp.Components.Account
+@using FeedbackWebApp.Components.Shared
 @using SharedDump.Models.Account
 @using FeedbackWebApp.Services.Account
 
 <div class="tier-comparison">
     @if (IsLoading)
     {
-        <div class="text-center py-4">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading tiers...</span>
-            </div>
-        </div>
+        <TierComparisonSkeleton />
     }
     else if (Tiers != null && Tiers.Any())
     {
