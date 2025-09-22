@@ -97,6 +97,14 @@ public class MockAdminDashboardService : IAdminDashboardService
                     new() { UserId = "user-003", MaskedUserId = "use***003", Tier = "ProPlus", CombinedUsage = 278, AnalysesUsed = 45, FeedQueriesUsed = 178, ApiUsed = 55 },
                     new() { UserId = "user-004", MaskedUserId = "use***004", Tier = "Pro", CombinedUsage = 245, AnalysesUsed = 58, FeedQueriesUsed = 156, ApiUsed = 31 },
                     new() { UserId = "user-005", MaskedUserId = "use***005", Tier = "Free", CombinedUsage = 203, AnalysesUsed = 9, FeedQueriesUsed = 194, ApiUsed = 0 }
+                },
+                TopReports = new List<TopReport>
+                {
+                    new() { Type = "reddit", DisplayName = "r/programming", Source = "programming", SubscriberCount = 45, CreatedAt = DateTime.UtcNow.AddDays(-30) },
+                    new() { Type = "github", DisplayName = "microsoft/vscode", Source = "microsoft/vscode", SubscriberCount = 38, CreatedAt = DateTime.UtcNow.AddDays(-20) },
+                    new() { Type = "reddit", DisplayName = "r/dotnet", Source = "dotnet", SubscriberCount = 29, CreatedAt = DateTime.UtcNow.AddDays(-15) },
+                    new() { Type = "github", DisplayName = "dotnet/core", Source = "dotnet/core", SubscriberCount = 23, CreatedAt = DateTime.UtcNow.AddDays(-10) },
+                    new() { Type = "reddit", DisplayName = "r/webdev", Source = "webdev", SubscriberCount = 18, CreatedAt = DateTime.UtcNow.AddDays(-5) }
                 }
             },
             ApiStats = new ApiStatistics

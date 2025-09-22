@@ -45,6 +45,7 @@ public class UsageStatistics
     public int TotalApiCalls { get; set; }
     public Dictionary<string, TierUsageMetrics> TierUsageMetrics { get; set; } = new();
     public List<TopUserUsage> TopUsers { get; set; } = new();
+    public List<TopReport> TopReports { get; set; } = new();
 }
 
 /// <summary>
@@ -96,4 +97,16 @@ public class TopApiUser
     public string Tier { get; set; } = string.Empty;
     public int ApiCalls { get; set; }
     public DateTime? LastUsedAt { get; set; }
+}
+
+/// <summary>
+/// Top report subscription information
+/// </summary>
+public class TopReport
+{
+    public string Type { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public string Source { get; set; } = string.Empty; // subreddit or owner/repo
+    public int SubscriberCount { get; set; }
+    public DateTime CreatedAt { get; set; }
 }

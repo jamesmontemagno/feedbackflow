@@ -66,6 +66,7 @@ public class AdminDashboardServiceTests
         Assert.IsTrue(usageStats.TotalApiCalls >= 0);
         Assert.IsNotNull(usageStats.TierUsageMetrics);
         Assert.IsNotNull(usageStats.TopUsers);
+        Assert.IsNotNull(usageStats.TopReports);
     }
 
     [TestMethod]
@@ -143,6 +144,27 @@ public class AdminDashboardServiceTests
         {
             Assert.IsTrue(tierDistribution["Free"] > tierDistribution.GetValueOrDefault("Pro", 0),
                 "Free tier should have more users than Pro");
+        }
+    }
+
+    [TestMethod]
+    public async Task GetDashboardMetricsAsync_ShouldHaveValidTopReports()
+    {
+        // Act
+        var result = await _mockService!.GetDashboardMetricsAsync();
+
+        // Assert
+        var usageStats = result.UsageStats;
+        Assert.IsNotNull(usageStats.TopReports);
+        
+        // Each report should have valid properties
+        foreach (var report in usageStats.TopReports)
+        {
+            Assert.IsFalse(string.IsNullOrEmpty(report.Type));
+            Assert.IsFalse(string.IsNullOrEmpty(report.DisplayName));
+            Assert.IsFalse(string.IsNullOrEmpty(report.Source));
+            Assert.IsTrue(report.SubscriberCount > 0, "Subscriber count should be positive");
+            Assert.IsTrue(report.CreatedAt <= DateTime.UtcNow, "CreatedAt should not be in the future");
         }
     }
 }

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SharedDump.Models.Account;
 using SharedDump.Models.Admin;
+using SharedDump.Models.Reports;
 
 namespace FeedbackFunctions.Services.Account;
 
@@ -15,18 +16,24 @@ public class UserAccountService : IUserAccountService
     private readonly TableClient _userAccountsTable;
     private readonly TableClient _usageRecordsTable;
     private readonly TableClient _apiKeysTable;
+    private readonly TableClient _userReportRequestsTable;
+    private readonly TableClient _reportRequestsTable;
     private readonly IConfiguration? _configuration;
     private readonly ILogger<UserAccountService>? _logger;
 
     private const string UserAccountsTableName = "UserAccounts";
     private const string UsageRecordsTableName = "UsageRecords";
     private const string ApiKeysTableName = "apikeys";
+    private const string UserReportRequestsTableName = "userreportrequests";
+    private const string ReportRequestsTableName = "reportrequests";
 
     public UserAccountService(string storageConnectionString, IConfiguration? configuration = null, ILogger<UserAccountService>? logger = null)
     {
         _userAccountsTable = new TableClient(storageConnectionString, UserAccountsTableName);
         _usageRecordsTable = new TableClient(storageConnectionString, UsageRecordsTableName);
         _apiKeysTable = new TableClient(storageConnectionString, ApiKeysTableName);
+        _userReportRequestsTable = new TableClient(storageConnectionString, UserReportRequestsTableName);
+        _reportRequestsTable = new TableClient(storageConnectionString, ReportRequestsTableName);
         _configuration = configuration;
         _logger = logger;
     }
@@ -596,7 +603,7 @@ public class UserAccountService : IUserAccountService
             metrics.UserStats = CalculateUserStatistics(allUsers, apiKeys, activeUserIds, last7Days, last30Days);
             
             // Calculate usage statistics
-            metrics.UsageStats = CalculateUsageStatistics(allUsers);
+            metrics.UsageStats = await CalculateUsageStatisticsAsync(allUsers);
             
             // Calculate API statistics
             metrics.ApiStats = CalculateApiStatistics(allUsers, apiKeys, last7Days);
@@ -678,7 +685,7 @@ public class UserAccountService : IUserAccountService
         return stats;
     }
 
-    private UsageStatistics CalculateUsageStatistics(List<UserAccount> allUsers)
+    private async Task<UsageStatistics> CalculateUsageStatisticsAsync(List<UserAccount> allUsers)
     {
         var stats = new UsageStatistics
         {
@@ -708,7 +715,8 @@ public class UserAccountService : IUserAccountService
             };
         }
 
-        // TODO: calculate top reports subscribed to for users.
+        // Calculate top reports subscribed to for users
+        stats.TopReports = await CalculateTopReportsAsync();
 
         // Calculate top users by combined usage
         stats.TopUsers = allUsers
@@ -759,6 +767,52 @@ public class UserAccountService : IUserAccountService
             .ToList();
 
         return stats;
+    }
+
+    private async Task<List<TopReport>> CalculateTopReportsAsync()
+    {
+        var topReports = new List<TopReport>();
+        
+        try
+        {
+            // Query all global report requests from the reportrequests table
+            // These contain the subscriber counts for each report type
+            await foreach (var reportRequest in _reportRequestsTable.QueryAsync<ReportRequestModel>())
+            {
+                var displayName = reportRequest.Type switch
+                {
+                    "reddit" => $"r/{reportRequest.Subreddit}",
+                    "github" => $"{reportRequest.Owner}/{reportRequest.Repo}",
+                    _ => reportRequest.Id
+                };
+
+                var source = reportRequest.Type switch
+                {
+                    "reddit" => reportRequest.Subreddit ?? string.Empty,
+                    "github" => $"{reportRequest.Owner}/{reportRequest.Repo}",
+                    _ => reportRequest.Id
+                };
+
+                topReports.Add(new TopReport
+                {
+                    Type = reportRequest.Type,
+                    DisplayName = displayName,
+                    Source = source,
+                    SubscriberCount = reportRequest.SubscriberCount,
+                    CreatedAt = reportRequest.CreatedAt.DateTime
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error calculating top reports subscribed to by users");
+        }
+
+        // Return top 5 reports by subscriber count
+        return topReports
+            .OrderByDescending(r => r.SubscriberCount)
+            .Take(5)
+            .ToList();
     }
 
     private static string MaskUserId(string userId)
