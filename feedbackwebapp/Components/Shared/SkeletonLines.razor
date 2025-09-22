@@ -1,0 +1,10 @@
+@namespace FeedbackWebApp.Components.Shared
+
+@for (int i = 0; i < Count; i++)
+{
+    <div class="skeleton skeleton-text"></div>
+}
+
+@code {
+    [Parameter] public int Count { get; set; } = 3;
+}

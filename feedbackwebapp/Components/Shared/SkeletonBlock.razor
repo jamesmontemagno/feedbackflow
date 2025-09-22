@@ -1,0 +1,13 @@
+@namespace FeedbackWebApp.Components.Shared
+
+<div class="skeleton @AdditionalClasses" style="@GetHeightStyle()"></div>
+
+@code {
+    [Parameter] public string Height { get; set; } = "3rem";
+    [Parameter] public string AdditionalClasses { get; set; } = "";
+
+    private string GetHeightStyle()
+    {
+        return $"height: {Height};";
+    }
+}

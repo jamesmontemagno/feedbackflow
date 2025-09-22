@@ -1319,6 +1319,11 @@ Responsive utility class for denser table layouts on mobile devices
 .skeleton-table-row .cell { height: 0.85rem; }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; background-position: 0 0; } }
 
+/* Dark theme skeleton enhancement for better contrast */
+[data-theme="dark"] .skeleton {
+    background: linear-gradient(110deg, rgba(var(--primary-color-rgb),0.12) 25%, rgba(var(--primary-color-rgb),0.22) 37%, rgba(var(--primary-color-rgb),0.12) 63%);
+}
+
 /* Table specific skeleton wrapper */
 .table-skeleton-placeholder { padding: 0.75rem 0.5rem; }
 

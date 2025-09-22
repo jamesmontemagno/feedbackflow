@@ -32,12 +32,7 @@
                 <div class="card-body">
                     @if (isLoading)
                     {
-                        <div class="text-center py-4">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                            <p class="mt-2 text-muted">Loading account information...</p>
-                        </div>
+                        <AccountSettingsSkeleton />
                     }
                     else if (userInfo != null)
                     {
@@ -373,14 +368,7 @@
                                 <div class="col-md-8">
                                     @if (isLoadingApiKey)
                                     {
-                                        <div class="card border-light">
-                                            <div class="card-body p-3 text-center">
-                                                <div class="spinner-border text-primary" role="status">
-                                                    <span class="visually-hidden">Loading...</span>
-                                                </div>
-                                                <p class="mt-2 text-muted">Loading API key information...</p>
-                                            </div>
-                                        </div>
+                                        <ApiKeyLoadingSkeleton />
                                     }
                                     else if (userApiKey != null)
                                     {
