@@ -63,7 +63,7 @@
                             {
                                 <button type="button" 
                                         class="segment-button @(selectedSource == source.Value ? "btn-primary shadow-sm" : "btn-outline-primary")"
-                                        @onclick="() => SelectSource(source.Value)"
+                                        @onclick="async () => await SelectSource(source.Value)"
                                         role="radio"
                                         aria-checked="@(source.Value == selectedSource)"
                                         disabled="@isLoading"
@@ -190,13 +190,19 @@
         }
     }
 
-    private void SelectSource(string source)
+    private async Task SelectSource(string source)
     {
         selectedSource = source;
         youtubeVideos = null;
         redditThreads = null;
         hackerNewsItems = null;
         error = "";
+        
+        // Auto-load Hacker News content since it doesn't require form input
+        if (source == "hackernews")
+        {
+            await LoadHackerNewsContent();
+        }
     }
 
     private bool ValidateForm()
@@ -233,6 +239,41 @@
         }
 
         return true;
+    }
+
+    private async Task LoadHackerNewsContent()
+    {
+        try
+        {
+            error = "";
+            isLoading = true;
+            
+            var hnService = ContentFeedProvider.CreateHackerNewsService(null, AuthHeaderService);
+            hackerNewsItems = await hnService.FetchContent();
+        }
+        catch (UsageLimitExceededException ex)
+        {
+            usageLimitError = ex.LimitError;
+            showUsageLimitDialog = true;
+        }
+        catch (Exception ex)
+        {
+            // Check if this is a usage limit error from error message
+            if (UsageLimitErrorHelper.TryParseUsageLimitError(ex.Message, out var limitError))
+            {
+                usageLimitError = limitError;
+                showUsageLimitDialog = true;
+            }
+            else
+            {
+                error = $"An error occurred: {ex.Message}";
+            }
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
     }
 
     private async Task FetchContent()
