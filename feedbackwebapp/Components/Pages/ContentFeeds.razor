@@ -63,7 +63,7 @@
                             {
                                 <button type="button" 
                                         class="segment-button @(selectedSource == source.Value ? "btn-primary shadow-sm" : "btn-outline-primary")"
-                                        @onclick="() => SelectSource(source.Value)"
+                                        @onclick="async () => await SelectSource(source.Value)"
                                         role="radio"
                                         aria-checked="@(source.Value == selectedSource)"
                                         disabled="@isLoading"
@@ -190,13 +190,19 @@
         }
     }
 
-    private void SelectSource(string source)
+    private async Task SelectSource(string source)
     {
         selectedSource = source;
         youtubeVideos = null;
         redditThreads = null;
         hackerNewsItems = null;
         error = "";
+        
+        // Automatically load content for Hacker News since it requires no user input
+        if (source == "hackernews")
+        {
+            await FetchContent();
+        }
     }
 
     private bool ValidateForm()
