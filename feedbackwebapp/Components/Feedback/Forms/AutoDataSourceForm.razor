@@ -76,6 +76,12 @@
 
     public async Task HandleUrlChange(int index, string value)
     {
+        // Ensure we have enough slots in the list
+        while (Urls.Count <= index)
+        {
+            Urls.Add("");
+        }
+        
         Urls[index] = value;
         await OnUrlsChanged.InvokeAsync(Urls);
         StateHasChanged(); // Refresh to show/hide checkbox
