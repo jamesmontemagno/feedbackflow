@@ -175,6 +175,7 @@
     private string currentStatusMessage = "";
     private string? initialSource;
     private string? initialId;
+    private List<string>? initialUrls;
     private bool showPromptEditor = false;
     private string customPrompt = string.Empty; // Temporary, not persisted
     private bool showSurveyLink = false; // After successful analysis and if not previously completed
@@ -637,13 +638,28 @@
 
         initialSource = query["source"]?.ToLower();
         initialId = query["id"];
-        var url = query["url"];
         
-        // If URL is provided, switch to Auto mode and use the URL
-        if (!string.IsNullOrEmpty(url))
+        // Check for multiple URL parameters
+        var urlParams = query.GetValues("url");
+        if (urlParams != null && urlParams.Length > 0)
         {
             initialSource = "auto";
-            initialId = url;
+            initialUrls = urlParams.Where(u => !string.IsNullOrWhiteSpace(u)).ToList();
+            // For backward compatibility, also set initialId to the first URL if only one is provided
+            if (initialUrls.Count == 1)
+            {
+                initialId = initialUrls[0];
+            }
+        }
+        else
+        {
+            var url = query["url"];
+            // If single URL is provided, switch to Auto mode and use the URL
+            if (!string.IsNullOrEmpty(url))
+            {
+                initialSource = "auto";
+                initialId = url;
+            }
         }
 
         // If this is an OAuth redirect, check authentication and handle post-login registration
@@ -694,7 +710,11 @@
     
     private async Task HandleQueryNav()
     {
-        if (string.IsNullOrEmpty(initialSource) || string.IsNullOrEmpty(initialId))
+        // Check if we have multiple URLs or a single URL
+        var hasMultipleUrls = initialUrls != null && initialUrls.Count > 0;
+        var hasSingleUrl = !string.IsNullOrEmpty(initialId);
+        
+        if (string.IsNullOrEmpty(initialSource) || (!hasMultipleUrls && !hasSingleUrl))
             return;
 
         selectedSource = initialSource.ToLower() switch
@@ -715,7 +735,29 @@
 
             if (autoDataSourceForm is not null)
             {
-                await autoDataSourceForm.HandleUrlChange(0, initialId);
+                if (hasMultipleUrls)
+                {
+                    // Handle multiple URLs
+                    for (int i = 0; i < initialUrls!.Count; i++)
+                    {
+                        if (i > 0)
+                        {
+                            // Add new URL input fields for additional URLs
+                            await autoDataSourceForm.HandleUrlChange(i, initialUrls[i]);
+                        }
+                        else
+                        {
+                            // Set the first URL
+                            await autoDataSourceForm.HandleUrlChange(0, initialUrls[i]);
+                        }
+                    }
+                }
+                else if (hasSingleUrl)
+                {
+                    // Handle single URL (backward compatibility)
+                    await autoDataSourceForm.HandleUrlChange(0, initialId!);
+                }
+                
                 autoDataSourceForm.RefreshUI();
                 StateHasChanged();
             }
