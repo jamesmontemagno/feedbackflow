@@ -18,6 +18,7 @@
     <File Path="README.md" />
   </Folder>
   <Project Path="FeedbackFlow.AppHost/AppHost.csproj" />
+  <Project Path="feedbackflow.playwrighttests/feedbackflow.playwrighttests.csproj" />
   <Project Path="FeedbackFlow.ServiceDefaults/ServiceDefaults.csproj" />
   <Project Path="feedbackflow.tests/Tests.csproj" />
   <Project Path="FeedbackFlowLocalMCP/FeedbackFlowLocalMCP.csproj" />
