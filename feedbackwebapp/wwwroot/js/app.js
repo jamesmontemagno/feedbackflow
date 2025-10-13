@@ -31,6 +31,7 @@ function setTheme(theme) {
     if (systemThemeListener && systemThemeMediaQuery) {
         systemThemeMediaQuery.removeEventListener('change', systemThemeListener);
         systemThemeListener = null;
+        systemThemeMediaQuery = null;
     }
     
     // Apply the appropriate theme
@@ -39,10 +40,8 @@ function setTheme(theme) {
         const systemTheme = getSystemTheme();
         applyTheme(systemTheme);
         
-        // Create/reuse MediaQueryList for efficient event handling
-        if (!systemThemeMediaQuery) {
-            systemThemeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-        }
+        // Create MediaQueryList for efficient event handling
+        systemThemeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
         
         // Listen for system theme changes
         systemThemeListener = (e) => {
