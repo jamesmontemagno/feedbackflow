@@ -1,7 +1,21 @@
 // Theme management
+let systemThemeListener = null;
+
+function getSystemTheme() {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function applyTheme(actualTheme) {
+    document.documentElement.setAttribute('data-theme', actualTheme);
+}
+
 function initTheme() {
-    const theme = localStorage.getItem('theme') || 'light';
+    const theme = localStorage.getItem('theme') || 'system';
     setTheme(theme);
+}
+
+function getTheme() {
+    return localStorage.getItem('theme') || 'system';
 }
 
 function isDarkMode() {
@@ -9,12 +23,37 @@ function isDarkMode() {
 }
 
 function setTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
+    // Store the user's preference (light, dark, or system)
     localStorage.setItem('theme', theme);
+    
+    // Remove any existing listener
+    if (systemThemeListener) {
+        window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', systemThemeListener);
+        systemThemeListener = null;
+    }
+    
+    // Apply the appropriate theme
+    if (theme === 'system') {
+        // Use system theme
+        const systemTheme = getSystemTheme();
+        applyTheme(systemTheme);
+        
+        // Listen for system theme changes
+        systemThemeListener = (e) => {
+            if (localStorage.getItem('theme') === 'system') {
+                applyTheme(e.matches ? 'dark' : 'light');
+            }
+        };
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', systemThemeListener);
+    } else {
+        // Use explicit theme
+        applyTheme(theme);
+    }
 }
 
 window.initTheme = initTheme;
 window.setTheme = setTheme;
+window.getTheme = getTheme;
 window.isDarkMode = isDarkMode;
 
 // Clipboard utility for cross-browser compatibility, especially Safari

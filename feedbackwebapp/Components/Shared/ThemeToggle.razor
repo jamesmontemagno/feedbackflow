@@ -1,24 +1,29 @@
 @inject IJSRuntime JSRuntime
+@implements IDisposable
 
 <div class="d-inline-block">
     <button @onclick="ToggleThemeAsync" 
             class="theme-toggle-button btn rounded-circle" 
-            aria-label="@(IsDarkMode ? "Switch to light mode" : "Switch to dark mode")"
-            aria-pressed="@IsDarkMode.ToString().ToLower()"
-            tabindex="0">
-        @if (IsDarkMode)
+            aria-label="@GetAriaLabel()"
+            tabindex="0"
+            title="@GetThemeTitle()">
+        @if (CurrentTheme == "light")
+        {
+            <i class="bi bi-sun-fill fs-5" aria-hidden="true"></i>
+        }
+        else if (CurrentTheme == "dark")
         {
             <i class="bi bi-moon-stars-fill fs-5" aria-hidden="true"></i>
         }
         else
         {
-            <i class="bi bi-sun-fill fs-5" aria-hidden="true"></i>
+            <i class="bi bi-display fs-5" aria-hidden="true"></i>
         }
     </button>
 </div>
 
 @code {
-    private bool IsDarkMode { get; set; }
+    private string CurrentTheme { get; set; } = "system";
     private bool _isInitialized;
     private DotNetObjectReference<ThemeToggle>? _objectReference;
 
@@ -29,8 +34,8 @@
             try
             {
                 _objectReference = DotNetObjectReference.Create(this);
-                // Use the global function from app.js
-                IsDarkMode = await JSRuntime.InvokeAsync<bool>("isDarkMode");
+                // Use the global function from app.js to get current theme
+                CurrentTheme = await JSRuntime.InvokeAsync<string>("getTheme");
                 _isInitialized = true;
                 StateHasChanged();
             }
@@ -48,14 +53,41 @@
 
         try
         {
-            IsDarkMode = !IsDarkMode;
+            // Cycle through: light -> dark -> system -> light
+            CurrentTheme = CurrentTheme switch
+            {
+                "light" => "dark",
+                "dark" => "system",
+                _ => "light"
+            };
+            
             // Use the global function from app.js
-            await JSRuntime.InvokeVoidAsync("setTheme", IsDarkMode ? "dark" : "light");
+            await JSRuntime.InvokeVoidAsync("setTheme", CurrentTheme);
         }
         catch
         {
             // Ignore JS errors and maintain current state
         }
+    }
+
+    private string GetAriaLabel()
+    {
+        return CurrentTheme switch
+        {
+            "light" => "Switch to dark mode",
+            "dark" => "Switch to system theme",
+            _ => "Switch to light mode"
+        };
+    }
+
+    private string GetThemeTitle()
+    {
+        return CurrentTheme switch
+        {
+            "light" => "Light theme (click for dark)",
+            "dark" => "Dark theme (click for system)",
+            _ => "System theme (click for light)"
+        };
     }
 
     public void Dispose()
