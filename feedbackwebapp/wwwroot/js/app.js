@@ -1,5 +1,6 @@
 // Theme management
 let systemThemeListener = null;
+let systemThemeMediaQuery = null;
 
 function getSystemTheme() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -27,8 +28,8 @@ function setTheme(theme) {
     localStorage.setItem('theme', theme);
     
     // Remove any existing listener
-    if (systemThemeListener) {
-        window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', systemThemeListener);
+    if (systemThemeListener && systemThemeMediaQuery) {
+        systemThemeMediaQuery.removeEventListener('change', systemThemeListener);
         systemThemeListener = null;
     }
     
@@ -38,13 +39,18 @@ function setTheme(theme) {
         const systemTheme = getSystemTheme();
         applyTheme(systemTheme);
         
+        // Create/reuse MediaQueryList for efficient event handling
+        if (!systemThemeMediaQuery) {
+            systemThemeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        }
+        
         // Listen for system theme changes
         systemThemeListener = (e) => {
             if (localStorage.getItem('theme') === 'system') {
                 applyTheme(e.matches ? 'dark' : 'light');
             }
         };
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', systemThemeListener);
+        systemThemeMediaQuery.addEventListener('change', systemThemeListener);
     } else {
         // Use explicit theme
         applyTheme(theme);
