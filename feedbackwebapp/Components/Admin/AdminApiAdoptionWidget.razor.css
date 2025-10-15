@@ -405,3 +405,140 @@
         gap: 0.5rem;
     }
 }
+
+/* Enhanced mobile optimizations for small screens */
+@media (max-width: 575.98px) {
+    .card-body {
+        padding: 0.75rem !important;
+    }
+    
+    .card-header {
+        padding: 0.5rem 0.75rem !important;
+    }
+    
+    .card-header h5 {
+        font-size: 0.9rem;
+    }
+    
+    .api-summary-card {
+        padding: 0.75rem;
+        gap: 0.5rem;
+    }
+    
+    .api-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 0.95rem;
+    }
+    
+    .api-value {
+        font-size: 1.25rem;
+    }
+    
+    .api-label {
+        font-size: 0.8rem;
+    }
+    
+    .top-api-user-item {
+        padding: 0.5rem 0;
+        gap: 0.75rem;
+    }
+    
+    .api-user-rank {
+        width: 25px;
+        font-size: 1.1rem;
+    }
+    
+    .api-user-id {
+        font-size: 0.85rem;
+    }
+    
+    .api-calls-count,
+    .api-last-used {
+        font-size: 0.8rem;
+    }
+    
+    .endpoint-item {
+        margin-bottom: 0.5rem;
+    }
+    
+    .endpoint-name {
+        font-size: 0.9rem;
+    }
+    
+    .endpoint-stats {
+        font-size: 0.8rem;
+    }
+    
+    .adoption-label {
+        font-size: 0.85rem;
+    }
+    
+    .adoption-percentage {
+        font-size: 0.85rem;
+    }
+    
+    .health-metric {
+        padding: 0.75rem;
+    }
+    
+    .health-metric-label {
+        font-size: 0.9rem;
+    }
+    
+    .health-status {
+        font-size: 0.8rem;
+        padding: 0.2rem 0.4rem;
+    }
+    
+    .health-metric-description {
+        font-size: 0.8rem;
+    }
+}
+
+/* Very compact layout for very small screens */
+@media (max-width: 420px) {
+    .card-body {
+        padding: 0.5rem !important;
+    }
+    
+    .card-header {
+        padding: 0.4rem 0.5rem !important;
+    }
+    
+    .card-header h5 {
+        font-size: 0.85rem;
+    }
+    
+    .api-summary-card {
+        padding: 0.5rem;
+    }
+    
+    .api-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 0.85rem;
+    }
+    
+    .api-value {
+        font-size: 1.1rem;
+    }
+    
+    .top-api-user-item {
+        gap: 0.5rem;
+    }
+    
+    .api-user-rank {
+        width: 22px;
+        font-size: 1rem;
+    }
+    
+    .tier-badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+    }
+    
+    .health-metric {
+        padding: 0.5rem;
+    }
+}
