@@ -1,0 +1,50 @@
+@namespace FeedbackWebApp.Components.Admin
+
+<div class="admin-loading-container">
+    <div class="admin-loading-content">
+        <!-- Floating animated icons -->
+        <div class="floating-icons">
+            <i class="bi bi-gear-fill floating-icon icon-1"></i>
+            <i class="bi bi-speedometer2 floating-icon icon-2"></i>
+            <i class="bi bi-shield-check floating-icon icon-3"></i>
+            <i class="bi bi-graph-up floating-icon icon-4"></i>
+            <i class="bi bi-people-fill floating-icon icon-5"></i>
+            <i class="bi bi-code-slash floating-icon icon-6"></i>
+        </div>
+        
+        <!-- Main spinner with gradient -->
+        <div class="main-spinner-container">
+            <div class="admin-spinner-background"></div>
+            <div class="spinner-border admin-spinner" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div class="admin-spinner-overlay">
+                <i class="bi @SpinnerIcon"></i>
+            </div>
+        </div>
+        
+        <!-- Animated loading message -->
+        <div class="admin-loading-message">
+            <h4 class="loading-title">@LoadingTitle</h4>
+            <p class="loading-subtitle">@LoadingMessage</p>
+            <div class="loading-dots">
+                <span class="dot dot-1"></span>
+                <span class="dot dot-2"></span>
+                <span class="dot dot-3"></span>
+            </div>
+        </div>
+        
+        <!-- Progress bar animation -->
+        <div class="admin-progress-container">
+            <div class="admin-progress-bar">
+                <div class="admin-progress-fill"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string LoadingTitle { get; set; } = "Loading Admin Panel";
+    [Parameter] public string LoadingMessage { get; set; } = "Please wait while we prepare your admin dashboard...";
+    [Parameter] public string SpinnerIcon { get; set; } = "bi-gear-fill";
+}
