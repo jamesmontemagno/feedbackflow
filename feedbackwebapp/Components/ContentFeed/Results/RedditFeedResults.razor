@@ -1,6 +1,16 @@
 @inject NavigationManager NavigationManager
 
 <div class="reddit-results">
+        @if (SelectedThreadIds.Any())
+        {
+            <div class="mb-3">
+                <button class="btn btn-primary w-100" @onclick="AnalyzeSelected">
+                    <i class="bi bi-graph-up me-2"></i>
+                    Analyze Selected (@SelectedThreadIds.Count)
+                </button>
+            </div>
+        }
+        
         <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
             <div class="search-container flex-grow-1">
                 <div class="input-group">
@@ -44,10 +54,22 @@
                 <div class="card mb-3">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h5 class="card-title mb-0">
-                                <i class="bi bi-reddit text-danger me-2"></i>
-                                @thread.Title
-                            </h5>
+                            <div class="d-flex align-items-start gap-2 flex-grow-1">
+                                <div class="form-check mt-1">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="thread-@thread.Id"
+                                           checked="@SelectedThreadIds.Contains(thread.Id)"
+                                           @onchange="@(e => ToggleSelection(thread.Id, (bool)e.Value!))" />
+                                    <label class="form-check-label visually-hidden" for="thread-@thread.Id">
+                                        Select @thread.Title
+                                    </label>
+                                </div>
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-reddit text-danger me-2"></i>
+                                    @thread.Title
+                                </h5>
+                            </div>
                             
                             <div class="btn-group">
                                 <a href="@thread.Url" target="_blank" class="btn btn-sm btn-outline-secondary" title="Open thread">
@@ -113,6 +135,7 @@
     private SortOption CurrentSort { get; set; } = SortOption.Default;
     private bool IsAscending { get; set; } = true;
     private List<RedditThreadModel>? _originalThreads;
+    private HashSet<string> SelectedThreadIds { get; set; } = new();
 
     private enum SortOption
     {
@@ -239,6 +262,30 @@
     {
         var url = $"https://www.reddit.com{thread.Permalink}";
         NavigationManager.NavigateTo($"/?source=auto&url={Uri.EscapeDataString(url)}");
+    }
+
+    private void ToggleSelection(string threadId, bool isSelected)
+    {
+        if (isSelected)
+        {
+            SelectedThreadIds.Add(threadId);
+        }
+        else
+        {
+            SelectedThreadIds.Remove(threadId);
+        }
+        StateHasChanged();
+    }
+
+    private void AnalyzeSelected()
+    {
+        if (!SelectedThreadIds.Any() || Threads == null) return;
+
+        var selectedThreads = Threads.Where(t => SelectedThreadIds.Contains(t.Id)).ToList();
+        var urls = selectedThreads.Select(t => $"https://www.reddit.com{t.Permalink}").ToList();
+
+        var queryString = string.Join("&", urls.Select(url => $"url={Uri.EscapeDataString(url)}"));
+        NavigationManager.NavigateTo($"/?source=auto&{queryString}");
     }
 
     public void Dispose()

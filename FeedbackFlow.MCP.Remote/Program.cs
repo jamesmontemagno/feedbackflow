@@ -1,8 +1,7 @@
-﻿﻿using Microsoft.Extensions.Hosting;
-using FeedbackFlowMCP;
+using Microsoft.Extensions.Hosting;
+using FeedbackFlow.MCP.Shared;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Server;
-using System.ComponentModel;
 
 /*var builder = Host.CreateEmptyApplicationBuilder(settings: null);
 builder.Services
@@ -21,10 +20,11 @@ builder.Services.AddMcpServer()
     {
         options.Stateless = true;
     })
-    .WithTools<FeedbackFlowTools>();
+    .WithTools<FeedbackFlowToolsShared>();
 
 builder.Services.AddHttpClient();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IAuthenticationProvider, RemoteAuthenticationProvider>();
 
 var app = builder.Build();
 

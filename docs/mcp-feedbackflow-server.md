@@ -111,7 +111,7 @@ If you prefer running the local project directly (useful while debugging):
       "args": [
         "run",
         "--project",
-        "FeedbackFlowMCP/FeedbackFlowMCP.csproj"
+        "FeedbackFlow.MCP.Remote/FeedbackFlow.MCP.Remote.csproj"
       ],
       "env": {
         "FEEDBACKFLOW_API_KEY": "${input:feedbackflow_api_key}"
@@ -148,7 +148,7 @@ If you prefer running the local project directly (useful while debugging):
       "args": [
         "run",
         "--project",
-        "FeedbackFlowMCP/FeedbackFlowMCP.csproj"
+        "FeedbackFlow.MCP.Remote/FeedbackFlow.MCP.Remote.csproj"
       ],
       "options": {
         "env": {
@@ -176,7 +176,7 @@ Add `.vscode/launch.json` if you want breakpoints in `FeedbackFlowTools`:
       "args": [
         "run",
         "--project",
-        "FeedbackFlowMCP/FeedbackFlowMCP.csproj"
+        "FeedbackFlow.MCP.Remote/FeedbackFlow.MCP.Remote.csproj"
       ],
       "env": {
         "FEEDBACKFLOW_API_KEY": "ff_your_key_here"
@@ -188,11 +188,11 @@ Add `.vscode/launch.json` if you want breakpoints in `FeedbackFlowTools`:
 ```
 
 ## Visual Studio Usage
-1. Set `FeedbackFlowMCP` as Startup Project.
+1. Set `FeedbackFlow.MCP.Remote` as Startup Project.
 2. Add `FEEDBACKFLOW_API_KEY=ff_your_key_here` under Project Properties > Debug > Environment Variables.
 3. F5 to debug (breakpoints in `FeedbackFlowTools` supported) or Ctrl+F5 to run.
 4. If integrating with an external MCP-aware tool that launches commands, point it to:
-   - `dotnet run --project <full path>/FeedbackFlowMCP/FeedbackFlowMCP.csproj`
+   - `dotnet run --project <full path>/FeedbackFlow.MCP.Remote/FeedbackFlow.MCP.Remote.csproj`
 5. For Docker-based launching from Visual Studio, use a custom external tool entry or a simple batch/script file wrapping the `docker run` command.
 
 ## Tool Reference
@@ -274,7 +274,7 @@ Restart the MCP client/extension to use the updated image.
 
 ## Local (Optional) Development Run
 ```bash
-dotnet run --project FeedbackFlowMCP/FeedbackFlowMCP.csproj
+dotnet run --project FeedbackFlow.MCP.Remote/FeedbackFlow.MCP.Remote.csproj
 ```
 
 ## Security Tips

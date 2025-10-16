@@ -1,35 +1,19 @@
 using System.ComponentModel;
 using ModelContextProtocol.Server;
 
-namespace FeedbackFlowMCP;
+namespace FeedbackFlow.MCP.Shared;
 
 [McpServerToolType]
-public sealed class FeedbackFlowTools
+public sealed class FeedbackFlowToolsShared
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IAuthenticationProvider _authenticationProvider;
     private const string BaseUrl = "https://api.feedbackflow.app";
 
-    public FeedbackFlowTools(IHttpClientFactory httpClientFactory, IHttpContextAccessor httpContextAccessor)
+    public FeedbackFlowToolsShared(IHttpClientFactory httpClientFactory, IAuthenticationProvider authenticationProvider)
     {
         _httpClientFactory = httpClientFactory;
-        _httpContextAccessor = httpContextAccessor;
-    }
-
-    string GetToken()
-    {
-        if (_httpContextAccessor?.HttpContext is null)
-        {
-            Console.WriteLine("HttpContext is null");
-            return string.Empty;
-        }
-
-        if (_httpContextAccessor.HttpContext.Request.Headers.TryGetValue("Authorization", out var token))
-        {
-            Console.WriteLine("Authorization header found");
-            return token.ToString().Replace("Bearer ", "");
-        }
-        return string.Empty;
+        _authenticationProvider = authenticationProvider;
     }
 
     public enum AnalysisType
@@ -46,10 +30,10 @@ public sealed class FeedbackFlowTools
         [Description("Custom analysis prompt (optional)")] string? customPrompt = null,
         [Description("Output mode (optional): AnalysisOnly=0 (markdown), CommentsOnly=1 (JSON), AnalysisAndComments=2 (combined JSON)")] AnalysisType? type = null)
     {
-        var apiKey = GetToken();
+        var apiKey = _authenticationProvider.GetAuthenticationToken();
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            return "Error: Bearer token required. Get from FeedbackFlow API documentation.";
+            return _authenticationProvider.GetAuthenticationErrorMessage();
         }
 
         try
@@ -89,10 +73,10 @@ public sealed class FeedbackFlowTools
         [Description("The subreddit name to analyze")] string subreddit,
         [Description("Force regeneration of cached report (default: false)")] bool force = false)
     {
-        var apiKey = GetToken();
+        var apiKey = _authenticationProvider.GetAuthenticationToken();
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            return "Error: Bearer token required. Get from FeedbackFlow API documentation.";
+            return _authenticationProvider.GetAuthenticationErrorMessage();
         }
 
         try
@@ -127,10 +111,10 @@ public sealed class FeedbackFlowTools
         [Description("The GitHub repository in format 'owner/repo'")] string repo,
         [Description("Force regeneration of cached report (default: false)")] bool force = false)
     {
-        var apiKey = GetToken();
+        var apiKey = _authenticationProvider.GetAuthenticationToken();
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            return "Error: Bearer token required. Get from FeedbackFlow API documentation.";
+            return _authenticationProvider.GetAuthenticationErrorMessage();
         }
 
         try
@@ -165,10 +149,10 @@ public sealed class FeedbackFlowTools
         [Description("The subreddit name to summarize")] string subreddit,
         [Description("Force regeneration of cached report (default: false)")] bool force = false)
     {
-        var apiKey = GetToken();
+        var apiKey = _authenticationProvider.GetAuthenticationToken();
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            return "Error: Bearer token required. Get from FeedbackFlow API documentation.";
+            return _authenticationProvider.GetAuthenticationErrorMessage();
         }
 
         try

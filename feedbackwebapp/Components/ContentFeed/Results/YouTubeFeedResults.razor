@@ -3,6 +3,16 @@
 <div class="youtube-results">
     @if (Videos?.Any() == true)
     {
+        @if (SelectedVideoIds.Any())
+        {
+            <div class="mb-3">
+                <button class="btn btn-primary w-100" @onclick="AnalyzeSelected">
+                    <i class="bi bi-graph-up me-2"></i>
+                    Analyze Selected (@SelectedVideoIds.Count)
+                </button>
+            </div>
+        }
+        
         <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
             <div class="search-container flex-grow-1">
                 <div class="input-group">
@@ -46,10 +56,22 @@
                 <div class="card mb-3">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h5 class="card-title mb-0">
-                                <i class="bi bi-youtube text-danger me-2"></i>
-                                @video.Title
-                            </h5>
+                            <div class="d-flex align-items-start gap-2 flex-grow-1">
+                                <div class="form-check mt-1">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="video-@video.Id"
+                                           checked="@SelectedVideoIds.Contains(video.Id.ToString())"
+                                           @onchange="@(e => ToggleSelection(video.Id.ToString(), (bool)e.Value!))" />
+                                    <label class="form-check-label visually-hidden" for="video-@video.Id">
+                                        Select @video.Title
+                                    </label>
+                                </div>
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-youtube text-danger me-2"></i>
+                                    @video.Title
+                                </h5>
+                            </div>
                             
                             <div class="btn-group">
                                 <a href="@video.Url" target="_blank" class="btn btn-sm btn-outline-secondary" title="Open thread">
@@ -116,6 +138,7 @@
     private SortOption CurrentSort { get; set; } = SortOption.Relevance;
     private bool IsAscending { get; set; } = true;
     private List<YouTubeOutputVideo>? _originalVideos;
+    private HashSet<string> SelectedVideoIds { get; set; } = new();
 
     private enum SortOption
     {
@@ -255,6 +278,31 @@
     {
         var url = $"https://www.youtube.com/watch?v={videoId}";
         NavigationManager.NavigateTo($"/?source=auto&url={Uri.EscapeDataString(url)}");
+    }
+
+    private void ToggleSelection(string videoId, bool isSelected)
+    {
+        if (isSelected)
+        {
+            SelectedVideoIds.Add(videoId);
+        }
+        else
+        {
+            SelectedVideoIds.Remove(videoId);
+        }
+        StateHasChanged();
+    }
+
+    private void AnalyzeSelected()
+    {
+        if (!SelectedVideoIds.Any()) return;
+
+        var urls = SelectedVideoIds
+            .Select(id => $"https://www.youtube.com/watch?v={id}")
+            .ToList();
+
+        var queryString = string.Join("&", urls.Select(url => $"url={Uri.EscapeDataString(url)}"));
+        NavigationManager.NavigateTo($"/?source=auto&{queryString}");
     }
 
     public void Dispose()

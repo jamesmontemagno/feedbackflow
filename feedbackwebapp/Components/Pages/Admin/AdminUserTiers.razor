@@ -21,12 +21,9 @@
     </div>
     @if (isLoading)
     {
-        <div class="text-center py-4">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2 text-muted">Loading user tiers...</p>
-        </div>
+        <AdminLoadingSpinner LoadingTitle="User Tier Management" 
+                           LoadingMessage="Loading user access levels and tier configurations..." 
+                           SpinnerIcon="bi-people-fill" />
     }
     else if (!isAdmin)
     {

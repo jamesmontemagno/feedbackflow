@@ -1,0 +1,414 @@
+/* Admin Loading Container */
+.admin-loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, 
+        rgba(var(--primary-color-rgb), 0.03) 0%, 
+        rgba(var(--primary-color-rgb), 0.08) 50%, 
+        rgba(var(--primary-color-rgb), 0.03) 100%);
+    border-radius: var(--border-radius);
+    animation: backgroundPulse 4s ease-in-out infinite;
+}
+
+.admin-loading-content {
+    text-align: center;
+    position: relative;
+    z-index: 2;
+    animation: contentFadeIn 0.8s ease-out;
+}
+
+/* Floating Icons Animation */
+.floating-icons {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    height: 200px;
+    pointer-events: none;
+}
+
+.floating-icon {
+    position: absolute;
+    font-size: 1.2rem;
+    color: var(--primary-color);
+    opacity: 0.6;
+    animation: floatAround 8s ease-in-out infinite;
+}
+
+.floating-icon.icon-1 {
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    animation-delay: 0s;
+}
+
+.floating-icon.icon-2 {
+    top: 30%;
+    right: 10px;
+    animation-delay: 1.3s;
+}
+
+.floating-icon.icon-3 {
+    bottom: 10px;
+    right: 30%;
+    animation-delay: 2.6s;
+}
+
+.floating-icon.icon-4 {
+    bottom: 30%;
+    left: 10px;
+    animation-delay: 4s;
+}
+
+.floating-icon.icon-5 {
+    top: 40%;
+    left: 20%;
+    animation-delay: 5.3s;
+}
+
+.floating-icon.icon-6 {
+    top: 20%;
+    right: 25%;
+    animation-delay: 6.6s;
+}
+
+/* Main Spinner Container */
+.main-spinner-container {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 1.5rem;
+}
+
+.admin-spinner-background {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    background: var(--primary-gradient);
+    border-radius: 50%;
+    opacity: 0.1;
+    animation: backgroundSpin 3s linear infinite;
+}
+
+.admin-spinner {
+    width: 3rem;
+    height: 3rem;
+    border-width: 3px;
+    color: var(--primary-color);
+    animation: spinnerRotate 1.5s linear infinite, spinnerPulse 2s ease-in-out infinite;
+}
+
+.admin-spinner-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1rem;
+    color: var(--primary-color);
+    animation: overlayBounce 2s ease-in-out infinite;
+}
+
+/* Loading Message */
+.admin-loading-message {
+    margin-bottom: 1.5rem;
+}
+
+.loading-title {
+    font-size: var(--font-h4);
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    animation: titleSlideIn 0.8s ease-out 0.2s both;
+}
+
+.loading-subtitle {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+    animation: subtitleSlideIn 0.8s ease-out 0.4s both;
+}
+
+/* Loading Dots */
+.loading-dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    background-color: var(--primary-color);
+    border-radius: 50%;
+    animation: dotBounce 1.4s ease-in-out infinite;
+}
+
+.dot-1 { animation-delay: 0s; }
+.dot-2 { animation-delay: 0.2s; }
+.dot-3 { animation-delay: 0.4s; }
+
+/* Progress Bar */
+.admin-progress-container {
+    width: 200px;
+    height: 4px;
+    background-color: rgba(var(--primary-color-rgb), 0.2);
+    border-radius: var(--border-radius-pill);
+    overflow: hidden;
+    margin: 0 auto;
+    animation: progressFadeIn 0.8s ease-out 0.6s both;
+}
+
+.admin-progress-bar {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.admin-progress-fill {
+    height: 100%;
+    background: var(--primary-gradient);
+    border-radius: var(--border-radius-pill);
+    animation: progressFill 2.5s ease-in-out infinite;
+    transform-origin: left;
+}
+
+/* Keyframe Animations */
+@keyframes backgroundPulse {
+    0%, 100% { 
+        background: linear-gradient(135deg, 
+            rgba(var(--primary-color-rgb), 0.03) 0%, 
+            rgba(var(--primary-color-rgb), 0.08) 50%, 
+            rgba(var(--primary-color-rgb), 0.03) 100%);
+    }
+    50% { 
+        background: linear-gradient(135deg, 
+            rgba(var(--primary-color-rgb), 0.06) 0%, 
+            rgba(var(--primary-color-rgb), 0.12) 50%, 
+            rgba(var(--primary-color-rgb), 0.06) 100%);
+    }
+}
+
+@keyframes contentFadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes floatAround {
+    0%, 100% {
+        transform: translateY(0) rotate(0deg) scale(1);
+        opacity: 0.6;
+    }
+    25% {
+        transform: translateY(-10px) rotate(90deg) scale(1.1);
+        opacity: 0.8;
+    }
+    50% {
+        transform: translateY(-5px) rotate(180deg) scale(1);
+        opacity: 0.4;
+    }
+    75% {
+        transform: translateY(-15px) rotate(270deg) scale(1.1);
+        opacity: 0.8;
+    }
+}
+
+@keyframes backgroundSpin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes spinnerRotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes spinnerPulse {
+    0%, 100% { 
+        transform: scale(1);
+        border-color: var(--primary-color) transparent transparent transparent;
+    }
+    50% { 
+        transform: scale(1.05);
+        border-color: var(--primary-hover) transparent transparent transparent;
+    }
+}
+
+@keyframes overlayBounce {
+    0%, 100% { 
+        transform: translate(-50%, -50%) scale(1) rotate(0deg);
+    }
+    25% { 
+        transform: translate(-50%, -50%) scale(1.1) rotate(90deg);
+    }
+    50% { 
+        transform: translate(-50%, -50%) scale(1) rotate(180deg);
+    }
+    75% { 
+        transform: translate(-50%, -50%) scale(1.1) rotate(270deg);
+    }
+}
+
+@keyframes titleSlideIn {
+    0% {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes subtitleSlideIn {
+    0% {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes dotBounce {
+    0%, 80%, 100% {
+        transform: scale(1) translateY(0);
+        opacity: 0.7;
+    }
+    40% {
+        transform: scale(1.2) translateY(-10px);
+        opacity: 1;
+    }
+}
+
+@keyframes progressFadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes progressFill {
+    0% {
+        transform: scaleX(0);
+    }
+    50% {
+        transform: scaleX(0.7);
+    }
+    100% {
+        transform: scaleX(1);
+    }
+}
+
+/* Dark Theme Enhancements */
+[data-theme="dark"] .admin-loading-container {
+    background: linear-gradient(135deg, 
+        rgba(var(--primary-color-rgb), 0.05) 0%, 
+        rgba(var(--primary-color-rgb), 0.12) 50%, 
+        rgba(var(--primary-color-rgb), 0.05) 100%);
+}
+
+[data-theme="dark"] .floating-icon {
+    opacity: 0.8;
+    filter: drop-shadow(0 0 4px rgba(var(--primary-color-rgb), 0.3));
+}
+
+[data-theme="dark"] .admin-spinner-background {
+    opacity: 0.15;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .admin-loading-container {
+        min-height: 250px;
+        padding: 1.5rem;
+    }
+    
+    .floating-icons {
+        width: 150px;
+        height: 150px;
+    }
+    
+    .floating-icon {
+        font-size: 1rem;
+    }
+    
+    .loading-title {
+        font-size: 1.2rem;
+    }
+    
+    .loading-subtitle {
+        font-size: 0.9rem;
+    }
+    
+    .admin-progress-container {
+        width: 150px;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-loading-container {
+        min-height: 200px;
+        padding: 1rem;
+    }
+    
+    .floating-icons {
+        width: 120px;
+        height: 120px;
+    }
+    
+    .floating-icon {
+        font-size: 0.9rem;
+    }
+    
+    .admin-spinner {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+    
+    .admin-spinner-overlay {
+        font-size: 0.9rem;
+    }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    .admin-loading-container,
+    .floating-icon,
+    .admin-spinner-background,
+    .admin-spinner,
+    .admin-spinner-overlay,
+    .dot,
+    .admin-progress-fill {
+        animation: none;
+    }
+    
+    .admin-loading-content {
+        animation: fadeIn 0.3s ease-out;
+    }
+    
+    .loading-title,
+    .loading-subtitle,
+    .admin-progress-container {
+        animation: fadeIn 0.3s ease-out;
+    }
+}
