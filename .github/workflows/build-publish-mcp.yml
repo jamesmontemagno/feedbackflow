@@ -1,14 +1,14 @@
-name: Build and Publish LocalMCP Container
+name: Build and Publish Local MCP Container
 
 on:
   push:
     branches: [ main ]
     paths:
-      - 'FeedbackFlowLocalMCP/**'
+      - 'FeedbackFlow.MCP.Local/**'
   pull_request:
     branches: [ main ]
     paths:
-      - 'FeedbackFlowLocalMCP/**'
+      - 'FeedbackFlow.MCP.Local/**'
 
 jobs:
   build:
@@ -23,8 +23,8 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-      - name: Build FeedbackFlowLocalMCP
-        run: dotnet build FeedbackFlowLocalMCP/FeedbackFlowLocalMCP.csproj
+      - name: Build FeedbackFlow.MCP.Local
+        run: dotnet build FeedbackFlow.MCP.Local/FeedbackFlow.MCP.Local.csproj
 
   build-and-publish:
     runs-on: ubuntu-latest
@@ -44,5 +44,5 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Publish FeedbackFlowLocalMCP as Container
-        run: dotnet publish FeedbackFlowLocalMCP/FeedbackFlowLocalMCP.csproj /t:PublishContainer -p ContainerRegistry=docker.io
+      - name: Publish FeedbackFlow.MCP.Local as Container
+        run: dotnet publish FeedbackFlow.MCP.Local/FeedbackFlow.MCP.Local.csproj /t:PublishContainer -p ContainerRegistry=docker.io

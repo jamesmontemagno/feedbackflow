@@ -9,6 +9,9 @@ Each project in this solution uses the following RootNamespace (from the .csproj
 - **FeedbackFlow.AppHost**: `FeedbackFlow.AppHost`
 - **FeedbackFlow.ServiceDefaults**: `FeedbackFlow.ServiceDefaults`
 - **feedbackflow.tests**: `FeedbackFlow.Tests`
+- **FeedbackFlow.MCP.Shared**: `FeedbackFlow.MCP.Shared`
+- **FeedbackFlow.MCP.Local**: `FeedbackFlow.MCP.Local`
+- **FeedbackFlow.MCP.Remote**: `FeedbackFlow.MCP.Remote`
 
 # Copilot Instructions
 
@@ -60,6 +63,9 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 - **feedbackwebapp** - Blazor Server app with components, services, and responsive UI
 - **shareddump** - Shared library containing reusable logic and models
 - **FeedbackFlow.ServiceDefaults** - Aspire service defaults and telemetry
+- **FeedbackFlow.MCP.Shared** - Shared authentication and tools for MCP servers
+- **FeedbackFlow.MCP.Local** - Local stdio-based MCP server for development
+- **FeedbackFlow.MCP.Remote** - HTTP-based MCP server for Azure Functions deployment
 
 ## Blazor
 - Always add component-specific CSS in a corresponding .razor.css file

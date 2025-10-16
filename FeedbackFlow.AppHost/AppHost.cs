@@ -14,6 +14,9 @@ var blobs = storage.AddBlobs("ff-blobs");
 storage.AddBlobContainer("shared-analyses");
 storage.AddBlobContainer("reports");
 storage.AddBlobContainer("hackernews-cache");
+// Additional containers used by report generation & summaries
+storage.AddBlobContainer("reports-summary"); // For lightweight summary report blobs
+storage.AddBlobContainer("weekly-summaries"); // For weekly processing summary JSON files
 
 var tables = storage.AddTables("ff-tables");
 
