@@ -121,7 +121,7 @@
                         </div>
                     </div>
 
-                    @if (youtubeVideos?.Any() == true || redditThreads?.Any() == true || hackerNewsItems?.Any() == true)
+                    @if (omniSearchResponse is not null || youtubeVideos?.Any() == true || redditThreads?.Any() == true || hackerNewsItems?.Any() == true)
                     {
                         <div class="mt-4">
                             @switch (selectedSource)
@@ -340,6 +340,7 @@
         finally
         {
             isLoading = false;
+            StateHasChanged();
         }
     }
 
