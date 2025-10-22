@@ -1,0 +1,163 @@
+@namespace FeedbackWebApp.Components.ContentFeed.Results
+@using SharedDump.Models.ContentSearch
+
+<div class="omni-search-results">
+    @if (Response is not null)
+    {
+        <div class="results-header mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="h5 mb-1">
+                        <i class="bi bi-search"></i> Search Results
+                    </h3>
+                    <p class="text-muted mb-0">
+                        Found <strong>@Response.TotalCount</strong> results for "<strong>@Response.Query</strong>"
+                    </p>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted">
+                        <i class="bi bi-clock"></i> Cached @FormatCacheTime(Response.CachedAt)
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        @if (Response.Results.Any())
+        {
+            <div class="results-list">
+                @foreach (var result in Response.Results)
+                {
+                    <div class="result-card card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div class="flex-grow-1">
+                                    <h4 class="h6 mb-2">
+                                        <a href="@result.Url" target="_blank" rel="noopener noreferrer" class="result-link">
+                                            @result.Title
+                                        </a>
+                                    </h4>
+                                </div>
+                                <span class="source-badge badge @GetSourceBadgeClass(result.Source)">
+                                    <i class="@GetSourceIcon(result.Source)"></i>
+                                    @result.Source
+                                </span>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(result.Snippet))
+                            {
+                                <p class="result-snippet text-muted mb-2">@result.Snippet</p>
+                            }
+
+                            <div class="result-metadata d-flex flex-wrap gap-3 text-muted small">
+                                @if (!string.IsNullOrEmpty(result.Author))
+                                {
+                                    <span>
+                                        <i class="bi bi-person"></i> @result.Author
+                                    </span>
+                                }
+                                <span>
+                                    <i class="bi bi-calendar"></i> @FormatDate(result.PublishedAt)
+                                </span>
+                                @if (result.EngagementCount > 0)
+                                {
+                                    <span>
+                                        <i class="bi bi-hand-thumbs-up"></i> @FormatEngagement(result.EngagementCount)
+                                    </span>
+                                }
+                                <span>
+                                    <a href="@result.Url" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                                        <i class="bi bi-box-arrow-up-right"></i> View
+                                    </a>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (Response.TotalCount > Response.PageSize)
+            {
+                <div class="pagination-info text-center mt-4">
+                    <p class="text-muted mb-0">
+                        Showing @((Response.Page - 1) * Response.PageSize + 1) - @Math.Min(Response.Page * Response.PageSize, Response.TotalCount) of @Response.TotalCount results
+                    </p>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                No results found for your query. Try adjusting your search terms or selecting different platforms.
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public OmniSearchResponse? Response { get; set; }
+
+    private string GetSourceIcon(string source)
+    {
+        return source.ToLowerInvariant() switch
+        {
+            "youtube" => "bi-youtube",
+            "reddit" => "bi-reddit",
+            "hackernews" => "bi-newspaper",
+            "twitter" => "bi-twitter-x",
+            "bluesky" => "bi-cloud",
+            _ => "bi-globe"
+        };
+    }
+
+    private string GetSourceBadgeClass(string source)
+    {
+        return source.ToLowerInvariant() switch
+        {
+            "youtube" => "bg-danger",
+            "reddit" => "bg-primary",
+            "hackernews" => "bg-warning text-dark",
+            "twitter" => "bg-dark",
+            "bluesky" => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string FormatDate(DateTimeOffset date)
+    {
+        var timeSpan = DateTimeOffset.UtcNow - date;
+
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7)
+            return $"{(int)timeSpan.TotalDays}d ago";
+        if (timeSpan.TotalDays < 30)
+            return $"{(int)(timeSpan.TotalDays / 7)}w ago";
+
+        return date.ToString("MMM dd, yyyy");
+    }
+
+    private string FormatEngagement(long count)
+    {
+        if (count >= 1_000_000)
+            return $"{count / 1_000_000.0:F1}M";
+        if (count >= 1_000)
+            return $"{count / 1_000.0:F1}K";
+        return count.ToString();
+    }
+
+    private string FormatCacheTime(DateTimeOffset cachedAt)
+    {
+        var timeSpan = DateTimeOffset.UtcNow - cachedAt;
+
+        if (timeSpan.TotalSeconds < 60)
+            return "just now";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes} min ago";
+
+        return cachedAt.ToString("HH:mm");
+    }
+}

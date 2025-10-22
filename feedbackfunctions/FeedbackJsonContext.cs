@@ -3,6 +3,7 @@ using SharedDump.Models.GitHub;
 using SharedDump.Models.HackerNews;
 using SharedDump.Models.YouTube;
 using SharedDump.Models.Reddit;
+using SharedDump.Models.ContentSearch;
 
 namespace FeedbackFunctions;
 
@@ -17,4 +18,8 @@ namespace FeedbackFunctions;
 [JsonSerializable(typeof(SaveAnalysisRequest))]
 [JsonSerializable(typeof(UpdateVisibilityRequest))]
 [JsonSerializable(typeof(RegisterUserRequest))]
+[JsonSerializable(typeof(OmniSearchRequest))]
+[JsonSerializable(typeof(OmniSearchResponse))]
+[JsonSerializable(typeof(OmniSearchResult))]
+[JsonSerializable(typeof(List<OmniSearchResult>))]
 public partial class FeedbackJsonContext : JsonSerializerContext { }

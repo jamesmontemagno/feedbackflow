@@ -21,6 +21,7 @@ using FeedbackFunctions.Services.Email;
 using System.Configuration;
 using Azure.Storage.Blobs;
 using FeedbackFunctions.Services.Reports;
+using FeedbackFunctions.OmniSearch;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
@@ -65,6 +66,9 @@ builder.Services.AddSingleton<IReportCacheService>(serviceProvider =>
 
 // Register admin report config service
 builder.Services.AddScoped<IAdminReportConfigService, AdminReportConfigService>();
+
+// Register OmniSearch service
+builder.Services.AddScoped<OmniSearchService>();
 
 // Register services based on UseMocks setting
 if (useMocks)

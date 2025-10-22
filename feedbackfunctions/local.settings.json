@@ -73,6 +73,10 @@
       "Email": "noreply@feedbackflow.app",
       "Name": "Demo Development User"
     },
+    "OmniSearch": {
+      "CacheTTL": "00:05:00",
+      "MaxConcurrencyPerPlatform": "4"
+    },
     "WebUrl": "https://www.feedbackflow.app"
   }
 }
