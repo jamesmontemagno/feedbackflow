@@ -392,24 +392,25 @@ public class BlueSkyFeedbackFetcher
             var escapedQuery = Uri.EscapeDataString(query);
             var searchUrl = $"https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q={escapedQuery}&limit={Math.Min(maxResults, 100)}&sort=latest";
 
-            var request = new HttpRequestMessage(HttpMethod.Get, searchUrl);
-            
-            // Add auth header if available
-            if (!string.IsNullOrEmpty(_accessJwt))
-            {
-                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessJwt);
-            }
-
-            var response = await _httpClient.SendAsync(request, cancellationToken);
+            // Use authenticated request flow (handles token refresh / retry)
+            var response = await GetAuthenticatedAsync(searchUrl, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
+                // Handle rate limiting similarly to FetchFeedbackAsync
+                if ((int)response.StatusCode == 429)
+                {
+                    _hitRateLimit = true;
+                    _logger.LogWarning("Rate limit reached when performing BlueSky search for query: {Query}", query);
+                    return results; // Return empty results when rate limited
+                }
+
                 _logger.LogWarning("BlueSky search failed with status {Status}", response.StatusCode);
                 return results;
             }
 
-            var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            var searchResponse = JsonSerializer.Deserialize(json, BlueSkyFeedbackJsonContext.Default.BlueSkySearchResponse);
+            // Deserialize using source-generated System.Text.Json context
+            var searchResponse = await response.Content.ReadFromJsonAsync(BlueSkyFeedbackJsonContext.Default.BlueSkySearchResponse, cancellationToken);
 
             if (searchResponse?.Posts == null)
             {

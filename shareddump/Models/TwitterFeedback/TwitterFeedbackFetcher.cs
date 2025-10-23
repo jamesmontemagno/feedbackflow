@@ -385,7 +385,9 @@ public class TwitterFeedbackFetcher
         try
         {
             // Build the search URL with parameters
-            var escapedQuery = Uri.EscapeDataString(query);
+            // Exclude retweets to get only original posts
+            var enhancedQuery = $"{query} -is:retweet";
+            var escapedQuery = Uri.EscapeDataString(enhancedQuery);
             var searchUrl = $"https://api.twitter.com/2/tweets/search/recent?query={escapedQuery}" +
                            $"&tweet.fields=author_id,created_at,public_metrics" +
                            $"&expansions=author_id" +
@@ -447,7 +449,7 @@ public class TwitterFeedbackFetcher
                 });
             }
 
-            _logger.LogInformation("Found {Count} Twitter results for query: {Query}", results.Count, query);
+            _logger.LogInformation("Found {Count} original Twitter posts (excluding retweets) for query: {Query}", results.Count, query);
             return results;
         }
         catch (Exception ex)

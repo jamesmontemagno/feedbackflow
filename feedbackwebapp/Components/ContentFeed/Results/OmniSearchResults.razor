@@ -196,8 +196,8 @@
 
     private void AnalyzeSingle(string url)
     {
-        // Navigate to feedback analysis page with the URL
-        Navigation.NavigateTo($"/feedback?url={Uri.EscapeDataString(url)}");
+        // Navigate to the auto analysis entrypoint with the URL (consistent with HackerNews results)
+        Navigation.NavigateTo($"/?source=auto&url={Uri.EscapeDataString(url)}");
     }
 
     private void AnalyzeSelected()
@@ -212,14 +212,14 @@
 
         if (selectedUrls.Count == 1)
         {
-            // Single URL - navigate directly
-            Navigation.NavigateTo($"/feedback?url={Uri.EscapeDataString(selectedUrls[0])}");
+            // Single URL - navigate to the auto entrypoint for analysis
+            Navigation.NavigateTo($"/?source=auto&url={Uri.EscapeDataString(selectedUrls[0])}");
         }
         else
         {
-            // Multiple URLs - create a comma-separated list
-            var urlsParam = string.Join(",", selectedUrls.Select(Uri.EscapeDataString));
-            Navigation.NavigateTo($"/feedback?urls={urlsParam}");
+            // Multiple URLs - create multiple url= query parameters like the HackerNews component
+            var queryString = string.Join("&", selectedUrls.Select(url => $"url={Uri.EscapeDataString(url)}"));
+            Navigation.NavigateTo($"/?source=auto&{queryString}");
         }
     }
 

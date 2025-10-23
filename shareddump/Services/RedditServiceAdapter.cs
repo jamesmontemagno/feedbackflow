@@ -135,19 +135,43 @@ public class RedditServiceAdapter : IRedditService
         };
     }
 
-    public Task<RedditListing<RedditSubmission>> SearchPostsAsync(string query, string subreddit = "", string sort = "relevance", int limit = 25)
+    public async Task<RedditListing<RedditSubmission>> SearchPostsAsync(string query, string subreddit = "", string sort = "relevance", int limit = 25)
     {
-        // The original service doesn't have search functionality, so we'll return empty results
-        // In a real implementation, you'd implement the search API call
-        return Task.FromResult(new RedditListing<RedditSubmission>
+        var threads = await _redditService.SearchPosts(query, subreddit, sort, limit);
+        
+        var submissions = threads.Select(t => new RedditSubmission
+        {
+            Id = t.Id,
+            Title = t.Title,
+            SelfText = t.SelfText ?? string.Empty,
+            Author = t.Author,
+            Subreddit = string.IsNullOrEmpty(t.Subreddit) ? subreddit : t.Subreddit,
+            SubredditNamePrefixed = string.IsNullOrEmpty(t.Subreddit) ? $"r/{subreddit}" : $"r/{t.Subreddit}",
+            Created = t.CreatedUtc.ToUnixTimeSeconds(),
+            CreatedUtc = t.CreatedUtc.ToUnixTimeSeconds(),
+            Score = t.Score,
+            UpvoteRatio = (float)t.UpvoteRatio,
+            NumComments = t.NumComments,
+            Url = t.Url ?? string.Empty,
+            Permalink = t.Permalink ?? string.Empty,
+            IsSelf = string.IsNullOrEmpty(t.Url),
+            Over18 = false,
+            PostHint = string.IsNullOrEmpty(t.Url) ? "self" : "link"
+        }).ToList();
+
+        return new RedditListing<RedditSubmission>
         {
             Data = new RedditListingData<RedditSubmission>
             {
-                Children = new List<RedditThing<RedditSubmission>>(),
-                After = null,
+                Children = submissions.Select(s => new RedditThing<RedditSubmission>
+                {
+                    Kind = "t3",
+                    Data = s
+                }).ToList(),
+                After = submissions.Count >= limit ? "next_page_token" : null,
                 Before = null
             }
-        });
+        };
     }
 
     // Validation method
