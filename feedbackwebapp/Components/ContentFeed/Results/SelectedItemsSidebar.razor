@@ -100,14 +100,16 @@
     public EventCallback OnClearAll { get; set; }
 
     private bool isCollapsed = true;
+    private int previousItemCount = 0;
 
     protected override void OnParametersSet()
     {
-        // Auto-expand when items are added
-        if (SelectedItems.Any() && isCollapsed)
+        // Auto-expand only when a new item is added
+        if (SelectedItems.Count > previousItemCount && isCollapsed)
         {
             isCollapsed = false;
         }
+        previousItemCount = SelectedItems.Count;
     }
 
     private void ToggleCollapse()
