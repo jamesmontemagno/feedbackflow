@@ -23,7 +23,8 @@
                 <input class="form-check-input" 
                        type="checkbox" 
                        id="platform-youtube" 
-                       @bind="EnableYouTube" />
+                       @bind="EnableYouTube"
+                       @bind:after="UpdateUsageCount" />
                 <label class="form-check-label" for="platform-youtube">
                     <i class="bi bi-youtube text-danger"></i> YouTube
                 </label>
@@ -32,7 +33,8 @@
                 <input class="form-check-input" 
                        type="checkbox" 
                        id="platform-reddit" 
-                       @bind="EnableReddit" />
+                       @bind="EnableReddit"
+                       @bind:after="UpdateUsageCount" />
                 <label class="form-check-label" for="platform-reddit">
                     <i class="bi bi-reddit text-primary"></i> Reddit
                 </label>
@@ -41,7 +43,8 @@
                 <input class="form-check-input" 
                        type="checkbox" 
                        id="platform-hackernews" 
-                       @bind="EnableHackerNews" />
+                       @bind="EnableHackerNews"
+                       @bind:after="UpdateUsageCount" />
                 <label class="form-check-label" for="platform-hackernews">
                     <i class="bi bi-newspaper text-warning"></i> Hacker News
                 </label>
@@ -51,6 +54,7 @@
                        type="checkbox" 
                        id="platform-twitter" 
                        @bind="EnableTwitter"
+                       @bind:after="UpdateUsageCount"
                        disabled="@(!canUseTwitter)" />
                 <label class="form-check-label" for="platform-twitter">
                     <i class="bi bi-twitter-x"></i> Twitter
@@ -64,12 +68,37 @@
                 <input class="form-check-input" 
                        type="checkbox" 
                        id="platform-bluesky" 
-                       @bind="EnableBlueSky" />
+                       @bind="EnableBlueSky"
+                       @bind:after="UpdateUsageCount" />
                 <label class="form-check-label" for="platform-bluesky">
                     <i class="bi bi-cloud text-info"></i> BlueSky
                 </label>
             </div>
         </div>
+        
+        @if (selectedPlatformCount > 0)
+        {
+            <div class="alert alert-info mt-2 mb-0 d-flex align-items-center" role="alert">
+                <i class="bi bi-info-circle me-2"></i>
+                <div>
+                    <strong>Usage:</strong> This search will use <strong>@selectedPlatformCount</strong> credit@(selectedPlatformCount > 1 ? "s" : "").
+                    @if (accountLimits.HasValue)
+                    {
+                        var remaining = accountLimits.Value.limits.FeedQueryLimit - currentUsage;
+                        <span class="ms-2">
+                            You have <strong>@remaining</strong> of <strong>@accountLimits.Value.limits.FeedQueryLimit</strong> remaining this month.
+                        </span>
+                        @if (remaining < selectedPlatformCount)
+                        {
+                            <div class="text-danger mt-1">
+                                <i class="bi bi-exclamation-triangle me-1"></i>
+                                Insufficient credits for this search. Please reduce platforms or <a href="/account">upgrade your account</a>.
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        }
     </div>
 
     <div class="row mb-3">
@@ -141,19 +170,34 @@
     public DateTime? ToDate { get; set; }
 
     private bool canUseTwitter = false;
+    private (UserAccount? account, AccountLimits limits)? accountLimits;
+    private int currentUsage = 0;
+    private int selectedPlatformCount = 0;
 
     protected override async Task OnInitializedAsync()
     {
-        // Check if user can access Twitter
+        // Check if user can access Twitter and get account limits
         var accountService = AccountServiceProvider.GetService();
-        var accountResult = await accountService.GetUserAccountAndLimitsAsync();
-        if (accountResult.HasValue && accountResult.Value.account is not null)
+        accountLimits = await accountService.GetUserAccountAndLimitsAsync();
+        if (accountLimits.HasValue && accountLimits.Value.account is not null)
         {
-            canUseTwitter = AccountTierUtils.SupportsTwitterAccess(accountResult.Value.account.Tier);
+            canUseTwitter = AccountTierUtils.SupportsTwitterAccess(accountLimits.Value.account.Tier);
+            
+            // Get current usage for FeedQuery
+            currentUsage = accountLimits.Value.account.FeedQueriesUsed;
         }
 
         // Try to load from local storage
         await LoadFromLocalStorageAsync();
+        
+        // Update initial count
+        UpdateUsageCount();
+    }
+
+    private void UpdateUsageCount()
+    {
+        selectedPlatformCount = GetSelectedPlatforms().Count;
+        StateHasChanged();
     }
 
     public List<string> GetSelectedPlatforms()

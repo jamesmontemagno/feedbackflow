@@ -57,7 +57,11 @@ public class OmniSearchService
     /// <summary>
     /// Execute omni-search across multiple platforms
     /// </summary>
-    public async Task<OmniSearchResponse> SearchAsync(OmniSearchRequest request, CancellationToken cancellationToken = default)
+    public async Task<OmniSearchResponse> SearchAsync(
+        OmniSearchRequest request, 
+        SharedDump.Models.Authentication.AuthenticatedUser user,
+        FeedbackFunctions.Services.Account.IUserAccountService userAccountService,
+        CancellationToken cancellationToken = default)
     {
         // Check cache first
         var cacheKey = GenerateCacheKey(request);
@@ -66,6 +70,8 @@ public class OmniSearchService
             if (DateTimeOffset.UtcNow - cached.CachedAt < _cacheTTL)
             {
                 _logger.LogInformation("Cache hit for omni-search query: {Query}", request.Query);
+                // Still track usage even on cache hit - user is consuming the resource
+                await TrackPlatformUsageAsync(user, userAccountService, request.Platforms.Count, request.Query);
                 return cached.Response;
             }
             else
@@ -124,7 +130,37 @@ public class OmniSearchService
         _logger.LogInformation("Omni-search completed. Found {Count} total results across {PlatformCount} platforms", 
             totalCount, request.Platforms.Count);
 
+        // Track usage - one credit per platform searched
+        await TrackPlatformUsageAsync(user, userAccountService, request.Platforms.Count, request.Query);
+
         return response;
+    }
+
+    /// <summary>
+    /// Track usage for each platform searched
+    /// </summary>
+    private async Task TrackPlatformUsageAsync(
+        SharedDump.Models.Authentication.AuthenticatedUser user,
+        FeedbackFunctions.Services.Account.IUserAccountService userAccountService,
+        int platformCount,
+        string query)
+    {
+        try
+        {
+            // Track usage for each platform (amount = platformCount)
+            await userAccountService.TrackUsageAsync(
+                user.UserId, 
+                SharedDump.Models.Account.UsageType.FeedQuery, 
+                $"OmniSearch: {query}", 
+                platformCount);
+            
+            _logger.LogInformation("Tracked {Count} usage credits for user {UserId} (OmniSearch)", platformCount, user.UserId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error tracking usage for user {UserId}", user.UserId);
+            // Don't throw - tracking failures shouldn't break the search
+        }
     }
 
     private async Task<List<OmniSearchResult>> SearchPlatformAsync(string platform, OmniSearchRequest request, CancellationToken cancellationToken)

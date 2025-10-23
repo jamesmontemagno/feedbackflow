@@ -68,11 +68,6 @@ public class OmniSearchFunction
             if (authErrorResponse != null)
                 return authErrorResponse;
 
-            // Validate usage limits
-            var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.FeedQuery, _userAccountService, _logger);
-            if (usageValidationResponse != null)
-                return usageValidationResponse;
-
             // Parse request (GET or POST)
             OmniSearchRequest? request = null;
 
@@ -108,11 +103,67 @@ public class OmniSearchFunction
                 return badRequestResponse;
             }
 
+            // Check if user has Twitter in platforms and validate tier access
+            if (request.Platforms.Contains("twitter"))
+            {
+                var userAccount = await _userAccountService.GetUserAccountAsync(user!.UserId);
+                if (userAccount is null || !SharedDump.Utils.Account.AccountTierUtils.SupportsTwitterAccess(userAccount.Tier))
+                {
+                    var forbiddenResponse = req.CreateResponse(HttpStatusCode.Forbidden);
+                    await forbiddenResponse.WriteAsJsonAsync(new UsageValidationResult
+                    {
+                        IsWithinLimit = false,
+                        ErrorCode = "TIER_UPGRADE_REQUIRED",
+                        Message = "Twitter search requires a Pro account or higher.",
+                        UsageType = UsageType.FeedQuery,
+                        CurrentTier = userAccount?.Tier ?? AccountTier.Free,
+                        UpgradeUrl = "/account"
+                    });
+                    return forbiddenResponse;
+                }
+            }
+
+            // Validate usage limits - each platform counts as 1 usage
+            var platformCount = request.Platforms.Count;
+            _logger.LogInformation("Validating usage for {PlatformCount} platforms for user {UserId}", platformCount, user!.UserId);
+            
+            // Get current usage status
+            var usageValidation = await _userAccountService.ValidateUsageAsync(user!.UserId, UsageType.FeedQuery);
+            if (!usageValidation.IsWithinLimit)
+            {
+                var usageValidationResponse = req.CreateResponse(HttpStatusCode.TooManyRequests);
+                await usageValidationResponse.WriteAsJsonAsync(usageValidation);
+                return usageValidationResponse;
+            }
+
+            // Check if user has enough remaining usage for all platforms
+            var remainingUsage = usageValidation.Limit - usageValidation.CurrentUsage;
+            if (remainingUsage < platformCount)
+            {
+                _logger.LogWarning("Insufficient usage credits for user {UserId}. Need {Required}, have {Remaining}", 
+                    user!.UserId, platformCount, remainingUsage);
+                
+                var limitResponse = req.CreateResponse(HttpStatusCode.TooManyRequests);
+                await limitResponse.WriteAsJsonAsync(new UsageValidationResult
+                {
+                    IsWithinLimit = false,
+                    ErrorCode = "USAGE_LIMIT_EXCEEDED",
+                    Message = $"Insufficient usage credits. You need {platformCount} credits but only have {remainingUsage} remaining.",
+                    UsageType = UsageType.FeedQuery,
+                    CurrentUsage = usageValidation.CurrentUsage,
+                    Limit = usageValidation.Limit,
+                    CurrentTier = usageValidation.CurrentTier,
+                    ResetDate = usageValidation.ResetDate,
+                    UpgradeUrl = "/account"
+                });
+                return limitResponse;
+            }
+
             _logger.LogInformation("Executing omni-search for user {UserId} - query: '{Query}', platforms: {Platforms}", 
                 user!.Email, request.Query, string.Join(", ", request.Platforms));
 
-            // Execute search
-            var result = await _omniSearchService.SearchAsync(request, req.FunctionContext.CancellationToken);
+            // Execute search (pass user for usage tracking)
+            var result = await _omniSearchService.SearchAsync(request, user!, _userAccountService, req.FunctionContext.CancellationToken);
 
             // Return results
             var response = req.CreateResponse(HttpStatusCode.OK);
