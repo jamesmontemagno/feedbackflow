@@ -390,7 +390,7 @@ public class BlueSkyFeedbackFetcher
         try
         {
             var escapedQuery = Uri.EscapeDataString(query);
-            var searchUrl = $"https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q={escapedQuery}&limit={Math.Min(maxResults, 100)}&sort=latest";
+            var searchUrl = $"https://bsky.social/xrpc/app.bsky.feed.searchPosts?q={escapedQuery}&limit={Math.Min(maxResults, 100)}&sort=latest";
 
             // Use authenticated request flow (handles token refresh / retry)
             var response = await GetAuthenticatedAsync(searchUrl, cancellationToken);
@@ -433,15 +433,22 @@ public class BlueSkyFeedbackFetcher
                     if (fromDate.HasValue && publishedAt < fromDate.Value)
                         continue;
 
+                    // Extract post ID from URI (at://did:plc:.../app.bsky.feed.post/{postId})
+                    var postId = post.Uri.Split('/').LastOrDefault() ?? post.Cid;
+
                     results.Add(new BlueSkyFeedbackItem
                     {
-                        Id = post.Cid,
+                        Id = postId,
                         Content = text,
                         Author = authorHandle,
                         AuthorName = authorDisplayName,
                         AuthorUsername = authorHandle,
                         TimestampUtc = publishedAt.UtcDateTime,
-                        Replies = new List<BlueSkyFeedbackItem>()
+                        Replies = new List<BlueSkyFeedbackItem>(),
+                        // Note: Engagement counts available but not stored in current model
+                        // ReplyCount = post.ReplyCount,
+                        // RepostCount = post.RepostCount,
+                        // LikeCount = post.LikeCount
                     });
                 }
                 catch (Exception ex)
