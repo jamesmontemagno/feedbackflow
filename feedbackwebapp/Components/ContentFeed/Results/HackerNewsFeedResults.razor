@@ -135,11 +135,11 @@
     public EventCallback<(string itemId, bool isSelected, object? itemData)> OnSelectionChanged { get; set; }
 
     private string SearchText { get; set; } = string.Empty;
-    private DateTime? SelectedDate { get; set; };
+    private DateTime? SelectedDate { get; set; }
     private System.Timers.Timer? _debounceTimer;
     private SortOption CurrentSort { get; set; } = SortOption.Default;
-    private bool IsAscending { get; set; };
-    private List<HackerNewsItem>? InitialOrder { get; set; };
+    private bool IsAscending { get; set; }
+    private List<HackerNewsItem>? InitialOrder { get; set; }
 
     private enum SortOption
     {

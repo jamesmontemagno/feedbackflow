@@ -124,7 +124,6 @@
     public EventCallback<(string itemId, bool isSelected, object? itemData)> OnSelectionChanged { get; set; }
 
     private bool isAllSelected = false;
-    private bool isAnalyzing = false;
 
     private async Task ToggleSelection(OmniSearchResult result, bool isSelected)
     {
