@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using SharedDump.Json;
 using SharedDump.Models.BlueSkyFeedback.ApiModels;
 using SharedDump.Models.BlueSkyFeedback.Converters;
 using SharedDump.Utils;
@@ -374,5 +375,88 @@ public class BlueSkyFeedbackFetcher
         }
         
         return defaultValue;
+    }
+    
+    public async Task<List<BlueSkyFeedbackItem>> SearchPostsAsync(string query, int maxResults = 25, DateTimeOffset? fromDate = null, CancellationToken cancellationToken = default)
+    {
+        var results = new List<BlueSkyFeedbackItem>();
+
+        // Authenticate first
+        if (!await AuthenticateAsync(cancellationToken))
+        {
+            return results;
+        }
+
+        try
+        {
+            var escapedQuery = Uri.EscapeDataString(query);
+            var searchUrl = $"https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q={escapedQuery}&limit={Math.Min(maxResults, 100)}&sort=latest";
+
+            var request = new HttpRequestMessage(HttpMethod.Get, searchUrl);
+            
+            // Add auth header if available
+            if (!string.IsNullOrEmpty(_accessJwt))
+            {
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessJwt);
+            }
+
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("BlueSky search failed with status {Status}", response.StatusCode);
+                return results;
+            }
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            var searchResponse = JsonSerializer.Deserialize(json, BlueSkyFeedbackJsonContext.Default.BlueSkySearchResponse);
+
+            if (searchResponse?.Posts == null)
+            {
+                _logger.LogWarning("BlueSky search returned null or empty data");
+                return results;
+            }
+
+            foreach (var post in searchResponse.Posts)
+            {
+                try
+                {
+                    var authorHandle = post.Author?.Handle ?? "unknown";
+                    var authorDisplayName = post.Author?.DisplayName ?? authorHandle;
+                    var text = post.Record?.Text ?? "";
+                    var createdAt = post.Record?.CreatedAt ?? post.IndexedAt;
+
+                    var publishedAt = DateTimeOffset.TryParse(createdAt, out var dt) ? dt : DateTimeOffset.UtcNow;
+
+                    // Apply date filter if specified
+                    if (fromDate.HasValue && publishedAt < fromDate.Value)
+                        continue;
+
+                    results.Add(new BlueSkyFeedbackItem
+                    {
+                        Id = post.Cid,
+                        Content = text,
+                        Author = authorHandle,
+                        AuthorName = authorDisplayName,
+                        AuthorUsername = authorHandle,
+                        TimestampUtc = publishedAt.UtcDateTime,
+                        Replies = new List<BlueSkyFeedbackItem>()
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error parsing BlueSky post");
+                    continue;
+                }
+            }
+
+            _logger.LogInformation("Found {Count} BlueSky results for query: {Query}", results.Count, query);
+            return results;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching BlueSky");
+            return results;
+        }
     }
 }

@@ -21,6 +21,12 @@
     background: var(--card-bg);
 }
 
+.result-card.selected {
+    border-color: rgb(var(--primary-color-rgb));
+    background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.05) 0%, rgba(var(--primary-color-rgb), 0.1) 100%);
+    box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);
+}
+
 .result-card:hover {
     transform: translateY(-2px);
     box-shadow: var(--card-shadow);

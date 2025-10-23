@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using SharedDump.Json;
 using SharedDump.Utils;
 
 namespace SharedDump.Models.TwitterFeedback;
@@ -374,6 +375,85 @@ public class TwitterFeedbackFetcher
         foreach (var reply in tweet.Replies)
         {
             SortRepliesByTimestamp(reply);
+        }
+    }
+
+    public async Task<List<TwitterFeedbackItem>> SearchTweetsAsync(string query, int maxResults = 25, DateTimeOffset? fromDate = null, DateTimeOffset? toDate = null, CancellationToken cancellationToken = default)
+    {
+        var results = new List<TwitterFeedbackItem>();
+        
+        try
+        {
+            // Build the search URL with parameters
+            var escapedQuery = Uri.EscapeDataString(query);
+            var searchUrl = $"https://api.twitter.com/2/tweets/search/recent?query={escapedQuery}" +
+                           $"&tweet.fields=author_id,created_at,public_metrics" +
+                           $"&expansions=author_id" +
+                           $"&user.fields=name,username" +
+                           $"&max_results={Math.Min(maxResults, 100)}";
+
+            // Add date filters if provided
+            if (fromDate.HasValue)
+            {
+                searchUrl += $"&start_time={fromDate.Value.ToUniversalTime():yyyy-MM-ddTHH:mm:ssZ}";
+            }
+
+            if (toDate.HasValue)
+            {
+                searchUrl += $"&end_time={toDate.Value.ToUniversalTime():yyyy-MM-ddTHH:mm:ssZ}";
+            }
+
+            var response = await _httpClient.GetAsync(searchUrl, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Twitter search failed with status {Status}", response.StatusCode);
+                return results;
+            }
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            var searchResponse = JsonSerializer.Deserialize(json, TwitterFeedbackJsonContext.Default.TwitterSearchResponse);
+
+            if (searchResponse?.Data == null)
+            {
+                _logger.LogWarning("Twitter search returned null or empty data");
+                return results;
+            }
+
+            // Build user dictionary
+            var userDict = new Dictionary<string, (string name, string username)>();
+            if (searchResponse.Includes?.Users != null)
+            {
+                foreach (var user in searchResponse.Includes.Users)
+                {
+                    userDict[user.Id] = (user.Name, user.Username);
+                }
+            }
+
+            // Convert to TwitterFeedbackItem
+            foreach (var tweet in searchResponse.Data)
+            {
+                var (authorName, authorUsername) = userDict.GetValueOrDefault(tweet.AuthorId, ("Unknown", "unknown"));
+
+                results.Add(new TwitterFeedbackItem
+                {
+                    Id = tweet.Id,
+                    Content = tweet.Text,
+                    Author = authorUsername,
+                    AuthorName = authorName,
+                    AuthorUsername = authorUsername,
+                    TimestampUtc = DateTimeOffset.TryParse(tweet.CreatedAt, out var dt) ? dt.UtcDateTime : DateTime.UtcNow,
+                    Replies = new List<TwitterFeedbackItem>()
+                });
+            }
+
+            _logger.LogInformation("Found {Count} Twitter results for query: {Query}", results.Count, query);
+            return results;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching Twitter");
+            return results;
         }
     }
 

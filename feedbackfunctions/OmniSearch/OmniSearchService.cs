@@ -26,8 +26,6 @@ public class OmniSearchService
     private readonly IHackerNewsService _hackerNewsService;
     private readonly ITwitterService _twitterService;
     private readonly IBlueSkyService _blueSkyService;
-    private readonly TwitterSearchHelper _twitterSearchHelper;
-    private readonly BlueSkySearchHelper _blueSkySearchHelper;
     
     // In-memory cache for search results
     private static readonly ConcurrentDictionary<string, (OmniSearchResponse Response, DateTimeOffset CachedAt)> _cache = new();
@@ -41,10 +39,7 @@ public class OmniSearchService
         IRedditService redditService,
         IHackerNewsService hackerNewsService,
         ITwitterService twitterService,
-        IBlueSkyService blueSkyService,
-        IHttpClientFactory httpClientFactory,
-        ILogger<TwitterSearchHelper> twitterLogger,
-        ILogger<BlueSkySearchHelper> blueSkyLogger)
+        IBlueSkyService blueSkyService)
     {
         _logger = logger;
         _configuration = configuration;
@@ -57,16 +52,6 @@ public class OmniSearchService
         // Read configuration with defaults
         _cacheTTL = TimeSpan.Parse(configuration["OmniSearch:CacheTTL"] ?? "00:05:00");
         _maxConcurrency = int.Parse(configuration["OmniSearch:MaxConcurrencyPerPlatform"] ?? "4");
-
-        // Initialize search helpers
-        var httpClient = httpClientFactory.CreateClient("DefaultClient");
-        var twitterBearerToken = configuration["Twitter:BearerToken"];
-        _twitterSearchHelper = new TwitterSearchHelper(httpClient, twitterLogger, twitterBearerToken);
-
-        var blueSkyUsername = configuration["BlueSky:Username"];
-        var blueSkyPassword = configuration["BlueSky:AppPassword"];
-        var blueSkyHttpClient = httpClientFactory.CreateClient("DefaultClient");
-        _blueSkySearchHelper = new BlueSkySearchHelper(blueSkyHttpClient, blueSkyLogger, blueSkyUsername, blueSkyPassword);
     }
 
     /// <summary>
@@ -184,21 +169,35 @@ public class OmniSearchService
 
     private async Task<List<OmniSearchResult>> SearchRedditAsync(OmniSearchRequest request, CancellationToken cancellationToken)
     {
-        // Reddit search across all subreddits or specific if filter applied
-        var posts = await _redditService.SearchPostsAsync(request.Query, "", "relevance", request.MaxResults);
-
-        return posts.Data.Children.Select(p => new OmniSearchResult
+        try
         {
-            Id = $"reddit_{p.Data.Id}",
-            Title = p.Data.Title,
-            Snippet = TruncateText(p.Data.SelfText, 200),
-            Source = "Reddit",
-            SourceId = p.Data.Id,
-            Url = $"https://reddit.com{p.Data.Permalink}",
-            PublishedAt = DateTimeOffset.FromUnixTimeSeconds((long)p.Data.CreatedUtc),
-            Author = p.Data.Author,
-            EngagementCount = p.Data.Score
-        }).ToList();
+            // Reddit search across all subreddits or specific if filter applied
+            var posts = await _redditService.SearchPostsAsync(request.Query, "", "relevance", request.MaxResults);
+
+            if (posts?.Data?.Children == null)
+            {
+                _logger.LogWarning("Reddit search returned null or empty data");
+                return new List<OmniSearchResult>();
+            }
+
+            return posts.Data.Children.Select(p => new OmniSearchResult
+            {
+                Id = $"reddit_{p.Data.Id}",
+                Title = p.Data.Title,
+                Snippet = TruncateText(p.Data.SelfText, 200),
+                Source = "Reddit",
+                SourceId = p.Data.Id,
+                Url = $"https://reddit.com{p.Data.Permalink}",
+                PublishedAt = DateTimeOffset.FromUnixTimeSeconds((long)p.Data.CreatedUtc),
+                Author = p.Data.Author,
+                EngagementCount = p.Data.Score
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching Reddit for query: {Query}", request.Query);
+            return new List<OmniSearchResult>();
+        }
     }
 
     private async Task<List<OmniSearchResult>> SearchHackerNewsAsync(OmniSearchRequest request, CancellationToken cancellationToken)
@@ -256,21 +255,63 @@ public class OmniSearchService
 
     private async Task<List<OmniSearchResult>> SearchTwitterAsync(OmniSearchRequest request, CancellationToken cancellationToken)
     {
-        return await _twitterSearchHelper.SearchAsync(
-            request.Query,
-            request.MaxResults,
-            request.FromDate,
-            request.ToDate,
-            cancellationToken);
+        try
+        {
+            var tweets = await _twitterService.SearchTweetsAsync(
+                request.Query,
+                request.MaxResults,
+                request.FromDate,
+                request.ToDate,
+                cancellationToken);
+
+            return tweets.Select(t => new OmniSearchResult
+            {
+                Id = $"twitter_{t.Id}",
+                Title = $"@{t.AuthorUsername}: {TruncateText(t.Content, 100)}",
+                Snippet = TruncateText(t.Content, 200),
+                Source = "Twitter",
+                SourceId = t.Id,
+                Url = $"https://twitter.com/{t.AuthorUsername}/status/{t.Id}",
+                PublishedAt = t.TimestampUtc,
+                Author = $"@{t.AuthorUsername}",
+                EngagementCount = 0 // Engagement counts not stored in TwitterFeedbackItem
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching Twitter for query: {Query}", request.Query);
+            return new List<OmniSearchResult>();
+        }
     }
 
     private async Task<List<OmniSearchResult>> SearchBlueSkyAsync(OmniSearchRequest request, CancellationToken cancellationToken)
     {
-        return await _blueSkySearchHelper.SearchAsync(
-            request.Query,
-            request.MaxResults,
-            request.FromDate,
-            cancellationToken);
+        try
+        {
+            var posts = await _blueSkyService.SearchPostsAsync(
+                request.Query,
+                request.MaxResults,
+                request.FromDate,
+                cancellationToken);
+
+            return posts.Select(p => new OmniSearchResult
+            {
+                Id = $"bluesky_{p.Id}",
+                Title = $"{p.AuthorName ?? p.Author}: {TruncateText(p.Content, 100)}",
+                Snippet = TruncateText(p.Content, 200),
+                Source = "BlueSky",
+                SourceId = p.Id,
+                Url = $"https://bsky.app/profile/{p.Author}/post/{p.Id}",
+                PublishedAt = p.TimestampUtc,
+                Author = $"@{p.Author}",
+                EngagementCount = 0 // BlueSky engagement data not stored in model
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching BlueSky for query: {Query}", request.Query);
+            return new List<OmniSearchResult>();
+        }
     }
 
     private List<OmniSearchResult> RankResults(List<OmniSearchResult> results)

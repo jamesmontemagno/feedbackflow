@@ -1,5 +1,6 @@
 @namespace FeedbackWebApp.Components.ContentFeed.Results
 @using SharedDump.Models.ContentSearch
+@inject NavigationManager Navigation
 
 <div class="omni-search-results">
     @if (Response is not null)
@@ -24,51 +25,99 @@
 
         @if (Response.Results.Any())
         {
+            <div class="mb-3 d-flex justify-content-between align-items-center">
+                <div>
+                    @if (selectedResults.Any())
+                    {
+                        <button class="btn btn-primary" @onclick="AnalyzeSelected" disabled="@isAnalyzing">
+                            @if (isAnalyzing)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-bar-chart-fill me-2"></i>
+                            }
+                            Analyze Selected (@selectedResults.Count)
+                        </button>
+                        <button class="btn btn-outline-secondary ms-2" @onclick="ClearSelection">
+                            <i class="bi bi-x-circle me-1"></i> Clear
+                        </button>
+                    }
+                    else
+                    {
+                        <span class="text-muted">Select items to analyze</span>
+                    }
+                </div>
+                <div>
+                    <button class="btn btn-sm btn-outline-primary" @onclick="ToggleSelectAll">
+                        <i class="bi @(isAllSelected ? "bi-check-square" : "bi-square") me-1"></i>
+                        @(isAllSelected ? "Deselect" : "Select") All
+                    </button>
+                </div>
+            </div>
+
             <div class="results-list">
                 @foreach (var result in Response.Results)
                 {
-                    <div class="result-card card mb-3">
+                    <div class="result-card card mb-3 @(selectedResults.Contains(result.Id) ? "selected" : "")">
                         <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <div class="flex-grow-1">
-                                    <h4 class="h6 mb-2">
-                                        <a href="@result.Url" target="_blank" rel="noopener noreferrer" class="result-link">
-                                            @result.Title
-                                        </a>
-                                    </h4>
+                            <div class="d-flex gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="check_@result.Id" 
+                                           checked="@selectedResults.Contains(result.Id)"
+                                           @onchange="@(() => ToggleSelection(result.Id))" />
                                 </div>
-                                <span class="source-badge badge @GetSourceBadgeClass(result.Source)">
-                                    <i class="@GetSourceIcon(result.Source)"></i>
-                                    @result.Source
-                                </span>
-                            </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="flex-grow-1">
+                                            <h4 class="h6 mb-2">
+                                                <a href="@result.Url" target="_blank" rel="noopener noreferrer" class="result-link">
+                                                    @result.Title
+                                                </a>
+                                            </h4>
+                                        </div>
+                                        <span class="source-badge badge @GetSourceBadgeClass(result.Source)">
+                                            <i class="@GetSourceIcon(result.Source)"></i>
+                                            @result.Source
+                                        </span>
+                                    </div>
 
-                            @if (!string.IsNullOrEmpty(result.Snippet))
-                            {
-                                <p class="result-snippet text-muted mb-2">@result.Snippet</p>
-                            }
+                                    @if (!string.IsNullOrEmpty(result.Snippet))
+                                    {
+                                        <p class="result-snippet text-muted mb-2">@result.Snippet</p>
+                                    }
 
-                            <div class="result-metadata d-flex flex-wrap gap-3 text-muted small">
-                                @if (!string.IsNullOrEmpty(result.Author))
-                                {
-                                    <span>
-                                        <i class="bi bi-person"></i> @result.Author
-                                    </span>
-                                }
-                                <span>
-                                    <i class="bi bi-calendar"></i> @FormatDate(result.PublishedAt)
-                                </span>
-                                @if (result.EngagementCount > 0)
-                                {
-                                    <span>
-                                        <i class="bi bi-hand-thumbs-up"></i> @FormatEngagement(result.EngagementCount)
-                                    </span>
-                                }
-                                <span>
-                                    <a href="@result.Url" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
-                                        <i class="bi bi-box-arrow-up-right"></i> View
-                                    </a>
-                                </span>
+                                    <div class="result-metadata d-flex flex-wrap gap-3 text-muted small">
+                                        @if (!string.IsNullOrEmpty(result.Author))
+                                        {
+                                            <span>
+                                                <i class="bi bi-person"></i> @result.Author
+                                            </span>
+                                        }
+                                        <span>
+                                            <i class="bi bi-calendar"></i> @FormatDate(result.PublishedAt)
+                                        </span>
+                                        @if (result.EngagementCount > 0)
+                                        {
+                                            <span>
+                                                <i class="bi bi-hand-thumbs-up"></i> @FormatEngagement(result.EngagementCount)
+                                            </span>
+                                        }
+                                        <span>
+                                            <a href="@result.Url" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                                                <i class="bi bi-box-arrow-up-right"></i> View
+                                            </a>
+                                        </span>
+                                        <span>
+                                            <button class="btn btn-link btn-sm p-0 text-decoration-none" @onclick="@(() => AnalyzeSingle(result.Url))">
+                                                <i class="bi bi-bar-chart me-1"></i> Analyze
+                                            </button>
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -97,6 +146,82 @@
 @code {
     [Parameter]
     public OmniSearchResponse? Response { get; set; }
+
+    private HashSet<string> selectedResults = new();
+    private bool isAllSelected = false;
+    private bool isAnalyzing = false;
+
+    private void ToggleSelection(string id)
+    {
+        if (selectedResults.Contains(id))
+        {
+            selectedResults.Remove(id);
+        }
+        else
+        {
+            selectedResults.Add(id);
+        }
+        
+        UpdateSelectAllState();
+    }
+
+    private void ToggleSelectAll()
+    {
+        if (Response?.Results == null) return;
+
+        if (isAllSelected)
+        {
+            selectedResults.Clear();
+        }
+        else
+        {
+            selectedResults = Response.Results.Select(r => r.Id).ToHashSet();
+        }
+        
+        UpdateSelectAllState();
+    }
+
+    private void ClearSelection()
+    {
+        selectedResults.Clear();
+        UpdateSelectAllState();
+    }
+
+    private void UpdateSelectAllState()
+    {
+        isAllSelected = Response?.Results != null && 
+                       Response.Results.Any() && 
+                       selectedResults.Count == Response.Results.Count;
+    }
+
+    private void AnalyzeSingle(string url)
+    {
+        // Navigate to feedback analysis page with the URL
+        Navigation.NavigateTo($"/feedback?url={Uri.EscapeDataString(url)}");
+    }
+
+    private void AnalyzeSelected()
+    {
+        if (!selectedResults.Any() || Response?.Results == null) return;
+
+        // Get the URLs of selected results
+        var selectedUrls = Response.Results
+            .Where(r => selectedResults.Contains(r.Id))
+            .Select(r => r.Url)
+            .ToList();
+
+        if (selectedUrls.Count == 1)
+        {
+            // Single URL - navigate directly
+            Navigation.NavigateTo($"/feedback?url={Uri.EscapeDataString(selectedUrls[0])}");
+        }
+        else
+        {
+            // Multiple URLs - create a comma-separated list
+            var urlsParam = string.Join(",", selectedUrls.Select(Uri.EscapeDataString));
+            Navigation.NavigateTo($"/feedback?urls={urlsParam}");
+        }
+    }
 
     private string GetSourceIcon(string source)
     {

@@ -48,4 +48,32 @@ public class MockTwitterService : ITwitterService
             }
         };
     }
+    
+    public async Task<List<TwitterFeedbackItem>> SearchTweetsAsync(string query, int maxResults = 25, DateTimeOffset? fromDate = null, DateTimeOffset? toDate = null, CancellationToken cancellationToken = default)
+    {
+        await Task.Delay(500, cancellationToken); // Simulate network delay
+        return new List<TwitterFeedbackItem>
+        {
+            new TwitterFeedbackItem
+            {
+                Id = "987654321",
+                Author = "@devuser1",
+                AuthorName = "Developer User 1",
+                AuthorUsername = "devuser1",
+                Content = $"Found this great article about {query}: https://example.com/article1",
+                TimestampUtc = DateTime.UtcNow.AddDays(-1),
+                Replies = new List<TwitterFeedbackItem>()
+            },
+            new TwitterFeedbackItem
+            {
+                Id = "987654322",
+                Author = "@devuser2",
+                AuthorName = "Developer User 2",
+                AuthorUsername = "devuser2",
+                Content = $"Working with {query} has been a game changer for our team!",
+                TimestampUtc = DateTime.UtcNow.AddDays(-2),
+                Replies = new List<TwitterFeedbackItem>()
+            }
+        };
+    }
 }
