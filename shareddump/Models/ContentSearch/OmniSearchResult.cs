@@ -97,11 +97,6 @@ public class OmniSearchRequest
     public string SortMode { get; set; } = "chronological";
 
     /// <summary>
-    /// Hide results with zero comments (default: false)
-    /// </summary>
-    public bool HideZeroComments { get; set; } = false;
-
-    /// <summary>
     /// Page number for pagination (1-indexed)
     /// </summary>
     public int Page { get; set; } = 1;

@@ -340,12 +340,27 @@
                         Platforms = platforms,
                         MaxResults = omniSearchForm.MaxResults,
                         SortMode = omniSearchForm.SortMode,
-                        HideZeroComments = omniSearchForm.HideZeroComments,
                         FromDate = omniSearchForm.FromDate.HasValue ? new DateTimeOffset(omniSearchForm.FromDate.Value) : null,
                         ToDate = omniSearchForm.ToDate.HasValue ? new DateTimeOffset(omniSearchForm.ToDate.Value) : null,
                         Page = 1
                     };
                     omniSearchResponse = await OmniSearchService.SearchAsync(omniRequest);
+                    
+                    // Apply client-side filtering for zero comments
+                    if (omniSearchForm.HideZeroComments && omniSearchResponse is not null)
+                    {
+                        var filteredResults = omniSearchResponse.Results.Where(r => r.CommentCount > 0).ToList();
+                        omniSearchResponse = new OmniSearchResponse
+                        { 
+                            Results = filteredResults,
+                            TotalCount = filteredResults.Count,
+                            Page = omniSearchResponse.Page,
+                            PageSize = omniSearchResponse.PageSize,
+                            CachedAt = omniSearchResponse.CachedAt,
+                            Query = omniSearchResponse.Query,
+                            PlatformsSearched = omniSearchResponse.PlatformsSearched
+                        };
+                    }
                     break;
 
                 case "youtube" when youtubeFeedForm is not null:

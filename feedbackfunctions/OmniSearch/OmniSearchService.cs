@@ -102,14 +102,7 @@ public class OmniSearchService
             results.AddRange(platformResult);
         }
 
-        // Apply zero-comment filter if requested
-        if (request.HideZeroComments)
-        {
-            results = results.Where(r => r.CommentCount > 0).ToList();
-            _logger.LogInformation("Filtered to {Count} results with comments (removed zero-comment items)", results.Count);
-        }
-
-        // Sort results
+        // Sort results (filtering for zero comments is handled on client side)
         results = request.SortMode.ToLowerInvariant() == "ranked"
             ? RankResults(results)
             : results.OrderByDescending(r => r.CommentCount).ThenByDescending(r => r.PublishedAt).ToList();
