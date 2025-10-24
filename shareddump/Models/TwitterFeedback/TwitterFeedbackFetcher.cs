@@ -385,9 +385,22 @@ public class TwitterFeedbackFetcher
         try
         {
             // Build the search URL with parameters
+            // Wrap query in quotes if it contains special characters (periods, hyphens, etc.)
+            // This helps with searches like ".NET" or "C#"
+            var processedQuery = query;
+            if (query.Contains('.') || query.Contains('#') || query.Contains('-'))
+            {
+                // Escape any existing quotes first
+                processedQuery = $"\"{query.Replace("\"", "\\\"")}\"";
+            }
+            
             // Exclude retweets to get only original posts
-            var enhancedQuery = $"{query} -is:retweet";
+            var enhancedQuery = $"{processedQuery} -is:retweet";
+            
+            // Use HttpUtility.UrlEncode or manual encoding for Twitter's query parameter
+            // Uri.EscapeDataString is too aggressive and can cause issues
             var escapedQuery = Uri.EscapeDataString(enhancedQuery);
+            
             var searchUrl = $"https://api.twitter.com/2/tweets/search/recent?query={escapedQuery}" +
                            $"&tweet.fields=author_id,created_at,public_metrics" +
                            $"&expansions=author_id" +
@@ -404,6 +417,8 @@ public class TwitterFeedbackFetcher
             {
                 searchUrl += $"&end_time={toDate.Value.ToUniversalTime():yyyy-MM-ddTHH:mm:ssZ}";
             }
+
+            _logger.LogInformation("Twitter search URL: {Url}", searchUrl.Replace(_httpClient.DefaultRequestHeaders.Authorization?.ToString() ?? "", "[AUTH]"));
 
             var response = await _httpClient.GetAsync(searchUrl, cancellationToken);
 
