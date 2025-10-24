@@ -29,6 +29,7 @@
 @inject NavigationManager NavigationManager
 @inject FeedbackWebApp.Services.Authentication.IAuthenticationService AuthService
 @inject FeedbackWebApp.Services.Authentication.IAuthenticationHeaderService AuthHeaderService
+@inject FeedbackWebApp.Services.Account.IAccountServiceProvider AccountServiceProvider
 
 <PageTitle>Content Feeds - FeedbackFlow</PageTitle>
 
@@ -338,29 +339,13 @@
                     {
                         Query = omniSearchForm.Query,
                         Platforms = platforms,
-                        MaxResults = omniSearchForm.MaxResults,
-                        SortMode = omniSearchForm.SortMode,
+                        MaxResults = 25, // Fixed max results per platform
+                        SortMode = "ranked", // Backend handles initial ranking
                         FromDate = omniSearchForm.FromDate.HasValue ? new DateTimeOffset(omniSearchForm.FromDate.Value) : null,
                         ToDate = omniSearchForm.ToDate.HasValue ? new DateTimeOffset(omniSearchForm.ToDate.Value) : null,
                         Page = 1
                     };
                     omniSearchResponse = await OmniSearchService.SearchAsync(omniRequest);
-                    
-                    // Apply client-side filtering for zero comments
-                    if (omniSearchForm.HideZeroComments && omniSearchResponse is not null)
-                    {
-                        var filteredResults = omniSearchResponse.Results.Where(r => r.CommentCount > 0).ToList();
-                        omniSearchResponse = new OmniSearchResponse
-                        { 
-                            Results = filteredResults,
-                            TotalCount = filteredResults.Count,
-                            Page = omniSearchResponse.Page,
-                            PageSize = omniSearchResponse.PageSize,
-                            CachedAt = omniSearchResponse.CachedAt,
-                            Query = omniSearchResponse.Query,
-                            PlatformsSearched = omniSearchResponse.PlatformsSearched
-                        };
-                    }
                     break;
 
                 case "youtube" when youtubeFeedForm is not null:
@@ -388,6 +373,9 @@
                     hackerNewsItems = await hnService.FetchContent();
                     break;
             }
+
+            // Refresh account limits to show updated usage
+            await RefreshAccountLimitsAsync();
         }
         catch (UsageLimitExceededException ex)
         {
@@ -638,6 +626,22 @@
                     hackerNewsItems = state.Results as List<HackerNewsItem>;
                     break;
             }
+        }
+    }
+
+    private async Task RefreshAccountLimitsAsync()
+    {
+        try
+        {
+            // Refresh the form's account limits to show updated usage
+            if (omniSearchForm is not null)
+            {
+                await omniSearchForm.RefreshAccountLimitsAsync();
+            }
+        }
+        catch
+        {
+            // Ignore errors during refresh
         }
     }
 }

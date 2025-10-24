@@ -5,14 +5,18 @@
 <div class="omni-search-results">
     @if (Response is not null)
     {
-        <div class="results-header mb-4">
+        <div class="results-header mb-3">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h3 class="h5 mb-1">
                         <i class="bi bi-search"></i> Search Results
                     </h3>
                     <p class="text-muted mb-0">
-                        Found <strong>@Response.TotalCount</strong> results for "<strong>@Response.Query</strong>"
+                        Found <strong>@filteredResults.Count</strong> results for "<strong>@Response.Query</strong>"
+                        @if (filteredResults.Count != Response.Results.Count)
+                        {
+                            <span class="text-muted">(@Response.Results.Count total)</span>
+                        }
                     </p>
                 </div>
                 <div class="text-end">
@@ -25,15 +29,44 @@
 
         @if (Response.Results.Any())
         {
-            <div class="mb-3 d-flex justify-content-end align-items-center">
-                <button class="btn btn-sm btn-outline-primary" @onclick="ToggleSelectAll">
-                    <i class="bi @(isAllSelected ? "bi-check-square" : "bi-square") me-1"></i>
-                    @(isAllSelected ? "Deselect" : "Select") All
-                </button>
+            <div class="mb-3 p-3 bg-light rounded">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="form-check">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="hide-zero-comments" 
+                                   @bind="hideZeroComments"
+                                   @bind:after="ApplyFiltersAndSort" />
+                            <label class="form-check-label" for="hide-zero-comments">
+                                <i class="bi bi-chat-left-text me-1"></i> Hide 0 comments
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="sort-by" class="form-label small mb-1">Sort by</label>
+                        <select class="form-select form-select-sm" id="sort-by" @bind="sortBy" @bind:after="ApplyFiltersAndSort">
+                            <option value="comments">Most Comments</option>
+                            <option value="engagement">Most Engagement</option>
+                            <option value="recent">Most Recent</option>
+                            <option value="oldest">Oldest First</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="filter-platform" class="form-label small mb-1">Filter Platform</label>
+                        <select class="form-select form-select-sm" id="filter-platform" @bind="platformFilter" @bind:after="ApplyFiltersAndSort">
+                            <option value="all">All Platforms</option>
+                            @foreach (var platform in GetAvailablePlatforms())
+                            {
+                                <option value="@platform.ToLower()">@platform</option>
+                            }
+                        </select>
+                    </div>
+                </div>
             </div>
 
             <div class="results-list">
-                @foreach (var result in Response.Results)
+                @foreach (var result in filteredResults)
                 {
                     <div class="result-card card mb-3 @(ParentSelectedIds.Contains($"omni_{result.Id}") ? "selected" : "")">
                         <div class="card-body">
@@ -65,7 +98,7 @@
                                         <p class="result-snippet text-muted mb-2">@result.Snippet</p>
                                     }
 
-                                    <div class="result-metadata d-flex flex-wrap gap-3 text-muted small">
+                                    <div class="result-metadata d-flex flex-wrap gap-3 text-muted small mb-2">
                                         @if (!string.IsNullOrEmpty(result.Author))
                                         {
                                             <span>
@@ -84,11 +117,15 @@
                                                 <i class="bi bi-hand-thumbs-up"></i> @FormatEngagement(result.EngagementCount)
                                             </span>
                                         }
-                                        <span>
-                                            <a href="@result.Url" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
-                                                <i class="bi bi-box-arrow-up-right"></i> View
-                                            </a>
-                                        </span>
+                                    </div>
+
+                                    <div class="d-flex gap-2">
+                                        <a href="@result.Url" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-box-arrow-up-right"></i> View
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => AnalyzeItem(result.Url)">
+                                            <i class="bi bi-graph-up"></i> Analyze
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -96,15 +133,6 @@
                     </div>
                 }
             </div>
-
-            @if (Response.TotalCount > Response.PageSize)
-            {
-                <div class="pagination-info text-center mt-4">
-                    <p class="text-muted mb-0">
-                        Showing @((Response.Page - 1) * Response.PageSize + 1) - @Math.Min(Response.Page * Response.PageSize, Response.TotalCount) of @Response.TotalCount results
-                    </p>
-                </div>
-            }
         }
         else
         {
@@ -126,54 +154,68 @@
     [Parameter]
     public EventCallback<(string itemId, bool isSelected, object? itemData)> OnSelectionChanged { get; set; }
 
-    private bool isAllSelected = false;
+    private List<OmniSearchResult> filteredResults = new();
+    private bool hideZeroComments = false;
+    private string sortBy = "comments";
+    private string platformFilter = "all";
+
+    protected override void OnParametersSet()
+    {
+        ApplyFiltersAndSort();
+    }
+
+    private void ApplyFiltersAndSort()
+    {
+        if (Response?.Results == null)
+        {
+            filteredResults = new();
+            return;
+        }
+
+        var results = Response.Results.AsEnumerable();
+
+        // Apply filters
+        if (hideZeroComments)
+        {
+            results = results.Where(r => r.CommentCount > 0);
+        }
+
+        if (platformFilter != "all")
+        {
+            results = results.Where(r => r.Source.Equals(platformFilter, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Apply sorting
+        results = sortBy switch
+        {
+            "comments" => results.OrderByDescending(r => r.CommentCount).ThenByDescending(r => r.PublishedAt),
+            "engagement" => results.OrderByDescending(r => r.EngagementCount).ThenByDescending(r => r.PublishedAt),
+            "recent" => results.OrderByDescending(r => r.PublishedAt),
+            "oldest" => results.OrderBy(r => r.PublishedAt),
+            _ => results.OrderByDescending(r => r.CommentCount).ThenByDescending(r => r.PublishedAt)
+        };
+
+        filteredResults = results.ToList();
+        StateHasChanged();
+    }
+
+    private List<string> GetAvailablePlatforms()
+    {
+        if (Response?.Results == null) return new();
+        return Response.Results.Select(r => r.Source).Distinct().OrderBy(s => s).ToList();
+    }
+
+    private void AnalyzeItem(string url)
+    {
+        var analyzeUrl = $"/?source=auto&url={Uri.EscapeDataString(url)}";
+        Navigation.NavigateTo(analyzeUrl, new NavigationOptions { ForceLoad = true, ReplaceHistoryEntry = false });
+    }
 
     private async Task ToggleSelection(OmniSearchResult result, bool isSelected)
     {
         var itemId = $"omni_{result.Id}";
         var itemData = (object?)new { result.Id, result.Title, result.Url };
         await OnSelectionChanged.InvokeAsync((itemId, isSelected, itemData));
-        UpdateSelectAllState();
-    }
-
-    private async Task ToggleSelectAll()
-    {
-        if (Response?.Results == null) return;
-
-        if (isAllSelected)
-        {
-            // Deselect all
-            foreach (var result in Response.Results)
-            {
-                var itemId = $"omni_{result.Id}";
-                if (ParentSelectedIds.Contains(itemId))
-                {
-                    await OnSelectionChanged.InvokeAsync((itemId, false, null));
-                }
-            }
-        }
-        else
-        {
-            // Select all (up to remaining capacity)
-            foreach (var result in Response.Results)
-            {
-                var itemId = $"omni_{result.Id}";
-                if (!ParentSelectedIds.Contains(itemId))
-                {
-                    var itemData = (object?)new { result.Id, result.Title, result.Url };
-                    await OnSelectionChanged.InvokeAsync((itemId, true, itemData));
-                }
-            }
-        }
-        
-        UpdateSelectAllState();
-    }
-
-    private void UpdateSelectAllState()
-    {
-        if (Response?.Results == null) return;
-        var omniSelectedCount = Response.Results.Count(r => ParentSelectedIds.Contains($"omni_{r.Id}"));
-        isAllSelected = Response.Results.Any() && omniSelectedCount == Response.Results.Count;
     }
 
     private string GetSourceIcon(string source)
