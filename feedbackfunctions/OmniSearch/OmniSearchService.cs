@@ -107,18 +107,16 @@ public class OmniSearchService
             ? RankResults(results)
             : results.OrderByDescending(r => r.CommentCount).ThenByDescending(r => r.PublishedAt).ToList();
 
-        // Apply pagination
-        var page = Math.Max(1, request.Page);
-        var pageSize = Math.Min(request.MaxResults, 50); // Cap at 50 per page
+        // Don't apply pagination - return all results from all platforms
+        // If user selects 2 platforms, they get 200 results (100 per platform)
         var totalCount = results.Count;
-        var pagedResults = results.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
         var response = new OmniSearchResponse
         {
-            Results = pagedResults,
+            Results = results, // Return all results, no pagination
             TotalCount = totalCount,
-            Page = page,
-            PageSize = pageSize,
+            Page = 1,
+            PageSize = totalCount, // PageSize equals total count
             CachedAt = DateTimeOffset.UtcNow,
             Query = request.Query,
             PlatformsSearched = request.Platforms
@@ -189,19 +187,21 @@ public class OmniSearchService
         var cutoffDate = request.FromDate ?? DateTimeOffset.UtcNow.AddDays(-30);
         var videos = await _youTubeService.SearchVideosBasicInfo(request.Query, "", cutoffDate);
 
-        return videos.Select(v => new OmniSearchResult
-        {
-            Id = $"youtube_{v.Id}",
-            Title = v.Title ?? "Untitled",
-            Snippet = TruncateText(v.Description, 200),
-            Source = "YouTube",
-            SourceId = v.Id,
-            Url = v.Url ?? $"https://www.youtube.com/watch?v={v.Id}",
-            PublishedAt = v.PublishedAt,
-            Author = v.ChannelTitle,
-            EngagementCount = v.ViewCount,
-            CommentCount = (int)v.CommentCount
-        }).ToList();
+        return videos
+            .Take(request.MaxResults) // Limit to MaxResults per platform
+            .Select(v => new OmniSearchResult
+            {
+                Id = $"youtube_{v.Id}",
+                Title = v.Title ?? "Untitled",
+                Snippet = TruncateText(v.Description, 200),
+                Source = "YouTube",
+                SourceId = v.Id,
+                Url = v.Url ?? $"https://www.youtube.com/watch?v={v.Id}",
+                PublishedAt = v.PublishedAt,
+                Author = v.ChannelTitle,
+                EngagementCount = v.ViewCount,
+                CommentCount = (int)v.CommentCount
+            }).ToList();
     }
 
     private async Task<List<OmniSearchResult>> SearchRedditAsync(OmniSearchRequest request, CancellationToken cancellationToken)
@@ -244,8 +244,8 @@ public class OmniSearchService
         var topStoryIds = await _hackerNewsService.GetTopStoriesAsync();
         var results = new List<OmniSearchResult>();
 
-        // Limit to first 100 stories to avoid rate limits
-        var storiesToCheck = topStoryIds.Take(100);
+        // Check more stories to ensure we can find enough matches (3x the requested amount)
+        var storiesToCheck = topStoryIds.Take(Math.Min(300, request.MaxResults * 3));
         var semaphore = new SemaphoreSlim(_maxConcurrency);
         var tasks = new List<Task>();
 

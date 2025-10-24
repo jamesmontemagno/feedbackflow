@@ -30,6 +30,29 @@
         @if (Response.Results.Any())
         {
             <div class="mb-3 p-3 bg-light rounded">
+                <div class="row g-3 mb-3">
+                    <div class="col-12">
+                        <label for="text-filter" class="form-label small mb-1">
+                            <i class="bi bi-funnel"></i> Filter by text
+                        </label>
+                        <input type="text" 
+                               class="form-control form-control-sm" 
+                               id="text-filter" 
+                               placeholder="Search in titles, snippets, and authors..." 
+                               @bind="textFilter"
+                               @bind:event="oninput"
+                               @bind:after="ApplyFiltersAndSort" />
+                        @if (!string.IsNullOrWhiteSpace(textFilter))
+                        {
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle"></i> Filtering by: "@textFilter"
+                                <button class="btn btn-sm btn-link p-0 ms-1" @onclick="ClearTextFilter">
+                                    <i class="bi bi-x-circle"></i> Clear
+                                </button>
+                            </small>
+                        }
+                    </div>
+                </div>
                 <div class="row g-3">
                     <div class="col-md-4">
                         <div class="form-check">
@@ -158,9 +181,16 @@
     private bool hideZeroComments = false;
     private string sortBy = "comments";
     private string platformFilter = "all";
+    private string textFilter = "";
 
     protected override void OnParametersSet()
     {
+        ApplyFiltersAndSort();
+    }
+
+    private void ClearTextFilter()
+    {
+        textFilter = "";
         ApplyFiltersAndSort();
     }
 
@@ -173,6 +203,17 @@
         }
 
         var results = Response.Results.AsEnumerable();
+
+        // Apply text filter
+        if (!string.IsNullOrWhiteSpace(textFilter))
+        {
+            var filter = textFilter.Trim();
+            results = results.Where(r =>
+                (r.Title?.Contains(filter, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (r.Snippet?.Contains(filter, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (r.Author?.Contains(filter, StringComparison.OrdinalIgnoreCase) ?? false)
+            );
+        }
 
         // Apply filters
         if (hideZeroComments)

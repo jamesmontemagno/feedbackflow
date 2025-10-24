@@ -339,7 +339,7 @@
                     {
                         Query = omniSearchForm.Query,
                         Platforms = platforms,
-                        MaxResults = 25, // Fixed max results per platform
+                        MaxResults = 100, // 100 results per platform
                         SortMode = "ranked", // Backend handles initial ranking
                         FromDate = omniSearchForm.FromDate.HasValue ? new DateTimeOffset(omniSearchForm.FromDate.Value) : null,
                         ToDate = omniSearchForm.ToDate.HasValue ? new DateTimeOffset(omniSearchForm.ToDate.Value) : null,
