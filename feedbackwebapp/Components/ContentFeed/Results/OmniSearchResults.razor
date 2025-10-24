@@ -75,6 +75,9 @@
                                         <span>
                                             <i class="bi bi-calendar"></i> @FormatDate(result.PublishedAt)
                                         </span>
+                                        <span class="@(result.CommentCount > 0 ? "text-primary fw-semibold" : "")">
+                                            <i class="bi bi-chat-left-text"></i> @FormatComments(result.CommentCount)
+                                        </span>
                                         @if (result.EngagementCount > 0)
                                         {
                                             <span>
@@ -222,6 +225,19 @@
         if (count >= 1_000)
             return $"{count / 1_000.0:F1}K";
         return count.ToString();
+    }
+
+    private string FormatComments(int count)
+    {
+        if (count == 0)
+            return "0 comments";
+        if (count == 1)
+            return "1 comment";
+        if (count >= 1_000_000)
+            return $"{count / 1_000_000.0:F1}M comments";
+        if (count >= 1_000)
+            return $"{count / 1_000.0:F1}K comments";
+        return $"{count} comments";
     }
 
     private string FormatCacheTime(DateTimeOffset cachedAt)

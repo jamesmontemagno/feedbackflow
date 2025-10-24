@@ -51,6 +51,11 @@ public class OmniSearchResult
     public long EngagementCount { get; set; }
 
     /// <summary>
+    /// Number of comments/replies on the content
+    /// </summary>
+    public int CommentCount { get; set; }
+
+    /// <summary>
     /// Optional: raw platform-specific payload for future expansion
     /// </summary>
     public object? RawPayload { get; set; }
@@ -90,6 +95,11 @@ public class OmniSearchRequest
     /// Sort mode: "chronological" (default) or "ranked" (engagement + recency)
     /// </summary>
     public string SortMode { get; set; } = "chronological";
+
+    /// <summary>
+    /// Hide results with zero comments (default: false)
+    /// </summary>
+    public bool HideZeroComments { get; set; } = false;
 
     /// <summary>
     /// Page number for pagination (1-indexed)

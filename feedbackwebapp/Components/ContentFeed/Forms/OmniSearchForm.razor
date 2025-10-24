@@ -125,6 +125,18 @@
         <div class="form-check">
             <input class="form-check-input" 
                    type="checkbox" 
+                   id="hide-zero-comments" 
+                   @bind="HideZeroComments" />
+            <label class="form-check-label" for="hide-zero-comments">
+                <i class="bi bi-chat-left-text me-1"></i> Hide results with 0 comments
+            </label>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <div class="form-check">
+            <input class="form-check-input" 
+                   type="checkbox" 
                    id="enable-date-filter" 
                    @bind="EnableDateFilter" />
             <label class="form-check-label" for="enable-date-filter">
@@ -165,6 +177,7 @@
     public bool EnableBlueSky { get; set; } = false;
     public int MaxResults { get; set; } = 10;
     public string SortMode { get; set; } = "chronological";
+    public bool HideZeroComments { get; set; } = false;
     public bool EnableDateFilter { get; set; } = false;
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }
@@ -223,6 +236,7 @@
             await JSRuntime.InvokeVoidAsync("localStorage.setItem", "omniSearch_bluesky", EnableBlueSky.ToString());
             await JSRuntime.InvokeVoidAsync("localStorage.setItem", "omniSearch_maxResults", MaxResults.ToString());
             await JSRuntime.InvokeVoidAsync("localStorage.setItem", "omniSearch_sortMode", SortMode);
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "omniSearch_hideZeroComments", HideZeroComments.ToString());
         }
         catch
         {
@@ -265,6 +279,10 @@
             var sortMode = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "omniSearch_sortMode");
             if (!string.IsNullOrEmpty(sortMode))
                 SortMode = sortMode;
+
+            var hideZeroComments = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "omniSearch_hideZeroComments");
+            if (bool.TryParse(hideZeroComments, out var hide))
+                HideZeroComments = hide;
         }
         catch
         {

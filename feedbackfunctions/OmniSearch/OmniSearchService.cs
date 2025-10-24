@@ -102,10 +102,17 @@ public class OmniSearchService
             results.AddRange(platformResult);
         }
 
+        // Apply zero-comment filter if requested
+        if (request.HideZeroComments)
+        {
+            results = results.Where(r => r.CommentCount > 0).ToList();
+            _logger.LogInformation("Filtered to {Count} results with comments (removed zero-comment items)", results.Count);
+        }
+
         // Sort results
         results = request.SortMode.ToLowerInvariant() == "ranked"
             ? RankResults(results)
-            : results.OrderByDescending(r => r.PublishedAt).ToList();
+            : results.OrderByDescending(r => r.CommentCount).ThenByDescending(r => r.PublishedAt).ToList();
 
         // Apply pagination
         var page = Math.Max(1, request.Page);
@@ -199,7 +206,8 @@ public class OmniSearchService
             Url = v.Url ?? $"https://www.youtube.com/watch?v={v.Id}",
             PublishedAt = v.PublishedAt,
             Author = v.ChannelTitle,
-            EngagementCount = v.ViewCount
+            EngagementCount = v.ViewCount,
+            CommentCount = (int)v.CommentCount
         }).ToList();
     }
 
@@ -226,7 +234,8 @@ public class OmniSearchService
                 Url = $"https://reddit.com{p.Data.Permalink}",
                 PublishedAt = DateTimeOffset.FromUnixTimeSeconds((long)p.Data.CreatedUtc),
                 Author = p.Data.Author,
-                EngagementCount = p.Data.Score
+                EngagementCount = p.Data.Score,
+                CommentCount = p.Data.NumComments
             }).ToList();
         }
         catch (Exception ex)
@@ -273,7 +282,8 @@ public class OmniSearchService
                                 Url = story.Url ?? $"https://news.ycombinator.com/item?id={story.Id}",
                                 PublishedAt = DateTimeOffset.FromUnixTimeSeconds(story.Time),
                                 Author = story.By,
-                                EngagementCount = story.Score
+                                EngagementCount = story.Score,
+                                CommentCount = story.Descendants
                             });
                         }
                     }
@@ -310,7 +320,8 @@ public class OmniSearchService
                 Url = $"https://twitter.com/{t.AuthorUsername}/status/{t.Id}",
                 PublishedAt = t.TimestampUtc,
                 Author = $"@{t.AuthorUsername}",
-                EngagementCount = 0 // Engagement counts not stored in TwitterFeedbackItem
+                EngagementCount = 0, // Engagement counts not stored in TwitterFeedbackItem
+                CommentCount = CountReplies(t.Replies)
             }).ToList();
         }
         catch (Exception ex)
@@ -340,7 +351,8 @@ public class OmniSearchService
                 Url = $"https://bsky.app/profile/{p.Author}/post/{p.Id}",
                 PublishedAt = p.TimestampUtc,
                 Author = $"@{p.Author}",
-                EngagementCount = 0 // BlueSky engagement data not stored in model
+                EngagementCount = 0, // BlueSky engagement data not stored in model
+                CommentCount = CountReplies(p.Replies)
             }).ToList();
         }
         catch (Exception ex)
@@ -350,10 +362,42 @@ public class OmniSearchService
         }
     }
 
+    /// <summary>
+    /// Recursively count all replies in a reply tree
+    /// </summary>
+    private int CountReplies(List<TwitterFeedbackItem>? replies)
+    {
+        if (replies == null || !replies.Any())
+            return 0;
+
+        int count = replies.Count;
+        foreach (var reply in replies)
+        {
+            count += CountReplies(reply.Replies);
+        }
+        return count;
+    }
+
+    /// <summary>
+    /// Recursively count all replies in a reply tree (BlueSky)
+    /// </summary>
+    private int CountReplies(List<BlueSkyFeedbackItem>? replies)
+    {
+        if (replies == null || !replies.Any())
+            return 0;
+
+        int count = replies.Count;
+        foreach (var reply in replies)
+        {
+            count += CountReplies(reply.Replies);
+        }
+        return count;
+    }
+
     private List<OmniSearchResult> RankResults(List<OmniSearchResult> results)
     {
-        // Ranking algorithm: combine recency and engagement
-        // Score = (engagement * 0.7) + (recency_score * 0.3)
+        // Ranking algorithm: prioritize comment count for analysis value
+        // Score = (comment_count * 0.5) + (engagement * 0.3) + (recency_score * 0.2)
         var now = DateTimeOffset.UtcNow;
 
         return results.Select(r =>
@@ -361,7 +405,8 @@ public class OmniSearchService
             var daysSincePublished = (now - r.PublishedAt).TotalDays;
             var recencyScore = Math.Max(0, 100 - daysSincePublished); // Newer = higher score
             var normalizedEngagement = Math.Log10(Math.Max(1, r.EngagementCount)); // Log scale
-            var combinedScore = (normalizedEngagement * 0.7) + (recencyScore * 0.3);
+            var normalizedComments = Math.Log10(Math.Max(1, r.CommentCount + 1)); // Log scale, +1 to handle 0
+            var combinedScore = (normalizedComments * 0.5) + (normalizedEngagement * 0.3) + (recencyScore * 0.2);
             
             return (Result: r, Score: combinedScore);
         })
