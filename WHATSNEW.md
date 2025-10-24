@@ -1,5 +1,78 @@
 This page tracks the latest features and improvements added to FeedbackFlow.
 
+## 📆 October 2025
+
+### 🔍 Omni Search - Multi-Platform Content Discovery
+
+The most requested feature is here! Search across all supported platforms simultaneously:
+
+- 🌐 **Universal Search**: Search YouTube, Reddit, Hacker News, Twitter/X, and BlueSky all at once
+- ⚡ **Blazing Fast**: Server-side aggregation with intelligent caching (results in seconds)
+- 🎯 **Smart Filtering**: Filter by platform, comment count, text search, and more
+- 📊 **Unified Results**: 100 results per platform with consistent formatting
+- 🔄 **Real-time Sorting**: Sort by comments, engagement, recency, or oldest first
+- 💬 **Comment-First**: Prioritizes content with actual discussions for better analysis
+- 🎨 **Clean UI**: Beautiful result cards with platform badges and instant filtering
+- 📱 **Mobile-Ready**: Fully responsive design works perfectly on all devices
+
+### 📋 Enhanced Content Feed Selection
+
+Supercharge your workflow with improved multi-source analysis:
+
+- ☑️ **Cross-Platform Selection**: Select up to 10 items across all content sources
+- 🎯 **Unified Sidebar**: Floating sidebar shows all selected items with quick actions
+- 💾 **Persistent State**: Selections saved to localStorage and survive page refreshes
+- 🔀 **Tab Caching**: Switch between sources without losing your search results
+- ⚡ **Bulk Analysis**: Analyze multiple items at once with a single click
+- 🎨 **Visual Feedback**: Selected items highlighted with clear visual indicators
+
+### 🎨 Theme Improvements
+
+Enhanced theming system for better user experience:
+
+- 🌓 **System Default Option**: Three-way theme toggle (Light/Dark/System)
+- 🎯 **Automatic Detection**: Respects your OS theme preference
+- 🔄 **Dynamic Switching**: Seamlessly adapts to system theme changes
+- 🎨 **Consistent Styling**: All components fully support both themes
+
+### 🤖 Model Context Protocol (MCP) Server
+
+FeedbackFlow now integrates with AI assistants through MCP:
+
+- 🐳 **Docker Distribution**: Pre-built Docker images for instant deployment
+- 🔌 **Tool Integration**: Expose FeedbackFlow features to MCP-compatible clients
+- 🔐 **Secure Access**: API key-based authentication
+- 📊 **Multiple Tools**: Auto-analyze, GitHub reports, Reddit reports, and more
+- 💻 **Local & Remote**: Supports both stdio (local) and SSE (cloud) modes
+
+## 📆 September 2025
+
+### 🔧 Platform Search Enhancements
+
+Improved search capabilities across all platforms:
+
+- 🐦 **Enhanced Twitter Search**: Better query encoding for special characters (.NET, C#, etc.)
+- 🦋 **BlueSky Updates**: Updated to latest AT Protocol API changes
+- 📊 **Reddit Improvements**: More reliable post fetching and filtering
+- 🎯 **Unified Service Layer**: Consistent search patterns across all platforms
+
+### 💼 Multi-Select Content Feeds
+
+Added powerful batch operations to Content Feeds:
+
+- ☑️ **Checkbox Selection**: Select individual videos, posts, or stories
+- 🎯 **Bulk Actions**: Analyze multiple items in one go
+- 📋 **Visual Selection State**: Clear indicators for selected items
+- ⚡ **Quick Access**: Streamlined workflow for content analysis
+
+### 🔀 Individual Report Toggles
+
+More control over automated reports:
+
+- 🎚️ **Per-URL Control**: Enable/disable reports for individual URLs
+- 📊 **Flexible Management**: Mix automated and manual report generation
+- 💾 **Persistent Settings**: Report preferences saved per source
+
 ## 📆 August 2025
 
 ### 🍿 Analysis Improvements
