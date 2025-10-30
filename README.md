@@ -143,9 +143,23 @@ FeedbackFlow/
 
 The application is configured for deployment to Azure with:
 
-- **Azure App Service** for the web application
+- **Azure App Service** for the web application with optimized static assets
 - **Azure Functions** for the serverless backend
 - **GitHub Actions** for CI/CD with staging and production environments
+- **CDN/Front Door** support for global content delivery (optional)
+
+### Static Assets Optimization
+
+FeedbackFlow uses .NET 9's `MapStaticAssets()` feature for:
+- **Content-based fingerprinting** with immutable caching
+- **Automatic Brotli/Gzip compression** at build time
+- **Optimized cache headers** for maximum performance
+- **CI validation** to ensure assets are properly optimized
+
+📖 **Documentation**:
+- [Static Assets Build Pipeline](./docs/static-assets-build-pipeline.md) - How static assets are optimized during build
+- [CDN Configuration Guide](./docs/cdn-static-assets-configuration.md) - Complete Azure CDN/Front Door setup
+- [Deployment Playbook](./docs/deployment-playbook.md) - Step-by-step deployment procedures
 
 ### Environment Configuration
 
