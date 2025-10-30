@@ -58,15 +58,18 @@ public class SecurityHeadersMiddleware
         }
 
         // Permissions-Policy: Restrict browser features to minimize attack surface
-        headers["Permissions-Policy"] = 
-            "geolocation=(), " +
-            "microphone=(), " +
-            "camera=(), " +
-            "payment=(), " +
-            "usb=(), " +
-            "magnetometer=(), " +
-            "gyroscope=(), " +
-            "accelerometer=()";
+        var permissionsPolicy = new[]
+        {
+            "geolocation=()",
+            "microphone=()",
+            "camera=()",
+            "payment=()",
+            "usb=()",
+            "magnetometer=()",
+            "gyroscope=()",
+            "accelerometer=()"
+        };
+        headers["Permissions-Policy"] = string.Join(", ", permissionsPolicy);
 
         // Content-Security-Policy
         // Start in report-only mode for development, enforce in production
@@ -91,7 +94,9 @@ public class SecurityHeadersMiddleware
             "default-src 'self'",
             
             // Scripts: Allow self, nonce for inline scripts, and specific CDNs
-            // 'unsafe-eval' is required for Blazor SignalR
+            // 'unsafe-eval' is required for Blazor SignalR message deserialization
+            // This is a documented Blazor requirement and cannot be avoided without breaking SignalR
+            // See: https://learn.microsoft.com/aspnet/core/blazor/security/content-security-policy
             $"script-src 'self' 'nonce-{nonce}' 'unsafe-eval' https://cdn.jsdelivr.net",
             
             // Styles: Allow self, inline styles (Blazor uses them), and CDNs
