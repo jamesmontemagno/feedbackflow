@@ -3,6 +3,7 @@ using System.Text.Json;
 using FeedbackWebApp.Services.Interfaces;
 using FeedbackWebApp.Services.Authentication;
 using SharedDump.Utils;
+using SharedDump.AI;
 
 namespace FeedbackWebApp.Services.Feedback;
 
@@ -112,7 +113,7 @@ public abstract class FeedbackService : IFeedbackService
         var settings = await _userSettings.GetSettingsAsync();
         string? customPrompt = null;
 
-        // Precedence UPDATED: temporary prompt (UI) > explicit parameter (manual) > user settings
+        // Precedence: temporary prompt (UI) > explicit parameter (manual) > user custom prompt > user selected prompt type
         if (!string.IsNullOrWhiteSpace(TemporaryPrompt))
         {
             customPrompt = TemporaryPrompt;
@@ -124,6 +125,11 @@ public abstract class FeedbackService : IFeedbackService
         else if (settings.UseCustomPrompts)
         {
             customPrompt = settings.UniversalPrompt;
+        }
+        else
+        {
+            // Use the selected prompt type (default behavior)
+            customPrompt = FeedbackAnalyzerService.GetPromptByType(settings.SelectedPromptType);
         }
 
         if (customPrompt != null)
@@ -160,7 +166,7 @@ public abstract class FeedbackService : IFeedbackService
         var settings = await _userSettings.GetSettingsAsync();
         string? customPrompt = null;
 
-        // Precedence UPDATED: temporary prompt (UI) > explicit parameter (manual) > user settings
+        // Precedence: temporary prompt (UI) > explicit parameter (manual) > user custom prompt > user selected prompt type
         if (!string.IsNullOrWhiteSpace(TemporaryPrompt))
         {
             customPrompt = TemporaryPrompt;
@@ -172,6 +178,11 @@ public abstract class FeedbackService : IFeedbackService
         else if (settings.UseCustomPrompts)
         {
             customPrompt = settings.UniversalPrompt;
+        }
+        else
+        {
+            // Use the selected prompt type (default behavior)
+            customPrompt = FeedbackAnalyzerService.GetPromptByType(settings.SelectedPromptType);
         }
 
         if (customPrompt != null)

@@ -93,6 +93,26 @@
                                 <i class="bi bi-sliders me-1"></i>
                                 @(showPromptEditor ? "Hide Custom Prompt" : "Customize Prompt")
                             </button>
+                            @if (!useCustomPrompts && string.IsNullOrWhiteSpace(customPrompt))
+                            {
+                                <small class="text-muted ms-2">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Using: 
+                                    @if (currentPromptType == SharedDump.AI.PromptType.ProductFeedback)
+                                    {
+                                        <text>Product Feedback Analysis</text>
+                                    }
+                                    else if (currentPromptType == SharedDump.AI.PromptType.CompetitorAnalysis)
+                                    {
+                                        <text>Competitor Analysis</text>
+                                    }
+                                    else if (currentPromptType == SharedDump.AI.PromptType.GeneralAnalysis)
+                                    {
+                                        <text>General Analysis</text>
+                                    }
+                                    <a href="/settings" class="ms-1">(change in settings)</a>
+                                </small>
+                            }
                         </div>
                         @if (showPromptEditor)
                         {
@@ -179,6 +199,8 @@
     private string customPrompt = string.Empty; // Temporary, not persisted
     private bool showSurveyLink = false; // After successful analysis and if not previously completed
     private bool includeIndividualReports = false; // Default to false - only full report
+    private SharedDump.AI.PromptType currentPromptType = SharedDump.AI.PromptType.ProductFeedback;
+    private bool useCustomPrompts = false;
     
     // Reanalyze caching state
     private string[]? lastAnalyzedUrls;
@@ -210,6 +232,8 @@
         try
         {
             var settings = await UserSettings.GetSettingsAsync();
+            currentPromptType = settings.SelectedPromptType;
+            useCustomPrompts = settings.UseCustomPrompts;
             if (!string.IsNullOrWhiteSpace(settings.UniversalPrompt))
             {
                 customPrompt = settings.UniversalPrompt;
@@ -681,6 +705,9 @@
                 Console.WriteLine($"OAuth redirect handling error: {ex.Message}");
             }
         }
+
+        // Load user settings for prompt type
+        await PrefillPromptFromSettingsAsync();
 
         await base.OnInitializedAsync();
     }

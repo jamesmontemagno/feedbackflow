@@ -1,6 +1,7 @@
 using Microsoft.JSInterop;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
+using SharedDump.AI;
 
 namespace FeedbackWebApp.Services;
 
@@ -23,11 +24,14 @@ public class UserSettingsService
         // ID of the completed survey (allows for different surveys over time)
         public string? CompletedSurveyId { get; set; }
         
+        // Selected prompt type for analysis
+        public PromptType SelectedPromptType { get; set; } = PromptType.ProductFeedback;
+        
         // New universal prompt property
-        public string UniversalPrompt { get; set; } = SharedDump.AI.FeedbackAnalyzerService.GetUniversalPrompt();
+        public string UniversalPrompt { get; set; } = FeedbackAnalyzerService.GetUniversalPrompt();
         
         // Manual prompt property - separate from universal prompt
-        public string ManualPrompt { get; set; } = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("manual");
+        public string ManualPrompt { get; set; } = FeedbackAnalyzerService.GetServiceSpecificPrompt("manual");
         
     }
 
@@ -59,14 +63,14 @@ public class UserSettingsService
             bool needsMigration = false;
             if (string.IsNullOrWhiteSpace(_cachedSettings.UniversalPrompt))
             {
-                _cachedSettings.UniversalPrompt = SharedDump.AI.FeedbackAnalyzerService.GetUniversalPrompt();
+                _cachedSettings.UniversalPrompt = FeedbackAnalyzerService.GetUniversalPrompt();
                 needsMigration = true;
             }
             
             // Migration: If ManualPrompt is empty or missing, initialize it
             if (string.IsNullOrWhiteSpace(_cachedSettings.ManualPrompt))
             {
-                _cachedSettings.ManualPrompt = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("manual");
+                _cachedSettings.ManualPrompt = FeedbackAnalyzerService.GetServiceSpecificPrompt("manual");
                 needsMigration = true;
             }
 
