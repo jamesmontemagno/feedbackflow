@@ -229,10 +229,24 @@
     private void TogglePromptEditor()
     {
         showPromptEditor = !showPromptEditor;
-        if (showPromptEditor && string.IsNullOrWhiteSpace(customPrompt) && selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
+        if (showPromptEditor && selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
         {
-            // Prefill with universal/system prompt from settings if available
-            _ = PrefillPromptFromSettingsAsync();
+            // When opening the editor, only load the prompt if it's currently empty
+            // This preserves any custom edits the user may have made
+            if (string.IsNullOrWhiteSpace(customPrompt))
+            {
+                // Load the prompt for the currently selected type
+                if (selectedPromptType == SharedDump.AI.PromptType.Custom)
+                {
+                    // Load custom prompt from settings
+                    _ = PrefillPromptFromSettingsAsync();
+                }
+                else
+                {
+                    // Load the prompt for the selected type
+                    customPrompt = FeedbackAnalyzerService.GetPromptByType(selectedPromptType);
+                }
+            }
         }
     }
 
@@ -262,37 +276,35 @@
 
     private async Task OnPromptTypeChanged()
     {
-        // When analysis type changes, update the custom prompt textarea with the selected prompt
-        if (selectedPromptType == SharedDump.AI.PromptType.Custom)
+        // When analysis type changes, only update the custom prompt textarea if the editor is already visible
+        // This allows users to change the prompt type without forcing the editor to show
+        if (showPromptEditor)
         {
-            // Load custom prompt from settings
-            try
+            if (selectedPromptType == SharedDump.AI.PromptType.Custom)
             {
-                var settings = await UserSettings.GetSettingsAsync();
-                if (!string.IsNullOrWhiteSpace(settings.UniversalPrompt))
+                // Load custom prompt from settings
+                try
                 {
-                    customPrompt = settings.UniversalPrompt;
+                    var settings = await UserSettings.GetSettingsAsync();
+                    if (!string.IsNullOrWhiteSpace(settings.UniversalPrompt))
+                    {
+                        customPrompt = settings.UniversalPrompt;
+                    }
+                    else
+                    {
+                        customPrompt = string.Empty;
+                    }
                 }
-                else
-                {
-                    customPrompt = string.Empty;
-                }
+                catch { /* swallow - non critical */ }
             }
-            catch { /* swallow - non critical */ }
+            else
+            {
+                // Load the prompt for the selected type
+                customPrompt = FeedbackAnalyzerService.GetPromptByType(selectedPromptType);
+            }
+            
+            StateHasChanged();
         }
-        else
-        {
-            // Load the prompt for the selected type
-            customPrompt = FeedbackAnalyzerService.GetPromptByType(selectedPromptType);
-        }
-        
-        // Auto-show the prompt editor when user changes the selection
-        if (!showPromptEditor)
-        {
-            showPromptEditor = true;
-        }
-        
-        StateHasChanged();
     }
 
     /// <summary>
