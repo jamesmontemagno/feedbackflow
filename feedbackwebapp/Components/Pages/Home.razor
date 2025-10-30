@@ -255,6 +255,25 @@
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Applies the appropriate prompt to the service based on user selection.
+    /// Priority: custom prompt > selected prompt type
+    /// </summary>
+    private void ApplyPromptToService(IFeedbackService service)
+    {
+        if (!string.IsNullOrWhiteSpace(customPrompt))
+        {
+            // User provided a custom prompt - use it
+            service.SetTemporaryPrompt(customPrompt);
+        }
+        else
+        {
+            // Use the selected prompt type
+            var promptForSelectedType = FeedbackAnalyzerService.GetPromptByType(selectedPromptType);
+            service.SetTemporaryPrompt(promptForSelectedType);
+        }
+    }
+
     // URL normalization and comparison helpers for reanalyze feature
     private string[] NormalizeUrls(IEnumerable<string> urls) => urls
         .Where(u => !string.IsNullOrWhiteSpace(u))
@@ -295,18 +314,8 @@
         var autoService = service as IAutoDataSourceFeedbackService;
         autoService?.SetIncludeIndividualReports(includeIndividualReports);
 
-        // Apply temporary prompt
-        if (!string.IsNullOrWhiteSpace(customPrompt))
-        {
-            // User provided a custom prompt - use it
-            service.SetTemporaryPrompt(customPrompt);
-        }
-        else
-        {
-            // Use the selected prompt type
-            var promptForSelectedType = FeedbackAnalyzerService.GetPromptByType(selectedPromptType);
-            service.SetTemporaryPrompt(promptForSelectedType);
-        }
+        // Apply the appropriate prompt
+        ApplyPromptToService(service);
 
         // Call AnalyzeComments directly with cached data
         var (result, additionalData) = await service.AnalyzeComments(cachedComments, cachedCommentCount, cachedAdditionalData);
@@ -566,20 +575,10 @@
                 autoService?.SetIncludeIndividualReports(includeIndividualReports);
             }
 
-            // Apply temporary prompt via new API so precedence is clear
+            // Apply the appropriate prompt for Auto services
             if (selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
             {
-                if (!string.IsNullOrWhiteSpace(customPrompt))
-                {
-                    // User provided a custom prompt - use it
-                    service.SetTemporaryPrompt(customPrompt);
-                }
-                else
-                {
-                    // Use the selected prompt type
-                    var promptForSelectedType = FeedbackAnalyzerService.GetPromptByType(selectedPromptType);
-                    service.SetTemporaryPrompt(promptForSelectedType);
-                }
+                ApplyPromptToService(service);
             }
 
             var (result, additionalData) = await service.GetFeedback();
