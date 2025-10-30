@@ -143,10 +143,10 @@ FeedbackFlow/
 
 The application is configured for deployment to Azure with:
 
-- **Azure App Service** for the web application with optimized static assets
+- **Azure App Service** for the web application with content-based fingerprinting and build-time compression
 - **Azure Functions** for the serverless backend
 - **GitHub Actions** for CI/CD with staging and production environments
-- **CDN/Front Door** support for global content delivery (optional)
+- **Azure CDN/Front Door** support for global content delivery (optional)
 
 ### Static Assets Optimization
 
