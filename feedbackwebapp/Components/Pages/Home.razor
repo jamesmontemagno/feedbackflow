@@ -231,16 +231,21 @@
         showPromptEditor = !showPromptEditor;
         if (showPromptEditor && selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
         {
-            // When opening the editor, load the prompt for the currently selected type
-            if (selectedPromptType == SharedDump.AI.PromptType.Custom)
+            // When opening the editor, only load the prompt if it's currently empty
+            // This preserves any custom edits the user may have made
+            if (string.IsNullOrWhiteSpace(customPrompt))
             {
-                // Load custom prompt from settings
-                _ = PrefillPromptFromSettingsAsync();
-            }
-            else
-            {
-                // Load the prompt for the selected type
-                customPrompt = FeedbackAnalyzerService.GetPromptByType(selectedPromptType);
+                // Load the prompt for the currently selected type
+                if (selectedPromptType == SharedDump.AI.PromptType.Custom)
+                {
+                    // Load custom prompt from settings
+                    _ = PrefillPromptFromSettingsAsync();
+                }
+                else
+                {
+                    // Load the prompt for the selected type
+                    customPrompt = FeedbackAnalyzerService.GetPromptByType(selectedPromptType);
+                }
             }
         }
     }
