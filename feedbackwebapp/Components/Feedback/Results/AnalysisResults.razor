@@ -264,7 +264,7 @@
             }
             
             await ToastService.ShowSuccessAsync("Analysis saved successfully!", 3000);
-            await TriggerConfetti();
+            _ = TriggerConfetti();
         }
         catch (Exception ex)
         {
