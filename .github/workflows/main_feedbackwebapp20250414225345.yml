@@ -39,6 +39,20 @@ jobs:
       - name: dotnet publish
         run: dotnet publish "${{env.WEB_APP_PATH}}" -c Release -o "${{env.DOTNET_ROOT}}/${{env.WEB_APP_NAME}}"
 
+      - name: Verify static assets in publish output
+        shell: pwsh
+        run: |
+          Write-Host "🔍 Verifying static assets in publish output..."
+          $brCount = (Get-ChildItem -Path "${{env.DOTNET_ROOT}}/${{env.WEB_APP_NAME}}/wwwroot" -Recurse -Filter "*.br" -ErrorAction SilentlyContinue).Count
+          $gzCount = (Get-ChildItem -Path "${{env.DOTNET_ROOT}}/${{env.WEB_APP_NAME}}/wwwroot" -Recurse -Filter "*.gz" -ErrorAction SilentlyContinue).Count
+          Write-Host "Found $brCount Brotli files and $gzCount Gzip files"
+          
+          if ($brCount -eq 0 -or $gzCount -eq 0) {
+            Write-Host "⚠️  Warning: Precompressed assets may be missing"
+          } else {
+            Write-Host "✅ Precompressed assets verified"
+          }
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:

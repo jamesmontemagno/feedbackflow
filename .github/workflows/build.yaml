@@ -29,3 +29,76 @@ jobs:
 
     - name: Run tests
       run: dotnet test FeedbackFlow.slnx --configuration Release --no-build
+    
+    - name: Publish web app for asset verification
+      run: dotnet publish ./feedbackwebapp/WebApp.csproj -c Release -o ./publish-validation --no-build
+    
+    - name: Verify static assets optimization
+      shell: bash
+      run: |
+        echo "🔍 Verifying static assets optimization..."
+        
+        # Check for fingerprinted assets
+        echo "Checking for fingerprinted assets..."
+        FINGERPRINTED_CSS=$(find ./publish-validation/wwwroot -name "*.*.css" ! -name "*.br" ! -name "*.gz" | wc -l)
+        FINGERPRINTED_JS=$(find ./publish-validation/wwwroot -name "*.*.js" ! -name "*.br" ! -name "*.gz" | wc -l)
+        
+        if [ "$FINGERPRINTED_CSS" -eq 0 ] || [ "$FINGERPRINTED_JS" -eq 0 ]; then
+          echo "❌ Error: No fingerprinted assets found!"
+          echo "CSS files with fingerprints: $FINGERPRINTED_CSS"
+          echo "JS files with fingerprints: $FINGERPRINTED_JS"
+          exit 1
+        fi
+        
+        echo "✅ Found $FINGERPRINTED_CSS CSS and $FINGERPRINTED_JS JS fingerprinted assets"
+        
+        # Check for Brotli compressed files
+        echo "Checking for Brotli compression..."
+        BR_FILES=$(find ./publish-validation/wwwroot -name "*.br" | wc -l)
+        
+        if [ "$BR_FILES" -eq 0 ]; then
+          echo "❌ Error: No Brotli compressed files found!"
+          exit 1
+        fi
+        
+        echo "✅ Found $BR_FILES Brotli compressed files"
+        
+        # Check for Gzip compressed files
+        echo "Checking for Gzip compression..."
+        GZ_FILES=$(find ./publish-validation/wwwroot -name "*.gz" | wc -l)
+        
+        if [ "$GZ_FILES" -eq 0 ]; then
+          echo "❌ Error: No Gzip compressed files found!"
+          exit 1
+        fi
+        
+        echo "✅ Found $GZ_FILES Gzip compressed files"
+        
+        # Check for staticwebassets.endpoints.json
+        echo "Checking for static web assets manifest..."
+        if [ ! -f "./publish-validation/WebApp.staticwebassets.endpoints.json" ]; then
+          echo "❌ Error: WebApp.staticwebassets.endpoints.json not found!"
+          exit 1
+        fi
+        
+        echo "✅ Static web assets manifest found"
+        
+        # Verify Cache-Control headers in manifest
+        echo "Verifying Cache-Control headers in manifest..."
+        IMMUTABLE_COUNT=$(grep -o "max-age=31536000, immutable" ./publish-validation/WebApp.staticwebassets.endpoints.json | wc -l)
+        NO_CACHE_COUNT=$(grep -o "\"no-cache\"" ./publish-validation/WebApp.staticwebassets.endpoints.json | wc -l)
+        
+        if [ "$IMMUTABLE_COUNT" -eq 0 ]; then
+          echo "⚠️  Warning: No immutable cache headers found in manifest"
+        else
+          echo "✅ Found $IMMUTABLE_COUNT immutable cache directives for fingerprinted assets"
+        fi
+        
+        if [ "$NO_CACHE_COUNT" -eq 0 ]; then
+          echo "⚠️  Warning: No no-cache headers found in manifest"
+        else
+          echo "✅ Found $NO_CACHE_COUNT no-cache directives for non-fingerprinted assets"
+        fi
+        
+        echo ""
+        echo "🎉 Static assets optimization verification completed successfully!"

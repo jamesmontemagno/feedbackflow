@@ -60,6 +60,20 @@ jobs:
       - name: dotnet publish
         run: dotnet publish "${{env.WEB_APP_PATH}}" -c Release -o ./publish
 
+      - name: Verify static assets in publish output
+        shell: bash
+        run: |
+          echo "🔍 Verifying static assets in publish output..."
+          BR_COUNT=$(find ./publish/wwwroot -name "*.br" 2>/dev/null | wc -l)
+          GZ_COUNT=$(find ./publish/wwwroot -name "*.gz" 2>/dev/null | wc -l)
+          echo "Found $BR_COUNT Brotli files and $GZ_COUNT Gzip files"
+          
+          if [ "$BR_COUNT" -eq 0 ] || [ "$GZ_COUNT" -eq 0 ]; then
+            echo "⚠️  Warning: Precompressed assets may be missing"
+          else
+            echo "✅ Precompressed assets verified"
+          fi
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
