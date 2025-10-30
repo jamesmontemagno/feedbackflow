@@ -10,6 +10,8 @@ namespace SharedDump.Json;
 [JsonSerializable(typeof(BlueSkyThreadResponse))]
 [JsonSerializable(typeof(BlueSkyAuthRequest))]
 [JsonSerializable(typeof(BlueSkyAuthResponse))]
+[JsonSerializable(typeof(BlueSkySearchResponse))]
+[JsonSerializable(typeof(BlueSkySearchPost))]
 public partial class BlueSkyFeedbackJsonContext : JsonSerializerContext
 {
 }

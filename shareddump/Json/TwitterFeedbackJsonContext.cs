@@ -7,5 +7,8 @@ namespace SharedDump.Json
     [JsonSerializable(typeof(List<TwitterFeedbackItem>))]
     [JsonSerializable(typeof(TwitterFeedbackRequest))]
     [JsonSerializable(typeof(TwitterFeedbackResponse))]
+    [JsonSerializable(typeof(TwitterSearchResponse))]
+    [JsonSerializable(typeof(TwitterSearchTweet))]
+    [JsonSerializable(typeof(TwitterSearchUser))]
     public partial class TwitterFeedbackJsonContext : JsonSerializerContext { }
 }

@@ -1,0 +1,152 @@
+@namespace FeedbackWebApp.Components.ContentFeed.Results
+@using FeedbackWebApp.Components.Pages
+
+<div class="selected-items-sidebar @(isCollapsed ? "collapsed" : "expanded")">
+    <div class="sidebar-header" @onclick="ToggleCollapse">
+        <div class="d-flex align-items-center justify-content-between">
+            <h5 class="mb-0">
+                <i class="bi bi-collection me-2"></i>
+                Selected Items (@SelectedItems.Count/@MaxItems)
+            </h5>
+            <button class="btn btn-sm btn-link text-decoration-none" aria-label="@(isCollapsed ? "Expand" : "Collapse")">
+                <i class="bi bi-@(isCollapsed ? "chevron-left" : "chevron-right")"></i>
+            </button>
+        </div>
+    </div>
+
+    @if (!isCollapsed)
+    {
+        <div class="sidebar-body">
+            @if (SelectedItems.Any())
+            {
+                <div class="mb-3">
+                    <button class="btn btn-primary w-100 mb-2" @onclick="OnAnalyzeClick" disabled="@IsAnalyzing">
+                        @if (IsAnalyzing)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-bar-chart-fill me-2"></i>
+                        }
+                        Analyze All
+                    </button>
+                    <button class="btn btn-outline-secondary w-100 btn-sm" @onclick="OnClearAll">
+                        <i class="bi bi-x-circle me-1"></i>
+                        Clear All
+                    </button>
+                </div>
+
+                <div class="selected-items-list">
+                    @foreach (var item in SelectedItems)
+                    {
+                        <div class="selected-item-card">
+                            <div class="d-flex gap-2">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-start justify-content-between mb-1">
+                                        <span class="source-badge badge @GetSourceBadgeClass(item.SourceType)">
+                                            <i class="@item.Icon"></i> @item.PlatformBadge
+                                        </span>
+                                        <button class="btn btn-sm btn-link text-danger p-0" 
+                                                @onclick="() => OnRemoveItem.InvokeAsync(item.ItemId)"
+                                                title="Remove">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    </div>
+                                    <div class="item-title">
+                                        @item.Title
+                                    </div>
+                                    <div class="item-url text-muted small text-truncate">
+                                        <i class="bi bi-link-45deg"></i>
+                                        <a href="@item.Url" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                                            @GetShortUrl(item.Url)
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                    <p class="mt-2 mb-0">No items selected</p>
+                    <small>Select items from any source to analyze</small>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public List<ContentFeeds.SelectedItem> SelectedItems { get; set; } = new();
+
+    [Parameter]
+    public int MaxItems { get; set; } = 10;
+
+    [Parameter]
+    public bool IsAnalyzing { get; set; }
+
+    [Parameter]
+    public EventCallback OnAnalyzeAll { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnRemoveItem { get; set; }
+
+    [Parameter]
+    public EventCallback OnClearAll { get; set; }
+
+    private bool isCollapsed = true;
+    private int previousItemCount = 0;
+
+    protected override void OnParametersSet()
+    {
+        // Auto-expand only when a new item is added
+        if (SelectedItems.Count > previousItemCount && isCollapsed)
+        {
+            isCollapsed = false;
+        }
+        previousItemCount = SelectedItems.Count;
+    }
+
+    private void ToggleCollapse()
+    {
+        isCollapsed = !isCollapsed;
+    }
+
+    private async Task OnAnalyzeClick()
+    {
+        await OnAnalyzeAll.InvokeAsync();
+    }
+
+    private string GetSourceBadgeClass(string sourceType)
+    {
+        return sourceType.ToLowerInvariant() switch
+        {
+            "youtube" => "bg-danger",
+            "reddit" => "bg-primary",
+            "hackernews" => "bg-warning text-dark",
+            "twitter" => "bg-dark",
+            "bluesky" => "bg-info",
+            "omni" => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetShortUrl(string url)
+    {
+        try
+        {
+            var uri = new Uri(url);
+            return uri.Host + uri.PathAndQuery.Substring(0, Math.Min(30, uri.PathAndQuery.Length)) + 
+                   (uri.PathAndQuery.Length > 30 ? "..." : "");
+        }
+        catch
+        {
+            return url.Length > 40 ? url.Substring(0, 40) + "..." : url;
+        }
+    }
+}

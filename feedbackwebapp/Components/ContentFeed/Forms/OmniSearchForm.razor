@@ -1,0 +1,257 @@
+@namespace FeedbackWebApp.Components.ContentFeed.Forms
+@using SharedDump.Utils.Account
+@using SharedDump.Models.Account
+@using FeedbackWebApp.Services.Account
+@inject IAccountServiceProvider AccountServiceProvider
+@inject Microsoft.JSInterop.IJSRuntime JSRuntime
+
+<div class="omni-search-form">
+    <div class="mb-3">
+        <label for="omni-query" class="form-label">Search Query</label>
+        <input type="text" 
+               class="form-control" 
+               id="omni-query" 
+               @bind="Query" 
+               placeholder="Enter your search query..."
+               aria-label="Search query" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label d-block">Select Platforms</label>
+        <div class="platform-toggles">
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" 
+                       type="checkbox" 
+                       id="platform-youtube" 
+                       @bind="EnableYouTube"
+                       @bind:after="UpdateUsageCount" />
+                <label class="form-check-label" for="platform-youtube">
+                    <i class="bi bi-youtube text-danger"></i> YouTube
+                </label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" 
+                       type="checkbox" 
+                       id="platform-reddit" 
+                       @bind="EnableReddit"
+                       @bind:after="UpdateUsageCount" />
+                <label class="form-check-label" for="platform-reddit">
+                    <i class="bi bi-reddit text-primary"></i> Reddit
+                </label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" 
+                       type="checkbox" 
+                       id="platform-hackernews" 
+                       @bind="EnableHackerNews"
+                       @bind:after="UpdateUsageCount" />
+                <label class="form-check-label" for="platform-hackernews">
+                    <i class="bi bi-newspaper text-warning"></i> Hacker News
+                </label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" 
+                       type="checkbox" 
+                       id="platform-twitter" 
+                       @bind="EnableTwitter"
+                       @bind:after="UpdateUsageCount"
+                       disabled="@(!canUseTwitter)" />
+                <label class="form-check-label" for="platform-twitter">
+                    <i class="bi bi-twitter-x"></i> Twitter
+                    @if (!canUseTwitter)
+                    {
+                        <span class="badge bg-warning ms-1" title="Pro account required">Pro</span>
+                    }
+                </label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" 
+                       type="checkbox" 
+                       id="platform-bluesky" 
+                       @bind="EnableBlueSky"
+                       @bind:after="UpdateUsageCount" />
+                <label class="form-check-label" for="platform-bluesky">
+                    <i class="bi bi-cloud text-info"></i> BlueSky
+                </label>
+            </div>
+        </div>
+        
+        @if (selectedPlatformCount > 0)
+        {
+            <div class="alert alert-info mt-2 mb-0 d-flex align-items-center" role="alert">
+                <i class="bi bi-info-circle me-2"></i>
+                <div>
+                    <strong>Usage:</strong> This search will use <strong>@selectedPlatformCount</strong> credit@(selectedPlatformCount > 1 ? "s" : "").
+                    @if (accountLimits.HasValue)
+                    {
+                        var remaining = accountLimits.Value.limits.FeedQueryLimit - currentUsage;
+                        <span class="ms-2">
+                            You have <strong>@remaining</strong> of <strong>@accountLimits.Value.limits.FeedQueryLimit</strong> remaining this month.
+                        </span>
+                        @if (remaining < selectedPlatformCount)
+                        {
+                            <div class="text-danger mt-1">
+                                <i class="bi bi-exclamation-triangle me-1"></i>
+                                Insufficient credits for this search. Please reduce platforms or <a href="/account">upgrade your account</a>.
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="form-check">
+                <input class="form-check-input" 
+                       type="checkbox" 
+                       id="enable-date-filter" 
+                       @bind="EnableDateFilter" />
+                <label class="form-check-label" for="enable-date-filter">
+                    Enable date range filter
+                </label>
+            </div>
+        </div>
+    </div>
+
+    @if (EnableDateFilter)
+    {
+        <div class="row mb-3 date-filter-section">
+            <div class="col-md-6">
+                <label for="from-date" class="form-label">From Date</label>
+                <input type="date" 
+                       class="form-control" 
+                       id="from-date" 
+                       @bind="FromDate"
+                       aria-label="From date" />
+            </div>
+            <div class="col-md-6">
+                <label for="to-date" class="form-label">To Date</label>
+                <input type="date" 
+                       class="form-control" 
+                       id="to-date" 
+                       @bind="ToDate"
+                       aria-label="To date" />
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    public string Query { get; set; } = "";
+    public bool EnableYouTube { get; set; } = true;
+    public bool EnableReddit { get; set; } = true;
+    public bool EnableHackerNews { get; set; } = true;
+    public bool EnableTwitter { get; set; } = false;
+    public bool EnableBlueSky { get; set; } = false;
+    public bool EnableDateFilter { get; set; } = false;
+    public DateTime? FromDate { get; set; }
+    public DateTime? ToDate { get; set; }
+
+    private bool canUseTwitter = false;
+    private (UserAccount? account, AccountLimits limits)? accountLimits;
+    private int currentUsage = 0;
+    private int selectedPlatformCount = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if user can access Twitter and get account limits
+        var accountService = AccountServiceProvider.GetService();
+        accountLimits = await accountService.GetUserAccountAndLimitsAsync();
+        if (accountLimits.HasValue && accountLimits.Value.account is not null)
+        {
+            canUseTwitter = AccountTierUtils.SupportsTwitterAccess(accountLimits.Value.account.Tier);
+            
+            // Get current usage for FeedQuery
+            currentUsage = accountLimits.Value.account.FeedQueriesUsed;
+        }
+
+        // Try to load from local storage
+        await LoadFromLocalStorageAsync();
+        
+        // Update initial count
+        UpdateUsageCount();
+    }
+
+    private void UpdateUsageCount()
+    {
+        selectedPlatformCount = GetSelectedPlatforms().Count;
+        StateHasChanged();
+    }
+
+    public List<string> GetSelectedPlatforms()
+    {
+        var platforms = new List<string>();
+        if (EnableYouTube) platforms.Add("youtube");
+        if (EnableReddit) platforms.Add("reddit");
+        if (EnableHackerNews) platforms.Add("hackernews");
+        if (EnableTwitter && canUseTwitter) platforms.Add("twitter");
+        if (EnableBlueSky) platforms.Add("bluesky");
+        return platforms;
+    }
+
+    public async Task SaveToLocalStorageAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "omniSearch_query", Query);
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "omniSearch_youtube", EnableYouTube.ToString());
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "omniSearch_reddit", EnableReddit.ToString());
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "omniSearch_hackernews", EnableHackerNews.ToString());
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "omniSearch_twitter", EnableTwitter.ToString());
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "omniSearch_bluesky", EnableBlueSky.ToString());
+        }
+        catch
+        {
+            // Ignore localStorage errors
+        }
+    }
+
+    private async Task LoadFromLocalStorageAsync()
+    {
+        try
+        {
+            var query = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "omniSearch_query");
+            if (!string.IsNullOrEmpty(query))
+                Query = query;
+
+            var youtube = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "omniSearch_youtube");
+            if (bool.TryParse(youtube, out var enableYouTube))
+                EnableYouTube = enableYouTube;
+
+            var reddit = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "omniSearch_reddit");
+            if (bool.TryParse(reddit, out var enableReddit))
+                EnableReddit = enableReddit;
+
+            var hn = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "omniSearch_hackernews");
+            if (bool.TryParse(hn, out var enableHN))
+                EnableHackerNews = enableHN;
+
+            var twitter = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "omniSearch_twitter");
+            if (bool.TryParse(twitter, out var enableTwitter))
+                EnableTwitter = enableTwitter;
+
+            var bluesky = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "omniSearch_bluesky");
+            if (bool.TryParse(bluesky, out var enableBlueSky))
+                EnableBlueSky = enableBlueSky;
+        }
+        catch
+        {
+            // Ignore localStorage errors
+        }
+    }
+
+    public async Task RefreshAccountLimitsAsync()
+    {
+        var accountService = AccountServiceProvider.GetService();
+        accountLimits = await accountService.GetUserAccountAndLimitsAsync();
+        if (accountLimits.HasValue && accountLimits.Value.account is not null)
+        {
+            canUseTwitter = AccountTierUtils.SupportsTwitterAccess(accountLimits.Value.account.Tier);
+            currentUsage = accountLimits.Value.account.FeedQueriesUsed;
+        }
+        UpdateUsageCount();
+        StateHasChanged();
+    }
+}

@@ -229,6 +229,53 @@ public sealed class RedditService : IDisposable
         };
     }
 
+    public async Task<List<RedditThreadModel>> SearchPosts(string query, string subreddit = "", string sort = "relevance", int limit = 25)
+    {
+        await EnsureValidTokenAsync();
+
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+
+        // Build search URL
+        var searchQuery = Uri.EscapeDataString(query);
+        var url = string.IsNullOrEmpty(subreddit) 
+            ? $"https://oauth.reddit.com/search?q={searchQuery}&sort={sort}&limit={limit}&type=link"
+            : $"https://oauth.reddit.com/r/{subreddit}/search?q={searchQuery}&restrict_sr=on&sort={sort}&limit={limit}&type=link";
+
+        var response = await _client.GetStringAsync(url);
+        
+        var listing = JsonSerializer.Deserialize(response, RedditJsonContext.Default.RedditListing);
+        if (listing?.Data?.Children == null)
+            return [];
+
+        var threads = new List<RedditThreadModel>();
+        foreach (var child in listing.Data.Children)
+        {
+            if (child.Data == null) continue;
+            
+            var created = DateTimeOffset.FromUnixTimeSeconds((long)child.Data.CreatedUtc);
+
+            threads.Add(new RedditThreadModel
+            {
+                Id = child.Data.Id,
+                Title = child.Data.Title ?? "[No Title]",
+                Author = child.Data.Author,
+                SelfText = child.Data.Selftext ?? string.Empty,
+                CreatedUtc = created,
+                Score = child.Data.Score,
+                NumComments = child.Data.NumComments,
+                Url = child.Data.Permalink.StartsWith("http") 
+                    ? child.Data.Permalink 
+                    : $"https://www.reddit.com{child.Data.Permalink}",
+                Permalink = child.Data.Permalink,
+                Subreddit = subreddit,
+                UpvoteRatio = 1.0, // This isn't available in the search response
+                Comments = [] // Comments are only populated when getting full thread details
+            });
+        }
+
+        return threads;
+    }
+
     public void Dispose()
     {
         if (_disposed) return;

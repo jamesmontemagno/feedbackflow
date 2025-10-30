@@ -19,9 +19,14 @@ public class BlueSkyServiceAdapter : IBlueSkyService
     {
         return await _blueSkyFetcher.FetchFeedbackAsync(postUrlOrId);
     }
-
+    
     public void SetCredentials(string username, string appPassword)
     {
         _blueSkyFetcher.SetCredentials(username, appPassword);
+    }
+    
+    public async Task<List<BlueSkyFeedbackItem>> SearchPostsAsync(string query, int maxResults = 25, DateTimeOffset? fromDate = null, CancellationToken cancellationToken = default)
+    {
+        return await _blueSkyFetcher.SearchPostsAsync(query, maxResults, fromDate, cancellationToken);
     }
 }

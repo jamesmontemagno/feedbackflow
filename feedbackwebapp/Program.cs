@@ -153,6 +153,24 @@ builder.Services.AddScoped<ISharedHistoryServiceProvider, SharedHistoryServicePr
 builder.Services.AddScoped<IExportService, ExportService>();
 builder.Services.AddScoped<ITwitterAccessService, TwitterAccessService>();
 
+// Register OmniSearch service
+builder.Services.AddScoped<IOmniSearchService>(serviceProvider =>
+{
+    if (useMocks)
+    {
+        var logger = serviceProvider.GetRequiredService<ILogger<MockOmniSearchService>>();
+        return new MockOmniSearchService(logger);
+    }
+    else
+    {
+        var httpClient = serviceProvider.GetRequiredService<IHttpClientFactory>().CreateClient("DefaultClient");
+        var headerService = serviceProvider.GetRequiredService<IAuthenticationHeaderService>();
+        var logger = serviceProvider.GetRequiredService<ILogger<OmniSearchClientService>>();
+        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+        return new OmniSearchClientService(httpClient, headerService, logger, configuration);
+    }
+});
+
 var app = builder.Build();
 
 app.MapDefaultEndpoints();

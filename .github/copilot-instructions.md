@@ -414,6 +414,33 @@ public class MyService : IMyService
 }
 ```
 
+Important conventions when implementing new services
+- Prefer adding new platform/service logic into the `shareddump` project as a service adapter (e.g., `TwitterServiceAdapter`, `BlueSkyServiceAdapter`) rather than creating standalone helper classes inside the `feedbackfunctions` project. This keeps API parsing, models, and mocks centralized and reusable across the app and functions.
+- When consuming external JSON APIs, add strongly-typed API models under `shareddump/Models/[Platform]/ApiModels/` and register them in the platform-specific JSON context (e.g., `TwitterFeedbackJsonContext`, `BlueSkyFeedbackJsonContext`). Use source-generated System.Text.Json contexts (`JsonSerializerContext`) for deserialization to improve performance and compatibility with AOT/native builds.
+- Create or update a `*ApiModels.cs` file for any new endpoints you call (search, timeline, thread, etc.) and include those types in the existing JsonContext so other projects can reuse them.
+- Add a corresponding adapter in `shareddump/Services/` that implements the shared service interface (e.g., `ITwitterService`) and delegates to a fetcher/HTTP client implementation in `shareddump/Models/[Platform]`.
+- Provide a mock implementation in `shareddump/Services/Mock/` that implements the same interface and returns representative sample data for local development and tests. Register the mock via the existing service registration pattern (UseMocks).
+- Avoid creating ad-hoc helper classes for HTTP calls inside `feedbackfunctions` (for example `TwitterSearchHelper` or `BlueSkySearchHelper`) — instead call the shared adapter service from the functions project. This reduces duplication and ensures authentication, parsing, and rate limit handling are consistent.
+
+Example registration reminder (existing pattern):
+```csharp
+builder.Services.AddScoped<ITwitterService>(serviceProvider =>
+{
+    if (useMocks)
+    {
+        var logger = serviceProvider.GetRequiredService<ILogger<MockTwitterService>>();
+        return new MockTwitterService();
+    }
+    else
+    {
+        var httpClient = serviceProvider.GetRequiredService<IHttpClientFactory>().CreateClient("DefaultClient");
+        var logger = serviceProvider.GetRequiredService<ILogger<TwitterServiceAdapter>>();
+        var twitterFetcher = new TwitterFeedbackFetcher(httpClient, logger);
+        return new TwitterServiceAdapter(twitterFetcher);
+    }
+});
+```
+
 **2. API Calls with Authentication:**
 ```csharp
 var request = new HttpRequestMessage(HttpMethod.Get, 

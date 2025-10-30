@@ -13,4 +13,9 @@ public interface ITwitterService
     /// <param name="tweetUrlOrId">Tweet URL or ID</param>
     /// <returns>Twitter feedback response with tweets and replies</returns>
     Task<TwitterFeedbackResponse?> GetTwitterThreadAsync(string tweetUrlOrId);
+    
+    /// <summary>
+    /// Search Twitter for tweets matching a query
+    /// </summary>
+    Task<List<TwitterFeedbackItem>> SearchTweetsAsync(string query, int maxResults = 25, DateTimeOffset? fromDate = null, DateTimeOffset? toDate = null, CancellationToken cancellationToken = default);
 }

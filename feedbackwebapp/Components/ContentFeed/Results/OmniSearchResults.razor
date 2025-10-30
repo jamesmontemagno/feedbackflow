@@ -1,0 +1,337 @@
+@namespace FeedbackWebApp.Components.ContentFeed.Results
+@using SharedDump.Models.ContentSearch
+@inject NavigationManager Navigation
+
+<div class="omni-search-results">
+    @if (Response is not null)
+    {
+        <div class="results-header mb-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="h5 mb-1">
+                        <i class="bi bi-search"></i> Search Results
+                    </h3>
+                    <p class="text-muted mb-0">
+                        Found <strong>@filteredResults.Count</strong> results for "<strong>@Response.Query</strong>"
+                        @if (filteredResults.Count != Response.Results.Count)
+                        {
+                            <span class="text-muted">(@Response.Results.Count total)</span>
+                        }
+                    </p>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted">
+                        <i class="bi bi-clock"></i> Cached @FormatCacheTime(Response.CachedAt)
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        @if (Response.Results.Any())
+        {
+            <div class="mb-3 p-3 bg-light rounded">
+                <div class="row g-3 mb-3">
+                    <div class="col-12">
+                        <label for="text-filter" class="form-label small mb-1">
+                            <i class="bi bi-funnel"></i> Filter by text
+                        </label>
+                        <input type="text" 
+                               class="form-control form-control-sm" 
+                               id="text-filter" 
+                               placeholder="Search in titles, snippets, and authors..." 
+                               @bind="textFilter"
+                               @bind:event="oninput"
+                               @bind:after="ApplyFiltersAndSort" />
+                        @if (!string.IsNullOrWhiteSpace(textFilter))
+                        {
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle"></i> Filtering by: "@textFilter"
+                                <button class="btn btn-sm btn-link p-0 ms-1" @onclick="ClearTextFilter">
+                                    <i class="bi bi-x-circle"></i> Clear
+                                </button>
+                            </small>
+                        }
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="form-check">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="hide-zero-comments" 
+                                   @bind="hideZeroComments"
+                                   @bind:after="ApplyFiltersAndSort" />
+                            <label class="form-check-label" for="hide-zero-comments">
+                                <i class="bi bi-chat-left-text me-1"></i> Hide 0 comments
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="sort-by" class="form-label small mb-1">Sort by</label>
+                        <select class="form-select form-select-sm" id="sort-by" @bind="sortBy" @bind:after="ApplyFiltersAndSort">
+                            <option value="comments">Most Comments</option>
+                            <option value="engagement">Most Engagement</option>
+                            <option value="recent">Most Recent</option>
+                            <option value="oldest">Oldest First</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="filter-platform" class="form-label small mb-1">Filter Platform</label>
+                        <select class="form-select form-select-sm" id="filter-platform" @bind="platformFilter" @bind:after="ApplyFiltersAndSort">
+                            <option value="all">All Platforms</option>
+                            @foreach (var platform in GetAvailablePlatforms())
+                            {
+                                <option value="@platform.ToLower()">@platform</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="results-list">
+                @foreach (var result in filteredResults)
+                {
+                    <div class="result-card card mb-3 @(ParentSelectedIds.Contains($"omni_{result.Id}") ? "selected" : "")">
+                        <div class="card-body">
+                            <div class="d-flex gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="check_@result.Id" 
+                                           checked="@ParentSelectedIds.Contains($"omni_{result.Id}")"
+                                           @onchange="@(e => ToggleSelection(result, (bool)e.Value!))" />
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="flex-grow-1">
+                                            <h4 class="h6 mb-2">
+                                                <a href="@result.Url" target="_blank" rel="noopener noreferrer" class="result-link">
+                                                    @result.Title
+                                                </a>
+                                            </h4>
+                                        </div>
+                                        <span class="source-badge badge @GetSourceBadgeClass(result.Source)">
+                                            <i class="@GetSourceIcon(result.Source)"></i>
+                                            @result.Source
+                                        </span>
+                                    </div>
+
+                                    @if (!string.IsNullOrEmpty(result.Snippet))
+                                    {
+                                        <p class="result-snippet text-muted mb-2">@result.Snippet</p>
+                                    }
+
+                                    <div class="result-metadata d-flex flex-wrap gap-3 text-muted small mb-2">
+                                        @if (!string.IsNullOrEmpty(result.Author))
+                                        {
+                                            <span>
+                                                <i class="bi bi-person"></i> @result.Author
+                                            </span>
+                                        }
+                                        <span>
+                                            <i class="bi bi-calendar"></i> @FormatDate(result.PublishedAt)
+                                        </span>
+                                        <span class="@(result.CommentCount > 0 ? "text-primary fw-semibold" : "")">
+                                            <i class="bi bi-chat-left-text"></i> @FormatComments(result.CommentCount)
+                                        </span>
+                                        @if (result.EngagementCount > 0)
+                                        {
+                                            <span>
+                                                <i class="bi bi-hand-thumbs-up"></i> @FormatEngagement(result.EngagementCount)
+                                            </span>
+                                        }
+                                    </div>
+
+                                    <div class="d-flex gap-2">
+                                        <a href="@result.Url" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-box-arrow-up-right"></i> View
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => AnalyzeItem(result.Url)">
+                                            <i class="bi bi-graph-up"></i> Analyze
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                No results found for your query. Try adjusting your search terms or selecting different platforms.
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public OmniSearchResponse? Response { get; set; }
+
+    [Parameter]
+    public HashSet<string> ParentSelectedIds { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<(string itemId, bool isSelected, object? itemData)> OnSelectionChanged { get; set; }
+
+    private List<OmniSearchResult> filteredResults = new();
+    private bool hideZeroComments = false;
+    private string sortBy = "comments";
+    private string platformFilter = "all";
+    private string textFilter = "";
+
+    protected override void OnParametersSet()
+    {
+        ApplyFiltersAndSort();
+    }
+
+    private void ClearTextFilter()
+    {
+        textFilter = "";
+        ApplyFiltersAndSort();
+    }
+
+    private void ApplyFiltersAndSort()
+    {
+        if (Response?.Results == null)
+        {
+            filteredResults = new();
+            return;
+        }
+
+        var results = Response.Results.AsEnumerable();
+
+        // Apply text filter
+        if (!string.IsNullOrWhiteSpace(textFilter))
+        {
+            var filter = textFilter.Trim();
+            results = results.Where(r =>
+                (r.Title?.Contains(filter, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (r.Snippet?.Contains(filter, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (r.Author?.Contains(filter, StringComparison.OrdinalIgnoreCase) ?? false)
+            );
+        }
+
+        // Apply filters
+        if (hideZeroComments)
+        {
+            results = results.Where(r => r.CommentCount > 0);
+        }
+
+        if (platformFilter != "all")
+        {
+            results = results.Where(r => r.Source.Equals(platformFilter, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Apply sorting
+        results = sortBy switch
+        {
+            "comments" => results.OrderByDescending(r => r.CommentCount).ThenByDescending(r => r.PublishedAt),
+            "engagement" => results.OrderByDescending(r => r.EngagementCount).ThenByDescending(r => r.PublishedAt),
+            "recent" => results.OrderByDescending(r => r.PublishedAt),
+            "oldest" => results.OrderBy(r => r.PublishedAt),
+            _ => results.OrderByDescending(r => r.CommentCount).ThenByDescending(r => r.PublishedAt)
+        };
+
+        filteredResults = results.ToList();
+        StateHasChanged();
+    }
+
+    private List<string> GetAvailablePlatforms()
+    {
+        if (Response?.Results == null) return new();
+        return Response.Results.Select(r => r.Source).Distinct().OrderBy(s => s).ToList();
+    }
+
+    private void AnalyzeItem(string url)
+    {
+        var analyzeUrl = $"/?source=auto&url={Uri.EscapeDataString(url)}";
+        Navigation.NavigateTo(analyzeUrl, new NavigationOptions { ForceLoad = true, ReplaceHistoryEntry = false });
+    }
+
+    private async Task ToggleSelection(OmniSearchResult result, bool isSelected)
+    {
+        var itemId = $"omni_{result.Id}";
+        var itemData = (object?)new { result.Id, result.Title, result.Url };
+        await OnSelectionChanged.InvokeAsync((itemId, isSelected, itemData));
+    }
+
+    private string GetSourceIcon(string source)
+    {
+        return source.ToLowerInvariant() switch
+        {
+            "youtube" => "bi-youtube",
+            "reddit" => "bi-reddit",
+            "hackernews" => "bi-newspaper",
+            "twitter" => "bi-twitter-x",
+            "bluesky" => "bi-cloud",
+            _ => "bi-globe"
+        };
+    }
+
+    private string GetSourceBadgeClass(string source)
+    {
+        return source.ToLowerInvariant() switch
+        {
+            "youtube" => "bg-danger",
+            "reddit" => "bg-primary",
+            "hackernews" => "bg-warning text-dark",
+            "twitter" => "bg-dark",
+            "bluesky" => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string FormatDate(DateTimeOffset date)
+    {
+        var timeSpan = DateTimeOffset.UtcNow - date;
+
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7)
+            return $"{(int)timeSpan.TotalDays}d ago";
+        if (timeSpan.TotalDays < 30)
+            return $"{(int)(timeSpan.TotalDays / 7)}w ago";
+
+        return date.ToString("MMM dd, yyyy");
+    }
+
+    private string FormatEngagement(long count)
+    {
+        if (count >= 1_000_000)
+            return $"{count / 1_000_000.0:F1}M";
+        if (count >= 1_000)
+            return $"{count / 1_000.0:F1}K";
+        return count.ToString();
+    }
+
+    private string FormatComments(int count)
+    {
+        if (count == 0)
+            return "0 comments";
+        if (count == 1)
+            return "1 comment";
+        if (count >= 1_000_000)
+            return $"{count / 1_000_000.0:F1}M comments";
+        if (count >= 1_000)
+            return $"{count / 1_000.0:F1}K comments";
+        return $"{count} comments";
+    }
+
+    private string FormatCacheTime(DateTimeOffset cachedAt)
+    {
+        var timeSpan = DateTimeOffset.UtcNow - cachedAt;
+
+        if (timeSpan.TotalSeconds < 60)
+            return "just now";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes} min ago";
+
+        return cachedAt.ToString("HH:mm");
+    }
+}

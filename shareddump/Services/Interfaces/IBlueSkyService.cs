@@ -20,4 +20,9 @@ public interface IBlueSkyService
     /// <param name="username">BlueSky username</param>
     /// <param name="appPassword">BlueSky app password</param>
     void SetCredentials(string username, string appPassword);
+    
+    /// <summary>
+    /// Search BlueSky for posts matching a query
+    /// </summary>
+    Task<List<BlueSkyFeedbackItem>> SearchPostsAsync(string query, int maxResults = 25, DateTimeOffset? fromDate = null, CancellationToken cancellationToken = default);
 }

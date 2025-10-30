@@ -16,6 +16,7 @@
 @using FeedbackWebApp.Services
 @using FeedbackWebApp.Services.ContentFeed
 @using FeedbackWebApp.Services.Interfaces
+@using SharedDump.Models.ContentSearch
 @using FeedbackWebApp.Components.Shared
 @using System.Threading.Tasks
 @using Microsoft.AspNetCore.Components.Routing
@@ -23,10 +24,12 @@
 
 @inject IConfiguration Configuration
 @inject ContentFeedServiceProvider ContentFeedProvider
+@inject IOmniSearchService OmniSearchService
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 @inject FeedbackWebApp.Services.Authentication.IAuthenticationService AuthService
 @inject FeedbackWebApp.Services.Authentication.IAuthenticationHeaderService AuthHeaderService
+@inject FeedbackWebApp.Services.Account.IAccountServiceProvider AccountServiceProvider
 
 <PageTitle>Content Feeds - FeedbackFlow</PageTitle>
 
@@ -83,6 +86,9 @@
                         <div class="card-body">
                             @switch (selectedSource)
                             {
+                                case "omni":
+                                    <OmniSearchForm @ref="omniSearchForm" />
+                                    break;
                                 case "youtube":
                                     <YouTubeFeedForm @ref="youtubeFeedForm" />
                                     break;
@@ -116,19 +122,34 @@
                         </div>
                     </div>
 
-                    @if (youtubeVideos?.Any() == true || redditThreads?.Any() == true || hackerNewsItems?.Any() == true)
+                    @if (omniSearchResponse is not null || youtubeVideos?.Any() == true || redditThreads?.Any() == true || hackerNewsItems?.Any() == true)
                     {
                         <div class="mt-4">
                             @switch (selectedSource)
                             {
+                                case "omni":
+                                    <OmniSearchResults 
+                                        Response="omniSearchResponse" 
+                                        ParentSelectedIds="selectedItemIds"
+                                        OnSelectionChanged="HandleOmniSelectionChanged" />
+                                    break;
                                 case "youtube":
-                                    <YouTubeFeedResults Videos="youtubeVideos" />
+                                    <YouTubeFeedResults 
+                                        Videos="youtubeVideos" 
+                                        ParentSelectedIds="selectedItemIds"
+                                        OnSelectionChanged="HandleYouTubeSelectionChanged" />
                                     break;
                                 case "reddit":
-                                    <RedditFeedResults Threads="redditThreads" />
+                                    <RedditFeedResults 
+                                        Threads="redditThreads" 
+                                        ParentSelectedIds="selectedItemIds"
+                                        OnSelectionChanged="HandleRedditSelectionChanged" />
                                     break;
                                 case "hackernews":
-                                    <HackerNewsFeedResults Items="hackerNewsItems" />
+                                    <HackerNewsFeedResults 
+                                        Items="hackerNewsItems" 
+                                        ParentSelectedIds="selectedItemIds"
+                                        OnSelectionChanged="HandleHackerNewsSelectionChanged" />
                                     break;
                             }
                         </div>
@@ -138,6 +159,14 @@
         </div>
     }
 </div>
+
+<SelectedItemsSidebar 
+    SelectedItems="selectedItems"
+    MaxItems="MAX_SELECTIONS"
+    IsAnalyzing="isLoading"
+    OnAnalyzeAll="AnalyzeSelectedItems"
+    OnRemoveItem="RemoveSelectedItem"
+    OnClearAll="ClearAllSelections" />
 
 <UsageLimitDialog 
     UsageError="@usageLimitError" 
@@ -150,18 +179,43 @@
     private string error = "";
     private string selectedSource = "youtube";
 
+    private OmniSearchForm? omniSearchForm;
     private YouTubeFeedForm? youtubeFeedForm;
     private RedditFeedForm? redditFeedForm;
-    private HackerNewsFeedForm? hackerNewsFeedForm;    private List<YouTubeOutputVideo>? youtubeVideos;
+    private HackerNewsFeedForm? hackerNewsFeedForm;
+
+    private OmniSearchResponse? omniSearchResponse;
+    private List<YouTubeOutputVideo>? youtubeVideos;
     private List<RedditThreadModel>? redditThreads;
     private List<HackerNewsItem>? hackerNewsItems;
     private bool showUsageLimitDialog = false;
     private UsageValidationResult? usageLimitError;
     
+    // Unified selection management
+    private const int MAX_SELECTIONS = 10;
+    private List<SelectedItem> selectedItems = new();
+    private HashSet<string> selectedItemIds = new();
+    
+    // Tab state caching
+    private Dictionary<string, TabState> tabStateCache = new();
+    
     private record SourceOption(string Name, string IconClass, string Value, string Description);
+    
+    public record SelectedItem(
+        string SourceType,
+        string ItemId,
+        string Title,
+        string Url,
+        string PlatformBadge,
+        string Icon);
+    
+    private record TabState(
+        object? FormState,
+        object? Results);
 
     private readonly List<SourceOption> contentSources = new()
     {
+        new("Omni Search", "bi bi-search", "omni", "Search across multiple platforms simultaneously"),
         new("YouTube", "bi bi-youtube", "youtube", "Search and analyze YouTube videos and comments"),
         new("Reddit", "bi bi-reddit", "reddit", "Monitor Reddit subreddit discussions and feedback"),
         new("Hacker News", "bi bi-newspaper", "hackernews", "Track tech discussions on Hacker News")
@@ -186,17 +240,32 @@
                 return;
             }
             
+            await LoadSelectionsFromLocalStorage();
             StateHasChanged();
         }
     }
 
     private void SelectSource(string source)
     {
+        // Save current tab state before switching
+        SaveCurrentTabState();
+        
+        // Switch to new source
+        var previousSource = selectedSource;
         selectedSource = source;
-        youtubeVideos = null;
-        redditThreads = null;
-        hackerNewsItems = null;
-        error = "";
+        
+        // Load cached state for new source
+        LoadTabState(source);
+        
+        // If no cached state, clear results and error
+        if (!tabStateCache.ContainsKey(source))
+        {
+            omniSearchResponse = null;
+            youtubeVideos = null;
+            redditThreads = null;
+            hackerNewsItems = null;
+            error = "";
+        }
     }
 
     private bool ValidateForm()
@@ -205,6 +274,20 @@
         
         switch (selectedSource)
         {
+            case "omni" when omniSearchForm is not null:
+                if (string.IsNullOrWhiteSpace(omniSearchForm.Query))
+                {
+                    error = "Please enter a search query";
+                    return false;
+                }
+                var platforms = omniSearchForm.GetSelectedPlatforms();
+                if (platforms.Count == 0)
+                {
+                    error = "Please select at least one platform";
+                    return false;
+                }
+                break;
+
             case "youtube" when youtubeFeedForm is not null:
                 if (string.IsNullOrWhiteSpace(youtubeFeedForm.Topic))
                 {
@@ -249,6 +332,22 @@
 
             switch (selectedSource)
             {
+                case "omni" when omniSearchForm is not null:
+                    await omniSearchForm.SaveToLocalStorageAsync();
+                    var platforms = omniSearchForm.GetSelectedPlatforms();
+                    var omniRequest = new OmniSearchRequest
+                    {
+                        Query = omniSearchForm.Query,
+                        Platforms = platforms,
+                        MaxResults = 100, // 100 results per platform
+                        SortMode = "ranked", // Backend handles initial ranking
+                        FromDate = omniSearchForm.FromDate.HasValue ? new DateTimeOffset(omniSearchForm.FromDate.Value) : null,
+                        ToDate = omniSearchForm.ToDate.HasValue ? new DateTimeOffset(omniSearchForm.ToDate.Value) : null,
+                        Page = 1
+                    };
+                    omniSearchResponse = await OmniSearchService.SearchAsync(omniRequest);
+                    break;
+
                 case "youtube" when youtubeFeedForm is not null:
                     await youtubeFeedForm.SaveToLocalStorageAsync();
                     var youtubeService = ContentFeedProvider.CreateYouTubeService(
@@ -274,6 +373,9 @@
                     hackerNewsItems = await hnService.FetchContent();
                     break;
             }
+
+            // Refresh account limits to show updated usage
+            await RefreshAccountLimitsAsync();
         }
         catch (UsageLimitExceededException ex)
         {
@@ -296,6 +398,7 @@
         finally
         {
             isLoading = false;
+            StateHasChanged();
         }
     }
 
@@ -304,5 +407,241 @@
         showUsageLimitDialog = false;
         usageLimitError = null;
         StateHasChanged();
+    }
+
+    // Platform-specific selection handlers
+    private async Task HandleYouTubeSelectionChanged((string itemId, bool isSelected, object? itemData) args)
+    {
+        if (args.isSelected && args.itemData is not null)
+        {
+            dynamic data = args.itemData;
+            var item = new SelectedItem(
+                "youtube",
+                args.itemId,
+                data.Title?.ToString() ?? "YouTube Video",
+                data.Url?.ToString() ?? "",
+                "YouTube",
+                "bi bi-youtube");
+            await HandleSelectionChanged(args.itemId, args.isSelected, item);
+        }
+        else
+        {
+            await HandleSelectionChanged(args.itemId, args.isSelected);
+        }
+    }
+
+    private async Task HandleRedditSelectionChanged((string itemId, bool isSelected, object? itemData) args)
+    {
+        if (args.isSelected && args.itemData is not null)
+        {
+            dynamic data = args.itemData;
+            var item = new SelectedItem(
+                "reddit",
+                args.itemId,
+                data.Title?.ToString() ?? "Reddit Thread",
+                data.Url?.ToString() ?? "",
+                "Reddit",
+                "bi bi-reddit");
+            await HandleSelectionChanged(args.itemId, args.isSelected, item);
+        }
+        else
+        {
+            await HandleSelectionChanged(args.itemId, args.isSelected);
+        }
+    }
+
+    private async Task HandleHackerNewsSelectionChanged((string itemId, bool isSelected, object? itemData) args)
+    {
+        if (args.isSelected && args.itemData is not null)
+        {
+            dynamic data = args.itemData;
+            var item = new SelectedItem(
+                "hackernews",
+                args.itemId,
+                data.Title?.ToString() ?? "Hacker News Story",
+                data.Url?.ToString() ?? "",
+                "Hacker News",
+                "bi bi-newspaper");
+            await HandleSelectionChanged(args.itemId, args.isSelected, item);
+        }
+        else
+        {
+            await HandleSelectionChanged(args.itemId, args.isSelected);
+        }
+    }
+
+    private async Task HandleOmniSelectionChanged((string itemId, bool isSelected, object? itemData) args)
+    {
+        if (args.isSelected && args.itemData is not null)
+        {
+            dynamic data = args.itemData;
+            var item = new SelectedItem(
+                "omni",
+                args.itemId,
+                data.Title?.ToString() ?? "Search Result",
+                data.Url?.ToString() ?? "",
+                "Omni",
+                "bi bi-search");
+            await HandleSelectionChanged(args.itemId, args.isSelected, item);
+        }
+        else
+        {
+            await HandleSelectionChanged(args.itemId, args.isSelected);
+        }
+    }
+
+    // Selection Management Methods
+    private async Task HandleSelectionChanged(string itemId, bool isSelected, SelectedItem? item = null)
+    {
+        if (isSelected)
+        {
+            if (selectedItems.Count >= MAX_SELECTIONS)
+            {
+                error = $"Maximum {MAX_SELECTIONS} items can be selected across all sources";
+                StateHasChanged();
+                return;
+            }
+
+            if (item is not null && !selectedItemIds.Contains(itemId))
+            {
+                selectedItems.Add(item);
+                selectedItemIds.Add(itemId);
+                await SaveSelectionsToLocalStorage();
+            }
+        }
+        else
+        {
+            var itemToRemove = selectedItems.FirstOrDefault(x => x.ItemId == itemId);
+            if (itemToRemove is not null)
+            {
+                selectedItems.Remove(itemToRemove);
+                selectedItemIds.Remove(itemId);
+                await SaveSelectionsToLocalStorage();
+            }
+        }
+
+        error = ""; // Clear any selection limit error
+        StateHasChanged();
+    }
+
+    private async Task RemoveSelectedItem(string itemId)
+    {
+        await HandleSelectionChanged(itemId, false);
+    }
+
+    private async Task ClearAllSelections()
+    {
+        selectedItems.Clear();
+        selectedItemIds.Clear();
+        await SaveSelectionsToLocalStorage();
+        StateHasChanged();
+    }
+
+    private void AnalyzeSelectedItems()
+    {
+        if (!selectedItems.Any()) return;
+
+        var urls = selectedItems.Select(item => item.Url).ToList();
+
+        if (urls.Count == 1)
+        {
+            NavigationManager.NavigateTo($"/?source=auto&url={Uri.EscapeDataString(urls[0])}");
+        }
+        else
+        {
+            var queryString = string.Join("&", urls.Select(url => $"url={Uri.EscapeDataString(url)}"));
+            NavigationManager.NavigateTo($"/?source=auto&{queryString}");
+        }
+    }
+
+    // LocalStorage Management
+    private async Task SaveSelectionsToLocalStorage()
+    {
+        try
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(selectedItems);
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "contentfeeds_selectedItems", json);
+        }
+        catch
+        {
+            // Ignore localStorage errors
+        }
+    }
+
+    private async Task LoadSelectionsFromLocalStorage()
+    {
+        try
+        {
+            var json = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "contentfeeds_selectedItems");
+            if (!string.IsNullOrEmpty(json))
+            {
+                var items = System.Text.Json.JsonSerializer.Deserialize<List<SelectedItem>>(json);
+                if (items is not null)
+                {
+                    selectedItems = items;
+                    selectedItemIds = items.Select(x => x.ItemId).ToHashSet();
+                }
+            }
+        }
+        catch
+        {
+            // Ignore localStorage errors
+        }
+    }
+
+    // Tab State Management
+    private void SaveCurrentTabState()
+    {
+        var state = selectedSource switch
+        {
+            "omni" => new TabState(omniSearchResponse, omniSearchResponse),
+            "youtube" => new TabState(null, youtubeVideos),
+            "reddit" => new TabState(null, redditThreads),
+            "hackernews" => new TabState(null, hackerNewsItems),
+            _ => null
+        };
+
+        if (state is not null)
+        {
+            tabStateCache[selectedSource] = state;
+        }
+    }
+
+    private void LoadTabState(string source)
+    {
+        if (tabStateCache.TryGetValue(source, out var state))
+        {
+            switch (source)
+            {
+                case "omni":
+                    omniSearchResponse = state.Results as OmniSearchResponse;
+                    break;
+                case "youtube":
+                    youtubeVideos = state.Results as List<YouTubeOutputVideo>;
+                    break;
+                case "reddit":
+                    redditThreads = state.Results as List<RedditThreadModel>;
+                    break;
+                case "hackernews":
+                    hackerNewsItems = state.Results as List<HackerNewsItem>;
+                    break;
+            }
+        }
+    }
+
+    private async Task RefreshAccountLimitsAsync()
+    {
+        try
+        {
+            // Refresh the form's account limits to show updated usage
+            if (omniSearchForm is not null)
+            {
+                await omniSearchForm.RefreshAccountLimitsAsync();
+            }
+        }
+        catch
+        {
+            // Ignore errors during refresh
+        }
     }
 }
