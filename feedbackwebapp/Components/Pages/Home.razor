@@ -92,10 +92,11 @@
                         <div class="mt-3">
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Analysis Type</label>
-                                <select class="form-select" @bind="selectedPromptType" @bind:event="onchange" disabled="@isLoading">
+                                <select class="form-select" @bind="selectedPromptType" @bind:after="OnPromptTypeChanged" disabled="@isLoading">
                                     <option value="@SharedDump.AI.PromptType.ProductFeedback">Product Feedback Analysis</option>
                                     <option value="@SharedDump.AI.PromptType.CompetitorAnalysis">Competitor Analysis</option>
                                     <option value="@SharedDump.AI.PromptType.GeneralAnalysis">General Analysis</option>
+                                    <option value="@SharedDump.AI.PromptType.Custom">Custom Prompt</option>
                                 </select>
                                 <div class="form-text">
                                     @if (selectedPromptType == SharedDump.AI.PromptType.ProductFeedback)
@@ -109,6 +110,10 @@
                                     else if (selectedPromptType == SharedDump.AI.PromptType.GeneralAnalysis)
                                     {
                                         <text>Provides neutral, objective analysis without product or competitive context.</text>
+                                    }
+                                    else if (selectedPromptType == SharedDump.AI.PromptType.Custom)
+                                    {
+                                        <text>Uses your custom prompt from settings for personalized analysis.</text>
                                     }
                                 </div>
                             </div>
@@ -253,6 +258,41 @@
         customPrompt = string.Empty;
         showPromptEditor = false;
         return Task.CompletedTask;
+    }
+
+    private async Task OnPromptTypeChanged()
+    {
+        // When analysis type changes, update the custom prompt textarea with the selected prompt
+        if (selectedPromptType == SharedDump.AI.PromptType.Custom)
+        {
+            // Load custom prompt from settings
+            try
+            {
+                var settings = await UserSettings.GetSettingsAsync();
+                if (!string.IsNullOrWhiteSpace(settings.UniversalPrompt))
+                {
+                    customPrompt = settings.UniversalPrompt;
+                }
+                else
+                {
+                    customPrompt = string.Empty;
+                }
+            }
+            catch { /* swallow - non critical */ }
+        }
+        else
+        {
+            // Load the prompt for the selected type
+            customPrompt = FeedbackAnalyzerService.GetPromptByType(selectedPromptType);
+        }
+        
+        // Auto-show the prompt editor when user changes the selection
+        if (!showPromptEditor)
+        {
+            showPromptEditor = true;
+        }
+        
+        StateHasChanged();
     }
 
     /// <summary>

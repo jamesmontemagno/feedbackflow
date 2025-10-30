@@ -173,36 +173,35 @@
             <div class="col-12 mb-4">
                 <div class="card shadow-sm @(!UseCustomPrompts ? "opacity-50" : "")">
                     <div class="card-header">
-                        <h5 class="card-title mb-0">Universal Analysis Prompt</h5>
+                        <h5 class="card-title mb-0">Custom Prompt</h5>
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
                             @if (!UseCustomPrompts)
                             {
                                 <div class="alert alert-info">
-                                    Enable custom prompts in the settings above to modify this universal prompt.
+                                    Enable custom prompts in the settings above to modify this custom prompt.
                                 </div>
                             }
                             else
                             {
                                 <div class="alert alert-success">
                                     <i class="bi bi-info-circle me-2"></i>
-                                    This universal prompt will be used for analyzing content from all platforms. It automatically detects content type and adapts the analysis accordingly.
+                                    This custom prompt will be used when you select "Custom Prompt" as the analysis type. It allows you to define your own analysis approach.
                                 </div>
                             }
                         </div>
                         <fieldset disabled="@(!UseCustomPrompts)">
                             <div class="mb-4">
                                 <label class="form-label d-flex justify-content-between">
-                                    <span>Universal Analysis Prompt</span>
+                                    <span>Custom Prompt</span>
                                     <button class="btn btn-sm btn-outline-secondary"
                                         @onclick="ResetUniversalPrompt">Reset to Default</button>
                                 </label>
                                 <textarea class="form-control font-monospace" rows="12" @bind="UniversalPrompt"
-                                    @bind:event="oninput" placeholder="Enter your universal analysis prompt instructions..."></textarea>
+                                    @bind:event="oninput" placeholder="Enter your custom analysis prompt instructions..."></textarea>
                                 <div class="text-muted small mt-2">
-                                    This prompt will be used for all content analysis across YouTube, GitHub, Reddit, Hacker News, and other platforms.
-                                    The AI will automatically detect the content type and adapt its analysis approach accordingly.
+                                    Define your own custom analysis instructions. This prompt will be available as "Custom Prompt" in the analysis type dropdown on the home page.
                                 </div>
                             </div>
                         </fieldset>
