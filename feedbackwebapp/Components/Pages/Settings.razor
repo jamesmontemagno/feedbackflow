@@ -1,5 +1,6 @@
 @page "/settings"
 @using SharedDump.Utils
+@using SharedDump.AI
 @using System.Threading
 @inject UserSettingsService UserSettings
 @inject IJSRuntime JSRuntime
@@ -37,6 +38,29 @@
                             <div class="text-muted small">
                                 Default: 1200. Analyzing more comments will take longer but provide more comprehensive
                                 results.
+                            </div>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <select class="form-select" id="promptType" @bind="SelectedPromptType" @bind:event="onchange">
+                                <option value="@PromptType.ProductFeedback">Product Feedback Analysis</option>
+                                <option value="@PromptType.CompetitorAnalysis">Competitor Analysis</option>
+                                <option value="@PromptType.GeneralAnalysis">General Analysis</option>
+                            </select>
+                            <label for="promptType">Analysis Prompt Type</label>
+                            <div class="text-muted small mt-2">
+                                @if (SelectedPromptType == PromptType.ProductFeedback)
+                                {
+                                    <text>Analyzes feedback as if it's about YOUR product, focusing on improvements and user needs.</text>
+                                }
+                                else if (SelectedPromptType == PromptType.CompetitorAnalysis)
+                                {
+                                    <text>Analyzes competitor products to extract competitive intelligence and differentiation opportunities.</text>
+                                }
+                                else if (SelectedPromptType == PromptType.GeneralAnalysis)
+                                {
+                                    <text>Provides neutral, objective analysis without product or competitive context.</text>
+                                }
                             </div>
                         </div>
 
@@ -214,6 +238,7 @@
     private string? _preferredVoice;
     private int _maxCommentsToAnalyze = 1200;
     private string _universalPrompt = string.Empty;
+    private PromptType _selectedPromptType = PromptType.ProductFeedback;
 
     internal record VoiceInfo(
     string Name = "",
@@ -233,6 +258,19 @@
             if (_useCustomPrompts != value)
             {
                 _useCustomPrompts = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
+    private PromptType SelectedPromptType
+    {
+        get => _selectedPromptType;
+        set
+        {
+            if (_selectedPromptType != value)
+            {
+                _selectedPromptType = value;
                 hasUnsavedChanges = true;
             }
         }
@@ -303,6 +341,7 @@
             _preferredVoice = settings.PreferredVoice;
             _maxCommentsToAnalyze = settings.MaxCommentsToAnalyze;
             _universalPrompt = settings.UniversalPrompt;
+            _selectedPromptType = settings.SelectedPromptType;
         }
 
         hasUnsavedChanges = false;
@@ -419,6 +458,7 @@
             settings.PreferredVoice = _preferredVoice;
             settings.MaxCommentsToAnalyze = _maxCommentsToAnalyze;
             settings.UniversalPrompt = _universalPrompt;
+            settings.SelectedPromptType = _selectedPromptType;
 
             // Save to persistent storage
             await UserSettings.SaveSettingsAsync(settings);
@@ -436,7 +476,7 @@
     {
         if (settings == null) return;
 
-        _universalPrompt = SharedDump.AI.FeedbackAnalyzerService.GetUniversalPrompt();
+        _universalPrompt = FeedbackAnalyzerService.GetUniversalPrompt();
         hasUnsavedChanges = true;
         StateHasChanged();
     }
