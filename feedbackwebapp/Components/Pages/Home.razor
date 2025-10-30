@@ -22,6 +22,7 @@
 @using SharedDump.Models.YouTube
 @using SharedDump.Utils
 @using SharedDump.Services
+@using SharedDump.AI
 
 @inject IConfiguration Configuration
 @inject FeedbackServiceProvider ServiceProvider
@@ -89,30 +90,32 @@
                     @if (selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
                     {
                         <div class="mt-3">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Analysis Type</label>
+                                <select class="form-select" @bind="selectedPromptType" @bind:event="onchange" disabled="@isLoading">
+                                    <option value="@SharedDump.AI.PromptType.ProductFeedback">Product Feedback Analysis</option>
+                                    <option value="@SharedDump.AI.PromptType.CompetitorAnalysis">Competitor Analysis</option>
+                                    <option value="@SharedDump.AI.PromptType.GeneralAnalysis">General Analysis</option>
+                                </select>
+                                <div class="form-text">
+                                    @if (selectedPromptType == SharedDump.AI.PromptType.ProductFeedback)
+                                    {
+                                        <text>Analyzes feedback as if it's about YOUR product, focusing on improvements and user needs.</text>
+                                    }
+                                    else if (selectedPromptType == SharedDump.AI.PromptType.CompetitorAnalysis)
+                                    {
+                                        <text>Analyzes competitor products to extract competitive intelligence and differentiation opportunities.</text>
+                                    }
+                                    else if (selectedPromptType == SharedDump.AI.PromptType.GeneralAnalysis)
+                                    {
+                                        <text>Provides neutral, objective analysis without product or competitive context.</text>
+                                    }
+                                </div>
+                            </div>
                             <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="TogglePromptEditor" disabled="@isLoading">
                                 <i class="bi bi-sliders me-1"></i>
                                 @(showPromptEditor ? "Hide Custom Prompt" : "Customize Prompt")
                             </button>
-                            @if (!useCustomPrompts && string.IsNullOrWhiteSpace(customPrompt))
-                            {
-                                <small class="text-muted ms-2">
-                                    <i class="bi bi-info-circle me-1"></i>
-                                    Using: 
-                                    @if (currentPromptType == SharedDump.AI.PromptType.ProductFeedback)
-                                    {
-                                        <text>Product Feedback Analysis</text>
-                                    }
-                                    else if (currentPromptType == SharedDump.AI.PromptType.CompetitorAnalysis)
-                                    {
-                                        <text>Competitor Analysis</text>
-                                    }
-                                    else if (currentPromptType == SharedDump.AI.PromptType.GeneralAnalysis)
-                                    {
-                                        <text>General Analysis</text>
-                                    }
-                                    <a href="/settings" class="ms-1">(change in settings)</a>
-                                </small>
-                            }
                         </div>
                         @if (showPromptEditor)
                         {
@@ -200,6 +203,7 @@
     private bool showSurveyLink = false; // After successful analysis and if not previously completed
     private bool includeIndividualReports = false; // Default to false - only full report
     private SharedDump.AI.PromptType currentPromptType = SharedDump.AI.PromptType.ProductFeedback;
+    private SharedDump.AI.PromptType selectedPromptType = SharedDump.AI.PromptType.ProductFeedback; // User-selected prompt type for this analysis
     private bool useCustomPrompts = false;
     
     // Reanalyze caching state
@@ -233,6 +237,7 @@
         {
             var settings = await UserSettings.GetSettingsAsync();
             currentPromptType = settings.SelectedPromptType;
+            selectedPromptType = settings.SelectedPromptType; // Initialize selected prompt type with user's default
             useCustomPrompts = settings.UseCustomPrompts;
             if (!string.IsNullOrWhiteSpace(settings.UniversalPrompt))
             {
@@ -248,6 +253,25 @@
         customPrompt = string.Empty;
         showPromptEditor = false;
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Applies the appropriate prompt to the service based on user selection.
+    /// Priority: custom prompt > selected prompt type
+    /// </summary>
+    private void ApplyPromptToService(IFeedbackService service)
+    {
+        if (!string.IsNullOrWhiteSpace(customPrompt))
+        {
+            // User provided a custom prompt - use it
+            service.SetTemporaryPrompt(customPrompt);
+        }
+        else
+        {
+            // Use the selected prompt type
+            var promptForSelectedType = FeedbackAnalyzerService.GetPromptByType(selectedPromptType);
+            service.SetTemporaryPrompt(promptForSelectedType);
+        }
     }
 
     // URL normalization and comparison helpers for reanalyze feature
@@ -290,15 +314,8 @@
         var autoService = service as IAutoDataSourceFeedbackService;
         autoService?.SetIncludeIndividualReports(includeIndividualReports);
 
-        // Apply temporary prompt
-        if (!string.IsNullOrWhiteSpace(customPrompt))
-        {
-            service.SetTemporaryPrompt(customPrompt);
-        }
-        else
-        {
-            service.ClearTemporaryPrompt();
-        }
+        // Apply the appropriate prompt
+        ApplyPromptToService(service);
 
         // Call AnalyzeComments directly with cached data
         var (result, additionalData) = await service.AnalyzeComments(cachedComments, cachedCommentCount, cachedAdditionalData);
@@ -558,17 +575,10 @@
                 autoService?.SetIncludeIndividualReports(includeIndividualReports);
             }
 
-            // Apply temporary prompt via new API so precedence is clear
+            // Apply the appropriate prompt for Auto services
             if (selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
             {
-                if (!string.IsNullOrWhiteSpace(customPrompt))
-                {
-                    service.SetTemporaryPrompt(customPrompt);
-                }
-                else
-                {
-                    service.ClearTemporaryPrompt();
-                }
+                ApplyPromptToService(service);
             }
 
             var (result, additionalData) = await service.GetFeedback();
