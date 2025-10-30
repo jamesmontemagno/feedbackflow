@@ -1,3 +1,4 @@
+using FeedbackWebApp.Middleware;
 using FeedbackWebApp.Services;
 using FeedbackWebApp.Services.Account;
 using FeedbackWebApp.Services.Authentication;
@@ -35,6 +36,7 @@ builder.Services.AddMemoryCache();
 // Register ToastService and other services
 builder.Services.AddScoped<IToastService, ToastService>();
 builder.Services.AddScoped<IHistoryHelper, HistoryHelper>();
+builder.Services.AddScoped<ICspNonceService, CspNonceService>();
 
 builder.Services.AddHttpClient("DefaultClient")
     .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(3));
@@ -190,6 +192,9 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Add security headers middleware (CSP, HSTS, Permissions-Policy, etc.)
+app.UseSecurityHeaders();
 
 app.UseAntiforgery();
 
