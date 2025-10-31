@@ -111,9 +111,10 @@ public abstract class FeedbackService : IFeedbackService
             ?? throw new InvalidOperationException("Analyze API code not configured");
 
         var settings = await _userSettings.GetSettingsAsync();
-        string? customPrompt = null;
-
+        
         // Precedence: temporary prompt (UI) > explicit parameter (manual) > user custom prompt > user selected prompt type
+        // Always send a prompt to the backend - never rely on backend defaults
+        string customPrompt;
         if (!string.IsNullOrWhiteSpace(TemporaryPrompt))
         {
             customPrompt = TemporaryPrompt;
@@ -132,10 +133,8 @@ public abstract class FeedbackService : IFeedbackService
             customPrompt = FeedbackAnalyzerService.GetPromptByType(settings.SelectedPromptType);
         }
 
-        if (customPrompt != null)
-        {
-            customPrompt = customPrompt.TrimEnd() + " Format your response in markdown.";
-        }
+        // Always append markdown formatting instruction
+        customPrompt = customPrompt.TrimEnd() + " Format your response in markdown.";
 
         var analyzeRequestBody = JsonSerializer.Serialize(new
         {
@@ -164,9 +163,10 @@ public abstract class FeedbackService : IFeedbackService
             ?? throw new InvalidOperationException("Analyze API code not configured");
 
         var settings = await _userSettings.GetSettingsAsync();
-        string? customPrompt = null;
-
+        
         // Precedence: temporary prompt (UI) > explicit parameter (manual) > user custom prompt > user selected prompt type
+        // Always send a prompt to the backend - never rely on backend defaults
+        string customPrompt;
         if (!string.IsNullOrWhiteSpace(TemporaryPrompt))
         {
             customPrompt = TemporaryPrompt;
@@ -185,10 +185,8 @@ public abstract class FeedbackService : IFeedbackService
             customPrompt = FeedbackAnalyzerService.GetPromptByType(settings.SelectedPromptType);
         }
 
-        if (customPrompt != null)
-        {
-            customPrompt = customPrompt.TrimEnd() + " Format your response in markdown.";
-        }
+        // Always append markdown formatting instruction
+        customPrompt = customPrompt.TrimEnd() + " Format your response in markdown.";
 
         var analyzeRequestBody = JsonSerializer.Serialize(new
         {
