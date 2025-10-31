@@ -46,8 +46,9 @@
                                 <option value="@PromptType.ProductFeedback">Product Feedback Analysis</option>
                                 <option value="@PromptType.CompetitorAnalysis">Competitor Analysis</option>
                                 <option value="@PromptType.GeneralAnalysis">General Analysis</option>
+                                <option value="@PromptType.Custom">Custom Prompt</option>
                             </select>
-                            <label for="promptType">Analysis Prompt Type</label>
+                            <label for="promptType">Default Analysis Prompt Type</label>
                             <div class="text-muted small mt-2">
                                 @if (SelectedPromptType == PromptType.ProductFeedback)
                                 {
@@ -61,17 +62,10 @@
                                 {
                                     <text>Provides neutral, objective analysis without product or competitive context.</text>
                                 }
-                            </div>
-                        </div>
-
-                        <div class="form-check form-switch custom-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" id="useCustomPrompts" @bind="UseCustomPrompts"
-                                @bind:event="oninput">
-                            <label class="form-check-label" for="useCustomPrompts">
-                                Use Custom Analysis Prompts
-                            </label>
-                            <div class="text-muted small">
-                                Enable to use custom prompts instead of the default ones.
+                                else if (SelectedPromptType == PromptType.Custom)
+                                {
+                                    <text>Use your own custom analysis prompt. You can edit the prompt text in the Custom Prompts section below.</text>
+                                }
                             </div>
                         </div>
 
@@ -171,40 +165,29 @@
 
         <div class="row">
             <div class="col-12 mb-4">
-                <div class="card shadow-sm @(!UseCustomPrompts ? "opacity-50" : "")">
+                <div class="card shadow-sm">
                     <div class="card-header">
                         <h5 class="card-title mb-0">Custom Prompt</h5>
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
-                            @if (!UseCustomPrompts)
-                            {
-                                <div class="alert alert-info">
-                                    Enable custom prompts in the settings above to modify this custom prompt.
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="alert alert-success">
-                                    <i class="bi bi-info-circle me-2"></i>
-                                    This custom prompt will be used when you select "Custom Prompt" as the analysis type. It allows you to define your own analysis approach.
-                                </div>
-                            }
-                        </div>
-                        <fieldset disabled="@(!UseCustomPrompts)">
-                            <div class="mb-4">
-                                <label class="form-label d-flex justify-content-between">
-                                    <span>Custom Prompt</span>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        @onclick="ResetUniversalPrompt">Reset to Default</button>
-                                </label>
-                                <textarea class="form-control font-monospace" rows="12" @bind="UniversalPrompt"
-                                    @bind:event="oninput" placeholder="Enter your custom analysis prompt instructions..."></textarea>
-                                <div class="text-muted small mt-2">
-                                    Define your own custom analysis instructions. This prompt will be available as "Custom Prompt" in the analysis type dropdown on the home page.
-                                </div>
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                This custom prompt will be used when you select "Custom Prompt" as the default analysis type. It allows you to define your own analysis approach.
                             </div>
-                        </fieldset>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label d-flex justify-content-between">
+                                <span>Custom Prompt</span>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                    @onclick="ResetUniversalPrompt">Reset to Default</button>
+                            </label>
+                            <textarea class="form-control font-monospace" rows="12" @bind="UniversalPrompt"
+                                @bind:event="oninput" placeholder="Enter your custom analysis prompt instructions..."></textarea>
+                            <div class="text-muted small mt-2">
+                                Define your own custom analysis instructions. This prompt will be available as "Custom Prompt" in the analysis type dropdown on the home page.
+                            </div>
+                        </div>
 
                         <div class="card-footer">
                             <SaveButton OnSave="SaveSettings" IsSaving="@isSaving" IsDisabled="@(!hasUnsavedChanges)"
@@ -233,7 +216,6 @@
     private VoiceInfo[]? availableVoices;
 
     // Backing fields for settings properties
-    private bool _useCustomPrompts;
     private string? _preferredVoice;
     private int _maxCommentsToAnalyze = 1200;
     private string _universalPrompt = string.Empty;
@@ -247,19 +229,6 @@
     {
         public static implicit operator VoiceInfo(SpeechSynthesisVoice voice) =>
         new(voice.Name, voice.Lang, voice.VoiceURI, voice.Default);
-    }
-
-    private bool UseCustomPrompts
-    {
-        get => _useCustomPrompts;
-        set
-        {
-            if (_useCustomPrompts != value)
-            {
-                _useCustomPrompts = value;
-                hasUnsavedChanges = true;
-            }
-        }
     }
 
     private PromptType SelectedPromptType
@@ -336,7 +305,6 @@
         // Initialize backing fields from settings
         if (settings != null)
         {
-            _useCustomPrompts = settings.UseCustomPrompts;
             _preferredVoice = settings.PreferredVoice;
             _maxCommentsToAnalyze = settings.MaxCommentsToAnalyze;
             _universalPrompt = settings.UniversalPrompt;
@@ -453,7 +421,6 @@
             isSaving = true;
 
             // Apply all local values to the settings object
-            settings.UseCustomPrompts = _useCustomPrompts;
             settings.PreferredVoice = _preferredVoice;
             settings.MaxCommentsToAnalyze = _maxCommentsToAnalyze;
             settings.UniversalPrompt = _universalPrompt;
