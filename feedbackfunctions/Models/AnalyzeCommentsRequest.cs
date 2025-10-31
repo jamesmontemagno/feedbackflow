@@ -15,4 +15,12 @@ public class AnalyzeCommentsRequest
 
     [JsonPropertyName("customPrompt")]
     public string? CustomPrompt { get; set; }
+    
+    /// <summary>
+    /// Optional prompt type name (e.g., "ProductFeedback", "CompetitorAnalysis", "GeneralAnalysis")
+    /// When specified, the backend will look up the standard prompt for this type.
+    /// If CustomPrompt is also provided, CustomPrompt takes precedence.
+    /// </summary>
+    [JsonPropertyName("promptType")]
+    public string? PromptType { get; set; }
 }

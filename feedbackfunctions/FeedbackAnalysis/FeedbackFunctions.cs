@@ -590,11 +590,25 @@ public class FeedbackFunctions
                 return badResponse;
             }
 
+            // Determine the prompt to use:
+            // 1. If CustomPrompt is provided, use it
+            // 2. If PromptType is provided, look up the standard prompt for that type
+            // 3. Otherwise, use the default prompt for the service type
+            string? promptToUse = request.CustomPrompt;
+            if (string.IsNullOrEmpty(promptToUse) && !string.IsNullOrEmpty(request.PromptType))
+            {
+                // Parse the prompt type and get the standard prompt
+                if (Enum.TryParse<SharedDump.AI.PromptType>(request.PromptType, true, out var parsedPromptType))
+                {
+                    promptToUse = SharedDump.AI.FeedbackAnalyzerService.GetPromptByType(parsedPromptType);
+                }
+            }
+
             var analysisBuilder = new System.Text.StringBuilder();
             await foreach (var update in _analyzerService.GetStreamingAnalysisAsync(
                 request.ServiceType, 
                 request.Comments,
-                request.CustomPrompt))
+                promptToUse))
             {
                 analysisBuilder.Append(update);
             }

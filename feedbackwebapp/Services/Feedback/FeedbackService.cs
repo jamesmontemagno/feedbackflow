@@ -111,37 +111,42 @@ public abstract class FeedbackService : IFeedbackService
             ?? throw new InvalidOperationException("Analyze API code not configured");
 
         var settings = await _userSettings.GetSettingsAsync();
+        
+        // Determine what to send to the backend:
+        // - If temporary prompt exists (user customized in UI), send as customPrompt
+        // - If explicit custom prompt provided, send as customPrompt
+        // - If user's default is Custom prompt, send their custom prompt
+        // - Otherwise, send promptType name to let backend look up the standard prompt
         string? customPrompt = null;
+        string? promptType = null;
 
-        // Precedence: temporary prompt (UI) > explicit parameter (manual) > user custom prompt > user selected prompt type
         if (!string.IsNullOrWhiteSpace(TemporaryPrompt))
         {
-            customPrompt = TemporaryPrompt;
+            // User customized prompt in UI - send full prompt
+            customPrompt = TemporaryPrompt.TrimEnd() + " Format your response in markdown.";
         }
         else if (!string.IsNullOrEmpty(explicitCustomPrompt))
         {
-            customPrompt = explicitCustomPrompt;
+            // Explicit custom prompt (e.g., from manual input) - send full prompt
+            customPrompt = explicitCustomPrompt.TrimEnd() + " Format your response in markdown.";
         }
-        else if (settings.UseCustomPrompts)
+        else if (settings.SelectedPromptType == PromptType.Custom)
         {
-            customPrompt = settings.UniversalPrompt;
+            // User's default is custom prompt - send their custom prompt
+            customPrompt = (settings.UniversalPrompt ?? FeedbackAnalyzerService.GetUniversalPrompt()).TrimEnd() + " Format your response in markdown.";
         }
         else
         {
-            // Use the selected prompt type (default behavior)
-            customPrompt = FeedbackAnalyzerService.GetPromptByType(settings.SelectedPromptType);
-        }
-
-        if (customPrompt != null)
-        {
-            customPrompt = customPrompt.TrimEnd() + " Format your response in markdown.";
+            // Use standard prompt type - send just the type name to minimize payload
+            promptType = settings.SelectedPromptType.ToString();
         }
 
         var analyzeRequestBody = JsonSerializer.Serialize(new
         {
             serviceType,
             comments,
-            customPrompt
+            customPrompt,
+            promptType
         });
 
         var analyzeContent = new StringContent(
@@ -164,37 +169,42 @@ public abstract class FeedbackService : IFeedbackService
             ?? throw new InvalidOperationException("Analyze API code not configured");
 
         var settings = await _userSettings.GetSettingsAsync();
+        
+        // Determine what to send to the backend:
+        // - If temporary prompt exists (user customized in UI), send as customPrompt
+        // - If explicit custom prompt provided, send as customPrompt
+        // - If user's default is Custom prompt, send their custom prompt
+        // - Otherwise, send promptType name to let backend look up the standard prompt
         string? customPrompt = null;
+        string? promptType = null;
 
-        // Precedence: temporary prompt (UI) > explicit parameter (manual) > user custom prompt > user selected prompt type
         if (!string.IsNullOrWhiteSpace(TemporaryPrompt))
         {
-            customPrompt = TemporaryPrompt;
+            // User customized prompt in UI - send full prompt
+            customPrompt = TemporaryPrompt.TrimEnd() + " Format your response in markdown.";
         }
         else if (!string.IsNullOrEmpty(explicitCustomPrompt))
         {
-            customPrompt = explicitCustomPrompt;
+            // Explicit custom prompt (e.g., from manual input) - send full prompt
+            customPrompt = explicitCustomPrompt.TrimEnd() + " Format your response in markdown.";
         }
-        else if (settings.UseCustomPrompts)
+        else if (settings.SelectedPromptType == PromptType.Custom)
         {
-            customPrompt = settings.UniversalPrompt;
+            // User's default is custom prompt - send their custom prompt
+            customPrompt = (settings.UniversalPrompt ?? FeedbackAnalyzerService.GetUniversalPrompt()).TrimEnd() + " Format your response in markdown.";
         }
         else
         {
-            // Use the selected prompt type (default behavior)
-            customPrompt = FeedbackAnalyzerService.GetPromptByType(settings.SelectedPromptType);
-        }
-
-        if (customPrompt != null)
-        {
-            customPrompt = customPrompt.TrimEnd() + " Format your response in markdown.";
+            // Use standard prompt type - send just the type name to minimize payload
+            promptType = settings.SelectedPromptType.ToString();
         }
 
         var analyzeRequestBody = JsonSerializer.Serialize(new
         {
             serviceType,
             comments,
-            customPrompt
+            customPrompt,
+            promptType
         });
 
         var analyzeContent = new StringContent(
