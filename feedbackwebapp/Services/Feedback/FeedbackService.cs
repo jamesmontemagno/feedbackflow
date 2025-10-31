@@ -125,12 +125,12 @@ public abstract class FeedbackService : IFeedbackService
         }
         else if (settings.UseCustomPrompts)
         {
-            customPrompt = settings.UniversalPrompt;
+            customPrompt = settings.UniversalPrompt ?? FeedbackAnalyzerService.GetUniversalPrompt();
         }
         else
         {
             // Use the selected prompt type (default behavior)
-            customPrompt = FeedbackAnalyzerService.GetPromptByType(settings.SelectedPromptType);
+            customPrompt = FeedbackAnalyzerService.GetPromptByType(settings.SelectedPromptType) ?? FeedbackAnalyzerService.GetUniversalPrompt();
         }
 
         // Always append markdown formatting instruction
@@ -177,12 +177,12 @@ public abstract class FeedbackService : IFeedbackService
         }
         else if (settings.UseCustomPrompts)
         {
-            customPrompt = settings.UniversalPrompt;
+            customPrompt = settings.UniversalPrompt ?? FeedbackAnalyzerService.GetUniversalPrompt();
         }
         else
         {
             // Use the selected prompt type (default behavior)
-            customPrompt = FeedbackAnalyzerService.GetPromptByType(settings.SelectedPromptType);
+            customPrompt = FeedbackAnalyzerService.GetPromptByType(settings.SelectedPromptType) ?? FeedbackAnalyzerService.GetUniversalPrompt();
         }
 
         // Always append markdown formatting instruction
