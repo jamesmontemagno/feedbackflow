@@ -45,7 +45,7 @@ docker run -i --rm `
 | Environment Var | `FEEDBACKFLOW_API_KEY` must be set (or passed) |
 | Container Runtime | Docker (or compatible) |
 | MCP Client / Extension | VS Code MCP-capable extension or other tooling |
-| Outbound HTTPS | Container needs egress to api.feedbackflow.ai |
+| Outbound HTTPS | Container needs egress to api.feedbackflow.pp |
 
 ## Environment Variable
 | Name | Required | Purpose |
@@ -59,7 +59,43 @@ $Env:FEEDBACKFLOW_API_KEY = "ff_your_key_here"    # PowerShell
 ```
 Or pass via `-e FEEDBACKFLOW_API_KEY=...` in `docker run`.
 
-## VS Code Integration
+
+## VS Code Integration (remote)
+
+[![Install in VS Code](https://img.shields.io/badge/Install_in-VS_Code-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=feedbackflow&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Ffunc-feedbackflow-mcp-rr7fxhjrrtpdq.azurewebsites.net%2Fmcp%22%2C%22headers%22%3A%7B%22Authorization%22%3A%22%24%7Binput%3Afeedbackflow_api_key%7D%22%7D%7D)
+[![Install in VS Code Insiders](https://img.shields.io/badge/Install_in-VS_Code_Insiders-24bfa5?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=feedbackflow&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Ffunc-feedbackflow-mcp-rr7fxhjrrtpdq.azurewebsites.net%2Fmcp%22%2C%22headers%22%3A%7B%22Authorization%22%3A%22%24%7Binput%3Afeedbackflow_api_key%7D%22%7D%7D&quality=insiders)
+[![Install in Visual Studio](https://img.shields.io/badge/Install_in-Visual_Studio-C16FDE?style=flat-square&logo=visualstudio&logoColor=white)](https://vs-open.link/mcp-install?%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Ffunc-feedbackflow-mcp-rr7fxhjrrtpdq.azurewebsites.net%2Fmcp%22%2C%22headers%22%3A%7B%22Authorization%22%3A%22%24%7Binput%3Afeedbackflow_api_key%7D%22%7D%7D)
+
+
+```json
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "feedbackflow_api_key",
+      "description": "FeedbackFlow API Key (starts with ff_)",
+      "password": true
+    }
+  ],
+  "servers": {
+    "feedbackflow": {
+      "type": "http",
+      "url": "https://func-feedbackflow-mcp-rr7fxhjrrtpdq.azurewebsites.net/mcp",
+      "headers": {
+        "Authorization": "${input:feedbackflow_api_key}"
+      }
+    }
+  }
+}
+```
+
+## VS Code Integration (local)
+
+[![Install in VS Code](https://img.shields.io/badge/Install_in-VS_Code-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=feedbackflow&config=%7B%22command%22%3A%22docker%22%2C%22args%22%3A%5B%22run%22%2C%22-i%22%2C%22--rm%22%2C%22FEEDBACKFLOW_API_KEY%22%5D%2C%22env%22%3A%7B%7D%7D)
+[![Install in VS Code Insiders](https://img.shields.io/badge/Install_in-VS_Code_Insiders-24bfa5?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=feedbackflow&config=%7B%22command%22%3A%22docker%22%2C%22args%22%3A%5B%22run%22%2C%22-i%22%2C%22--rm%22%2C%22FEEDBACKFLOW_API_KEY%22%5D%2C%22env%22%3A%7B%7D%7D&quality=insiders)
+[![Install in Visual Studio](https://img.shields.io/badge/Install_in-Visual_Studio-C16FDE?style=flat-square&logo=visualstudio&logoColor=white)](https://vs-open.link/mcp-install?%7B%22command%22%3A%22docker%22%2C%22args%22%3A%5B%22run%22%2C%22-i%22%2C%22--rm%22%2C%22FEEDBACKFLOW_API_KEY%22%5D%2C%22env%22%3A%7B%7D%7D)
+
+
 If your VS Code setup (via an MCP-enabled extension) supports a user-level JSON configuration similar to the GitHub MCP server example, you can define interactive inputs and map them to environment variables for the container.
 
 ### Example MCP Configuration Snippet (Docker)
