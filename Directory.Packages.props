@@ -5,9 +5,9 @@
     <NoWarn>$(NoWarn);NU1507</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Aspire.Hosting.AppHost" Version="9.4.0" />
-    <PackageVersion Include="Aspire.Hosting.Azure.Functions" Version="9.4.0-preview.1.25378.8" />
-    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="9.4.0" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="9.5.2" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Functions" Version="9.5.2-preview.1.25522.3" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="9.5.2" />
     <PackageVersion Include="Azure.AI.OpenAI" Version="2.3.0-beta.1" />
     <PackageVersion Include="Azure.Communication.Email" Version="1.1.0-beta.2" />
     <PackageVersion Include="Azure.Data.Tables" Version="12.11.0" />
@@ -36,7 +36,7 @@
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="9.7.0" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="9.0.8" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="9.4.0" />
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="9.5.2" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
     <PackageVersion Include="ModelContextProtocol" Version="0.3.0-preview.3" />
