@@ -328,4 +328,140 @@ public class YouTubeService : IYouTubeService
         return statistics.TryGetProperty(propertyName, out var property) && 
                property.TryGetInt64(out var value) ? value : 0;
     }
+
+    public async Task<YouTubeOutputVideo> ProcessVideo(string videoId, YouTubeContentType contentType)
+    {
+        var video = await ProcessVideo(videoId);
+        
+        // If we only need comments or already have them, return
+        if (contentType == YouTubeContentType.Comments)
+        {
+            return video;
+        }
+
+        // Fetch transcript if needed
+        if (contentType == YouTubeContentType.Transcript || contentType == YouTubeContentType.Both)
+        {
+            video.Transcript = await GetTranscript(videoId);
+        }
+
+        // Clear comments if only transcript is needed
+        if (contentType == YouTubeContentType.Transcript)
+        {
+            video.Comments.Clear();
+        }
+
+        return video;
+    }
+
+    public async Task<YouTubeTranscript?> GetTranscript(string videoId, string? languageCode = null)
+    {
+        try
+        {
+            // First, get the video page to extract transcript information
+            var videoPageUrl = $"https://www.youtube.com/watch?v={videoId}";
+            var videoPageResponse = await _client.GetStringAsync(videoPageUrl);
+
+            // Extract caption track information from the page
+            // YouTube embeds caption track URLs in the page source
+            var captionTracksMatch = System.Text.RegularExpressions.Regex.Match(
+                videoPageResponse, 
+                @"""captionTracks"":\s*(\[.*?\])"
+            );
+
+            if (!captionTracksMatch.Success)
+            {
+                // No captions available
+                return null;
+            }
+
+            var captionTracksJson = captionTracksMatch.Groups[1].Value;
+            var captionTracks = JsonSerializer.Deserialize<List<JsonElement>>(captionTracksJson);
+
+            if (captionTracks is null || captionTracks.Count == 0)
+            {
+                return null;
+            }
+
+            // Find the best caption track (prefer specified language, fallback to English, then first available)
+            JsonElement? selectedTrack = null;
+            if (!string.IsNullOrEmpty(languageCode))
+            {
+                selectedTrack = captionTracks.FirstOrDefault(t => 
+                    t.TryGetProperty("languageCode", out var lang) && 
+                    lang.GetString() == languageCode);
+            }
+
+            // Fallback to English
+            selectedTrack ??= captionTracks.FirstOrDefault(t => 
+                t.TryGetProperty("languageCode", out var lang) && 
+                lang.GetString() == "en");
+
+            // Fallback to first available
+            selectedTrack ??= captionTracks.FirstOrDefault();
+
+            if (selectedTrack is null || !selectedTrack.Value.TryGetProperty("baseUrl", out var baseUrlProp))
+            {
+                return null;
+            }
+
+            var transcriptUrl = baseUrlProp.GetString();
+            if (string.IsNullOrEmpty(transcriptUrl))
+            {
+                return null;
+            }
+
+            // Fetch the transcript XML
+            var transcriptXml = await _client.GetStringAsync(transcriptUrl);
+
+            // Parse the transcript XML
+            var segments = new List<YouTubeTranscriptSegment>();
+            var textMatches = System.Text.RegularExpressions.Regex.Matches(
+                transcriptXml,
+                @"<text start=""([\d.]+)"" dur=""([\d.]+)""[^>]*>(.*?)</text>"
+            );
+
+            foreach (System.Text.RegularExpressions.Match match in textMatches)
+            {
+                var startStr = match.Groups[1].Value;
+                var durationStr = match.Groups[2].Value;
+                var text = match.Groups[3].Value;
+
+                // Decode HTML entities
+                text = System.Net.WebUtility.HtmlDecode(text);
+
+                if (double.TryParse(startStr, out var start) && 
+                    double.TryParse(durationStr, out var duration))
+                {
+                    segments.Add(new YouTubeTranscriptSegment
+                    {
+                        Text = text,
+                        Start = start,
+                        Duration = duration
+                    });
+                }
+            }
+
+            if (segments.Count == 0)
+            {
+                return null;
+            }
+
+            var language = selectedTrack.Value.TryGetProperty("languageCode", out var langProp) 
+                ? langProp.GetString() ?? "unknown" 
+                : "unknown";
+
+            return new YouTubeTranscript
+            {
+                VideoId = videoId,
+                Language = language,
+                Segments = segments
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching transcript for video {videoId}: {ex.Message}");
+            return null;
+        }
+    }
 }

@@ -1,0 +1,60 @@
+@namespace FeedbackWebApp.Components.Feedback.Forms
+@using SharedDump.Models.YouTube
+
+<div class="youtube-content-type-selector">
+    <label class="form-label small text-muted">Content Type:</label>
+    <div class="btn-group btn-group-sm w-100" role="group" aria-label="YouTube content type selector">
+        <input type="radio" 
+               class="btn-check" 
+               name="contentType-@InputId" 
+               id="comments-@InputId" 
+               checked="@(SelectedContentType == YouTubeContentType.Comments)"
+               @onchange="@(() => OnContentTypeChanged(YouTubeContentType.Comments))"
+               disabled="@IsDisabled">
+        <label class="btn btn-outline-primary" for="comments-@InputId">
+            <i class="bi bi-chat-text"></i> Comments
+        </label>
+
+        <input type="radio" 
+               class="btn-check" 
+               name="contentType-@InputId" 
+               id="transcript-@InputId" 
+               checked="@(SelectedContentType == YouTubeContentType.Transcript)"
+               @onchange="@(() => OnContentTypeChanged(YouTubeContentType.Transcript))"
+               disabled="@IsDisabled">
+        <label class="btn btn-outline-primary" for="transcript-@InputId">
+            <i class="bi bi-file-text"></i> Transcript
+        </label>
+
+        <input type="radio" 
+               class="btn-check" 
+               name="contentType-@InputId" 
+               id="both-@InputId" 
+               checked="@(SelectedContentType == YouTubeContentType.Both)"
+               @onchange="@(() => OnContentTypeChanged(YouTubeContentType.Both))"
+               disabled="@IsDisabled">
+        <label class="btn btn-outline-primary" for="both-@InputId">
+            <i class="bi bi-collection"></i> Both
+        </label>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public YouTubeContentType SelectedContentType { get; set; } = YouTubeContentType.Comments;
+
+    [Parameter]
+    public EventCallback<YouTubeContentType> SelectedContentTypeChanged { get; set; }
+
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
+    [Parameter]
+    public string InputId { get; set; } = Guid.NewGuid().ToString("N");
+
+    private async Task OnContentTypeChanged(YouTubeContentType contentType)
+    {
+        SelectedContentType = contentType;
+        await SelectedContentTypeChanged.InvokeAsync(contentType);
+    }
+}

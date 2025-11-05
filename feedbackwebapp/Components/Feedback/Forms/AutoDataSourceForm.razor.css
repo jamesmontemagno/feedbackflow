@@ -14,6 +14,15 @@
     margin-bottom: 1rem;
 }
 
+.url-entry-container {
+    border-radius: var(--border-radius);
+    transition: background-color 0.2s ease;
+}
+
+.url-entry-container:hover {
+    background: rgba(var(--bg-secondary-rgb), 0.1);
+}
+
 .input-group .btn-outline-danger {
     border-color: var(--border-color);
 }

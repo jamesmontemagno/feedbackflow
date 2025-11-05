@@ -210,4 +210,62 @@ public class MockYouTubeService : IYouTubeService
         // Sort comments by publish date (newest first)
         return comments.OrderByDescending(c => c.PublishedAt).ToList();
     }
+
+    public async Task<YouTubeOutputVideo> ProcessVideo(string videoId, YouTubeContentType contentType)
+    {
+        // Simulate processing delay
+        await Task.Delay(800);
+
+        var video = await ProcessVideo(videoId);
+        
+        // Add transcript if needed
+        if (contentType == YouTubeContentType.Transcript || contentType == YouTubeContentType.Both)
+        {
+            video.Transcript = await GetTranscript(videoId);
+        }
+
+        // Clear comments if only transcript is needed
+        if (contentType == YouTubeContentType.Transcript)
+        {
+            video.Comments.Clear();
+        }
+
+        return video;
+    }
+
+    public async Task<YouTubeTranscript?> GetTranscript(string videoId, string? languageCode = null)
+    {
+        // Simulate network delay
+        await Task.Delay(500);
+
+        // Generate mock transcript
+        var segments = new List<YouTubeTranscriptSegment>
+        {
+            new() { Text = "Welcome to this video tutorial.", Start = 0.0, Duration = 2.5 },
+            new() { Text = "Today we're going to explore some important concepts in software development.", Start = 2.5, Duration = 4.0 },
+            new() { Text = "Let's start by understanding the fundamentals.", Start = 6.5, Duration = 3.0 },
+            new() { Text = "First, we need to set up our development environment.", Start = 9.5, Duration = 3.5 },
+            new() { Text = "Make sure you have all the necessary tools installed.", Start = 13.0, Duration = 3.0 },
+            new() { Text = "Now let's dive into the code and see how this works in practice.", Start = 16.0, Duration = 4.0 },
+            new() { Text = "As you can see, the implementation is straightforward.", Start = 20.0, Duration = 3.0 },
+            new() { Text = "One important thing to remember is to always follow best practices.", Start = 23.0, Duration = 4.0 },
+            new() { Text = "This ensures your code is maintainable and scalable.", Start = 27.0, Duration = 3.5 },
+            new() { Text = "Let's look at some examples to make this clearer.", Start = 30.5, Duration = 3.0 },
+            new() { Text = "Here we can see how the different components interact.", Start = 33.5, Duration = 3.5 },
+            new() { Text = "Notice how we handle edge cases and potential errors.", Start = 37.0, Duration = 3.5 },
+            new() { Text = "Testing is crucial to ensure everything works as expected.", Start = 40.5, Duration = 3.5 },
+            new() { Text = "Now that we've covered the basics, let's move on to more advanced topics.", Start = 44.0, Duration = 4.0 },
+            new() { Text = "These techniques will help you optimize your applications.", Start = 48.0, Duration = 3.5 },
+            new() { Text = "Remember to always consider performance and user experience.", Start = 51.5, Duration = 3.5 },
+            new() { Text = "Thanks for watching, and I hope you found this helpful.", Start = 55.0, Duration = 3.0 },
+            new() { Text = "Don't forget to like and subscribe for more content.", Start = 58.0, Duration = 2.5 }
+        };
+
+        return new YouTubeTranscript
+        {
+            VideoId = videoId,
+            Language = languageCode ?? "en",
+            Segments = segments
+        };
+    }
 }

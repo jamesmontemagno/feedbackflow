@@ -116,3 +116,22 @@ public class YouTubeInputFile
     public string[]? Videos { get; set; }
     public string[]? Playlists { get; set; }
 }
+
+public class YouTubeCaptionListResponse
+{
+    public required List<YouTubeCaptionTrack> Items { get; set; }
+}
+
+public class YouTubeCaptionTrack
+{
+    public required string Id { get; set; }
+    public required YouTubeCaptionSnippet Snippet { get; set; }
+}
+
+public class YouTubeCaptionSnippet
+{
+    public required string VideoId { get; set; }
+    public required string Language { get; set; }
+    public required string Name { get; set; }
+    public string? TrackKind { get; set; }
+}

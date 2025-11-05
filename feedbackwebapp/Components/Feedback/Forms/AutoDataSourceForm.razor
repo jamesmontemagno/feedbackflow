@@ -1,28 +1,40 @@
 @namespace FeedbackWebApp.Components.Feedback.Forms
 @using System.ComponentModel.DataAnnotations
+@using SharedDump.Utils
+@using SharedDump.Models.YouTube
 
 <div class="auto-input-container">
     <div class="auto-input-list">
         @for (var i = 0; i < Urls.Count; i++)
         {            
             var index = i;
-            <div class="input-group mb-2">                
-                <div class="form-floating flex-grow-1">
-                    <input type="url" 
-                           class="form-control" 
-                           id="url-@index"
-                           value="@Urls[index]"
-                           disabled="@IsDisabled"
-                           @onchange="@(async (ChangeEventArgs e) => await HandleUrlChange(index, e.Value?.ToString() ?? ""))" />
-                    <label for="url-@index">Enter URL</label>
+            <div class="url-entry-container mb-3">
+                <div class="input-group">                
+                    <div class="form-floating flex-grow-1">
+                        <input type="url" 
+                               class="form-control" 
+                               id="url-@index"
+                               value="@Urls[index]"
+                               disabled="@IsDisabled"
+                               @onchange="@(async (ChangeEventArgs e) => await HandleUrlChange(index, e.Value?.ToString() ?? ""))" />
+                        <label for="url-@index">Enter URL</label>
+                    </div>
+                    <button class="btn btn-outline-danger" 
+                            @onclick="@(() => RemoveUrl(index))" 
+                            disabled="@IsDisabled"
+                            type="button">
+                        <i class="bi bi-x-lg"></i>
+                        <span class="visually-hidden">Remove URL</span>
+                    </button>
                 </div>
-                <button class="btn btn-outline-danger" 
-                        @onclick="@(() => RemoveUrl(index))" 
-                        disabled="@IsDisabled"
-                        type="button">
-                    <i class="bi bi-x-lg"></i>
-                    <span class="visually-hidden">Remove URL</span>
-                </button>
+                @* Show YouTube content type selector if this is a YouTube URL *@
+                @if (!string.IsNullOrWhiteSpace(Urls[index]) && UrlParsing.IsYouTubeUrl(Urls[index]))
+                {
+                    <YouTubeContentTypeSelector 
+                        @bind-SelectedContentType="@YouTubeContentTypes[index]"
+                        IsDisabled="@IsDisabled"
+                        InputId="@($"yt-{index}")" />
+                }
             </div>
         }
     </div>
@@ -61,6 +73,7 @@
 
 @code {    
     private List<string> Urls { get; set; } = new() { "" };
+    private Dictionary<int, YouTubeContentType> YouTubeContentTypes { get; set; } = new();
 
     [Parameter]
     public EventCallback<List<string>> OnUrlsChanged { get; set; }
@@ -83,8 +96,15 @@
         }
         
         Urls[index] = value;
+        
+        // Initialize YouTube content type for new YouTube URLs (default to Comments)
+        if (!string.IsNullOrWhiteSpace(value) && UrlParsing.IsYouTubeUrl(value) && !YouTubeContentTypes.ContainsKey(index))
+        {
+            YouTubeContentTypes[index] = YouTubeContentType.Comments;
+        }
+        
         await OnUrlsChanged.InvokeAsync(Urls);
-        StateHasChanged(); // Refresh to show/hide checkbox
+        StateHasChanged(); // Refresh to show/hide YouTube selector and checkbox
     }
 
     private void AddUrl()
@@ -98,6 +118,17 @@
         if (Urls.Count > 1)
         {
             Urls.RemoveAt(index);
+            YouTubeContentTypes.Remove(index);
+            
+            // Re-index the dictionary
+            var newDict = new Dictionary<int, YouTubeContentType>();
+            foreach (var kvp in YouTubeContentTypes.OrderBy(k => k.Key))
+            {
+                var newIndex = kvp.Key > index ? kvp.Key - 1 : kvp.Key;
+                newDict[newIndex] = kvp.Value;
+            }
+            YouTubeContentTypes = newDict;
+            
             await OnUrlsChanged.InvokeAsync(Urls);
             StateHasChanged(); // Refresh to show/hide checkbox
         }
@@ -108,4 +139,19 @@
     public List<string> GetUrls() => Urls.Where(u => !string.IsNullOrWhiteSpace(u)).ToList();
     
     public bool GetIncludeIndividualReports() => IncludeIndividualReports;
+    
+    public Dictionary<string, YouTubeContentType> GetYouTubeContentTypes()
+    {
+        var result = new Dictionary<string, YouTubeContentType>();
+        for (int i = 0; i < Urls.Count; i++)
+        {
+            if (!string.IsNullOrWhiteSpace(Urls[i]) && UrlParsing.IsYouTubeUrl(Urls[i]))
+            {
+                result[Urls[i]] = YouTubeContentTypes.TryGetValue(i, out var contentType) 
+                    ? contentType 
+                    : YouTubeContentType.Comments; // Default to Comments
+            }
+        }
+        return result;
+    }
 }
