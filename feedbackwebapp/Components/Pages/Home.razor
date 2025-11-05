@@ -384,6 +384,7 @@
         // Create a new service for reanalysis
         var service = ServiceProvider.CreateAutoDataSourceService(
             autoDataSourceForm?.GetUrls().ToArray() ?? Array.Empty<string>(),
+            autoDataSourceForm?.GetYouTubeContentTypes(),
             HandleStatusUpdate);
 
         // Set the individual reports flag
@@ -636,6 +637,7 @@
             {
                 "Auto" or "auto" => ServiceProvider.CreateAutoDataSourceService(
                     autoDataSourceForm?.GetUrls().ToArray() ?? Array.Empty<string>(),
+                    autoDataSourceForm?.GetYouTubeContentTypes(),
                     HandleStatusUpdate),
                 "Manual" or "manual" => ServiceProvider.CreateManualService(
                     manualInputForm?.GetContent() ?? string.Empty,

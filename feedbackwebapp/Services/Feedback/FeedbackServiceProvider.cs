@@ -33,6 +33,23 @@ public class FeedbackServiceProvider
             : new YouTubeFeedbackService(_http, _configuration, _userSettings, _authHeaderService, videoIds, playlistIds, onStatusUpdate);
     }
 
+    public IFeedbackService? GetYouTubeService(string url, SharedDump.Models.YouTube.YouTubeContentType contentType, FeedbackStatusUpdate? onStatusUpdate = null)
+    {
+        if (string.IsNullOrEmpty(url))
+            return null;
+
+        var videoId = UrlParsing.ExtractVideoId(url) ?? string.Empty;
+        var service = CreateYouTubeService(videoId, string.Empty, onStatusUpdate);
+        
+        // Set content type if the service supports it
+        if (service is IYouTubeContentTypeAware contentTypeAware)
+        {
+            contentTypeAware.SetContentType(contentType);
+        }
+        
+        return service;
+    }
+
     public IHackerNewsFeedbackService CreateHackerNewsService(string storyIds, FeedbackStatusUpdate? onStatusUpdate = null)
     {
         return _useMocks
@@ -86,7 +103,7 @@ public class FeedbackServiceProvider
             : new ManualFeedbackService(_http, _configuration, _userSettings, _authHeaderService, content, customPrompt, onStatusUpdate);
     }
 
-    public IFeedbackService CreateAutoDataSourceService(string[] urls, FeedbackStatusUpdate? onStatusUpdate = null)
+    public IFeedbackService CreateAutoDataSourceService(string[] urls, Dictionary<string, SharedDump.Models.YouTube.YouTubeContentType>? youtubeContentTypes = null, FeedbackStatusUpdate? onStatusUpdate = null)
     {
         if (_useMocks)
         {
@@ -95,6 +112,14 @@ public class FeedbackServiceProvider
             {
                 var singleUrl = urls[0];
                 var specificService = GetService(singleUrl);
+                
+                // If it's a YouTube URL and we have content type info, set it
+                if (specificService is IYouTubeContentTypeAware youtubeService && 
+                    youtubeContentTypes != null && 
+                    youtubeContentTypes.TryGetValue(singleUrl, out var contentType))
+                {
+                    youtubeService.SetContentType(contentType);
+                }
                 
                 // If we can identify a specific service type, return it cast as IAutoDataSourceFeedbackService
                 // This provides more realistic mock behavior for single-platform scenarios
@@ -108,7 +133,7 @@ public class FeedbackServiceProvider
             return new MockAutoDataSourceFeedbackService(_http, _configuration, _userSettings, _authHeaderService, onStatusUpdate);
         }
         
-        return new AutoDataSourceFeedbackService(_http, _configuration, _userSettings, _authHeaderService, this, urls, onStatusUpdate);
+        return new AutoDataSourceFeedbackService(_http, _configuration, _userSettings, _authHeaderService, this, urls, youtubeContentTypes, onStatusUpdate);
     }
     public IFeedbackService? GetService(string url)
     {

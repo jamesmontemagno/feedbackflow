@@ -6,10 +6,11 @@ using System.Text.Json;
 
 namespace FeedbackWebApp.Services.Feedback;
 
-public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
+public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService, IYouTubeContentTypeAware
 {
     private readonly string _videoId;
     private readonly string _playlistId;
+    private YouTubeContentType _contentType = YouTubeContentType.Comments;
 
     public YouTubeFeedbackService(
         IHttpClientFactory http, 
@@ -23,6 +24,16 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
     {
         _videoId = videoId;
         _playlistId = playlistId;
+    }
+
+    public void SetContentType(YouTubeContentType contentType)
+    {
+        _contentType = contentType;
+    }
+
+    public YouTubeContentType GetContentType()
+    {
+        return _contentType;
     }
 
     public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
@@ -46,7 +57,8 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         var queryParams = new List<string>
         {
             $"code={Uri.EscapeDataString(youTubeCode)}",
-            $"maxComments={maxComments}"
+            $"maxComments={maxComments}",
+            $"contentType={_contentType}"
         };
         
         if (!string.IsNullOrWhiteSpace(processedVideoId))

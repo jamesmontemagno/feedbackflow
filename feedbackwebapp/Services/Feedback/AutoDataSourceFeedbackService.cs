@@ -1,6 +1,7 @@
 using FeedbackWebApp.Services.Interfaces;
 using FeedbackWebApp.Services.Authentication;
 using SharedDump.Utils;
+using SharedDump.Models.YouTube;
 
 namespace FeedbackWebApp.Services.Feedback;
 
@@ -8,6 +9,7 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
 {
     private readonly string[] _urls;
     private readonly FeedbackServiceProvider _serviceProvider;
+    private readonly Dictionary<string, YouTubeContentType> _youtubeContentTypes;
     private bool _includeIndividualReports = false; // Default to false - only full report
     
     /// <summary>
@@ -22,11 +24,13 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         IAuthenticationHeaderService authenticationHeaderService,
         FeedbackServiceProvider serviceProvider,
         string[] urls,
+        Dictionary<string, YouTubeContentType>? youtubeContentTypes = null,
         FeedbackStatusUpdate? onStatusUpdate = null)
         : base(http, configuration, userSettings, authenticationHeaderService, onStatusUpdate)
     {
         _urls = urls;
         _serviceProvider = serviceProvider;
+        _youtubeContentTypes = youtubeContentTypes ?? new Dictionary<string, YouTubeContentType>();
     }    
     
     private string GetServiceType(string url)
@@ -216,7 +220,16 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         return (string.Empty, 0, null);
     }
 
-    private IFeedbackService? ResolveFeedbackService(string url) => _serviceProvider.GetService(url);
+    private IFeedbackService? ResolveFeedbackService(string url)
+    {
+        // For YouTube URLs, pass the content type if available
+        if (UrlParsing.IsYouTubeUrl(url) && _youtubeContentTypes.TryGetValue(url, out var contentType))
+        {
+            return _serviceProvider.GetYouTubeService(url, contentType);
+        }
+        
+        return _serviceProvider.GetService(url);
+    }
 }
 
 

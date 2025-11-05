@@ -13,18 +13,58 @@ public class MockYouTubeFeedbackService(
     UserSettingsService userSettings,
     IAuthenticationHeaderService authenticationHeaderService,
     FeedbackStatusUpdate? onStatusUpdate = null)
-    : FeedbackService(http, configuration, userSettings, authenticationHeaderService, onStatusUpdate), IYouTubeFeedbackService
-{    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
+    : FeedbackService(http, configuration, userSettings, authenticationHeaderService, onStatusUpdate), IYouTubeFeedbackService, IYouTubeContentTypeAware
+{
+    private YouTubeContentType _contentType = YouTubeContentType.Comments;
+
+    public void SetContentType(YouTubeContentType contentType)
+    {
+        _contentType = contentType;
+    }
+
+    public YouTubeContentType GetContentType()
+    {
+        return _contentType;
+    }
+
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock YouTube comments...");
         await Task.Delay(1000); // Simulate network delay
 
         // Use shared mock data provider
         var mockVideos = MockDataProvider.YouTube.GetMockVideos();
-        var allComments = MockDataProvider.YouTube.GetFormattedComments();
-        var totalComments = mockVideos.Sum(v => v.Comments?.Count ?? 0);
-
-        return (allComments, totalComments, mockVideos);
+        
+        // Apply content type filtering
+        if (_contentType == YouTubeContentType.Transcript)
+        {
+            // For transcript-only, use transcript data
+            var transcriptText = string.Join("\n\n", mockVideos.Select(v => 
+                v.Transcript != null ? $"Video: {v.Title}\nTranscript:\n{v.Transcript.FullText}" : ""
+            ).Where(s => !string.IsNullOrEmpty(s)));
+            
+            return (transcriptText, 0, mockVideos);
+        }
+        else if (_contentType == YouTubeContentType.Both)
+        {
+            // For both, combine comments and transcripts
+            var commentsText = MockDataProvider.YouTube.GetFormattedComments();
+            var transcriptText = string.Join("\n\n", mockVideos.Select(v => 
+                v.Transcript != null ? $"Transcript for {v.Title}:\n{v.Transcript.FullText}" : ""
+            ).Where(s => !string.IsNullOrEmpty(s)));
+            
+            var combined = $"{commentsText}\n\n=== Transcripts ===\n\n{transcriptText}";
+            var totalComments = mockVideos.Sum(v => v.Comments?.Count ?? 0);
+            
+            return (combined, totalComments, mockVideos);
+        }
+        else
+        {
+            // Default: Comments only
+            var allComments = MockDataProvider.YouTube.GetFormattedComments();
+            var totalComments = mockVideos.Sum(v => v.Comments?.Count ?? 0);
+            return (allComments, totalComments, mockVideos);
+        }
     }
 
     public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
