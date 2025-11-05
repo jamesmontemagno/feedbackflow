@@ -1,5 +1,7 @@
 .youtube-content-filter {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    margin-right: 0.5rem;
 }
 
 .youtube-content-filter .form-select {
@@ -10,6 +12,7 @@
     background-color: var(--card-bg);
     color: var(--text-primary);
     transition: all 0.2s ease;
+    height: calc(3.5rem + 2px); /* Match form-floating height */
 }
 
 .youtube-content-filter .form-select:hover:not(:disabled) {

@@ -110,6 +110,8 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService, 
     private string FormatYouTubeContent(List<YouTubeOutputVideo> videos)
     {
         var contentBuilder = new System.Text.StringBuilder();
+        var hasComments = videos.Any(v => v.Comments.Any());
+        var hasTranscripts = videos.Any(v => v.Transcript != null);
         
         foreach (var video in videos)
         {
@@ -129,15 +131,16 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService, 
                 }
             }
             
-            // Add transcript segments if present
+            // Add full transcript as one blob if present
             if (video.Transcript != null && video.Transcript.Segments.Any())
             {
-                contentBuilder.AppendLine("--- Transcript ---");
-                foreach (var segment in video.Transcript.Segments)
-                {
-                    var timestamp = TimeSpan.FromSeconds(segment.Start);
-                    contentBuilder.AppendLine($"[{timestamp:mm\\:ss}] {segment.Text}");
-                }
+                contentBuilder.AppendLine("--- Full Video Transcript ---");
+                contentBuilder.AppendLine("This is the complete transcript of the video:");
+                contentBuilder.AppendLine();
+                
+                // Combine all segments into one continuous text
+                var fullTranscript = string.Join(" ", video.Transcript.Segments.Select(s => s.Text));
+                contentBuilder.AppendLine(fullTranscript);
                 contentBuilder.AppendLine();
             }
             
@@ -154,13 +157,27 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService, 
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", additionalData);
         }
 
-
-        // Analyze all commetns from the video
+        // Determine what we're analyzing based on the videos
+        var videos = additionalData as List<YouTubeOutputVideo>;
+        var hasComments = videos?.Any(v => v.Comments.Any()) ?? false;
+        var hasTranscripts = videos?.Any(v => v.Transcript != null) ?? false;
+        
+        // Build custom prompt addition based on content type
+        string? customPromptAddition = null;
+        if (hasTranscripts && hasComments)
+        {
+            customPromptAddition = "You are analyzing both user comments AND the full video transcript. Cross-reference the transcript content with viewer comments to identify alignment, disconnects, and content improvement opportunities.";
+        }
+        else if (hasTranscripts && !hasComments)
+        {
+            customPromptAddition = "You are analyzing the full video transcript only. Focus on content quality, clarity, educational value, and key topics discussed in the video.";
+        }
+        
+        // Analyze all comments from the video
         int totalComments = commentCount ?? comments.Split(new[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries).Length;
-        var markdownResult = await AnalyzeCommentsInternal("YouTube", comments, totalComments);
+        var markdownResult = await AnalyzeCommentsInternal("YouTube", comments, totalComments, customPromptAddition);
 
         // Get the videos from additionalData and if we just have 1 then just return that one.
-        var videos = additionalData as List<YouTubeOutputVideo>;
         if (videos is null || !videos.Any() || videos.Count == 1)
         {
             return (markdownResult, additionalData);
