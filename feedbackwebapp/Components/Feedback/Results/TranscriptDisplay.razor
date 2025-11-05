@@ -61,9 +61,11 @@
             return Enumerable.Empty<YouTubeOutputVideo>();
 
         // Handle single video
-        if (AdditionalData is YouTubeOutputVideo singleVideo && singleVideo.Transcript != null)
+        if (AdditionalData is YouTubeOutputVideo singleVideo)
         {
-            return new[] { singleVideo };
+            if (singleVideo.Transcript != null)
+                return new[] { singleVideo };
+            return Enumerable.Empty<YouTubeOutputVideo>();
         }
 
         // Handle list of videos
@@ -78,9 +80,10 @@
             var videos = new List<YouTubeOutputVideo>();
             foreach (var item in dataList)
             {
-                if (item is YouTubeOutputVideo video && video.Transcript != null)
+                if (item is YouTubeOutputVideo video)
                 {
-                    videos.Add(video);
+                    if (video.Transcript != null)
+                        videos.Add(video);
                 }
                 else if (item is List<YouTubeOutputVideo> nestedList)
                 {

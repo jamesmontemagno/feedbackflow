@@ -163,6 +163,22 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService, 
         var hasComments = videos?.Any(v => v.Comments.Any()) ?? false;
         var hasTranscripts = videos?.Any(v => v.Transcript != null) ?? false;
         
+        var totalCommentsCount = videos?.Sum(v => v.Comments.Count) ?? 0;
+        var totalTranscriptsCount = videos?.Count(v => v.Transcript != null) ?? 0;
+        
+        // Build status message based on what we're analyzing
+        var statusParts = new List<string>();
+        if (totalCommentsCount > 0)
+            statusParts.Add($"{totalCommentsCount} comment{(totalCommentsCount != 1 ? "s" : "")}");
+        if (totalTranscriptsCount > 0)
+            statusParts.Add($"{totalTranscriptsCount} transcript{(totalTranscriptsCount != 1 ? "s" : "")}");
+        
+        var analyzingMessage = statusParts.Any() 
+            ? $"Analyzing {string.Join(" and ", statusParts)}. Estimated time: 10 seconds..."
+            : "Analyzing content...";
+            
+        UpdateStatus(FeedbackProcessStatus.AnalyzingComments, analyzingMessage);
+        
         // Build custom prompt with context based on content type
         string? customPromptWithContext = null;
         if (hasTranscripts || hasComments)
@@ -187,9 +203,9 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService, 
             }
         }
         
-        // Analyze all comments from the video
-        int totalComments = commentCount ?? comments.Split(new[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries).Length;
-        var markdownResult = await AnalyzeCommentsInternal("YouTube", comments, totalComments, customPromptWithContext);
+        // Analyze all content - use base method WITHOUT status update since we already set it above
+        int totalItems = commentCount ?? comments.Split(new[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries).Length;
+        var markdownResult = await AnalyzeCommentsInternalWithoutStatusUpdate("YouTube", comments, totalItems, customPromptWithContext);
 
         // Get the videos from additionalData and if we just have 1 then just return that one.
         if (videos is null || !videos.Any() || videos.Count == 1)
