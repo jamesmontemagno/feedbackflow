@@ -271,6 +271,24 @@ Comment by webguru: You're right that complexity can be an issue. The key is cho
                 {
                     Id = "abc123",
                     Title = "Getting Started with FeedbackFlow - Complete Tutorial",
+                    Transcript = new YouTubeTranscript
+                    {
+                        VideoId = "abc123",
+                        Language = "en",
+                        Segments = new List<YouTubeTranscriptSegment>
+                        {
+                            new() { Text = "Welcome to this FeedbackFlow tutorial.", Start = 0.0, Duration = 2.5 },
+                            new() { Text = "Today we'll cover everything you need to get started.", Start = 2.5, Duration = 3.0 },
+                            new() { Text = "First, let's install the necessary packages.", Start = 5.5, Duration = 2.5 },
+                            new() { Text = "You can find the installation instructions in the documentation.", Start = 8.0, Duration = 3.0 },
+                            new() { Text = "Now let's configure your first feedback source.", Start = 11.0, Duration = 3.0 },
+                            new() { Text = "Connect to your GitHub repository or YouTube channel.", Start = 14.0, Duration = 3.5 },
+                            new() { Text = "The integration process is straightforward and takes just a few minutes.", Start = 17.5, Duration = 4.0 },
+                            new() { Text = "Once connected, FeedbackFlow will automatically collect feedback.", Start = 21.5, Duration = 3.5 },
+                            new() { Text = "You can customize the analysis settings in the dashboard.", Start = 25.0, Duration = 3.0 },
+                            new() { Text = "Thanks for watching, and happy analyzing!", Start = 28.0, Duration = 2.5 }
+                        }
+                    },
                     Comments = new List<YouTubeOutputComment>
                     {
                         new()
@@ -300,6 +318,23 @@ Comment by webguru: You're right that complexity can be an issue. The key is cho
                 {
                     Id = "xyz789",
                     Title = "FeedbackFlow vs Traditional Analytics - Performance Comparison",
+                    Transcript = new YouTubeTranscript
+                    {
+                        VideoId = "xyz789",
+                        Language = "en",
+                        Segments = new List<YouTubeTranscriptSegment>
+                        {
+                            new() { Text = "In this video, we compare FeedbackFlow with traditional analytics tools.", Start = 0.0, Duration = 3.5 },
+                            new() { Text = "Traditional tools require manual data export and analysis.", Start = 3.5, Duration = 3.0 },
+                            new() { Text = "FeedbackFlow automates this entire process.", Start = 6.5, Duration = 2.5 },
+                            new() { Text = "Our benchmarks show a 10x improvement in processing speed.", Start = 9.0, Duration = 3.0 },
+                            new() { Text = "Let's look at a real-world example with 50,000 comments.", Start = 12.0, Duration = 3.5 },
+                            new() { Text = "FeedbackFlow completed the analysis in under 2 minutes.", Start = 15.5, Duration = 3.0 },
+                            new() { Text = "Traditional tools took over 20 minutes for the same dataset.", Start = 18.5, Duration = 3.5 },
+                            new() { Text = "The accuracy and depth of insights are also significantly better.", Start = 22.0, Duration = 3.5 },
+                            new() { Text = "Thanks for watching this comparison.", Start = 25.5, Duration = 2.0 }
+                        }
+                    },
                     Comments = new List<YouTubeOutputComment>
                     {
                         new()
