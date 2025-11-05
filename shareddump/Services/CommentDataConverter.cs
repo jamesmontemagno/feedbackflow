@@ -33,7 +33,9 @@ public static class CommentDataConverter
                 ["ChannelId"] = video.ChannelId,
                 ["ViewCount"] = video.ViewCount,
                 ["LikeCount"] = video.LikeCount,
-                ["CommentCount"] = video.CommentCount
+                ["CommentCount"] = video.CommentCount,
+                ["HasTranscript"] = video.Transcript != null,
+                ["Transcript"] = video.Transcript != null ? video.Transcript : null!
             },
             Comments = ConvertYouTubeComments(video.Comments)
         }).ToList();

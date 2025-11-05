@@ -193,9 +193,12 @@ When analyzing product feedback, provide this comprehensive breakdown:
 - Identify consensus on technical decisions and alternative approaches
 
 ### For Video/Media Content (YouTube, etc.)
-- Analyze audience reaction to specific content segments
-- Identify content improvement opportunities and viewer preferences
+- Analyze audience reaction to specific content segments from both comments and video transcripts
+- When transcripts are provided, identify key topics and themes discussed in the video content
+- Cross-reference transcript content with viewer comments to identify alignment or disconnect
+- Identify content improvement opportunities and viewer preferences based on comments and transcript analysis
 - Note engagement drivers and community building aspects
+- For transcript segments, analyze content quality, clarity, and educational value
 
 ### For Community Discussion (Reddit, Forums)
 - Examine community dynamics and cultural context

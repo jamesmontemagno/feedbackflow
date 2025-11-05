@@ -1,5 +1,6 @@
 @namespace FeedbackWebApp.Components.Feedback.Results
 @using SharedDump.Models
+@using SharedDump.Models.YouTube
 @using SharedDump.Utils
 
 @if (Threads?.Any() == true)
@@ -79,6 +80,34 @@
                                     </div>
                                 </div>
                             }
+                            
+                            @* Show transcript if available *@
+                            @if (IsExpanded(thread.Id) && HasTranscript(thread))
+                            {
+                                <div class="card-body thread-transcript">
+                                    <h6 class="mb-3">
+                                        <i class="bi bi-file-text me-2 heading-icon-optional" aria-hidden="true"></i>
+                                        Transcript
+                                    </h6>
+                                    
+                                    <div class="transcript-container">
+                                        @{
+                                            var transcript = GetTranscript(thread);
+                                            if (transcript != null)
+                                            {
+                                                foreach (var segment in transcript.Segments)
+                                                {
+                                                    var timestamp = TimeSpan.FromSeconds(segment.Start);
+                                                    <div class="transcript-segment">
+                                                        <span class="transcript-timestamp">[@timestamp.ToString(@"mm\:ss")]</span>
+                                                        <span class="transcript-text">@segment.Text</span>
+                                                    </div>
+                                                }
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            }
                         </div>
                     }
                 </div>
@@ -149,6 +178,34 @@
                             </div>
                         </div>
                     }
+                    
+                    @* Show transcript if available *@
+                    @if (IsExpanded(thread.Id) && HasTranscript(thread))
+                    {
+                        <div class="card-body thread-transcript">
+                            <h6 class="mb-3">
+                                <i class="bi bi-file-text me-2 heading-icon-optional" aria-hidden="true"></i>
+                                Transcript
+                            </h6>
+                            
+                            <div class="transcript-container">
+                                @{
+                                    var transcript = GetTranscript(thread);
+                                    if (transcript != null)
+                                    {
+                                        foreach (var segment in transcript.Segments)
+                                        {
+                                            var timestamp = TimeSpan.FromSeconds(segment.Start);
+                                            <div class="transcript-segment">
+                                                <span class="transcript-timestamp">[@timestamp.ToString(@"mm\:ss")]</span>
+                                                <span class="transcript-text">@segment.Text</span>
+                                            </div>
+                                        }
+                                    }
+                                }
+                            </div>
+                        </div>
+                    }
                 </div>
             }
         }
@@ -211,5 +268,24 @@ else if (Threads is not null)
             count += GetTotalCommentCount(comment.Replies);
         }
         return count;
+    }
+
+    private bool HasTranscript(CommentThread thread)
+    {
+        return thread.Metadata != null && 
+               thread.Metadata.ContainsKey("HasTranscript") && 
+               thread.Metadata["HasTranscript"] is bool hasTranscript && 
+               hasTranscript;
+    }
+
+    private SharedDump.Models.YouTube.YouTubeTranscript? GetTranscript(CommentThread thread)
+    {
+        if (thread.Metadata != null && 
+            thread.Metadata.ContainsKey("Transcript") && 
+            thread.Metadata["Transcript"] is SharedDump.Models.YouTube.YouTubeTranscript transcript)
+        {
+            return transcript;
+        }
+        return null;
     }
 }

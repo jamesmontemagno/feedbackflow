@@ -9,7 +9,16 @@
         {            
             var index = i;
             <div class="url-entry-container mb-3">
-                <div class="input-group">                
+                <div class="input-group">
+                    @* Show YouTube content type selector on the left if this is a YouTube URL *@
+                    @if (!string.IsNullOrWhiteSpace(Urls[index]) && UrlParsing.IsYouTubeUrl(Urls[index]))
+                    {
+                        <YouTubeContentTypeSelector 
+                            @bind-SelectedContentType="@YouTubeContentTypes[index]"
+                            IsDisabled="@IsDisabled"
+                            InputId="@($"yt-{index}")" />
+                    }
+                    
                     <div class="form-floating flex-grow-1">
                         <input type="url" 
                                class="form-control" 
@@ -27,14 +36,6 @@
                         <span class="visually-hidden">Remove URL</span>
                     </button>
                 </div>
-                @* Show YouTube content type selector if this is a YouTube URL *@
-                @if (!string.IsNullOrWhiteSpace(Urls[index]) && UrlParsing.IsYouTubeUrl(Urls[index]))
-                {
-                    <YouTubeContentTypeSelector 
-                        @bind-SelectedContentType="@YouTubeContentTypes[index]"
-                        IsDisabled="@IsDisabled"
-                        InputId="@($"yt-{index}")" />
-                }
             </div>
         }
     </div>

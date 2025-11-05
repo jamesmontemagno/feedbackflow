@@ -1,70 +1,49 @@
-.youtube-content-type-selector {
-    margin-top: 0.5rem;
-    padding: 0.75rem;
-    background: rgba(var(--bg-secondary-rgb), 0.3);
-    border-radius: var(--border-radius);
-    border-left: 3px solid var(--primary-color);
+.youtube-content-filter {
+    display: inline-block;
 }
 
-.youtube-content-type-selector .form-label {
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-}
-
-.youtube-content-type-selector .btn-group {
-    box-shadow: var(--card-shadow);
-}
-
-.youtube-content-type-selector .btn-outline-primary {
-    background: var(--card-bg);
+.youtube-content-filter .form-select {
+    min-width: 150px;
+    max-width: 200px;
+    font-size: 0.875rem;
     border-color: var(--border-color);
+    background-color: var(--card-bg);
     color: var(--text-primary);
     transition: all 0.2s ease;
 }
 
-.youtube-content-type-selector .btn-outline-primary:hover {
-    background: rgba(var(--primary-color-rgb), 0.1);
+.youtube-content-filter .form-select:hover:not(:disabled) {
     border-color: var(--primary-color);
-    color: var(--primary-color);
-    transform: translateY(-1px);
+    box-shadow: 0 0 0 0.15rem rgba(var(--primary-color-rgb), 0.15);
 }
 
-.youtube-content-type-selector .btn-check:checked + .btn-outline-primary {
-    background: var(--primary-gradient);
+.youtube-content-filter .form-select:focus {
     border-color: var(--primary-color);
-    color: white;
-    font-weight: 600;
+    box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
 }
 
-.youtube-content-type-selector .btn-outline-primary i {
-    margin-right: 0.25rem;
+.youtube-content-filter .form-select:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: rgba(var(--bg-secondary-rgb), 0.3);
 }
 
 /* Dark theme adjustments */
-[data-theme="dark"] .youtube-content-type-selector {
-    background: rgba(var(--bg-secondary-rgb), 0.5);
-    border-left-color: var(--primary-color);
-}
-
-[data-theme="dark"] .youtube-content-type-selector .btn-outline-primary {
-    background: rgba(var(--card-bg-rgb), 0.8);
+[data-theme="dark"] .youtube-content-filter .form-select {
+    background-color: rgba(var(--card-bg-rgb), 0.8);
     border-color: rgba(var(--border-color-rgb), 0.5);
+    color: var(--text-primary);
 }
 
-[data-theme="dark"] .youtube-content-type-selector .btn-outline-primary:hover {
-    background: rgba(var(--primary-color-rgb), 0.2);
-    border-color: var(--primary-color);
+[data-theme="dark"] .youtube-content-filter .form-select option {
+    background-color: var(--card-bg);
+    color: var(--text-primary);
 }
 
 /* Responsive adjustments */
 @media (max-width: 767.98px) {
-    .youtube-content-type-selector .btn-outline-primary {
+    .youtube-content-filter .form-select {
         font-size: 0.8rem;
-        padding: 0.4rem 0.6rem;
-    }
-
-    .youtube-content-type-selector .btn-outline-primary i {
-        font-size: 0.9rem;
+        min-width: 130px;
     }
 }

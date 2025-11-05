@@ -79,16 +79,72 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService, 
         
         if (videos == null || !videos.Any())
         {
-            UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
-            return ("No comments available", 0, null);
+            UpdateStatus(FeedbackProcessStatus.Completed, "No content to analyze");
+            return ("No content available", 0, null);
         }
 
         var totalComments = videos.Sum(v => v.Comments.Count);
-        UpdateStatus(FeedbackProcessStatus.GatheringComments, $"Found {totalComments} comments across {videos.Count} videos...");
+        var totalTranscripts = videos.Count(v => v.Transcript != null);
+        var totalTranscriptSegments = videos.Where(v => v.Transcript != null).Sum(v => v.Transcript!.Segments.Count);
         
-   
+        // Build status message based on what we're analyzing
+        var statusParts = new List<string>();
+        if (totalComments > 0)
+            statusParts.Add($"{totalComments} comment{(totalComments != 1 ? "s" : "")}");
+        if (totalTranscripts > 0)
+            statusParts.Add($"{totalTranscripts} transcript{(totalTranscripts != 1 ? "s" : "")}");
+        
+        var statusMessage = statusParts.Any() 
+            ? $"Found {string.Join(" and ", statusParts)} across {videos.Count} video{(videos.Count != 1 ? "s" : "")}..."
+            : "Processing videos...";
+            
+        UpdateStatus(FeedbackProcessStatus.GatheringComments, statusMessage);
+        
+        // Format the content for analysis - convert to readable text with transcripts as timestamped segments
+        var formattedContent = FormatYouTubeContent(videos);
+        var totalItems = totalComments + totalTranscriptSegments;
 
-        return (responseContent, totalComments, videos);
+        return (formattedContent, totalItems, videos);
+    }
+
+    private string FormatYouTubeContent(List<YouTubeOutputVideo> videos)
+    {
+        var contentBuilder = new System.Text.StringBuilder();
+        
+        foreach (var video in videos)
+        {
+            contentBuilder.AppendLine($"=== Video: {video.Title} ===");
+            contentBuilder.AppendLine($"URL: {video.Url}");
+            contentBuilder.AppendLine();
+            
+            // Add comments if present
+            if (video.Comments.Any())
+            {
+                contentBuilder.AppendLine("--- Comments ---");
+                foreach (var comment in video.Comments)
+                {
+                    contentBuilder.AppendLine($"Comment by {comment.Author} at {comment.PublishedAt:yyyy-MM-dd HH:mm}:");
+                    contentBuilder.AppendLine(comment.Text);
+                    contentBuilder.AppendLine();
+                }
+            }
+            
+            // Add transcript segments if present
+            if (video.Transcript != null && video.Transcript.Segments.Any())
+            {
+                contentBuilder.AppendLine("--- Transcript ---");
+                foreach (var segment in video.Transcript.Segments)
+                {
+                    var timestamp = TimeSpan.FromSeconds(segment.Start);
+                    contentBuilder.AppendLine($"[{timestamp:mm\\:ss}] {segment.Text}");
+                }
+                contentBuilder.AppendLine();
+            }
+            
+            contentBuilder.AppendLine();
+        }
+        
+        return contentBuilder.ToString();
     }
 
     public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
