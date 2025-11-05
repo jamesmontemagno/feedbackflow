@@ -183,23 +183,27 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService, 
         string? customPromptWithContext = null;
         if (hasTranscripts || hasComments)
         {
-            // Get the base YouTube/Product feedback prompt
-            var basePrompt = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("YouTube");
-            
-            // Add context at the beginning about what we're analyzing
-            var contextPrefix = "";
-            if (hasTranscripts && hasComments)
+            // For transcript-only analysis, use the specialized VideoTranscript prompt
+            if (hasTranscripts && !hasComments)
             {
-                contextPrefix = "IMPORTANT CONTEXT: You are analyzing both user comments AND the full video transcript. Cross-reference the transcript content with viewer comments to identify alignment, disconnects, and content improvement opportunities.\n\n";
+                customPromptWithContext = SharedDump.AI.FeedbackAnalyzerService.GetPromptByType(SharedDump.AI.PromptType.VideoTranscript);
             }
-            else if (hasTranscripts && !hasComments)
+            else
             {
-                contextPrefix = "IMPORTANT CONTEXT: You are analyzing the full video transcript only (no comments). Focus on content quality, clarity, educational value, and key topics discussed in the video.\n\n";
-            }
-            
-            if (!string.IsNullOrEmpty(contextPrefix))
-            {
-                customPromptWithContext = contextPrefix + basePrompt;
+                // Get the base YouTube/Product feedback prompt
+                var basePrompt = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("YouTube");
+                
+                // Add context at the beginning for mixed content (both comments and transcripts)
+                var contextPrefix = "";
+                if (hasTranscripts && hasComments)
+                {
+                    contextPrefix = "IMPORTANT CONTEXT: You are analyzing both user comments AND the full video transcript. Cross-reference the transcript content with viewer comments to identify alignment, disconnects, and content improvement opportunities.\n\n";
+                }
+                
+                if (!string.IsNullOrEmpty(contextPrefix))
+                {
+                    customPromptWithContext = contextPrefix + basePrompt;
+                }
             }
         }
         
