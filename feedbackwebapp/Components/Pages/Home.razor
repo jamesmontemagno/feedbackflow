@@ -79,7 +79,11 @@
                 <div class="card-body">
                     @if (selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
                     {
-                        <AutoDataSourceForm @ref="autoDataSourceForm" IsDisabled="@isLoading" OnUrlsChanged="HandleUrlsChanged" @bind-IncludeIndividualReports="includeIndividualReports" />
+                        <AutoDataSourceForm @ref="autoDataSourceForm" 
+                                          IsDisabled="@isLoading" 
+                                          OnUrlsChanged="HandleUrlsChanged" 
+                                          OnContentTypeChanged="HandleContentTypeChanged"
+                                          @bind-IncludeIndividualReports="includeIndividualReports" />
                     }
                     else if (selectedSource.Equals("Manual", StringComparison.OrdinalIgnoreCase))
                     {
@@ -416,6 +420,17 @@
             {
                 InvalidateCache();
             }
+        }
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+    
+    private Task HandleContentTypeChanged()
+    {
+        // Invalidate cache when YouTube content type changes
+        if (selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
+        {
+            InvalidateCache();
         }
         StateHasChanged();
         return Task.CompletedTask;

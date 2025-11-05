@@ -14,7 +14,8 @@
                     @if (!string.IsNullOrWhiteSpace(Urls[index]) && UrlParsing.IsYouTubeUrl(Urls[index]))
                     {
                         <YouTubeContentTypeSelector 
-                            @bind-SelectedContentType="@YouTubeContentTypes[index]"
+                            SelectedContentType="@YouTubeContentTypes[index]"
+                            SelectedContentTypeChanged="@(async (type) => await HandleContentTypeChange(index, type))"
                             IsDisabled="@IsDisabled"
                             InputId="@($"yt-{index}")" />
                     }
@@ -78,6 +79,9 @@
 
     [Parameter]
     public EventCallback<List<string>> OnUrlsChanged { get; set; }
+    
+    [Parameter]
+    public EventCallback OnContentTypeChanged { get; set; }
 
     [Parameter]
     public bool IsDisabled { get; set; }
@@ -106,6 +110,14 @@
         
         await OnUrlsChanged.InvokeAsync(Urls);
         StateHasChanged(); // Refresh to show/hide YouTube selector and checkbox
+    }
+    
+    private async Task HandleContentTypeChange(int index, YouTubeContentType newType)
+    {
+        YouTubeContentTypes[index] = newType;
+        
+        // Notify parent that content type changed (triggers invalidation/re-fetch)
+        await OnContentTypeChanged.InvokeAsync();
     }
 
     private void AddUrl()
