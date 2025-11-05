@@ -1,0 +1,95 @@
+@namespace FeedbackWebApp.Components.Feedback.Results
+@using SharedDump.Models.YouTube
+
+@if (HasTranscripts())
+{
+    <div class="card mt-4 shadow-sm transcript-display">
+        <div class="card-header bg-primary text-white">
+            <h3 class="card-title mb-0 h5">
+                <i class="bi bi-file-text me-2"></i>
+                Video Transcript@(GetTranscriptCount() > 1 ? "s" : "")
+            </h3>
+        </div>
+        <div class="card-body">
+            @foreach (var video in GetVideosWithTranscripts())
+            {
+                <div class="transcript-section mb-4">
+                    @if (GetTranscriptCount() > 1)
+                    {
+                        <h4 class="transcript-video-title">
+                            <i class="bi bi-youtube text-danger me-2"></i>
+                            @video.Title
+                        </h4>
+                    }
+                    
+                    <div class="transcript-content">
+                        @if (video.Transcript != null && video.Transcript.Segments.Any())
+                        {
+                            foreach (var segment in video.Transcript.Segments)
+                            {
+                                var timestamp = TimeSpan.FromSeconds(segment.Start);
+                                <div class="transcript-line">
+                                    <span class="transcript-timestamp">[@timestamp.ToString(@"mm\:ss")]</span>
+                                    <span class="transcript-text">@segment.Text</span>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public object? AdditionalData { get; set; }
+
+    private bool HasTranscripts()
+    {
+        return GetVideosWithTranscripts().Any();
+    }
+
+    private int GetTranscriptCount()
+    {
+        return GetVideosWithTranscripts().Count();
+    }
+
+    private IEnumerable<YouTubeOutputVideo> GetVideosWithTranscripts()
+    {
+        if (AdditionalData == null)
+            return Enumerable.Empty<YouTubeOutputVideo>();
+
+        // Handle single video
+        if (AdditionalData is YouTubeOutputVideo singleVideo && singleVideo.Transcript != null)
+        {
+            return new[] { singleVideo };
+        }
+
+        // Handle list of videos
+        if (AdditionalData is List<YouTubeOutputVideo> videoList)
+        {
+            return videoList.Where(v => v.Transcript != null);
+        }
+
+        // Handle list of mixed additional data (from multiple sources)
+        if (AdditionalData is List<object> dataList)
+        {
+            var videos = new List<YouTubeOutputVideo>();
+            foreach (var item in dataList)
+            {
+                if (item is YouTubeOutputVideo video && video.Transcript != null)
+                {
+                    videos.Add(video);
+                }
+                else if (item is List<YouTubeOutputVideo> nestedList)
+                {
+                    videos.AddRange(nestedList.Where(v => v.Transcript != null));
+                }
+            }
+            return videos;
+        }
+
+        return Enumerable.Empty<YouTubeOutputVideo>();
+    }
+}

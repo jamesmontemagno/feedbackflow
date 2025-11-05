@@ -1,0 +1,124 @@
+/* Transcript Display Styling */
+.transcript-display {
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+}
+
+.transcript-display .card-header {
+    background: var(--primary-gradient);
+    border-bottom: 2px solid rgba(var(--primary-color-rgb), 0.3);
+}
+
+.transcript-display .card-header h3 {
+    color: white;
+    font-weight: 600;
+}
+
+.transcript-section {
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.transcript-section:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.transcript-video-title {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid rgba(var(--primary-color-rgb), 0.2);
+}
+
+.transcript-content {
+    background: rgba(var(--bg-secondary-rgb), 0.3);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.transcript-line {
+    display: flex;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(var(--border-color-rgb), 0.2);
+    align-items: flex-start;
+}
+
+.transcript-line:last-child {
+    border-bottom: none;
+}
+
+.transcript-timestamp {
+    color: var(--primary-color);
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+    min-width: 60px;
+    padding-top: 2px;
+}
+
+.transcript-text {
+    color: var(--text-primary);
+    line-height: 1.6;
+    flex-grow: 1;
+}
+
+/* Scrollbar styling */
+.transcript-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.transcript-content::-webkit-scrollbar-track {
+    background: rgba(var(--bg-secondary-rgb), 0.3);
+    border-radius: 4px;
+}
+
+.transcript-content::-webkit-scrollbar-thumb {
+    background: rgba(var(--primary-color-rgb), 0.3);
+    border-radius: 4px;
+}
+
+.transcript-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(var(--primary-color-rgb), 0.5);
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .transcript-display {
+    background: rgba(var(--card-bg-rgb), 0.8);
+    border-color: rgba(var(--border-color-rgb), 0.4);
+}
+
+[data-theme="dark"] .transcript-content {
+    background: rgba(var(--bg-secondary-rgb), 0.5);
+}
+
+[data-theme="dark"] .transcript-line {
+    border-bottom-color: rgba(var(--border-color-rgb), 0.3);
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+    .transcript-content {
+        max-height: 400px;
+        padding: 0.75rem;
+    }
+    
+    .transcript-line {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .transcript-timestamp {
+        min-width: auto;
+    }
+    
+    .transcript-video-title {
+        font-size: 1rem;
+    }
+}

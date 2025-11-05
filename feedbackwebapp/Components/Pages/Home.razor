@@ -166,6 +166,9 @@
                         UserInput="@GetUserInputForSource()"
                         AdditionalData="@GetAdditionalDataForAnalysis()" /> 
 
+                    @* Display transcripts if available *@
+                    <TranscriptDisplay AdditionalData="@GetAdditionalDataForAnalysis()" />
+
                     @* Discreet survey link (desktop only) *@
                     <SurveyLink IsVisible="@showSurveyLink" OnSurveyClicked="@OnSurveyLinkClicked" />
 
