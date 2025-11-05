@@ -353,7 +353,7 @@ public class FeedbackFunctions
         var playlistIds = queryParams["playlists"]?.Split(',', StringSplitOptions.RemoveEmptyEntries);
         var contentTypeStr = queryParams["contentType"] ?? "Comments";
         
-        // Parse content type
+        // Parse content type!
         YouTubeContentType contentType = YouTubeContentType.Comments;
         if (Enum.TryParse<YouTubeContentType>(contentTypeStr, true, out var parsedType))
         {
