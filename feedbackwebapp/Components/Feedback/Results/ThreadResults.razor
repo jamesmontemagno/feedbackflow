@@ -47,11 +47,15 @@
                                             </a>
                                         }
                                         
-                                        @if (thread.Comments.Any())
+                                        @if (thread.Comments.Any() || HasTranscript(thread))
                                         {
                                             <button class="btn btn-sm btn-outline-light" @onclick="() => ToggleComments(thread.Id)">
-                                                <i class="bi bi-chat-text me-1" aria-hidden="true"></i>
-                                                @(IsExpanded(thread.Id) ? "Hide" : "Show") (@GetTotalCommentCount(thread.Comments))
+                                                <i class="bi bi-@(HasTranscript(thread) ? "file-text" : "chat-text") me-1" aria-hidden="true"></i>
+                                                @(IsExpanded(thread.Id) ? "Hide" : "Show")
+                                                @if (thread.Comments.Any())
+                                                {
+                                                    <text> (@GetTotalCommentCount(thread.Comments))</text>
+                                                }
                                             </button>
                                         }
                                     </div>
@@ -145,11 +149,15 @@
                                     </a>
                                 }
                                 
-                                @if (thread.Comments.Any())
+                                @if (thread.Comments.Any() || HasTranscript(thread))
                                 {
                                     <button class="btn btn-sm btn-outline-light" @onclick="() => ToggleComments(thread.Id)">
-                                        <i class="bi bi-chat-text me-1" aria-hidden="true"></i>
-                                        @(IsExpanded(thread.Id) ? "Hide" : "Show") (@GetTotalCommentCount(thread.Comments))
+                                        <i class="bi bi-@(HasTranscript(thread) ? "file-text" : "chat-text") me-1" aria-hidden="true"></i>
+                                        @(IsExpanded(thread.Id) ? "Hide" : "Show")
+                                        @if (thread.Comments.Any())
+                                        {
+                                            <text> (@GetTotalCommentCount(thread.Comments))</text>
+                                        }
                                     </button>
                                 }
                             </div>
