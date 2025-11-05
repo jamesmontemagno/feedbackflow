@@ -2,6 +2,7 @@ using FeedbackWebApp.Services.Interfaces;
 using FeedbackWebApp.Services.Authentication;
 using SharedDump.Models.YouTube;
 using SharedDump.Utils;
+using SharedDump.AI;
 using System.Text.Json;
 
 namespace FeedbackWebApp.Services.Feedback;
@@ -162,20 +163,33 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService, 
         var hasComments = videos?.Any(v => v.Comments.Any()) ?? false;
         var hasTranscripts = videos?.Any(v => v.Transcript != null) ?? false;
         
-        // Build custom prompt addition based on content type
-        string? customPromptAddition = null;
-        if (hasTranscripts && hasComments)
+        // Build custom prompt with context based on content type
+        string? customPromptWithContext = null;
+        if (hasTranscripts || hasComments)
         {
-            customPromptAddition = "You are analyzing both user comments AND the full video transcript. Cross-reference the transcript content with viewer comments to identify alignment, disconnects, and content improvement opportunities.";
-        }
-        else if (hasTranscripts && !hasComments)
-        {
-            customPromptAddition = "You are analyzing the full video transcript only. Focus on content quality, clarity, educational value, and key topics discussed in the video.";
+            // Get the base YouTube/Product feedback prompt
+            var basePrompt = SharedDump.AI.FeedbackAnalyzerService.GetServiceSpecificPrompt("YouTube");
+            
+            // Add context at the beginning about what we're analyzing
+            var contextPrefix = "";
+            if (hasTranscripts && hasComments)
+            {
+                contextPrefix = "IMPORTANT CONTEXT: You are analyzing both user comments AND the full video transcript. Cross-reference the transcript content with viewer comments to identify alignment, disconnects, and content improvement opportunities.\n\n";
+            }
+            else if (hasTranscripts && !hasComments)
+            {
+                contextPrefix = "IMPORTANT CONTEXT: You are analyzing the full video transcript only (no comments). Focus on content quality, clarity, educational value, and key topics discussed in the video.\n\n";
+            }
+            
+            if (!string.IsNullOrEmpty(contextPrefix))
+            {
+                customPromptWithContext = contextPrefix + basePrompt;
+            }
         }
         
         // Analyze all comments from the video
         int totalComments = commentCount ?? comments.Split(new[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries).Length;
-        var markdownResult = await AnalyzeCommentsInternal("YouTube", comments, totalComments, customPromptAddition);
+        var markdownResult = await AnalyzeCommentsInternal("YouTube", comments, totalComments, customPromptWithContext);
 
         // Get the videos from additionalData and if we just have 1 then just return that one.
         if (videos is null || !videos.Any() || videos.Count == 1)
