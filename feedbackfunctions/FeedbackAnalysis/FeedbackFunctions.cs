@@ -351,6 +351,14 @@ public class FeedbackFunctions
         var videoIds = queryParams["videos"]?.Split(',', StringSplitOptions.RemoveEmptyEntries);
         var channelId = queryParams["channel"];
         var playlistIds = queryParams["playlists"]?.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        var contentTypeStr = queryParams["contentType"] ?? "Comments";
+        
+        // Parse content type
+        YouTubeContentType contentType = YouTubeContentType.Comments;
+        if (Enum.TryParse<YouTubeContentType>(contentTypeStr, true, out var parsedType))
+        {
+            contentType = parsedType;
+        }
 
         if ((videoIds == null || videoIds.Length == 0) && 
             string.IsNullOrEmpty(channelId) && 
@@ -389,7 +397,7 @@ public class FeedbackFunctions
 
             foreach (var videoId in allVideoIds)
             {
-                var video = await _ytService.ProcessVideo(videoId);
+                var video = await _ytService.ProcessVideo(videoId, contentType);
                 outputVideos.Add(video);
             }
 
@@ -406,6 +414,7 @@ public class FeedbackFunctions
                 trackingInfo.Add($"playlists={string.Join(",", playlistIds)}");
             if (allVideoIds.Count > 0)
                 trackingInfo.Add($"processed_videos={string.Join(",", allVideoIds)}");
+            trackingInfo.Add($"contentType={contentType}");
             
             await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, string.Join("; ", trackingInfo));
             
