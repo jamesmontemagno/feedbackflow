@@ -46,6 +46,7 @@
                                 <option value="@PromptType.ProductFeedback">Product Feedback Analysis</option>
                                 <option value="@PromptType.CompetitorAnalysis">Competitor Analysis</option>
                                 <option value="@PromptType.GeneralAnalysis">General Analysis</option>
+                                <option value="@PromptType.VideoTranscript">Video Transcript Analysis</option>
                                 <option value="@PromptType.Custom">Custom Prompt</option>
                             </select>
                             <label for="promptType">Default Analysis Prompt Type</label>
@@ -61,6 +62,10 @@
                                 else if (SelectedPromptType == PromptType.GeneralAnalysis)
                                 {
                                     <text>Provides neutral, objective analysis without product or competitive context.</text>
+                                }
+                                else if (SelectedPromptType == PromptType.VideoTranscript)
+                                {
+                                    <text>Specialized analysis for video transcripts, focusing on content quality, topics, pacing, and teaching style.</text>
                                 }
                                 else if (SelectedPromptType == PromptType.Custom)
                                 {

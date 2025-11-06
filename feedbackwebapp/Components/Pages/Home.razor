@@ -98,6 +98,7 @@
                                 <label class="form-label fw-semibold">Analysis Type</label>
                                 <select class="form-select" @bind="selectedPromptType" @bind:after="OnPromptTypeChanged" disabled="@isLoading">
                                     <option value="@SharedDump.AI.PromptType.ProductFeedback">Product Feedback Analysis</option>
+                                    <option value="@SharedDump.AI.PromptType.VideoTranscript">Video Transcript Analysis</option>
                                     <option value="@SharedDump.AI.PromptType.CompetitorAnalysis">Competitor Analysis</option>
                                     <option value="@SharedDump.AI.PromptType.GeneralAnalysis">General Analysis</option>
                                     <option value="@SharedDump.AI.PromptType.Custom">Custom Prompt</option>
@@ -106,6 +107,10 @@
                                     @if (selectedPromptType == SharedDump.AI.PromptType.ProductFeedback)
                                     {
                                         <text>Analyzes feedback as if it's about YOUR product, focusing on improvements and user needs.</text>
+                                    }
+                                    else if (selectedPromptType == SharedDump.AI.PromptType.VideoTranscript)
+                                    {
+                                        <text>Specialized analysis for video transcripts, focusing on content quality, topics, pacing, and teaching style.</text>
                                     }
                                     else if (selectedPromptType == SharedDump.AI.PromptType.CompetitorAnalysis)
                                     {

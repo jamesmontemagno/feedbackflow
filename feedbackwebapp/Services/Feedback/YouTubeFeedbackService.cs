@@ -4,6 +4,7 @@ using SharedDump.Models.YouTube;
 using SharedDump.Utils;
 using SharedDump.AI;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace FeedbackWebApp.Services.Feedback;
 
@@ -11,6 +12,7 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService, 
 {
     private readonly string _videoId;
     private readonly string _playlistId;
+    private readonly ILogger<YouTubeFeedbackService> _logger;
     private YouTubeContentType _contentType = YouTubeContentType.Comments;
 
     public YouTubeFeedbackService(
@@ -18,6 +20,7 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService, 
         IConfiguration configuration,
         UserSettingsService userSettings,
         IAuthenticationHeaderService authHeaderService,
+        ILogger<YouTubeFeedbackService> logger,
         string videoId,
         string playlistId,
         FeedbackStatusUpdate? onStatusUpdate = null) 
@@ -25,6 +28,7 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService, 
     {
         _videoId = videoId;
         _playlistId = playlistId;
+        _logger = logger;
     }
 
     public void SetContentType(YouTubeContentType contentType)
@@ -75,13 +79,36 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService, 
         var feedbackResponse = await SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod.Get, getFeedbackUrl);
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
         
+        _logger.LogInformation("YouTube API response received. Content type: {ContentType}", _contentType);
+        
         // Parse the YouTube response
         var videos = JsonSerializer.Deserialize<List<YouTubeOutputVideo>>(responseContent);
         
         if (videos == null || !videos.Any())
         {
+            _logger.LogWarning("No videos returned from YouTube API");
             UpdateStatus(FeedbackProcessStatus.Completed, "No content to analyze");
             return ("No content available", 0, null);
+        }
+
+        _logger.LogInformation("Parsed {VideoCount} videos from YouTube API", videos.Count);
+        
+        // Log transcript information for each video
+        foreach (var video in videos)
+        {
+            if (video.Transcript != null)
+            {
+                var transcriptLength = video.Transcript.FullText.Length;
+                var segmentCount = video.Transcript.Segments.Count;
+                _logger.LogInformation("Video '{Title}' has transcript: {Length} characters, {SegmentCount} segments", 
+                    video.Title, transcriptLength, segmentCount);
+                Console.WriteLine($"✅ GOT TRANSCRIPT for '{video.Title}': {transcriptLength} characters in {segmentCount} segments");
+            }
+            else
+            {
+                _logger.LogInformation("Video '{Title}' has NO transcript", video.Title);
+                Console.WriteLine($"❌ NO TRANSCRIPT for '{video.Title}'");
+            }
         }
 
         var totalComments = videos.Sum(v => v.Comments.Count);

@@ -2,6 +2,7 @@ using FeedbackWebApp.Services.Interfaces;
 using FeedbackWebApp.Services.Mock;
 using FeedbackWebApp.Services.Authentication;
 using SharedDump.Utils;
+using Microsoft.Extensions.Logging;
 
 namespace FeedbackWebApp.Services.Feedback;
 
@@ -10,6 +11,7 @@ public class FeedbackServiceProvider
     private readonly IConfiguration _configuration;
     private readonly IHttpClientFactory _http;
     private readonly IAuthenticationHeaderService _authHeaderService;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly bool _useMocks;
     private readonly UserSettingsService _userSettings;
 
@@ -17,12 +19,14 @@ public class FeedbackServiceProvider
         IConfiguration configuration, 
         IHttpClientFactory http, 
         UserSettingsService userSettings,
-        IAuthenticationHeaderService authHeaderService)
+        IAuthenticationHeaderService authHeaderService,
+        ILoggerFactory loggerFactory)
     {
         _configuration = configuration;
         _http = http;
         _userSettings = userSettings;
         _authHeaderService = authHeaderService;
+        _loggerFactory = loggerFactory;
         _useMocks = configuration.GetValue<bool>("FeedbackApi:UseMocks");
     }
 
@@ -30,7 +34,8 @@ public class FeedbackServiceProvider
     {
         return _useMocks 
             ? new MockYouTubeFeedbackService(_http, _configuration, _userSettings, _authHeaderService, onStatusUpdate)
-            : new YouTubeFeedbackService(_http, _configuration, _userSettings, _authHeaderService, videoIds, playlistIds, onStatusUpdate);
+            : new YouTubeFeedbackService(_http, _configuration, _userSettings, _authHeaderService, 
+                _loggerFactory.CreateLogger<YouTubeFeedbackService>(), videoIds, playlistIds, onStatusUpdate);
     }
 
     public IFeedbackService? GetYouTubeService(string url, SharedDump.Models.YouTube.YouTubeContentType contentType, FeedbackStatusUpdate? onStatusUpdate = null)
