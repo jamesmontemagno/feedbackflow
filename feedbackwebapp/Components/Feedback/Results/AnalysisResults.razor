@@ -233,14 +233,6 @@
 
         try
         {
-            // Truncate UserInput to prevent Azure Table Storage 64KB property limit issues
-            // For Manual analysis, the full content is already in FullAnalysis
-            var truncatedUserInput = UserInput;
-            if (!string.IsNullOrEmpty(truncatedUserInput) && truncatedUserInput.Length > 500)
-            {
-                truncatedUserInput = truncatedUserInput.Substring(0, 500) + "...";
-            }
-            
             var analysisData = new SharedDump.Models.AnalysisData
             {
                 Id = _savedItemId ?? Guid.NewGuid().ToString(),
@@ -250,7 +242,7 @@
                     : MarkdownResult ?? string.Empty,
                 FullAnalysis = MarkdownResult ?? string.Empty,
                 SourceType = SourceType,
-                UserInput = truncatedUserInput,
+                UserInput = AnalysisDataHelper.TruncateUserInput(UserInput),
                 CreatedDate = DateTime.UtcNow,
             };
 
