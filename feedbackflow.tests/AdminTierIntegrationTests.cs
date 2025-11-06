@@ -56,20 +56,20 @@ public class AdminTierIntegrationTests
         var adminLimits = userAccountService.GetLimitsForTier(AccountTier.Admin);
         
         // Assert - Admin should have higher limits than all regular tiers
-        Assert.IsTrue(adminLimits.AnalysisLimit > freeLimits.AnalysisLimit);
-        Assert.IsTrue(adminLimits.AnalysisLimit > proLimits.AnalysisLimit);
-        Assert.IsTrue(adminLimits.AnalysisLimit > proPlusLimits.AnalysisLimit);
+        Assert.IsGreaterThan(freeLimits.AnalysisLimit, adminLimits.AnalysisLimit);
+        Assert.IsGreaterThan(proLimits.AnalysisLimit, adminLimits.AnalysisLimit);
+        Assert.IsGreaterThan(proPlusLimits.AnalysisLimit, adminLimits.AnalysisLimit);
         
-        Assert.IsTrue(adminLimits.ReportLimit > freeLimits.ReportLimit);
-        Assert.IsTrue(adminLimits.ReportLimit > proLimits.ReportLimit);
-        Assert.IsTrue(adminLimits.ReportLimit > proPlusLimits.ReportLimit);
+        Assert.IsGreaterThan(freeLimits.ReportLimit, adminLimits.ReportLimit);
+        Assert.IsGreaterThan(proLimits.ReportLimit, adminLimits.ReportLimit);
+        Assert.IsGreaterThan(proPlusLimits.ReportLimit, adminLimits.ReportLimit);
         
-        Assert.IsTrue(adminLimits.FeedQueryLimit > freeLimits.FeedQueryLimit);
-        Assert.IsTrue(adminLimits.FeedQueryLimit > proLimits.FeedQueryLimit);
-        Assert.IsTrue(adminLimits.FeedQueryLimit > proPlusLimits.FeedQueryLimit);
+        Assert.IsGreaterThan(freeLimits.FeedQueryLimit, adminLimits.FeedQueryLimit);
+        Assert.IsGreaterThan(proLimits.FeedQueryLimit, adminLimits.FeedQueryLimit);
+        Assert.IsGreaterThan(proPlusLimits.FeedQueryLimit, adminLimits.FeedQueryLimit);
         
-        Assert.IsTrue(adminLimits.AnalysisRetentionDays > freeLimits.AnalysisRetentionDays);
-        Assert.IsTrue(adminLimits.AnalysisRetentionDays > proLimits.AnalysisRetentionDays);
-        Assert.IsTrue(adminLimits.AnalysisRetentionDays > proPlusLimits.AnalysisRetentionDays);
+        Assert.IsGreaterThan(freeLimits.AnalysisRetentionDays, adminLimits.AnalysisRetentionDays);
+        Assert.IsGreaterThan(proLimits.AnalysisRetentionDays, adminLimits.AnalysisRetentionDays);
+        Assert.IsGreaterThan(proPlusLimits.AnalysisRetentionDays, adminLimits.AnalysisRetentionDays);
     }
 }

@@ -58,22 +58,22 @@ namespace FeedbackFlow.Tests
             var result = CommentDataConverter.ConvertYouTube(videos);
 
             // Assert
-            Assert.AreEqual(1, result.Count, "Should have one thread for the video");
+            Assert.HasCount(1, result, "Should have one thread for the video");
             
             // Check we have two root comments (the actual root and the orphaned one)
             var rootComments = result[0].Comments;
-            Assert.AreEqual(2, rootComments.Count, "Should have both the root comment and the orphaned comment");
+            Assert.HasCount(2, rootComments, "Should have both the root comment and the orphaned comment");
             
             // Check the root comment has its reply
             var rootComment = rootComments.Find(c => c.Id == "comment1");
             Assert.IsNotNull(rootComment, "Root comment should be present");
-            Assert.AreEqual(1, rootComment.Replies.Count, "Root comment should have one reply");
+            Assert.HasCount(1, rootComment.Replies, "Root comment should have one reply");
             Assert.AreEqual("comment2", rootComment.Replies[0].Id, "Reply should be properly linked");
             
             // Check the orphaned comment is included
             var orphanedComment = rootComments.Find(c => c.Id == "comment3");
             Assert.IsNotNull(orphanedComment, "Orphaned comment should be present at root level");
-            Assert.IsTrue(orphanedComment.Content.StartsWith("[Reply to unavailable comment]"), 
+            Assert.StartsWith("[Reply to unavailable comment]", orphanedComment.Content, 
                 "Orphaned comment should be marked accordingly");
         }
 
@@ -118,7 +118,7 @@ namespace FeedbackFlow.Tests
             var result = CommentDataConverter.ConvertTwitter(twitterResponse);
 
             // Assert
-            Assert.AreEqual(1, result.Count, "Should have one thread for the tweet");
+            Assert.HasCount(1, result, "Should have one thread for the tweet");
             
             var thread = result[0];
             Assert.AreEqual("123", thread.Id, "Thread ID should match tweet ID");
@@ -131,7 +131,7 @@ namespace FeedbackFlow.Tests
             Assert.AreEqual(2, thread?.Metadata?["ProcessedTweetCount"], "Processed tweet count should match");
 
             // Check comments (replies)
-            Assert.AreEqual(1, thread?.Comments?.Count, "Should have one reply");
+            Assert.HasCount(1, thread?.Comments ?? new List<CommentData>(), "Should have one reply");
             var reply = thread?.Comments?[0];
             Assert.AreEqual("456", reply?.Id, "Reply ID should match");
             Assert.AreEqual("Replier", reply?.Author, "Reply author should be display name");
@@ -163,7 +163,7 @@ namespace FeedbackFlow.Tests
             var result = CommentDataConverter.ConvertAdditionalData(twitterResponse);
 
             // Assert
-            Assert.AreEqual(1, result.Count, "Should convert TwitterFeedbackResponse");
+            Assert.HasCount(1, result, "Should convert TwitterFeedbackResponse");
             Assert.AreEqual("Twitter", result[0].SourceType, "Should have correct source type");
         }
     }

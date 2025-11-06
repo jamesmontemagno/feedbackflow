@@ -19,19 +19,21 @@ public class ExportServiceTests
     {
         _exportService = new ExportService();
         _testItems = new List<AnalysisHistoryItem>
-        {            new AnalysisHistoryItem
+        {
+            new AnalysisHistoryItem
             {
                 Id = "test-1",
                 Timestamp = new DateTime(2025, 1, 15, 10, 30, 0),
-                FullAnalysis = "Test summary 1", // Set FullAnalysis to be the same as previous Summary for tests
+                FullAnalysis = "Test summary 1",
                 SourceType = "Manual",
                 UserInput = "Test input",
                 IsShared = false
-            },            new AnalysisHistoryItem
+            },
+            new AnalysisHistoryItem
             {
                 Id = "test-2",
                 Timestamp = new DateTime(2025, 1, 16, 14, 15, 0),
-                FullAnalysis = "Test summary 2", // Set FullAnalysis to be the same as previous Summary for tests
+                FullAnalysis = "Test summary 2",
                 SourceType = "GitHub",
                 UserInput = "https://github.com/test/repo",
                 IsShared = true,
@@ -49,15 +51,15 @@ public class ExportServiceTests
         
         // Assert
         Assert.IsNotNull(result);
-        Assert.IsTrue(result.Length > 0);
+        Assert.IsGreaterThan(0, result.Length);
         
         result.Position = 0;
         var content = await new StreamReader(result).ReadToEndAsync();
         
-        Assert.IsTrue(content.Contains("Id,Date,Source Type"));
-        Assert.IsTrue(content.Contains("test-1"));
-        Assert.IsTrue(content.Contains("Manual"));
-        Assert.IsTrue(content.Contains("Test summary 1"));
+        Assert.Contains("Id,Date,Source Type", content);
+        Assert.Contains("test-1", content);
+        Assert.Contains("Manual", content);
+        Assert.Contains("Test summary 1", content);
     }
 
     [TestMethod]
@@ -68,7 +70,7 @@ public class ExportServiceTests
         
         // Assert
         Assert.IsNotNull(result);
-        Assert.IsTrue(result.Length > 0);
+        Assert.IsGreaterThan(0, result.Length);
         
         result.Position = 0;
         var content = await new StreamReader(result).ReadToEndAsync();
@@ -90,16 +92,16 @@ public class ExportServiceTests
         
         // Assert
         Assert.IsNotNull(result);
-        Assert.IsTrue(result.Length > 0);
+        Assert.IsGreaterThan(0, result.Length);
         
         result.Position = 0;
         var content = await new StreamReader(result).ReadToEndAsync();
         
-        Assert.IsTrue(content.Contains("# Analysis Export"));
-        Assert.IsTrue(content.Contains("## Analysis - Manual"));
-        Assert.IsTrue(content.Contains("## Analysis - GitHub"));
-        Assert.IsTrue(content.Contains("### Summary"));
-        Assert.IsTrue(content.Contains("Test summary 1"));
+        Assert.Contains("# Analysis Export", content);
+        Assert.Contains("## Analysis - Manual", content);
+        Assert.Contains("## Analysis - GitHub", content);
+        Assert.Contains("### Summary", content);
+        Assert.Contains("Test summary 1", content);
     }
 
     [TestMethod]
@@ -116,7 +118,7 @@ public class ExportServiceTests
         
         // Assert
         Assert.IsNotNull(result);
-        Assert.IsTrue(result.Length > 0);
+        Assert.IsGreaterThan(0, result.Length);
         
         // Check that it starts with PDF header
         result.Position = 0;
@@ -168,7 +170,7 @@ public class ExportServiceTests
         var content = await new StreamReader(result).ReadToEndAsync();
         
         // Should still have headers
-        Assert.IsTrue(content.Contains("Id,Date,Source Type"));
+        Assert.Contains("Id,Date,Source Type", content);
     }
 
     [TestMethod]
@@ -226,12 +228,12 @@ public class ExportServiceTests
         csvResult.Position = 0;
         var csvContent = await new StreamReader(csvResult).ReadToEndAsync();
         
-        Assert.IsTrue(csvContent.Contains("Comment Threads Count"));
-        Assert.IsTrue(csvContent.Contains("1")); // Comment thread count
-        Assert.IsTrue(csvContent.Contains("Thread Id"));
-        Assert.IsTrue(csvContent.Contains("Test Thread"));
-        Assert.IsTrue(csvContent.Contains("This is a test comment"));
-        Assert.IsTrue(csvContent.Contains("This is a reply"));
+        Assert.Contains("Comment Threads Count", csvContent);
+        Assert.Contains("1", csvContent); // Comment thread count
+        Assert.Contains("Thread Id", csvContent);
+        Assert.Contains("Test Thread", csvContent);
+        Assert.Contains("This is a test comment", csvContent);
+        Assert.Contains("This is a reply", csvContent);
 
         // Test JSON export includes comment data
         var jsonResult = await _exportService.ExportAsync(itemsWithComments, ExportFormat.Json);
@@ -253,18 +255,18 @@ public class ExportServiceTests
         mdResult.Position = 0;
         var mdContent = await new StreamReader(mdResult).ReadToEndAsync();
         
-        Assert.IsTrue(mdContent.Contains("### Comment Threads"));
-        Assert.IsTrue(mdContent.Contains("#### Test Thread"));
-        Assert.IsTrue(mdContent.Contains("**user1**"));
-        Assert.IsTrue(mdContent.Contains("This is a test comment"));
-        Assert.IsTrue(mdContent.Contains("user2")); // Check for reply author (without specific indentation)
+        Assert.Contains("### Comment Threads", mdContent);
+        Assert.Contains("#### Test Thread", mdContent);
+        Assert.Contains("**user1**", mdContent);
+        Assert.Contains("This is a test comment", mdContent);
+        Assert.Contains("user2", mdContent); // Check for reply author (without specific indentation)
 
         // Test PDF export includes comment data (skip on unsupported runtime)
         if (!(RuntimeInformation.ProcessArchitecture == Architecture.Arm64 && OperatingSystem.IsWindows()))
         {
             var pdfResult = await _exportService.ExportAsync(itemsWithComments, ExportFormat.Pdf);
             Assert.IsNotNull(pdfResult);
-            Assert.IsTrue(pdfResult.Length > 0);
+            Assert.IsGreaterThan(0, pdfResult.Length);
         }
     }
 }

@@ -18,7 +18,7 @@ public class RedditSubredditInfoTests
         Assert.IsNotNull(subredditInfo);
         Assert.AreEqual("dotnet", subredditInfo.DisplayName);
         Assert.AreEqual("r/dotnet", subredditInfo.Title);
-        Assert.IsTrue(subredditInfo.Subscribers > 0);
+        Assert.IsGreaterThan(0, subredditInfo.Subscribers); // Subscribers should be > 0
         Assert.IsFalse(subredditInfo.Over18);
         Assert.AreEqual("public", subredditInfo.SubredditType);
         Assert.IsNotNull(subredditInfo.PublicDescription);

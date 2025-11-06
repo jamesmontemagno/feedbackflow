@@ -12,7 +12,7 @@ public class ReanalyzeFeatureTests
         var urls = new List<string>();
         var result = NormalizeUrlsTestHelper(urls);
         
-        Assert.AreEqual(0, result.Length);
+        Assert.HasCount(0, result);
     }
 
     [TestMethod]
@@ -28,7 +28,7 @@ public class ReanalyzeFeatureTests
         
         var result = NormalizeUrlsTestHelper(urls);
         
-        Assert.AreEqual(2, result.Length);
+        Assert.HasCount(2, result);
         Assert.IsTrue(result.Any(u => u.Equals("https://github.com/test/repo", StringComparison.OrdinalIgnoreCase)));
         Assert.IsTrue(result.Any(u => u.Equals("https://youtube.com/watch?v=123", StringComparison.OrdinalIgnoreCase)));
     }
@@ -47,7 +47,7 @@ public class ReanalyzeFeatureTests
         
         var result = NormalizeUrlsTestHelper(urls);
         
-        Assert.AreEqual(2, result.Length);
+        Assert.HasCount(2, result);
     }
 
     [TestMethod]

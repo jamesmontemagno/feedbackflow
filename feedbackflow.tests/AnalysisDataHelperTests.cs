@@ -43,7 +43,7 @@ public class AnalysisDataHelperTests
         
         Assert.IsNotNull(result);
         Assert.AreEqual(103, result.Length); // 100 + "..."
-        Assert.IsTrue(result.EndsWith("..."));
+        Assert.EndsWith("...", result);
         Assert.AreEqual(new string('a', 100) + "...", result);
     }
 
@@ -85,7 +85,7 @@ public class AnalysisDataHelperTests
         
         Assert.IsNotNull(result);
         Assert.AreEqual(AnalysisDataHelper.MaxUserInputLength + 3, result.Length); // +3 for "..."
-        Assert.IsTrue(result.EndsWith("..."));
+        Assert.EndsWith("...", result);
         Assert.AreEqual(new string('a', AnalysisDataHelper.MaxUserInputLength) + "...", result);
     }
 
@@ -98,8 +98,8 @@ public class AnalysisDataHelperTests
         
         Assert.IsNotNull(result);
         Assert.AreEqual(503, result.Length); // 500 + "..."
-        Assert.IsTrue(result.EndsWith("..."));
-        Assert.IsTrue(result.StartsWith("xxx"));
+        Assert.EndsWith("...", result);
+        Assert.StartsWith("xxx", result);
     }
 
     [TestMethod]
@@ -109,8 +109,8 @@ public class AnalysisDataHelperTests
         var result = AnalysisDataHelper.TruncateUserInput(input);
         
         Assert.IsNotNull(result);
-        Assert.IsTrue(result.StartsWith("The quick brown fox"));
-        Assert.IsTrue(result.EndsWith("..."));
+        Assert.StartsWith("The quick brown fox", result);
+        Assert.EndsWith("...", result);
         Assert.AreEqual(503, result.Length);
     }
 
@@ -144,7 +144,7 @@ public class AnalysisDataHelperTests
         
         Assert.IsNotNull(result);
         Assert.AreEqual(AnalysisDataHelper.MaxSummaryLength + 3, result.Length); // +3 for "..."
-        Assert.IsTrue(result.EndsWith("..."));
+        Assert.EndsWith("...", result);
     }
 
     [TestMethod]
@@ -155,7 +155,7 @@ public class AnalysisDataHelperTests
         
         Assert.IsNotNull(result);
         Assert.AreEqual(503, result.Length); // 500 + "..."
-        Assert.IsTrue(result.StartsWith("## Analysis Summary"));
-        Assert.IsTrue(result.EndsWith("..."));
+        Assert.StartsWith("## Analysis Summary", result);
+        Assert.EndsWith("...", result);
     }
 }
