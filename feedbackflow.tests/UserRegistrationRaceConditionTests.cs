@@ -26,7 +26,7 @@ public class UserRegistrationRaceConditionTests
         Assert.AreEqual(typeof(Task<AuthUserEntity>), method.ReturnType, "Method should return Task<AuthUserEntity>");
         
         var parameters = method.GetParameters();
-        Assert.AreEqual(1, parameters.Length, "Method should have one parameter");
+        Assert.HasCount(1, parameters, "Method should have one parameter");
         Assert.AreEqual(typeof(AuthUserEntity), parameters[0].ParameterType, "Parameter should be AuthUserEntity");
     }
 
@@ -70,7 +70,7 @@ public class UserRegistrationRaceConditionTests
         // Assert: Keys should be identical for same user
         Assert.AreEqual(key1, key2, "User registration keys should be deterministic");
         Assert.IsFalse(string.IsNullOrWhiteSpace(key1), "User key should not be empty");
-        Assert.IsTrue(key1.Contains(":"), "User key should contain separator");
+        Assert.Contains(":", key1, "User key should contain separator");
     }
 
     [TestMethod]

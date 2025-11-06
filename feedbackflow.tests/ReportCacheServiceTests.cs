@@ -128,13 +128,13 @@ public class ReportCacheServiceTests
         var allResults = await _cacheService.GetReportsAsync();
 
         // Assert
-        Assert.AreEqual(1, redditResults.Count);
+        Assert.HasCount(1, redditResults);
         Assert.AreEqual("reddit", redditResults[0].Source);
         
-        Assert.AreEqual(1, githubResults.Count);
+        Assert.HasCount(1, githubResults);
         Assert.AreEqual("github", githubResults[0].Source);
         
-        Assert.AreEqual(2, allResults.Count);
+        Assert.HasCount(2, allResults);
     }
 
     [TestMethod]
@@ -173,7 +173,7 @@ public class ReportCacheServiceTests
         var filteredResults = await _cacheService.GetReportsAsync("reddit", "dotnet");
 
         // Assert
-        Assert.AreEqual(1, filteredResults.Count);
+        Assert.HasCount(1, filteredResults);
         Assert.AreEqual("dotnet", filteredResults[0].SubSource);
     }
 
@@ -202,14 +202,14 @@ public class ReportCacheServiceTests
         // Arrange
         await _cacheService.SetReportAsync(_testReport);
         var beforeClear = await _cacheService.GetReportsAsync();
-        Assert.IsTrue(beforeClear.Count > 0);
+        Assert.IsNotEmpty(beforeClear);
 
         // Act
         await _cacheService.ClearCacheAsync();
         var afterClear = await _cacheService.GetReportsAsync();
 
         // Assert
-        Assert.AreEqual(0, afterClear.Count);
+        Assert.IsEmpty(afterClear);
     }
 
     [TestMethod]

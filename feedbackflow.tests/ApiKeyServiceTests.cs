@@ -40,8 +40,8 @@ public class ApiKeyServiceTests
         var fullKey = $"{expectedPrefix}{apiKey}";
 
         // Assert that the key has the correct format
-        Assert.IsTrue(fullKey.StartsWith(expectedPrefix), "API key should start with 'ff_' prefix");
-        Assert.IsTrue(fullKey.Length > 10, "API key should be sufficiently long");
+        Assert.StartsWith(expectedPrefix, fullKey, "API key should start with 'ff_' prefix");
+        Assert.IsGreaterThan(10, fullKey.Length, "API key should be sufficiently long");
     }
 
     [TestMethod]
@@ -111,11 +111,11 @@ public class ApiKeyServiceTests
             Name = "Test API Key"
         };
 
-        Assert.IsTrue(adminApiKey.Key.StartsWith("ff_"));
-        Assert.IsTrue(adminApiKey.Key.Contains("..."));
-        Assert.IsTrue(adminApiKey.FullKey.StartsWith("ff_"));
-        Assert.IsFalse(adminApiKey.FullKey.Contains("..."));
-        Assert.IsTrue(adminApiKey.UserId.Contains("****"));
+        Assert.StartsWith("ff_", adminApiKey.Key);
+        Assert.Contains("...", adminApiKey.Key);
+        Assert.StartsWith("ff_", adminApiKey.FullKey);
+        Assert.DoesNotContain("...", adminApiKey.FullKey);
+        Assert.Contains("****", adminApiKey.UserId);
         Assert.AreEqual("Test API Key", adminApiKey.Name);
     }
 
@@ -126,9 +126,9 @@ public class ApiKeyServiceTests
         var userId = "user-1234567890";
         var maskedUserId = MaskUserId(userId);
         
-        Assert.IsTrue(maskedUserId.Contains("****"));
-        Assert.IsTrue(maskedUserId.StartsWith("user"));
-        Assert.IsTrue(maskedUserId.EndsWith("7890"));
+        Assert.Contains("****", maskedUserId);
+        Assert.StartsWith("user", maskedUserId);
+        Assert.EndsWith("7890", maskedUserId);
     }
 
     private static string MaskUserId(string userId)

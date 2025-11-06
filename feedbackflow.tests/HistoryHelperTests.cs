@@ -26,8 +26,8 @@ public class HistoryHelperTests
     var result = _historyHelper!.ConvertMarkdownToHtml(markdown);
 
         // Assert
-        Assert.IsFalse(result.Contains("<h7>"), "Should not create H7 tags");
-        Assert.IsFalse(result.Contains("<h8>"), "Should not create H8 tags");
+        Assert.DoesNotContain("<h7>", result, "Should not create H7 tags");
+        Assert.DoesNotContain("<h8>", result, "Should not create H8 tags");
     }
 
     [TestMethod]

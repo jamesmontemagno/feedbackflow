@@ -237,12 +237,10 @@
             {
                 Id = _savedItemId ?? Guid.NewGuid().ToString(),
                 Title = $"{SourceType} Analysis",
-                Summary = !string.IsNullOrEmpty(MarkdownResult) && MarkdownResult.Length > 500 
-                    ? MarkdownResult.Substring(0, 500) + "..." 
-                    : MarkdownResult ?? string.Empty,
+                Summary = AnalysisDataHelper.TruncateSummary(MarkdownResult) ?? string.Empty,
                 FullAnalysis = MarkdownResult ?? string.Empty,
                 SourceType = SourceType,
-                UserInput = UserInput,
+                UserInput = AnalysisDataHelper.TruncateUserInput(UserInput),
                 CreatedDate = DateTime.UtcNow,
             };
 

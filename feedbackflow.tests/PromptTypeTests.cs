@@ -16,8 +16,8 @@ public class PromptTypeTests
 
         // Assert
         Assert.IsNotNull(prompt);
-        Assert.IsTrue(prompt.Length > 0);
-        Assert.IsTrue(prompt.Contains("Product Feedback"));
+        Assert.IsGreaterThan(0, prompt.Length); // Fix order: 0 first, then prompt.Length
+        Assert.Contains("Product Feedback", prompt);
     }
 
     [TestMethod]
@@ -31,8 +31,8 @@ public class PromptTypeTests
 
         // Assert
         Assert.IsNotNull(prompt);
-        Assert.IsTrue(prompt.Length > 0);
-        Assert.IsTrue(prompt.Contains("Competitor"));
+        Assert.IsGreaterThan(0, prompt.Length); // Fix order: 0 first, then prompt.Length
+        Assert.Contains("Competitor", prompt);
     }
 
     [TestMethod]
@@ -46,8 +46,8 @@ public class PromptTypeTests
 
         // Assert
         Assert.IsNotNull(prompt);
-        Assert.IsTrue(prompt.Length > 0);
-        Assert.IsTrue(prompt.Contains("General"));
+        Assert.IsGreaterThan(0, prompt.Length); // Fix order: 0 first, then prompt.Length
+        Assert.Contains("General", prompt);
     }
 
     [TestMethod]
@@ -85,7 +85,7 @@ public class PromptTypeTests
         var prompt = FeedbackAnalyzerService.GetPromptByType(promptType);
 
         // Assert - check for key phrases that should be in product feedback prompt
-        Assert.IsTrue(prompt.Contains("YOUR product"));
+        Assert.Contains("YOUR product", prompt);
         Assert.IsTrue(prompt.Contains("Feature Requests") || prompt.Contains("feature"));
         Assert.IsTrue(prompt.Contains("Pain Points") || prompt.Contains("pain"));
     }
@@ -100,10 +100,10 @@ public class PromptTypeTests
         var prompt = FeedbackAnalyzerService.GetPromptByType(promptType);
 
         // Assert - check for key phrases that should be in competitor analysis prompt
-        Assert.IsTrue(prompt.Contains("competitor"));
+        Assert.Contains("competitor", prompt);
         Assert.IsTrue(prompt.Contains("Strengths") || prompt.Contains("strengths"));
         Assert.IsTrue(prompt.Contains("Weaknesses") || prompt.Contains("weaknesses"));
-        Assert.IsTrue(prompt.Contains("competitive"));
+        Assert.Contains("competitive", prompt);
     }
 
     [TestMethod]
@@ -118,6 +118,6 @@ public class PromptTypeTests
         // Assert - check for key phrases that should be in general analysis prompt
         Assert.IsTrue(prompt.Contains("objective") || prompt.Contains("neutral"));
         Assert.IsTrue(prompt.Contains("General") || prompt.Contains("Content"));
-        Assert.IsTrue(prompt.Contains("balanced"));
+        Assert.Contains("balanced", prompt);
     }
 }

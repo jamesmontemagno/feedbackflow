@@ -30,7 +30,7 @@ public class MultiSelectUrlGenerationTests
         
         // Assert
         Assert.IsNotNull(parsedUrls);
-        Assert.AreEqual(3, parsedUrls.Length);
+        Assert.HasCount(3, parsedUrls);
         CollectionAssert.AreEqual(expectedUrls, parsedUrls);
     }
     
@@ -57,7 +57,7 @@ public class MultiSelectUrlGenerationTests
         
         // Assert
         Assert.IsNotNull(parsedUrls);
-        Assert.AreEqual(3, parsedUrls.Length);
+        Assert.HasCount(3, parsedUrls);
         CollectionAssert.AreEqual(expectedUrls, parsedUrls);
     }
     
@@ -79,7 +79,7 @@ public class MultiSelectUrlGenerationTests
         
         // Assert
         Assert.IsNotNull(parsedUrls);
-        Assert.AreEqual(3, parsedUrls.Length);
+        Assert.HasCount(3, parsedUrls);
         CollectionAssert.AreEqual(expectedUrls, parsedUrls);
     }
     
@@ -99,7 +99,7 @@ public class MultiSelectUrlGenerationTests
         
         // Assert
         Assert.IsNotNull(parsedUrls);
-        Assert.AreEqual(1, parsedUrls.Length);
+        Assert.HasCount(1, parsedUrls);
         Assert.AreEqual(singleUrl, parsedUrls[0]);
         
         // Also verify the old single-url method still works
@@ -129,7 +129,7 @@ public class MultiSelectUrlGenerationTests
         
         // Assert
         Assert.IsNotNull(parsedUrls);
-        Assert.AreEqual(3, parsedUrls.Length);
+        Assert.HasCount(3, parsedUrls);
         CollectionAssert.AreEqual(urls, parsedUrls);
     }
     
@@ -164,7 +164,7 @@ public class MultiSelectUrlGenerationTests
         
         // Assert
         Assert.IsNotNull(parsedUrls);
-        Assert.AreEqual(20, parsedUrls.Length);
+        Assert.HasCount(20, parsedUrls);
         CollectionAssert.AreEqual(expectedUrls, parsedUrls);
     }
 }

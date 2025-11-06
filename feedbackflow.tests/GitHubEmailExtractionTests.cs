@@ -231,9 +231,9 @@ public class GitHubEmailExtractionTests
         var loginUrl = authService.GetLoginUrl("GitHub", "https://example.com/callback");
 
         // Assert
-        Assert.IsTrue(loginUrl.Contains("scope=user:email"), 
+        Assert.Contains("scope=user:email", loginUrl, 
             $"Expected GitHub login URL to contain 'scope=user:email', but got: {loginUrl}");
-        Assert.IsTrue(loginUrl.Contains("/.auth/login/github"), 
+        Assert.Contains("/.auth/login/github", loginUrl, 
             $"Expected GitHub login URL to contain '/.auth/login/github', but got: {loginUrl}");
     }
 
@@ -275,9 +275,9 @@ public class GitHubEmailExtractionTests
         var loginUrl = authService.GetLoginUrl("Google", "https://example.com/callback");
 
         // Assert
-        Assert.IsFalse(loginUrl.Contains("scope=user:email"), 
+        Assert.DoesNotContain("scope=user:email", loginUrl, 
             $"Expected Google login URL to not contain GitHub scope, but got: {loginUrl}");
-        Assert.IsTrue(loginUrl.Contains("access_type=offline"), 
+        Assert.Contains("access_type=offline", loginUrl, 
             $"Expected Google login URL to contain 'access_type=offline', but got: {loginUrl}");
     }
 }

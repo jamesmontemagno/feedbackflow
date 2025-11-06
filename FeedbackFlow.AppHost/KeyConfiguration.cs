@@ -17,27 +17,27 @@ public static class KeyConfiguration
 
         var inputs = new InteractionInput[]
         {
-            new() { InputType = InputType.SecretText, Label = "Azure Open AI Key", Placeholder = "Enter Azure Open AI Key", Value = Keys.AzureOpenAIKey },
-            new() { InputType = InputType.Text, Label = "Azure Open AI Endpoint", Placeholder = "Enter Azure Open AI Endpoint", Value = Keys.AzureOpenAIEndpoint },
-            new() { InputType = InputType.Choice, Label = "Azure Open AI Model", Placeholder = "Select an AI model",
+            new() { Name="Azure Open AI Key", InputType = InputType.SecretText, Label = "Azure Open AI Key", Placeholder = "Enter Azure Open AI Key", Value = Keys.AzureOpenAIKey },
+            new() { Name="Azure Open AI Endpoint", InputType = InputType.Text, Label = "Azure Open AI Endpoint", Placeholder = "Enter Azure Open AI Endpoint", Value = Keys.AzureOpenAIEndpoint },
+            new() { Name="Azure Open AI Model", InputType = InputType.Choice, Label = "Azure Open AI Model", Placeholder = "Select an AI model",
             Options = [
                 KeyValuePair.Create("gpt-4.1", "GPT 4.1"),
                 KeyValuePair.Create("gpt-4.1-mini", "GPT 4.1 Mini"),
                 KeyValuePair.Create("gpt-4.1-nano", "GPT 4.1 Nano"),
                 KeyValuePair.Create("other", "Other"),
             ], Value = Keys.AzureOpenAIModel },
-            new() { InputType = InputType.Text, Label = "Azure Open AI Other Model", Placeholder = "Enter Azure Open AI Model", Value = Keys.AzureOpenAIModel },
-            new() { InputType = InputType.Text, Label = "BlueSky Username", Placeholder = "Enter BlueSky Username", Value = Keys.BlueSkyUsername },
-            new() { InputType = InputType.SecretText, Label = "BlueSky App Password", Placeholder = "Enter BlueSky App Password", Value = Keys.BlueSkyAppPassword },
-            new() { InputType = InputType.SecretText, Label = "YouTube API Key", Placeholder = "Enter YouTube API Key", Value = Keys.YouTubeApiKey },
-            new() { InputType = InputType.SecretText, Label = "Reddit Client ID", Placeholder = "Enter Reddit Client ID", Value = Keys.RedditClientId },
-            new() { InputType = InputType.SecretText, Label = "Reddit Client Secret", Placeholder = "Enter Reddit Client Secret", Value = Keys.RedditClientSecret },
-            new() { InputType = InputType.SecretText, Label = "Twitter Bearer Token", Placeholder = "Enter Twitter Bearer Token", Value = Keys.TwitterBearerToken },
-            new() { InputType = InputType.SecretText, Label = "GitHub Personal Access Token", Placeholder = "Enter GitHub Personal Access Token", Value = Keys.GitHubAccessToken },
-            new() { InputType = InputType.SecretText, Label = "Mastodon Access Token", Placeholder = "Enter Mastodon Access Token", Value = Keys.MastodonAccessToken },
-            new() { InputType = InputType.SecretText, Label = "Mastodon Client Key", Placeholder = "Enter Mastodon Client Key", Value = Keys.MastodonClientKey },
-            new() { InputType = InputType.SecretText, Label = "Mastodon Client Secret", Placeholder = "Enter Mastodon Client Secret", Value = Keys.MastodonClientSecret },
-            new() { InputType = InputType.Boolean, Label = "Use Mocks For All", Placeholder = "Use mock data for services", Value = Keys.UseMocks  ? "true" : "false" }
+            new() { Name="Azure Open AI Other Model", InputType = InputType.Text, Label = "Azure Open AI Other Model", Placeholder = "Enter Azure Open AI Model", Value = Keys.AzureOpenAIModel },
+            new() { Name="BlueSky Username", InputType = InputType.Text, Label = "BlueSky Username", Placeholder = "Enter BlueSky Username", Value = Keys.BlueSkyUsername },
+            new() { Name="BlueSky App Password", InputType = InputType.SecretText, Label = "BlueSky App Password", Placeholder = "Enter BlueSky App Password", Value = Keys.BlueSkyAppPassword },
+            new() { Name="YouTube API Key", InputType = InputType.SecretText, Label = "YouTube API Key", Placeholder = "Enter YouTube API Key", Value = Keys.YouTubeApiKey },
+            new() { Name="Reddit Client ID", InputType = InputType.SecretText, Label = "Reddit Client ID", Placeholder = "Enter Reddit Client ID", Value = Keys.RedditClientId },
+            new() { Name="Reddit Client Secret", InputType = InputType.SecretText, Label = "Reddit Client Secret", Placeholder = "Enter Reddit Client Secret", Value = Keys.RedditClientSecret },
+            new() { Name="Twitter Bearer Token", InputType = InputType.SecretText, Label = "Twitter Bearer Token", Placeholder = "Enter Twitter Bearer Token", Value = Keys.TwitterBearerToken },
+            new() { Name="GitHub Personal Access Token", InputType = InputType.SecretText, Label = "GitHub Personal Access Token", Placeholder = "Enter GitHub Personal Access Token", Value = Keys.GitHubAccessToken },
+            new() { Name="Mastodon Access Token", InputType = InputType.SecretText, Label = "Mastodon Access Token", Placeholder = "Enter Mastodon Access Token", Value = Keys.MastodonAccessToken },
+            new() { Name="Mastodon Client Key", InputType = InputType.SecretText, Label = "Mastodon Client Key", Placeholder = "Enter Mastodon Client Key", Value = Keys.MastodonClientKey },
+            new() { Name="Mastodon Client Secret", InputType = InputType.SecretText, Label = "Mastodon Client Secret", Placeholder = "Enter Mastodon Client Secret", Value = Keys.MastodonClientSecret },
+            new() { Name="Use Mocks For All", InputType = InputType.Boolean, Label = "Use Mocks For All", Placeholder = "Use mock data for services", Value = Keys.UseMocks  ? "true" : "false" }
         };
 
         var result = await interactionService.PromptInputsAsync("API Keys", "Enter the API keys for services you would like to use. You can leave them blank and when debugging specific services will use mock data. Make sure to turn off Use Mocks For All when you want to use real data.", inputs, cancellationToken: cancellationToken);

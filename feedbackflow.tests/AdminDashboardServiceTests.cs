@@ -42,13 +42,13 @@ public class AdminDashboardServiceTests
 
         // Assert
         var userStats = result.UserStats;
-        Assert.IsTrue(userStats.TotalUsers > 0);
-        Assert.IsTrue(userStats.NewUsersLast7Days >= 0);
-        Assert.IsTrue(userStats.NewUsersLast30Days >= userStats.NewUsersLast7Days);
-        Assert.IsTrue(userStats.TierDistribution.Count > 0);
-        Assert.IsTrue(userStats.EmailNotificationsEnabledCount >= 0);
-        Assert.IsTrue(userStats.ApiEnabledUsers >= 0);
-        Assert.IsTrue(userStats.ActiveUsersLast14Days >= 0);
+        Assert.IsGreaterThan(0, userStats.TotalUsers);
+        Assert.IsGreaterThanOrEqualTo(0, userStats.NewUsersLast7Days);
+        Assert.IsGreaterThanOrEqualTo(userStats.NewUsersLast7Days, userStats.NewUsersLast30Days);
+        Assert.IsGreaterThan(0, userStats.TierDistribution.Count);
+        Assert.IsGreaterThanOrEqualTo(0, userStats.EmailNotificationsEnabledCount);
+        Assert.IsGreaterThanOrEqualTo(0, userStats.ApiEnabledUsers);
+        Assert.IsGreaterThanOrEqualTo(0, userStats.ActiveUsersLast14Days);
         Assert.AreEqual(userStats.TotalUsers, userStats.ActiveUsersLast14Days + userStats.InactiveUsers);
     }
 
@@ -60,10 +60,10 @@ public class AdminDashboardServiceTests
 
         // Assert
         var usageStats = result.UsageStats;
-        Assert.IsTrue(usageStats.TotalAnalysesUsed >= 0);
-        Assert.IsTrue(usageStats.TotalFeedQueriesUsed >= 0);
-        Assert.IsTrue(usageStats.TotalActiveReports >= 0);
-        Assert.IsTrue(usageStats.TotalApiCalls >= 0);
+        Assert.IsGreaterThanOrEqualTo(0, usageStats.TotalAnalysesUsed);
+        Assert.IsGreaterThanOrEqualTo(0, usageStats.TotalFeedQueriesUsed);
+        Assert.IsGreaterThanOrEqualTo(0, usageStats.TotalActiveReports);
+        Assert.IsGreaterThanOrEqualTo(0, usageStats.TotalApiCalls);
         Assert.IsNotNull(usageStats.TierUsageMetrics);
         Assert.IsNotNull(usageStats.TopUsers);
     }
@@ -76,10 +76,10 @@ public class AdminDashboardServiceTests
 
         // Assert
         var apiStats = result.ApiStats;
-        Assert.IsTrue(apiStats.TotalApiEnabledUsers >= 0);
-        Assert.IsTrue(apiStats.TotalApiCalls >= 0);
-        Assert.IsTrue(apiStats.AverageApiCallsPerUser >= 0);
-        Assert.IsTrue(apiStats.RecentlyActiveApiUsers >= 0);
+        Assert.IsGreaterThanOrEqualTo(0, apiStats.TotalApiEnabledUsers);
+        Assert.IsGreaterThanOrEqualTo(0, apiStats.TotalApiCalls);
+        Assert.IsGreaterThanOrEqualTo(0, apiStats.AverageApiCallsPerUser);
+        Assert.IsGreaterThanOrEqualTo(0, apiStats.RecentlyActiveApiUsers);
         Assert.IsNotNull(apiStats.TopApiUsers);
         Assert.IsNotNull(apiStats.EndpointDistribution);
     }
@@ -93,16 +93,16 @@ public class AdminDashboardServiceTests
         // Assert
         foreach (var user in result.UsageStats.TopUsers)
         {
-            Assert.IsTrue(!string.IsNullOrEmpty(user.MaskedUserId));
-            Assert.IsTrue(user.MaskedUserId.Contains("*"));
-            Assert.IsFalse(user.UserId == user.MaskedUserId, "User ID should be masked");
+            Assert.IsFalse(string.IsNullOrEmpty(user.MaskedUserId));
+            Assert.Contains("*", user.MaskedUserId);
+            Assert.AreNotEqual(user.UserId, user.MaskedUserId, "User ID should be masked");
         }
 
         foreach (var apiUser in result.ApiStats.TopApiUsers)
         {
-            Assert.IsTrue(!string.IsNullOrEmpty(apiUser.MaskedUserId));
-            Assert.IsTrue(apiUser.MaskedUserId.Contains("*"));
-            Assert.IsFalse(apiUser.UserId == apiUser.MaskedUserId, "API user ID should be masked");
+            Assert.IsFalse(string.IsNullOrEmpty(apiUser.MaskedUserId));
+            Assert.Contains("*", apiUser.MaskedUserId);
+            Assert.AreNotEqual(apiUser.UserId, apiUser.MaskedUserId, "API user ID should be masked");
         }
     }
 
@@ -121,8 +121,7 @@ public class AdminDashboardServiceTests
 
         // Check that percentages add up to approximately 100%
         var totalPercentage = userStats.TierDistributionPercentage.Values.Sum();
-        Assert.IsTrue(Math.Abs(totalPercentage - 100.0) < 0.1, 
-            "Tier percentages should add up to approximately 100%");
+        Assert.IsLessThanOrEqualTo(0.1, Math.Abs(totalPercentage - 100.0), "Tier percentages should add up to approximately 100%");
     }
 
     [TestMethod]
@@ -133,15 +132,15 @@ public class AdminDashboardServiceTests
 
         // Assert
         // Verify the mock data follows expected patterns
-        Assert.IsTrue(result.UserStats.TotalUsers > 100, "Should have realistic user count");
-        Assert.IsTrue(result.UsageStats.TotalAnalysesUsed > 0, "Should have analysis usage");
-        Assert.IsTrue(result.ApiStats.TotalApiCalls > 0, "Should have API usage");
+        Assert.IsGreaterThan(100, result.UserStats.TotalUsers, "Should have realistic user count");
+        Assert.IsGreaterThan(0, result.UsageStats.TotalAnalysesUsed, "Should have analysis usage");
+        Assert.IsGreaterThan(0, result.ApiStats.TotalApiCalls, "Should have API usage");
         
         // Verify tier distribution is realistic
         var tierDistribution = result.UserStats.TierDistribution;
         if (tierDistribution.ContainsKey("Free"))
         {
-            Assert.IsTrue(tierDistribution["Free"] > tierDistribution.GetValueOrDefault("Pro", 0),
+            Assert.IsGreaterThan(tierDistribution.GetValueOrDefault("Pro", 0), tierDistribution["Free"],
                 "Free tier should have more users than Pro");
         }
     }

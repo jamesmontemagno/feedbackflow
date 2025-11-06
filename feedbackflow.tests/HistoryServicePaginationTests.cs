@@ -15,9 +15,9 @@ public class HistoryServicePaginationTests
         const int expectedLoadMorePageSize = 10;
         
         // Verify the constants make sense for pagination
-        Assert.IsTrue(expectedInitialPageSize > 0, "Initial page size should be positive");
-        Assert.IsTrue(expectedLoadMorePageSize > 0, "Load more page size should be positive");
-        Assert.IsTrue(expectedInitialPageSize <= expectedLoadMorePageSize, "Initial page size should not be larger than load more size");
+        Assert.IsGreaterThan(0, expectedInitialPageSize, "Initial page size should be positive");
+        Assert.IsGreaterThan(0, expectedLoadMorePageSize, "Load more page size should be positive");
+        Assert.IsLessThanOrEqualTo(expectedLoadMorePageSize, expectedInitialPageSize, "Initial page size should not be larger than load more size");
     }
     
     [TestMethod]

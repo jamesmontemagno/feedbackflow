@@ -17,7 +17,7 @@ public class GitHubIssuesUtilsTests
         var result = GitHubIssuesUtils.RankIssuesByEngagement(issues, 5);
 
         // Assert
-        Assert.AreEqual(0, result.Count);
+        Assert.IsEmpty(result);
     }
 
     [TestMethod]
@@ -68,7 +68,7 @@ public class GitHubIssuesUtilsTests
         var result = GitHubIssuesUtils.RankIssuesByEngagement(issues, 2);
 
         // Assert
-        Assert.AreEqual(2, result.Count);
+        Assert.HasCount(2, result);
         Assert.AreEqual("2", result[0].Id); // Highest engagement: (10 * 0.7) + (5 * 0.3) = 8.5
         Assert.AreEqual("3", result[1].Id); // Medium engagement: (5 * 0.7) + (2 * 0.3) = 4.1
     }
@@ -83,7 +83,7 @@ public class GitHubIssuesUtilsTests
         var result = GitHubIssuesUtils.AnalyzeTitleTrends(issues);
 
         // Assert
-        Assert.IsTrue(result.Contains("No issues found"));
+        Assert.Contains("No issues found", result);
     }
 
     [TestMethod]
@@ -122,12 +122,12 @@ public class GitHubIssuesUtilsTests
         var result = GitHubIssuesUtils.AnalyzeTitleTrends(issues);
 
         // Assert
-        Assert.IsTrue(result.Contains("Issue Summary"));
-        Assert.IsTrue(result.Contains("2 total issues"));
-        Assert.IsTrue(result.Contains("1 open, 1 closed"));
-        Assert.IsTrue(result.Contains("Top Keywords"));
-        Assert.IsTrue(result.Contains("Common Labels"));
-        Assert.IsTrue(result.Contains("authentication"));
+        Assert.Contains("Issue Summary", result);
+        Assert.Contains("2 total issues", result);
+        Assert.Contains("1 open, 1 closed", result);
+        Assert.Contains("Top Keywords", result);
+        Assert.Contains("Common Labels", result);
+        Assert.Contains("authentication", result);
     }
 
     [TestMethod]
@@ -175,15 +175,15 @@ public class GitHubIssuesUtilsTests
         );
 
         // Assert
-        Assert.IsTrue(result.Contains("<!DOCTYPE html>"));
-        Assert.IsTrue(result.Contains("GitHub Issues Report"));
-        Assert.IsTrue(result.Contains("test/repo"));
-        Assert.IsTrue(result.Contains("Test issue"));
-        Assert.IsTrue(result.Contains("testuser"));
-        Assert.IsTrue(result.Contains("Overall analysis here"));
-        Assert.IsTrue(result.Contains("This is a test analysis"));
-        Assert.IsTrue(result.Contains("5 comments"));
-        Assert.IsTrue(result.Contains("2 reactions"));
+        Assert.Contains("<!DOCTYPE html>", result);
+        Assert.Contains("GitHub Issues Report", result);
+        Assert.Contains("test/repo", result);
+        Assert.Contains("Test issue", result);
+        Assert.Contains("testuser", result);
+        Assert.Contains("Overall analysis here", result);
+        Assert.Contains("This is a test analysis", result);
+        Assert.Contains("5 comments", result);
+        Assert.Contains("2 reactions", result);
     }
 
     [TestMethod]
@@ -250,16 +250,16 @@ public class GitHubIssuesUtilsTests
         );
 
         // Assert
-        Assert.IsTrue(result.Contains("First issue"));
-        Assert.IsTrue(result.Contains("Second issue"));
-        Assert.IsTrue(result.Contains("user1"));
-        Assert.IsTrue(result.Contains("user2"));
-        Assert.IsTrue(result.Contains("Analysis for first issue"));
-        Assert.IsTrue(result.Contains("Analysis for second issue"));
-        Assert.IsTrue(result.Contains("priority-high"));
-        Assert.IsTrue(result.Contains("feature"));
-        Assert.IsTrue(result.Contains("state-open"));
-        Assert.IsTrue(result.Contains("state-closed"));
+        Assert.Contains("First issue", result);
+        Assert.Contains("Second issue", result);
+        Assert.Contains("user1", result);
+        Assert.Contains("user2", result);
+        Assert.Contains("Analysis for first issue", result);
+        Assert.Contains("Analysis for second issue", result);
+        Assert.Contains("priority-high", result);
+        Assert.Contains("feature", result);
+        Assert.Contains("state-open", result);
+        Assert.Contains("state-closed", result);
     }
 
 
@@ -307,7 +307,7 @@ public class GitHubIssuesUtilsTests
 
         // Assert
         Assert.AreEqual(expectedSearchQuery, actualSearchQuery, "Search query should filter by creation date using GitHub's search syntax");
-        Assert.AreEqual(2, testIssues.Count, "GitHub search should only return issues created after the cutoff date");
+        Assert.HasCount(2, testIssues, "GitHub search should only return issues created after the cutoff date");
         Assert.IsTrue(testIssues.All(issue => issue.CreatedAt >= cutoffDate), "All returned issues should be recent (server-side filtered)");
     }
 }

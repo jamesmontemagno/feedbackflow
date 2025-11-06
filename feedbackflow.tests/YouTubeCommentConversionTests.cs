@@ -55,22 +55,22 @@ namespace FeedbackFlow.Tests
             var result = CommentDataConverter.ConvertYouTube(videos);
 
             // Assert
-            Assert.AreEqual(1, result.Count, "Should convert one video thread");
+            Assert.HasCount(1, result, "Should convert one video thread");
             
             var comments = result[0].Comments;
             
             // Should include both root comments and orphaned comments at the top level
-            Assert.AreEqual(2, comments.Count, "Should include both root and orphaned comments");
+            Assert.HasCount(2, comments, "Should include both root and orphaned comments");
             
             // Verify the orphaned comment was included
             var orphanedComment = comments.FirstOrDefault(c => c.Content.StartsWith("[Reply to unavailable comment]"));
             Assert.IsNotNull(orphanedComment, "Should find the orphaned comment with the prefix");
-            Assert.IsTrue(orphanedComment.Content.Contains("Orphaned comment"), "Content of the orphaned comment should be preserved");
+            Assert.Contains("Orphaned comment", orphanedComment.Content, "Content of the orphaned comment should be preserved");
             
             // Verify the root comment has its reply intact
             var rootComment = comments.FirstOrDefault(c => c.Id == "comment1");
             Assert.IsNotNull(rootComment, "Should find the root comment");
-            Assert.AreEqual(1, rootComment.Replies.Count, "Root comment should have one reply");
+            Assert.HasCount(1, rootComment.Replies, "Root comment should have one reply");
             Assert.AreEqual("comment2", rootComment.Replies[0].Id, "The reply should be correctly linked");
         }
     }
