@@ -79,10 +79,15 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService, 
         var feedbackResponse = await SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod.Get, getFeedbackUrl);
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
         
-        _logger.LogInformation("YouTube API response received. Content type: {ContentType}", _contentType);
+        _logger.LogInformation("YouTube API response received. Content type: {ContentType}, Response length: {Length}", _contentType, responseContent.Length);
+        Console.WriteLine($"📡 YouTube API Response: {responseContent.Length} characters");
+        Console.WriteLine($"📡 Content Type: {_contentType}");
         
         // Parse the YouTube response
-        var videos = JsonSerializer.Deserialize<List<YouTubeOutputVideo>>(responseContent);
+        var videos = JsonSerializer.Deserialize<List<YouTubeOutputVideo>>(responseContent, new JsonSerializerOptions 
+        { 
+            PropertyNameCaseInsensitive = true 
+        });
         
         if (videos == null || !videos.Any())
         {

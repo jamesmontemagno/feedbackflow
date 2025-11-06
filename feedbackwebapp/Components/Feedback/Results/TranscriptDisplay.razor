@@ -45,6 +45,42 @@
     [Parameter]
     public object? AdditionalData { get; set; }
 
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        
+        // Debug logging
+        if (AdditionalData != null)
+        {
+            Console.WriteLine($"🔍 TranscriptDisplay received AdditionalData of type: {AdditionalData.GetType().Name}");
+            
+            if (AdditionalData is List<YouTubeOutputVideo> videoList)
+            {
+                Console.WriteLine($"🔍 Found List<YouTubeOutputVideo> with {videoList.Count} videos");
+                foreach (var video in videoList)
+                {
+                    Console.WriteLine($"🔍 Video: {video.Title}, HasTranscript: {video.Transcript != null}");
+                    if (video.Transcript != null)
+                    {
+                        Console.WriteLine($"🔍   Transcript: {video.Transcript.Segments.Count} segments, {video.Transcript.FullText.Length} chars");
+                    }
+                }
+            }
+            else if (AdditionalData is YouTubeOutputVideo singleVideo)
+            {
+                Console.WriteLine($"🔍 Found single YouTubeOutputVideo: {singleVideo.Title}, HasTranscript: {singleVideo.Transcript != null}");
+            }
+            else
+            {
+                Console.WriteLine($"🔍 AdditionalData is neither List<YouTubeOutputVideo> nor YouTubeOutputVideo");
+            }
+        }
+        else
+        {
+            Console.WriteLine($"🔍 TranscriptDisplay AdditionalData is NULL");
+        }
+    }
+
     private bool HasTranscripts()
     {
         return GetVideosWithTranscripts().Any();

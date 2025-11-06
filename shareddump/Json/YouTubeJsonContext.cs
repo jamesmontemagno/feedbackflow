@@ -5,6 +5,8 @@ namespace SharedDump.Json;
 
 [JsonSourceGenerationOptions(PropertyNameCaseInsensitive = true, WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(YouTubeOutputVideo[]))]
+[JsonSerializable(typeof(List<YouTubeOutputVideo>))]
+[JsonSerializable(typeof(YouTubeOutputVideo))]
 [JsonSerializable(typeof(YouTubeOutputComment))]
 [JsonSerializable(typeof(YouTubeInputFile))]
 [JsonSerializable(typeof(YouTubeVideoResponse))]
