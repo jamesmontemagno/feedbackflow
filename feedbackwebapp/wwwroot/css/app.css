@@ -327,6 +327,11 @@ h1:focus {
     box-shadow: 0 0 0 0.15rem rgba(var(--primary-color-rgb), 0.25);
 }
 
+/* Form text - ensure proper contrast in both light and dark themes */
+.form-text {
+    color: var(--text-secondary) !important;
+}
+
 /* Form Floating Labels */
 .form-floating > .form-control,
 .form-floating > .form-control-plaintext {
