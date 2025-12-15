@@ -1,5 +1,5 @@
 :root {
-    /* Light theme (default) - Darker Pastel Purple Theme */
+    /* Light theme (default) - Darker Pastel Purple Theme! */
     --bg-primary: #f7f4ff;
     --bg-secondary: #ffffff;
     --bg-secondary-rgb: 255, 255, 255;
@@ -325,6 +325,11 @@ h1:focus {
     background-color: var(--primary-color);
     border-color: var(--primary-color);
     box-shadow: 0 0 0 0.15rem rgba(var(--primary-color-rgb), 0.25);
+}
+
+/* Form text - ensure proper contrast in both light and dark themes */
+.form-text {
+    color: var(--text-secondary) !important;
 }
 
 /* Form Floating Labels */
