@@ -87,9 +87,9 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         }
 
 
-        // Analyze all commetns from the video
+        // Analyze all comments from the video using optimized conversion
         int totalComments = commentCount ?? comments.Split(new[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries).Length;
-        var markdownResult = await AnalyzeCommentsInternal("YouTube", comments, totalComments);
+        var markdownResult = await AnalyzeCommentsWithOptimization("youtube", comments, totalComments, additionalData);
 
         // Get the videos from additionalData and if we just have 1 then just return that one.
         var videos = additionalData as List<YouTubeOutputVideo>;
@@ -110,14 +110,14 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
             if (video.Comments.Count == 0)
                 continue;
 
-            // Build comments string for this video
-            var videoComments = $"Video: {video.Title}\n\n" + string.Join("\n\n", video.Comments.Select(c => $"Comment by {c.Author}: {c.Text}"));
+            // Use optimized conversion for individual video analysis
+            var singleVideoList = new List<YouTubeOutputVideo> { video };
 
             UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {video.Comments.Count} comments for video: {video.Title}...");
             await Task.Delay(1500); // Simulate some processing delay
             try
             {
-                var videoMarkdown = await AnalyzeCommentsInternal($"YouTube", videoComments, video.Comments.Count);
+                var videoMarkdown = await AnalyzeCommentsWithOptimization("youtube", string.Empty, video.Comments.Count, singleVideoList);
                 markdownResults.Add($"## YouTube Comments Analysis for : {video.Title}\n");
                 markdownResults.Add(videoMarkdown);
             }

@@ -581,6 +581,7 @@ public class FeedbackFunctions
         try
         {
             var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            var requestBodyLength = requestBody.Length;
             var request = JsonSerializer.Deserialize(requestBody, FeedbackJsonContext.Default.AnalyzeCommentsRequest);
 
             if (string.IsNullOrEmpty(request?.Comments))
@@ -589,6 +590,16 @@ public class FeedbackFunctions
                 await badResponse.WriteStringAsync("Comments JSON is required");
                 return badResponse;
             }
+
+            var commentsLength = request.Comments.Length;
+            _logger.LogInformation(
+                "AnalyzeComments request: ServiceType={ServiceType}, PromptType={PromptType}, " +
+                "RequestBodyBytes={RequestBodyBytes}, CommentsLength={CommentsLength}, UseSlimmedComments={UseSlimmedComments}",
+                request.ServiceType,
+                request.PromptType ?? "default",
+                requestBodyLength,
+                commentsLength,
+                request.UseSlimmedComments);
 
             // Determine the prompt to use:
             // 1. If CustomPrompt is provided, use it
@@ -623,9 +634,12 @@ public class FeedbackFunctions
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing comment analysis request");
+            _logger.LogError(ex, 
+                "Error processing comment analysis request. ExceptionType={ExceptionType}, Message={ErrorMessage}", 
+                ex.GetType().Name,
+                ex.Message);
             var response = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await response.WriteStringAsync("An error occurred processing the request");
+            await response.WriteStringAsync($"An error occurred processing the request: {ex.Message}");
             return response;
         }
     }

@@ -39,8 +39,13 @@ public class DevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackService
 
     public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
-        var article = JsonSerializer.Deserialize<DevBlogsArticleModel>(comments);
-        if (article == null || article.Comments == null || article.Comments.Count == 0)
+        DevBlogsArticleModel? article = additionalData as DevBlogsArticleModel;
+        if (article is null)
+        {
+            article = JsonSerializer.Deserialize<DevBlogsArticleModel>(comments);
+        }
+        
+        if (article is null || article.Comments is null || article.Comments.Count == 0)
         {
             UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
@@ -49,8 +54,8 @@ public class DevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackService
         var totalComments = commentCount ?? CountComments(article.Comments);
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {totalComments} comments...");
 
-        // Analyze the comments and return both the markdown result and the comments list
-        var markdown = await AnalyzeCommentsInternal("devblogs", comments, totalComments);
+        // Analyze the comments using optimized conversion
+        var markdown = await AnalyzeCommentsWithOptimization("devblogs", comments, totalComments, article);
         return (markdown, article);
     }
 

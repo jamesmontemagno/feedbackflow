@@ -4,6 +4,7 @@ using FeedbackWebApp.Services.Interfaces;
 using FeedbackWebApp.Services.Authentication;
 using SharedDump.Utils;
 using SharedDump.AI;
+using SharedDump.Services;
 
 namespace FeedbackWebApp.Services.Feedback;
 
@@ -84,6 +85,58 @@ public abstract class FeedbackService : IFeedbackService
         OnStatusUpdate?.Invoke(status, message);
     }
 
+    /// <summary>
+    /// Prepares comments for analysis by converting platform data to optimized text format.
+    /// This reduces payload size and token usage significantly.
+    /// </summary>
+    /// <param name="serviceType">Platform type (github, reddit, hackernews, etc.)</param>
+    /// <param name="rawComments">Raw JSON comments from the backend</param>
+    /// <param name="additionalData">Parsed platform-specific data object</param>
+    /// <param name="originalCommentCount">Original number of comments before limiting</param>
+    /// <returns>Tuple of (prepared text, actual comment count included)</returns>
+    protected async Task<(string preparedText, int actualCommentCount)> PrepareCommentsForAnalysis(
+        string serviceType,
+        string rawComments,
+        object? additionalData,
+        int originalCommentCount)
+    {
+        var settings = await _userSettings.GetSettingsAsync();
+        var maxComments = settings.MaxCommentsToAnalyze;
+        var useSlimmed = settings.UseSlimmedComments;
+
+        // If we have structured data, use CommentPreparer for optimal conversion
+        if (additionalData is not null)
+        {
+            var (preparedText, actualCount) = CommentPreparer.PrepareForAnalysis(
+                additionalData, 
+                maxComments, 
+                useSlimmed);
+
+            if (!string.IsNullOrEmpty(preparedText))
+            {
+                return (preparedText, actualCount > 0 ? actualCount : originalCommentCount);
+            }
+        }
+
+        // Fallback: try to parse the raw JSON and convert it
+        if (!string.IsNullOrWhiteSpace(rawComments) && rawComments.TrimStart().StartsWith('[') || rawComments.TrimStart().StartsWith('{'))
+        {
+            var (preparedText, actualCount) = CommentPreparer.PrepareJsonForAnalysis(
+                rawComments,
+                serviceType,
+                maxComments,
+                useSlimmed);
+
+            if (!string.IsNullOrEmpty(preparedText) && actualCount > 0)
+            {
+                return (preparedText, actualCount);
+            }
+        }
+
+        // Final fallback: return raw content (for manual input or unparseable content)
+        return (rawComments, originalCommentCount);
+    }
+
     protected async Task<string> AnalyzeCommentsInternal(string serviceType, string comments, int commentCount, string? explicitCustomPrompt = null)
     {
         var maxComments = await GetMaxCommentsToAnalyze();
@@ -160,6 +213,34 @@ public abstract class FeedbackService : IFeedbackService
 
         UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed");
         return await analyzeResponse.Content.ReadAsStringAsync();
+    }
+
+    /// <summary>
+    /// Analyzes comments using optimized text conversion for reduced payload size.
+    /// This method should be preferred when structured platform data is available.
+    /// </summary>
+    /// <param name="serviceType">Platform type (github, reddit, hackernews, etc.)</param>
+    /// <param name="rawComments">Raw JSON comments from the backend</param>
+    /// <param name="originalCommentCount">Original number of comments before limiting</param>
+    /// <param name="additionalData">Parsed platform-specific data object</param>
+    /// <param name="explicitCustomPrompt">Optional custom prompt override</param>
+    /// <returns>Markdown analysis result</returns>
+    protected async Task<string> AnalyzeCommentsWithOptimization(
+        string serviceType, 
+        string rawComments, 
+        int originalCommentCount,
+        object? additionalData,
+        string? explicitCustomPrompt = null)
+    {
+        // Prepare comments using the optimized converter
+        var (preparedComments, actualCommentCount) = await PrepareCommentsForAnalysis(
+            serviceType, 
+            rawComments, 
+            additionalData, 
+            originalCommentCount);
+
+        // Use the prepared comments for analysis
+        return await AnalyzeCommentsInternal(serviceType, preparedComments, actualCommentCount, explicitCustomPrompt);
     }
 
     protected async Task<string> AnalyzeCommentsInternalWithoutStatusUpdate(string serviceType, string comments, int commentCount, string? explicitCustomPrompt = null)
