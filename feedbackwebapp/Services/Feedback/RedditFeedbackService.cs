@@ -77,8 +77,8 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
         var totalComments = commentCount ?? comments.Split("\n").Count(line => line.Contains("Comment by") || line.StartsWith("Thread:"));
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {totalComments} comments...");
 
-        // Analyze comments
-        var markdownResult = await AnalyzeCommentsInternal("reddit", comments, totalComments);
+        // Analyze comments using optimized conversion
+        var markdownResult = await AnalyzeCommentsWithOptimization("reddit", comments, totalComments, additionalData);
         return (markdownResult, additionalData);
     }
 
