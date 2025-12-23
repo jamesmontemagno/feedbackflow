@@ -624,8 +624,6 @@ public class FeedbackFunctions
                 request.UseSlimmedComments,
                 commentsStartsWith);
 
-            _logger.LogInformation($"Comments: {request.Comments}");
-
             // Log if comments look like JSON (which would indicate no conversion happened)
             var trimmedComments = request.Comments.TrimStart();
             if (trimmedComments.StartsWith('[') || trimmedComments.StartsWith('{'))

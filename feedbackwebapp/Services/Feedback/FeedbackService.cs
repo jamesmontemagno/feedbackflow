@@ -90,7 +90,7 @@ public abstract class FeedbackService : IFeedbackService
     /// This prevents timeouts and rate limiting from the AI service.
     /// ~300K characters ≈ ~75K tokens for most content.
     /// </summary>
-    private const int MaxCommentsCharacterLength = 600_000;
+    private const int MaxCommentsCharacterLength = 500_000;
 
     /// <summary>
     /// Prepares comments for analysis by converting platform data to optimized text format.
