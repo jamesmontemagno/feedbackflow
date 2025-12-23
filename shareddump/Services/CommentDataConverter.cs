@@ -17,7 +17,9 @@ public static class CommentDataConverter
     /// <summary>
     /// Converts YouTube video data to comment threads
     /// </summary>
-    public static List<CommentThread> ConvertYouTube(List<YouTubeOutputVideo> videos)
+    /// <param name="videos">List of YouTube videos with comments</param>
+    /// <param name="forAnalysis">If true, excludes metadata to reduce token usage for AI analysis</param>
+    public static List<CommentThread> ConvertYouTube(List<YouTubeOutputVideo> videos, bool forAnalysis = false)
     {
         return videos.Select(video => new CommentThread
         {
@@ -28,7 +30,7 @@ public static class CommentDataConverter
             CreatedAt = video.PublishedAt.DateTime,
             Url = video.Url,
             SourceType = "YouTube",
-            Metadata = new Dictionary<string, object>
+            Metadata = forAnalysis ? null : new Dictionary<string, object>
             {
                 ["ChannelId"] = video.ChannelId,
                 ["ViewCount"] = video.ViewCount,
@@ -97,7 +99,9 @@ public static class CommentDataConverter
     /// <summary>
     /// Converts Reddit thread data to comment threads
     /// </summary>
-    public static CommentThread ConvertReddit(RedditThreadModel thread)
+    /// <param name="thread">Reddit thread to convert</param>
+    /// <param name="forAnalysis">If true, excludes metadata to reduce token usage for AI analysis</param>
+    public static CommentThread ConvertReddit(RedditThreadModel thread, bool forAnalysis = false)
     {
         return new CommentThread
         {
@@ -108,7 +112,7 @@ public static class CommentDataConverter
             CreatedAt = thread.CreatedUtc.DateTime,
             Url = thread.Url,
             SourceType = "Reddit",
-            Metadata = new Dictionary<string, object>
+            Metadata = forAnalysis ? null : new Dictionary<string, object>
             {
                 ["Subreddit"] = thread.Subreddit,
                 ["Score"] = thread.Score,
@@ -121,11 +125,11 @@ public static class CommentDataConverter
     }
 
     // Overload to support previous list-based usage patterns
-    public static List<CommentThread> ConvertReddit(List<RedditThreadModel> threads)
+    public static List<CommentThread> ConvertReddit(List<RedditThreadModel> threads, bool forAnalysis = false)
     {
         var list = new List<CommentThread>(threads.Count);
         foreach (var t in threads)
-            list.Add(ConvertReddit(t));
+            list.Add(ConvertReddit(t, forAnalysis));
         return list;
     }
 
@@ -146,7 +150,9 @@ public static class CommentDataConverter
     /// <summary>
     /// Converts GitHub issue data to comment threads
     /// </summary>
-    public static List<CommentThread> ConvertGitHubIssues(List<GithubIssueModel> issues)
+    /// <param name="issues">List of GitHub issues to convert</param>
+    /// <param name="forAnalysis">If true, excludes metadata to reduce token usage for AI analysis</param>
+    public static List<CommentThread> ConvertGitHubIssues(List<GithubIssueModel> issues, bool forAnalysis = false)
     {
         return issues.Select(issue => new CommentThread
         {
@@ -157,20 +163,22 @@ public static class CommentDataConverter
             CreatedAt = issue.CreatedAt,
             Url = issue.URL,
             SourceType = "GitHub Issue",
-            Metadata = new Dictionary<string, object>
+            Metadata = forAnalysis ? null : new Dictionary<string, object>
             {
                 ["Upvotes"] = issue.Upvotes,
                 ["Labels"] = issue.Labels.ToList(),
                 ["LastUpdated"] = issue.LastUpdated
             },
-            Comments = ConvertGitHubComments(issue.Comments)
+            Comments = ConvertGitHubComments(issue.Comments, forAnalysis)
         }).ToList();
     }
 
     /// <summary>
     /// Converts GitHub discussion data to comment threads
     /// </summary>
-    public static List<CommentThread> ConvertGitHubDiscussions(List<GithubDiscussionModel> discussions)
+    /// <param name="discussions">List of GitHub discussions to convert</param>
+    /// <param name="forAnalysis">If true, excludes metadata to reduce token usage for AI analysis</param>
+    public static List<CommentThread> ConvertGitHubDiscussions(List<GithubDiscussionModel> discussions, bool forAnalysis = false)
     {
         return discussions.Select(discussion => new CommentThread
         {
@@ -181,12 +189,12 @@ public static class CommentDataConverter
             CreatedAt = DateTime.UtcNow, // Not provided in the model
             Url = discussion.Url,
             SourceType = "GitHub Discussion",
-            Metadata = discussion.AnswerId != null ? new Dictionary<string, object> { ["AnswerId"] = discussion.AnswerId } : null,
-            Comments = ConvertGitHubComments(discussion.Comments)
+            Metadata = (forAnalysis || discussion.AnswerId == null) ? null : new Dictionary<string, object> { ["AnswerId"] = discussion.AnswerId },
+            Comments = ConvertGitHubComments(discussion.Comments, forAnalysis)
         }).ToList();
     }
 
-    private static List<CommentData> ConvertGitHubComments(GithubCommentModel[] comments)
+    private static List<CommentData> ConvertGitHubComments(GithubCommentModel[] comments, bool forAnalysis = false)
     {
         // Build hierarchy based on parent relationships
         var commentDict = comments.ToDictionary(c => c.Id, c => new CommentData
@@ -197,7 +205,7 @@ public static class CommentDataConverter
             Content = c.Content,
             CreatedAt = DateTime.TryParse(c.CreatedAt, out var date) ? date : DateTime.UtcNow,
             Url = c.Url,
-            Metadata = CreateGitHubCommentMetadata(c)
+            Metadata = CreateGitHubCommentMetadata(c, forAnalysis)
         });        // Build the hierarchy
         var rootComments = new List<CommentData>();
         var orphanedComments = new List<CommentData>();
@@ -239,8 +247,12 @@ public static class CommentDataConverter
         return rootComments;
     }
 
-    private static Dictionary<string, object>? CreateGitHubCommentMetadata(GithubCommentModel comment)
+    private static Dictionary<string, object>? CreateGitHubCommentMetadata(GithubCommentModel comment, bool forAnalysis = false)
     {
+        // When analyzing, exclude code review fields to reduce token usage
+        if (forAnalysis)
+            return null;
+            
         var metadata = new Dictionary<string, object>();
         
         if (!string.IsNullOrEmpty(comment.CodeContext))
@@ -258,7 +270,9 @@ public static class CommentDataConverter
     /// <summary>
     /// Converts DevBlogs article data to comment threads
     /// </summary>
-    public static List<CommentThread> ConvertDevBlogs(DevBlogsArticleModel article)
+    /// <param name="article">DevBlogs article to convert</param>
+    /// <param name="forAnalysis">If true, excludes metadata to reduce token usage for AI analysis</param>
+    public static List<CommentThread> ConvertDevBlogs(DevBlogsArticleModel article, bool forAnalysis = false)
     {
         return new List<CommentThread>
         {
@@ -292,7 +306,9 @@ public static class CommentDataConverter
     /// <summary>
     /// Converts BlueSky feedback data to comment threads
     /// </summary>
-    public static List<CommentThread> ConvertBlueSky(BlueSkyFeedbackResponse response)
+    /// <param name="response">BlueSky feedback response to convert</param>
+    /// <param name="forAnalysis">If true, excludes metadata to reduce token usage for AI analysis</param>
+    public static List<CommentThread> ConvertBlueSky(BlueSkyFeedbackResponse response, bool forAnalysis = false)
     {
         // Group root posts and their replies
         var rootPosts = response.Items.Where(item => string.IsNullOrEmpty(item.ParentId)).ToList();
@@ -306,17 +322,17 @@ public static class CommentDataConverter
             CreatedAt = post.TimestampUtc,
             Url = string.Empty, // URL not provided in the model
             SourceType = "BlueSky",
-            Metadata = new Dictionary<string, object>
+            Metadata = forAnalysis ? null : new Dictionary<string, object>
             {
                 ["AuthorUsername"] = post.AuthorUsername ?? post.Author,
                 ["ProcessedPostCount"] = response.ProcessedPostCount,
                 ["MayBeIncomplete"] = response.MayBeIncomplete
             },
-            Comments = ConvertBlueSkyCommentsRecursive(response.Items, post.Id)
+            Comments = ConvertBlueSkyCommentsRecursive(response.Items, post.Id, forAnalysis)
         }).ToList();
     }
 
-    private static List<CommentData> ConvertBlueSkyCommentsRecursive(List<BlueSkyFeedbackItem> allItems, string parentId)
+    private static List<CommentData> ConvertBlueSkyCommentsRecursive(List<BlueSkyFeedbackItem> allItems, string parentId, bool forAnalysis = false)
     {
         var directReplies = allItems.Where(item => item.ParentId == parentId).ToList();
         
@@ -327,9 +343,9 @@ public static class CommentDataConverter
             Author = item.AuthorName ?? item.Author,
             Content = item.Content,
             CreatedAt = item.TimestampUtc,
-            Metadata = !string.IsNullOrEmpty(item.AuthorUsername) ? 
-                new Dictionary<string, object> { ["AuthorUsername"] = item.AuthorUsername } : null,
-            Replies = ConvertBlueSkyCommentsRecursive(allItems, item.Id) // Recursive call for nested replies
+            Metadata = (forAnalysis || string.IsNullOrEmpty(item.AuthorUsername)) ? null :
+                new Dictionary<string, object> { ["AuthorUsername"] = item.AuthorUsername },
+            Replies = ConvertBlueSkyCommentsRecursive(allItems, item.Id, forAnalysis) // Recursive call for nested replies
         }).ToList();
     }
 
@@ -346,7 +362,9 @@ public static class CommentDataConverter
     /// <summary>
     /// Converts HackerNews item data to comment threads
     /// </summary>
-    public static List<CommentThread> ConvertHackerNews(List<HackerNewsItem> stories)
+    /// <param name="stories">List of HackerNews stories to convert</param>
+    /// <param name="forAnalysis">If true, excludes metadata to reduce token usage for AI analysis</param>
+    public static List<CommentThread> ConvertHackerNews(List<HackerNewsItem> stories, bool forAnalysis = false)
     {
         var threads = new List<CommentThread>();
 
@@ -365,7 +383,7 @@ public static class CommentDataConverter
                 CreatedAt = DateTimeOffset.FromUnixTimeSeconds(story.Time).DateTime,
                 Url = story.Url,
                 SourceType = "HackerNews",
-                Metadata = new Dictionary<string, object>
+                Metadata = forAnalysis ? null : new Dictionary<string, object>
                 {
                     ["Score"] = story.Score ?? 0,
                     ["Descendants"] = story.Descendants ?? 0,
@@ -417,7 +435,9 @@ public static class CommentDataConverter
     /// <summary>
     /// Converts Twitter/X feedback data to comment threads
     /// </summary>
-    public static List<CommentThread> ConvertTwitter(TwitterFeedbackResponse response)
+    /// <param name="response">Twitter feedback response to convert</param>
+    /// <param name="forAnalysis">If true, excludes metadata to reduce token usage for AI analysis</param>
+    public static List<CommentThread> ConvertTwitter(TwitterFeedbackResponse response, bool forAnalysis = false)
     {
         // Group root tweets and their replies
         var rootTweets = response.Items.Where(item => string.IsNullOrEmpty(item.ParentId)).ToList();
@@ -431,18 +451,18 @@ public static class CommentDataConverter
             CreatedAt = tweet.TimestampUtc,
             Url = string.Empty, // URL not provided in the model
             SourceType = "Twitter",
-            Metadata = new Dictionary<string, object>
+            Metadata = forAnalysis ? null : new Dictionary<string, object>
             {
                 ["AuthorUsername"] = tweet.AuthorUsername ?? tweet.Author,
                 ["ProcessedTweetCount"] = response.ProcessedTweetCount,
                 ["MayBeIncomplete"] = response.MayBeIncomplete,
                 ["RateLimitInfo"] = response.RateLimitInfo ?? string.Empty
             },
-            Comments = tweet.Replies != null ? ConvertTwitterComments(tweet.Replies) : new List<CommentData>()
+            Comments = tweet.Replies != null ? ConvertTwitterComments(tweet.Replies, forAnalysis) : new List<CommentData>()
         }).ToList();
     }
 
-    private static List<CommentData> ConvertTwitterComments(List<TwitterFeedbackItem> items)
+    private static List<CommentData> ConvertTwitterComments(List<TwitterFeedbackItem> items, bool forAnalysis = false)
     {
         return items.Select(item => new CommentData
         {
@@ -452,8 +472,8 @@ public static class CommentDataConverter
             Content = item.Content,
             CreatedAt = item.TimestampUtc,
             Score = 0, // Twitter doesn't provide score/likes in this model
-            Replies = item.Replies != null ? ConvertTwitterComments(item.Replies) : new List<CommentData>(),
-            Metadata = new Dictionary<string, object>
+            Replies = item.Replies != null ? ConvertTwitterComments(item.Replies, forAnalysis) : new List<CommentData>(),
+            Metadata = forAnalysis ? null : new Dictionary<string, object>
             {
                 ["AuthorUsername"] = item.AuthorUsername ?? item.Author
             }
@@ -463,19 +483,21 @@ public static class CommentDataConverter
     /// <summary>
     /// Converts mixed additional data to comment threads based on type
     /// </summary>
-    public static List<CommentThread> ConvertAdditionalData(object? additionalData)
+    /// <param name="additionalData">Platform-specific data to convert</param>
+    /// <param name="forAnalysis">If true, excludes metadata to reduce token usage for AI analysis</param>
+    public static List<CommentThread> ConvertAdditionalData(object? additionalData, bool forAnalysis = false)
     {
         return additionalData switch
         {
-            List<YouTubeOutputVideo> videos => ConvertYouTube(videos),
-            RedditThreadModel redditThread => new List<CommentThread> { ConvertReddit(redditThread) },
-            List<RedditThreadModel> redditThreads => ConvertReddit(redditThreads),
-            List<GithubIssueModel> issues => ConvertGitHubIssues(issues),
-            List<GithubDiscussionModel> discussions => ConvertGitHubDiscussions(discussions),
-            DevBlogsArticleModel article => ConvertDevBlogs(article),
-            BlueSkyFeedbackResponse response => ConvertBlueSky(response),
-            TwitterFeedbackResponse twitterResponse => ConvertTwitter(twitterResponse),
-            List<HackerNewsItem> stories => ConvertHackerNews(stories),
+            List<YouTubeOutputVideo> videos => ConvertYouTube(videos, forAnalysis),
+            RedditThreadModel redditThread => new List<CommentThread> { ConvertReddit(redditThread, forAnalysis) },
+            List<RedditThreadModel> redditThreads => ConvertReddit(redditThreads, forAnalysis),
+            List<GithubIssueModel> issues => ConvertGitHubIssues(issues, forAnalysis),
+            List<GithubDiscussionModel> discussions => ConvertGitHubDiscussions(discussions, forAnalysis),
+            DevBlogsArticleModel article => ConvertDevBlogs(article, forAnalysis),
+            BlueSkyFeedbackResponse response => ConvertBlueSky(response, forAnalysis),
+            TwitterFeedbackResponse twitterResponse => ConvertTwitter(twitterResponse, forAnalysis),
+            List<HackerNewsItem> stories => ConvertHackerNews(stories, forAnalysis),
             _ => new List<CommentThread>()
         };
     }

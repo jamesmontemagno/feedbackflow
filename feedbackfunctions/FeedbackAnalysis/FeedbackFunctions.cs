@@ -793,6 +793,7 @@ public class FeedbackFunctions
             var maxCommentsStr = queryParams["maxComments"];
             var customPrompt = queryParams["customPrompt"];
             var typeStr = queryParams["type"];
+            var useSlimmedCommentsStr = queryParams["useSlimmedComments"];
 
             if (string.IsNullOrEmpty(url))
             {
@@ -803,6 +804,7 @@ public class FeedbackFunctions
 
             var maxComments = int.TryParse(maxCommentsStr, out var max) ? max : 1000;
             var responseType = int.TryParse(typeStr, out var type) ? type : 0;
+            var useSlimmedComments = !bool.TryParse(useSlimmedCommentsStr, out var slimmed) || slimmed; // Default to true
 
             string serviceType;
             object platformData;
@@ -813,25 +815,25 @@ public class FeedbackFunctions
             {
                 serviceType = "github";
                 platformData = await GetGitHubDataForAnalysis(url, maxComments);
-                commentsText = ConvertGitHubDataToCommentsText(platformData);
+                commentsText = ConvertGitHubDataToCommentsText(platformData, useSlimmedComments);
             }
             else if (SharedDump.Utils.UrlParsing.IsYouTubeUrl(url))
             {
                 serviceType = "youtube";
                 platformData = await GetYouTubeDataForAnalysis(url, maxComments);
-                commentsText = ConvertYouTubeDataToCommentsText(platformData);
+                commentsText = ConvertYouTubeDataToCommentsText(platformData, useSlimmedComments);
             }
             else if (SharedDump.Utils.UrlParsing.IsRedditUrl(url))
             {
                 serviceType = "reddit";
                 platformData = await GetRedditDataForAnalysis(url, maxComments);
-                commentsText = ConvertRedditDataToCommentsText(platformData);
+                commentsText = ConvertRedditDataToCommentsText(platformData, useSlimmedComments);
             }
             else if (SharedDump.Utils.UrlParsing.IsDevBlogsUrl(url))
             {
                 serviceType = "devblogs";
                 platformData = await GetDevBlogsDataForAnalysis(url, maxComments);
-                commentsText = ConvertDevBlogsDataToCommentsText(platformData);
+                commentsText = ConvertDevBlogsDataToCommentsText(platformData, useSlimmedComments);
             }
             else if (SharedDump.Utils.UrlParsing.IsTwitterUrl(url))
             {
@@ -844,7 +846,7 @@ public class FeedbackFunctions
             {
                 serviceType = "bluesky";
                 platformData = await GetBlueSkyDataForAnalysis(url, maxComments);
-                commentsText = ConvertBlueSkyDataToCommentsText(platformData);
+                commentsText = ConvertBlueSkyDataToCommentsText(platformData, useSlimmedComments);
             }
             else if (SharedDump.Utils.UrlParsing.IsHackerNewsUrl(url))
             {
@@ -857,7 +859,7 @@ public class FeedbackFunctions
                     return badResponse;
                 }
                     platformData = await GetHackerNewsDataForAnalysis(hackerNewsId, maxComments);
-                    commentsText = ConvertHackerNewsDataToCommentsText(platformData);
+                    commentsText = ConvertHackerNewsDataToCommentsText(platformData, useSlimmedComments);
                 }
                 else
                 {
@@ -1063,54 +1065,54 @@ public class FeedbackFunctions
         return itemsList;
     }
 
-    private string ConvertGitHubDataToCommentsText(object data)
+    private string ConvertGitHubDataToCommentsText(object data, bool forAnalysis = false)
     {
         return data switch
         {
-            GithubIssueModel issue => ConvertGitHubIssuesToCommentsText(new[] { issue }),
-            GithubDiscussionModel discussion => ConvertGitHubDiscussionsToCommentsText(new[] { discussion }),
+            GithubIssueModel issue => ConvertGitHubIssuesToCommentsText(new[] { issue }, forAnalysis),
+            GithubDiscussionModel discussion => ConvertGitHubDiscussionsToCommentsText(new[] { discussion }, forAnalysis),
             _ => JsonSerializer.Serialize(data)
         };
     }
 
-    private string ConvertGitHubIssuesToCommentsText(GithubIssueModel[] issues)
+    private string ConvertGitHubIssuesToCommentsText(GithubIssueModel[] issues, bool forAnalysis = false)
     {
-        var threads = SharedDump.Services.CommentDataConverter.ConvertGitHubIssues(issues.ToList());
-        return ConvertCommentThreadsToText(threads);
+        var threads = SharedDump.Services.CommentDataConverter.ConvertGitHubIssues(issues.ToList(), forAnalysis);
+        return ConvertCommentThreadsToText(threads, forAnalysis);
     }
 
-    private string ConvertGitHubDiscussionsToCommentsText(GithubDiscussionModel[] discussions)
+    private string ConvertGitHubDiscussionsToCommentsText(GithubDiscussionModel[] discussions, bool forAnalysis = false)
     {
-        var threads = SharedDump.Services.CommentDataConverter.ConvertGitHubDiscussions(discussions.ToList());
-        return ConvertCommentThreadsToText(threads);
+        var threads = SharedDump.Services.CommentDataConverter.ConvertGitHubDiscussions(discussions.ToList(), forAnalysis);
+        return ConvertCommentThreadsToText(threads, forAnalysis);
     }
 
-    private string ConvertYouTubeDataToCommentsText(object data)
+    private string ConvertYouTubeDataToCommentsText(object data, bool forAnalysis = false)
     {
         if (data is List<YouTubeOutputVideo> videos)
         {
-            var threads = SharedDump.Services.CommentDataConverter.ConvertYouTube(videos);
-            return ConvertCommentThreadsToText(threads);
+            var threads = SharedDump.Services.CommentDataConverter.ConvertYouTube(videos, forAnalysis);
+            return ConvertCommentThreadsToText(threads, forAnalysis);
         }
         return JsonSerializer.Serialize(data);
     }
 
-    private string ConvertRedditDataToCommentsText(object data)
+    private string ConvertRedditDataToCommentsText(object data, bool forAnalysis = false)
     {
         if (data is RedditThreadModel thread)
         {
-            var threadConverted = SharedDump.Services.CommentDataConverter.ConvertReddit(thread);
-            return ConvertCommentThreadsToText(new List<CommentThread> { threadConverted });
+            var threadConverted = SharedDump.Services.CommentDataConverter.ConvertReddit(thread, forAnalysis);
+            return ConvertCommentThreadsToText(new List<CommentThread> { threadConverted }, forAnalysis);
         }
         return JsonSerializer.Serialize(data);
     }
 
-    private string ConvertDevBlogsDataToCommentsText(object data)
+    private string ConvertDevBlogsDataToCommentsText(object data, bool forAnalysis = false)
     {
         if (data is DevBlogsArticleModel article)
         {
-            var threads = SharedDump.Services.CommentDataConverter.ConvertDevBlogs(article);
-            return ConvertCommentThreadsToText(threads);
+            var threads = SharedDump.Services.CommentDataConverter.ConvertDevBlogs(article, forAnalysis);
+            return ConvertCommentThreadsToText(threads, forAnalysis);
         }
         return JsonSerializer.Serialize(data);
     }
@@ -1121,27 +1123,27 @@ public class FeedbackFunctions
         return JsonSerializer.Serialize(data);
     }
 
-    private string ConvertBlueSkyDataToCommentsText(object data)
+    private string ConvertBlueSkyDataToCommentsText(object data, bool forAnalysis = false)
     {
         if (data is BlueSkyFeedbackResponse response)
         {
-            var threads = SharedDump.Services.CommentDataConverter.ConvertBlueSky(response);
-            return ConvertCommentThreadsToText(threads);
+            var threads = SharedDump.Services.CommentDataConverter.ConvertBlueSky(response, forAnalysis);
+            return ConvertCommentThreadsToText(threads, forAnalysis);
         }
         return JsonSerializer.Serialize(data);
     }
 
-    private string ConvertHackerNewsDataToCommentsText(object data)
+    private string ConvertHackerNewsDataToCommentsText(object data, bool forAnalysis = false)
     {
         if (data is List<HackerNewsItem> items)
         {
-            var threads = SharedDump.Services.CommentDataConverter.ConvertHackerNews(items);
-            return ConvertCommentThreadsToText(threads);
+            var threads = SharedDump.Services.CommentDataConverter.ConvertHackerNews(items, forAnalysis);
+            return ConvertCommentThreadsToText(threads, forAnalysis);
         }
         return JsonSerializer.Serialize(data);
     }
 
-    private string ConvertCommentThreadsToText(List<CommentThread> threads)
+    private string ConvertCommentThreadsToText(List<CommentThread> threads, bool forAnalysis = false)
     {
         if (!threads.Any())
             return string.Empty;
@@ -1158,7 +1160,9 @@ public class FeedbackFunctions
             result.AppendLine($"Author: {thread.Author}");
             result.AppendLine($"Created: {thread.CreatedAt:yyyy-MM-dd HH:mm:ss}");
             result.AppendLine($"Source: {thread.SourceType}");
-            if (!string.IsNullOrEmpty(thread.Url))
+            
+            // Exclude URL when analyzing to reduce token usage
+            if (!forAnalysis && !string.IsNullOrEmpty(thread.Url))
             {
                 result.AppendLine($"URL: {thread.Url}");
             }
@@ -1167,7 +1171,7 @@ public class FeedbackFunctions
             if (thread.Comments.Any())
             {
                 result.AppendLine("## Comments");
-                AppendCommentsToText(result, thread.Comments, 0);
+                AppendCommentsToText(result, thread.Comments, 0, forAnalysis);
             }
 
             result.AppendLine("---");
@@ -1176,7 +1180,7 @@ public class FeedbackFunctions
         return result.ToString();
     }
 
-    private void AppendCommentsToText(System.Text.StringBuilder result, List<CommentData> comments, int depth)
+    private void AppendCommentsToText(System.Text.StringBuilder result, List<CommentData> comments, int depth, bool forAnalysis = false)
     {
         foreach (var comment in comments)
         {
@@ -1191,7 +1195,7 @@ public class FeedbackFunctions
 
             if (comment.Replies.Any())
             {
-                AppendCommentsToText(result, comment.Replies, depth + 1);
+                AppendCommentsToText(result, comment.Replies, depth + 1, forAnalysis);
             }
         }
     }

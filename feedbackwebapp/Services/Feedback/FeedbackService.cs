@@ -146,7 +146,8 @@ public abstract class FeedbackService : IFeedbackService
             serviceType,
             comments,
             customPrompt,
-            promptType
+            promptType,
+            useSlimmedComments = settings.UseSlimmedComments
         });
 
         var analyzeContent = new StringContent(
@@ -204,7 +205,8 @@ public abstract class FeedbackService : IFeedbackService
             serviceType,
             comments,
             customPrompt,
-            promptType
+            promptType,
+            useSlimmedComments = settings.UseSlimmedComments
         });
 
         var analyzeContent = new StringContent(

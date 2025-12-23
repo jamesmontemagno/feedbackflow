@@ -69,6 +69,19 @@
                             </div>
                         </div>
 
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="useSlimmedComments" 
+                                @bind="UseSlimmedComments" @bind:event="onchange" />
+                            <label class="form-check-label" for="useSlimmedComments">
+                                Use Optimized Comment Data for AI Analysis (Recommended)
+                            </label>
+                            <div class="text-muted small mt-1">
+                                When enabled, reduces token usage by removing metadata, IDs, and URLs from comments sent to AI. 
+                                Keeps essential content: author, text, timestamps, and nested replies. 
+                                This significantly reduces API costs while maintaining analysis quality.
+                            </div>
+                        </div>
+
                         <div class="card-footer">
                             <SaveButton OnSave="SaveSettings" IsSaving="@isSaving" IsDisabled="@(!hasUnsavedChanges)"
                                 ClassNames="save-button" />
@@ -220,6 +233,7 @@
     private int _maxCommentsToAnalyze = 1200;
     private string _universalPrompt = string.Empty;
     private PromptType _selectedPromptType = PromptType.ProductFeedback;
+    private bool _useSlimmedComments = true;
 
     internal record VoiceInfo(
     string Name = "",
@@ -282,6 +296,20 @@
             }
         }
     }
+
+    private bool UseSlimmedComments
+    {
+        get => _useSlimmedComments;
+        set
+        {
+            if (_useSlimmedComments != value)
+            {
+                _useSlimmedComments = value;
+                hasUnsavedChanges = true;
+            }
+        }
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -309,6 +337,7 @@
             _maxCommentsToAnalyze = settings.MaxCommentsToAnalyze;
             _universalPrompt = settings.UniversalPrompt;
             _selectedPromptType = settings.SelectedPromptType;
+            _useSlimmedComments = settings.UseSlimmedComments;
         }
 
         hasUnsavedChanges = false;
@@ -425,6 +454,7 @@
             settings.MaxCommentsToAnalyze = _maxCommentsToAnalyze;
             settings.UniversalPrompt = _universalPrompt;
             settings.SelectedPromptType = _selectedPromptType;
+            settings.UseSlimmedComments = _useSlimmedComments;
 
             // Save to persistent storage
             await UserSettings.SaveSettingsAsync(settings);

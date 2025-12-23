@@ -33,6 +33,9 @@ public class UserSettingsService
         // Manual prompt property - separate from universal prompt
         public string ManualPrompt { get; set; } = FeedbackAnalyzerService.GetServiceSpecificPrompt("manual");
         
+        // Whether to use slimmed-down comment data for AI analysis (excludes metadata, IDs, URLs)
+        // Defaults to true to reduce token usage while preserving essential content
+        public bool UseSlimmedComments { get; set; } = true;
     }
 
     public UserSettingsService(IJSRuntime jsRuntime, IConfiguration configuration)
