@@ -88,9 +88,9 @@ public abstract class FeedbackService : IFeedbackService
     /// <summary>
     /// Maximum character length for comments sent to analysis.
     /// This prevents timeouts and rate limiting from the AI service.
-    /// ~100K characters ≈ ~25K tokens for most content.
+    /// ~300K characters ≈ ~75K tokens for most content.
     /// </summary>
-    private const int MaxCommentsCharacterLength = 100_000;
+    private const int MaxCommentsCharacterLength = 300_000;
 
     /// <summary>
     /// Prepares comments for analysis by converting platform data to optimized text format.
@@ -111,39 +111,68 @@ public abstract class FeedbackService : IFeedbackService
         var maxComments = settings.MaxCommentsToAnalyze;
         var useSlimmed = settings.UseSlimmedComments;
 
-        string preparedText = rawComments;
+        // Debug logging
+        var rawLength = rawComments?.Length ?? 0;
+        var additionalDataType = additionalData?.GetType().FullName ?? "null";
+        Console.WriteLine($"[PrepareCommentsForAnalysis] START: serviceType={serviceType}, rawCommentsLength={rawLength}, additionalDataType={additionalDataType}, originalCommentCount={originalCommentCount}, maxComments={maxComments}, useSlimmed={useSlimmed}");
+
+        string preparedText = rawComments ?? string.Empty;
         int actualCount = originalCommentCount;
+        string conversionSource = "raw (no conversion)";
 
         // If we have structured data, use CommentPreparer for optimal conversion
         if (additionalData is not null)
         {
+            Console.WriteLine($"[PrepareCommentsForAnalysis] Trying CommentPreparer.PrepareForAnalysis with additionalData type: {additionalDataType}");
+            
             var (text, count) = CommentPreparer.PrepareForAnalysis(
                 additionalData, 
                 maxComments, 
                 useSlimmed);
 
+            Console.WriteLine($"[PrepareCommentsForAnalysis] CommentPreparer result: textLength={text?.Length ?? 0}, count={count}");
+
             if (!string.IsNullOrEmpty(text))
             {
                 preparedText = text;
                 actualCount = count > 0 ? count : originalCommentCount;
+                conversionSource = $"CommentPreparer.PrepareForAnalysis ({additionalDataType})";
+                Console.WriteLine($"[PrepareCommentsForAnalysis] Using CommentPreparer result");
+            }
+            else
+            {
+                Console.WriteLine($"[PrepareCommentsForAnalysis] CommentPreparer returned empty, will try JSON fallback");
             }
         }
-        // Fallback: try to parse the raw JSON and convert it
-        else if (!string.IsNullOrWhiteSpace(rawComments) && 
-                 (rawComments.TrimStart().StartsWith('[') || rawComments.TrimStart().StartsWith('{')))
+        
+        // Fallback: try to parse the raw JSON and convert it (only if we haven't already converted)
+        if (conversionSource.StartsWith("raw") && !string.IsNullOrWhiteSpace(rawComments) && 
+            (rawComments.TrimStart().StartsWith('[') || rawComments.TrimStart().StartsWith('{')))
         {
+            Console.WriteLine($"[PrepareCommentsForAnalysis] Trying JSON fallback with PrepareJsonForAnalysis");
+            
             var (text, count) = CommentPreparer.PrepareJsonForAnalysis(
                 rawComments,
                 serviceType,
                 maxComments,
                 useSlimmed);
 
+            Console.WriteLine($"[PrepareCommentsForAnalysis] JSON fallback result: textLength={text?.Length ?? 0}, count={count}");
+
             if (!string.IsNullOrEmpty(text) && count > 0)
             {
                 preparedText = text;
                 actualCount = count;
+                conversionSource = "CommentPreparer.PrepareJsonForAnalysis";
+                Console.WriteLine($"[PrepareCommentsForAnalysis] Using JSON fallback result");
+            }
+            else
+            {
+                Console.WriteLine($"[PrepareCommentsForAnalysis] JSON fallback failed or returned no comments");
             }
         }
+
+        Console.WriteLine($"[PrepareCommentsForAnalysis] After conversion: textLength={preparedText.Length}, actualCount={actualCount}, source={conversionSource}");
 
         // Apply hard character limit to prevent AI rate limiting/timeouts
         if (preparedText.Length > MaxCommentsCharacterLength)
@@ -155,9 +184,13 @@ public abstract class FeedbackService : IFeedbackService
             var ratio = (double)preparedText.Length / originalLength;
             actualCount = Math.Max(1, (int)(actualCount * ratio));
             
+            Console.WriteLine($"[PrepareCommentsForAnalysis] TRUNCATED: {originalLength:N0} -> {preparedText.Length:N0} chars, actualCount adjusted to {actualCount}");
+            
             UpdateStatus(FeedbackProcessStatus.AnalyzingComments, 
                 $"Content truncated from {originalLength:N0} to {preparedText.Length:N0} characters for optimal analysis...");
         }
+
+        Console.WriteLine($"[PrepareCommentsForAnalysis] END: finalTextLength={preparedText.Length}, finalCount={actualCount}, conversionSource={conversionSource}");
 
         return (preparedText, actualCount);
     }

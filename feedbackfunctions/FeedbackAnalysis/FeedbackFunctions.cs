@@ -566,40 +566,79 @@ public class FeedbackFunctions
     public async Task<HttpResponseData> AnalyzeComments(
         [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
-        _logger.LogInformation("Processing comment analysis request");
+        _logger.LogInformation("AnalyzeComments: Starting request processing");
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         // Authenticate the request
         var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
         if (authErrorResponse != null)
+        {
+            _logger.LogWarning("AnalyzeComments: Authentication failed");
             return authErrorResponse;
+        }
+        _logger.LogInformation("AnalyzeComments: Authentication successful, userId={UserId}", user?.UserId ?? "unknown");
 
         // Validate usage limits
         var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.Analysis, _userAccountService, _logger);
         if (usageValidationResponse != null)
+        {
+            _logger.LogWarning("AnalyzeComments: Usage validation failed");
             return usageValidationResponse;
+        }
+        _logger.LogInformation("AnalyzeComments: Usage validation passed");
 
         try
         {
+            _logger.LogInformation("AnalyzeComments: Reading request body...");
             var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             var requestBodyLength = requestBody.Length;
+            _logger.LogInformation("AnalyzeComments: Request body read, length={RequestBodyLength} bytes", requestBodyLength);
+            
+            _logger.LogInformation("AnalyzeComments: Deserializing request...");
             var request = JsonSerializer.Deserialize(requestBody, FeedbackJsonContext.Default.AnalyzeCommentsRequest);
 
             if (string.IsNullOrEmpty(request?.Comments))
             {
+                _logger.LogWarning("AnalyzeComments: Comments field is empty or null");
                 var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 await badResponse.WriteStringAsync("Comments JSON is required");
                 return badResponse;
             }
 
             var commentsLength = request.Comments.Length;
+            var commentsPreview = request.Comments.Length > 500 
+                ? request.Comments.Substring(0, 500) + "..." 
+                : request.Comments;
+            var commentsStartsWith = request.Comments.TrimStart().Substring(0, Math.Min(50, request.Comments.TrimStart().Length));
+            
             _logger.LogInformation(
-                "AnalyzeComments request: ServiceType={ServiceType}, PromptType={PromptType}, " +
-                "RequestBodyBytes={RequestBodyBytes}, CommentsLength={CommentsLength}, UseSlimmedComments={UseSlimmedComments}",
-                request.ServiceType,
-                request.PromptType ?? "default",
+                "AnalyzeComments: Request details - ServiceType={ServiceType}, PromptType={PromptType}, " +
+                "CustomPromptProvided={CustomPromptProvided}, RequestBodyBytes={RequestBodyBytes}, " +
+                "CommentsLength={CommentsLength}, UseSlimmedComments={UseSlimmedComments}, " +
+                "CommentsStartsWith={CommentsStartsWith}",
+                request.ServiceType ?? "null",
+                request.PromptType ?? "null",
+                !string.IsNullOrEmpty(request.CustomPrompt),
                 requestBodyLength,
                 commentsLength,
-                request.UseSlimmedComments);
+                request.UseSlimmedComments,
+                commentsStartsWith);
+
+            // Log if comments look like JSON (which would indicate no conversion happened)
+            var trimmedComments = request.Comments.TrimStart();
+            if (trimmedComments.StartsWith('[') || trimmedComments.StartsWith('{'))
+            {
+                _logger.LogWarning(
+                    "AnalyzeComments: Comments appear to be raw JSON (starts with [ or {). " +
+                    "This suggests frontend conversion may not have worked. CommentsLength={CommentsLength}",
+                    commentsLength);
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "AnalyzeComments: Comments appear to be converted text (not JSON). CommentsLength={CommentsLength}",
+                    commentsLength);
+            }
 
             // Determine the prompt to use:
             // 1. If CustomPrompt is provided, use it
@@ -612,17 +651,52 @@ public class FeedbackFunctions
                 if (Enum.TryParse<SharedDump.AI.PromptType>(request.PromptType, true, out var parsedPromptType))
                 {
                     promptToUse = SharedDump.AI.FeedbackAnalyzerService.GetPromptByType(parsedPromptType);
+                    _logger.LogInformation("AnalyzeComments: Using standard prompt for type {PromptType}", parsedPromptType);
+                }
+                else
+                {
+                    _logger.LogWarning("AnalyzeComments: Failed to parse PromptType '{PromptType}'", request.PromptType);
                 }
             }
+            
+            _logger.LogInformation(
+                "AnalyzeComments: Prompt determined - UsingCustomPrompt={UsingCustomPrompt}, PromptLength={PromptLength}",
+                !string.IsNullOrEmpty(request.CustomPrompt),
+                promptToUse?.Length ?? 0);
 
+            _logger.LogInformation("AnalyzeComments: Starting AI analysis stream...");
+            var analysisStartTime = stopwatch.ElapsedMilliseconds;
+            
             var analysisBuilder = new System.Text.StringBuilder();
+            var chunkCount = 0;
             await foreach (var update in _analyzerService.GetStreamingAnalysisAsync(
-                request.ServiceType, 
+                request.ServiceType ?? "unknown", 
                 request.Comments,
                 promptToUse))
             {
                 analysisBuilder.Append(update);
+                chunkCount++;
+                
+                // Log progress every 10 chunks
+                if (chunkCount % 10 == 0)
+                {
+                    _logger.LogDebug(
+                        "AnalyzeComments: Received {ChunkCount} chunks, current output length={OutputLength}",
+                        chunkCount,
+                        analysisBuilder.Length);
+                }
             }
+
+            var analysisEndTime = stopwatch.ElapsedMilliseconds;
+            var analysisDuration = analysisEndTime - analysisStartTime;
+            
+            _logger.LogInformation(
+                "AnalyzeComments: AI analysis completed - Chunks={ChunkCount}, OutputLength={OutputLength}, " +
+                "AnalysisDurationMs={AnalysisDurationMs}, TotalDurationMs={TotalDurationMs}",
+                chunkCount,
+                analysisBuilder.Length,
+                analysisDuration,
+                stopwatch.ElapsedMilliseconds);
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteStringAsync(analysisBuilder.ToString());
@@ -630,14 +704,23 @@ public class FeedbackFunctions
             // Track usage on successful completion
             await user!.TrackUsageAsync(UsageType.Analysis, _userAccountService, _logger, request.ServiceType);
             
+            _logger.LogInformation(
+                "AnalyzeComments: Request completed successfully - TotalDurationMs={TotalDurationMs}",
+                stopwatch.ElapsedMilliseconds);
+            
             return response;
         }
         catch (Exception ex)
         {
+            stopwatch.Stop();
             _logger.LogError(ex, 
-                "Error processing comment analysis request. ExceptionType={ExceptionType}, Message={ErrorMessage}", 
-                ex.GetType().Name,
-                ex.Message);
+                "AnalyzeComments: ERROR - ExceptionType={ExceptionType}, Message={ErrorMessage}, " +
+                "InnerException={InnerException}, DurationMs={DurationMs}, StackTrace={StackTrace}", 
+                ex.GetType().FullName,
+                ex.Message,
+                ex.InnerException?.Message ?? "none",
+                stopwatch.ElapsedMilliseconds,
+                ex.StackTrace);
             var response = req.CreateResponse(HttpStatusCode.InternalServerError);
             await response.WriteStringAsync($"An error occurred processing the request: {ex.Message}");
             return response;
