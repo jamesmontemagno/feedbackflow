@@ -23,6 +23,10 @@ builder.Services.AddMcpServer()
     .WithTools<FeedbackFlowToolsShared>();
 
 builder.Services.AddHttpClient();
+builder.Services.ConfigureHttpClientDefaults(http =>
+{
+    http.ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(3));
+});
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuthenticationProvider, RemoteAuthenticationProvider>();
 
