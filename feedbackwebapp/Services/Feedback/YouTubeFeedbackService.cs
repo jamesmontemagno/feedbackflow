@@ -25,7 +25,7 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         _playlistId = playlistId;
     }
 
-    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null)
     {
         var processedVideoId = UrlParsing.ExtractVideoId(_videoId);
         var processedPlaylistId = UrlParsing.ExtractPlaylistId(_playlistId);
@@ -40,7 +40,7 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         var youTubeCode = Configuration["FeedbackApi:FunctionsKey"]
             ?? throw new InvalidOperationException("YouTube API code not configured");
 
-        var maxComments = await GetMaxCommentsToAnalyze();
+        var maxComments = await GetMaxCommentsToAnalyze(maxCommentsOverride);
 
         // Get comments from the YouTube API
         var queryParams = new List<string>

@@ -19,7 +19,7 @@ public class MockManualFeedbackService : FeedbackService, IManualFeedbackService
         FeedbackStatusUpdate? onStatusUpdate = null)
         : base(http, configuration, userSettings, authenticationHeaderService, onStatusUpdate) { }
 
-    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null)
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Processing manual input...");
         await Task.Delay(500); // Simulate network delay

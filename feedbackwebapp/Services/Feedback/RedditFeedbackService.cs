@@ -28,7 +28,7 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
         return comments.Count + comments.Sum(c => CountCommentsAndReplies(c.Replies));
     }
 
-    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null)
     {
         var processedId = UrlParsing.ExtractRedditId(_threadId);
 
@@ -42,7 +42,7 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
         var redditCode = Configuration["FeedbackApi:FunctionsKey"]
             ?? throw new InvalidOperationException("Reddit API code not configured");
 
-        var maxComments = await GetMaxCommentsToAnalyze();
+        var maxComments = await GetMaxCommentsToAnalyze(maxCommentsOverride);
 
         // Get comments from the Reddit API
         var getFeedbackUrl = $"{BaseUrl}/api/GetRedditFeedback?code={Uri.EscapeDataString(redditCode)}&threads={Uri.EscapeDataString(processedId)}&maxComments={maxComments}";

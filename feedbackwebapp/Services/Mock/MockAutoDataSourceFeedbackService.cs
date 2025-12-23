@@ -19,7 +19,7 @@ public class MockAutoDataSourceFeedbackService : FeedbackService, IAutoDataSourc
     {
     }
 
-    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null)
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching comments from multiple sources...");
         await Task.Delay(1000); // Simulate network delay

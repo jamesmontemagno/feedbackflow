@@ -18,7 +18,7 @@ public class MockRedditFeedbackService : FeedbackService, IRedditFeedbackService
     {
     }
 
-    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null)
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock Reddit data...");
         await Task.Delay(1000); // Simulate network delay

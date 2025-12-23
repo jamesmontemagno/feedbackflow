@@ -19,7 +19,7 @@ public class MockTwitterFeedbackService : FeedbackService, ITwitterFeedbackServi
     {
     }
 
-    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null)
     {
         try
         {

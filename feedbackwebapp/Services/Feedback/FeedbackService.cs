@@ -48,7 +48,7 @@ public abstract class FeedbackService : IFeedbackService
             ?? throw new InvalidOperationException("Base URL not configured");
     }
 
-    public abstract Task<(string rawComments, int commentCount, object? additionalData)> GetComments();
+    public abstract Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null);
 
     public virtual async Task<(string markdownResult, object? additionalData)> AnalyzeComments(
         string comments, int? commentCount = null, object? additionalData = null)
@@ -219,8 +219,11 @@ public abstract class FeedbackService : IFeedbackService
         return await analyzeResponse.Content.ReadAsStringAsync();
     }
 
-    protected async Task<int> GetMaxCommentsToAnalyze()
+    protected async Task<int> GetMaxCommentsToAnalyze(int? maxCommentsOverride = null)
     {
+        if (maxCommentsOverride.HasValue)
+            return maxCommentsOverride.Value;
+            
         var settings = await _userSettings.GetSettingsAsync();
         return settings.MaxCommentsToAnalyze;
     }

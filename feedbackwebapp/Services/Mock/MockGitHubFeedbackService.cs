@@ -20,7 +20,7 @@ public class MockGitHubFeedbackService : FeedbackService, IGitHubFeedbackService
     {
     }
 
-    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null)
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching GitHub feedback...");
         

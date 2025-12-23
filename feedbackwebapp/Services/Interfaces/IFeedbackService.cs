@@ -40,8 +40,9 @@ public interface IFeedbackService
 {    /// <summary>
 	 /// Gets raw comments directly from the source
 	 /// </summary>
+	 /// <param name="maxCommentsOverride">Optional override for maximum comments to collect. If null, uses user settings.</param>
 	 /// <returns>The raw comments, total number of comments found, and any additional data</returns>
-	Task<(string rawComments, int commentCount, object? additionalData)> GetComments();
+	Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null);
 
 	/// <summary>
 	/// Analyzes comments to produce insights
