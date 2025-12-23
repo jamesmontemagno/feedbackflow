@@ -362,43 +362,151 @@ public static class CommentDataConverter
     /// <summary>
     /// Converts HackerNews item data to comment threads
     /// </summary>
-    /// <param name="stories">List of HackerNews stories to convert</param>
+    /// <param name="items">List of HackerNews items (first item is the story, rest are comments)</param>
     /// <param name="forAnalysis">If true, excludes metadata to reduce token usage for AI analysis</param>
-    public static List<CommentThread> ConvertHackerNews(List<HackerNewsItem> stories, bool forAnalysis = false)
+    public static List<CommentThread> ConvertHackerNews(List<HackerNewsItem> items, bool forAnalysis = false)
     {
         var threads = new List<CommentThread>();
 
-        foreach (var story in stories)
+        if (items == null || !items.Any())
+            return threads;
+
+        // The first item in the list is typically the story, rest are comments
+        // Find the story (item with Type == "story") or use the first item if it has a title
+        var story = items.FirstOrDefault(i => i.Type == "story") 
+                    ?? items.FirstOrDefault(i => !string.IsNullOrEmpty(i.Title));
+        
+        if (story == null || story.Deleted == true)
         {
-            // Skip deleted or invalid stories, and only process actual stories (not comments)
-            if (story.Deleted == true || string.IsNullOrEmpty(story.Title) || story.Type != "story")
-                continue;
-
-            var thread = new CommentThread
+            // If no story found, try to create a thread from all comments
+            // This handles cases where we only have comments without the parent story
+            if (items.Any(i => i.Type == "comment"))
             {
-                Id = story.Id.ToString(),
-                Title = story.Title,
-                Description = story.Text,
-                Author = story.By ?? "Unknown",
-                CreatedAt = DateTimeOffset.FromUnixTimeSeconds(story.Time).DateTime,
-                Url = story.Url,
-                SourceType = "HackerNews",
-                Metadata = forAnalysis ? null : new Dictionary<string, object>
+                var firstComment = items.First(i => i.Type == "comment");
+                var thread = new CommentThread
                 {
-                    ["Score"] = story.Score ?? 0,
-                    ["Descendants"] = story.Descendants ?? 0,
-                    ["Type"] = story.Type ?? "story"
-                },
-                Comments = ConvertHackerNewsComments(stories, story.Kids)
-            };
-
-            threads.Add(thread);
+                    Id = firstComment.MainStoryId?.ToString() ?? firstComment.Id.ToString(),
+                    Title = "HackerNews Discussion",
+                    Description = null,
+                    Author = "Unknown",
+                    CreatedAt = DateTimeOffset.FromUnixTimeSeconds(firstComment.Time).DateTime,
+                    Url = $"https://news.ycombinator.com/item?id={firstComment.MainStoryId ?? firstComment.Id}",
+                    SourceType = "HackerNews",
+                    Metadata = null,
+                    Comments = ConvertHackerNewsCommentsFromFlatList(items)
+                };
+                threads.Add(thread);
+            }
+            return threads;
         }
 
+        var thread2 = new CommentThread
+        {
+            Id = story.Id.ToString(),
+            Title = story.Title ?? "HackerNews Discussion",
+            Description = story.Text,
+            Author = story.By ?? "Unknown",
+            CreatedAt = DateTimeOffset.FromUnixTimeSeconds(story.Time).DateTime,
+            Url = story.Url ?? $"https://news.ycombinator.com/item?id={story.Id}",
+            SourceType = "HackerNews",
+            Metadata = forAnalysis ? null : new Dictionary<string, object>
+            {
+                ["Score"] = story.Score ?? 0,
+                ["Descendants"] = story.Descendants ?? 0,
+                ["Type"] = story.Type ?? "story"
+            },
+            Comments = story.Kids != null && story.Kids.Any() 
+                ? ConvertHackerNewsComments(items, story.Kids)
+                : ConvertHackerNewsCommentsFromFlatList(items.Where(i => i.Id != story.Id).ToList())
+        };
+
+        threads.Add(thread2);
         return threads;
     }
 
-    private static List<CommentData> ConvertHackerNewsComments(List<HackerNewsItem> allItems, List<int> commentIds)
+    /// <summary>
+    /// Converts a flat list of HackerNews comments to CommentData, building the tree structure from Parent references
+    /// </summary>
+    private static List<CommentData> ConvertHackerNewsCommentsFromFlatList(List<HackerNewsItem> items)
+    {
+        if (items == null || !items.Any())
+            return new List<CommentData>();
+
+        // Filter to only comments
+        var comments = items.Where(i => i.Type == "comment" && i.Deleted != true).ToList();
+        if (!comments.Any())
+            return new List<CommentData>();
+
+        // Create CommentData objects for all comments
+        var commentDataDict = comments.ToDictionary(
+            c => c.Id,
+            c => new CommentData
+            {
+                Id = c.Id.ToString(),
+                ParentId = c.Parent?.ToString(),
+                Author = c.By ?? "Unknown",
+                Content = CleanHtmlContent(c.Text ?? string.Empty),
+                CreatedAt = DateTimeOffset.FromUnixTimeSeconds(c.Time).DateTime,
+                Score = c.Score,
+                Replies = new List<CommentData>()
+            });
+
+        // Build the tree structure
+        var rootComments = new List<CommentData>();
+        foreach (var comment in comments)
+        {
+            var commentData = commentDataDict[comment.Id];
+            
+            // Check if parent is another comment in our list
+            if (comment.Parent.HasValue && commentDataDict.TryGetValue(comment.Parent.Value, out var parentComment))
+            {
+                parentComment.Replies.Add(commentData);
+            }
+            else
+            {
+                // This is a root-level comment (parent is the story or not in our list)
+                rootComments.Add(commentData);
+            }
+        }
+
+        return rootComments;
+    }
+
+    /// <summary>
+    /// Cleans HTML entities and tags from HackerNews content
+    /// </summary>
+    private static string CleanHtmlContent(string content)
+    {
+        if (string.IsNullOrEmpty(content))
+            return content;
+
+        // Decode common HTML entities
+        content = content
+            .Replace("&#x27;", "'")
+            .Replace("&amp;", "&")
+            .Replace("&lt;", "<")
+            .Replace("&gt;", ">")
+            .Replace("&quot;", "\"")
+            .Replace("&#x2F;", "/")
+            .Replace("<p>", "\n\n")
+            .Replace("</p>", "")
+            .Replace("<i>", "_")
+            .Replace("</i>", "_")
+            .Replace("<b>", "**")
+            .Replace("</b>", "**")
+            .Replace("<code>", "`")
+            .Replace("</code>", "`")
+            .Replace("<pre>", "```\n")
+            .Replace("</pre>", "\n```");
+
+        // Remove remaining HTML tags (like <a> links)
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"<a[^>]*href=""([^""]+)""[^>]*>([^<]*)</a>", "$2 ($1)");
+        content = System.Text.RegularExpressions.Regex.Replace(content, @"<[^>]+>", "");
+
+        return content.Trim();
+    }
+
+    private static List<CommentData> ConvertHackerNewsComments(List<HackerNewsItem> allItems, List<int>? commentIds)
     {
         if (commentIds == null || !commentIds.Any())
             return new List<CommentData>();
@@ -419,7 +527,7 @@ public static class CommentDataConverter
                     Id = item.Id.ToString(),
                     ParentId = item.Parent?.ToString(),
                     Author = item.By ?? "Unknown",
-                    Content = item.Text ?? string.Empty,
+                    Content = CleanHtmlContent(item.Text ?? string.Empty),
                     CreatedAt = DateTimeOffset.FromUnixTimeSeconds(item.Time).DateTime,
                     Score = item.Score,
                     Replies = ConvertHackerNewsComments(allItems, item.Kids)
