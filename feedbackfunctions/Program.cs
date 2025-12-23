@@ -45,10 +45,10 @@ throwIfNullOrEmpty = true;
 // Register HTTP client factory
 builder.Services.AddHttpClient();
 
-// Configure default timeout for all HttpClients to 3 minutes
+// Configure default timeout for all HttpClients to 10 minutes
 builder.Services.ConfigureHttpClientDefaults(http =>
 {
-    http.ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(3));
+    http.ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(10));
 });
 
 // Register authentication services

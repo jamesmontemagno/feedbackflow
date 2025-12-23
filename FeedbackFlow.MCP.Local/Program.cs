@@ -12,7 +12,7 @@ builder.Services
 builder.Services.AddHttpClient();
 builder.Services.ConfigureHttpClientDefaults(http =>
 {
-    http.ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(3));
+    http.ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(10));
 });
 builder.Services.AddScoped<IAuthenticationProvider, LocalAuthenticationProvider>();
 

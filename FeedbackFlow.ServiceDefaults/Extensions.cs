@@ -28,8 +28,8 @@ public static class Extensions
 
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
-            // Configure default timeout to 3 minutes for all HttpClients
-            http.ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(3));
+            // Configure default timeout to 10 minutes for all HttpClients
+            http.ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(10));
 
             // Turn on resilience by default
             //http.AddStandardResilienceHandler();

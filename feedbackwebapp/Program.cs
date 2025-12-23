@@ -37,7 +37,7 @@ builder.Services.AddScoped<IToastService, ToastService>();
 builder.Services.AddScoped<IHistoryHelper, HistoryHelper>();
 
 builder.Services.AddHttpClient("DefaultClient")
-    .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(3));
+    .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(10));
 builder.Services.AddScoped<FeedbackServiceProvider>();
 builder.Services.AddScoped<ContentFeedServiceProvider>();
 
