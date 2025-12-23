@@ -87,9 +87,19 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
         }
 
 
-        // Analyze all commetns from the video
+        // Analyze all comments from the video using minified format
         int totalComments = commentCount ?? comments.Split(new[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries).Length;
-        var markdownResult = await AnalyzeCommentsInternal("YouTube", comments, totalComments);
+        
+        // Use minified data format if we have additionalData, otherwise fall back to string format
+        string markdownResult;
+        if (additionalData != null)
+        {
+            markdownResult = await AnalyzeCommentsInternalWithMinifiedData("YouTube", additionalData, totalComments);
+        }
+        else
+        {
+            markdownResult = await AnalyzeCommentsInternal("YouTube", comments, totalComments);
+        }
 
         // Get the videos from additionalData and if we just have 1 then just return that one.
         var videos = additionalData as List<YouTubeOutputVideo>;
@@ -110,14 +120,12 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
             if (video.Comments.Count == 0)
                 continue;
 
-            // Build comments string for this video
-            var videoComments = $"Video: {video.Title}\n\n" + string.Join("\n\n", video.Comments.Select(c => $"Comment by {c.Author}: {c.Text}"));
-
             UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {video.Comments.Count} comments for video: {video.Title}...");
             await Task.Delay(1500); // Simulate some processing delay
             try
             {
-                var videoMarkdown = await AnalyzeCommentsInternal($"YouTube", videoComments, video.Comments.Count);
+                // Use minified format for individual video analysis
+                var videoMarkdown = await AnalyzeCommentsInternalWithMinifiedData($"YouTube", new List<YouTubeOutputVideo> { video }, video.Comments.Count);
                 markdownResults.Add($"## YouTube Comments Analysis for : {video.Title}\n");
                 markdownResults.Add(videoMarkdown);
             }

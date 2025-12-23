@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using SharedDump.Models;
 
 namespace FeedbackFunctions;
 
@@ -7,8 +8,18 @@ namespace FeedbackFunctions;
 /// </summary>
 public class AnalyzeCommentsRequest
 {
+    /// <summary>
+    /// Legacy: Full comment data as a string (for backward compatibility)
+    /// </summary>
     [JsonPropertyName("comments")]
-    public string Comments { get; set; } = string.Empty;
+    public string? Comments { get; set; }
+    
+    /// <summary>
+    /// New: Minified comment threads for efficient data transfer
+    /// When provided, this takes precedence over the Comments string
+    /// </summary>
+    [JsonPropertyName("minifiedThreads")]
+    public List<MinifiedCommentThread>? MinifiedThreads { get; set; }
     
     [JsonPropertyName("serviceType")]
     public string ServiceType { get; set; } = string.Empty;

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using SharedDump.Models;
 using SharedDump.Models.GitHub;
 using SharedDump.Models.HackerNews;
 using SharedDump.Models.YouTube;
@@ -22,4 +23,7 @@ namespace FeedbackFunctions;
 [JsonSerializable(typeof(OmniSearchResponse))]
 [JsonSerializable(typeof(OmniSearchResult))]
 [JsonSerializable(typeof(List<OmniSearchResult>))]
+[JsonSerializable(typeof(MinifiedCommentData))]
+[JsonSerializable(typeof(MinifiedCommentThread))]
+[JsonSerializable(typeof(List<MinifiedCommentThread>))]
 public partial class FeedbackJsonContext : JsonSerializerContext { }

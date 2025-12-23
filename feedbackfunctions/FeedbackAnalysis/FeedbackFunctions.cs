@@ -583,10 +583,24 @@ public class FeedbackFunctions
             var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             var request = JsonSerializer.Deserialize(requestBody, FeedbackJsonContext.Default.AnalyzeCommentsRequest);
 
-            if (string.IsNullOrEmpty(request?.Comments))
+            // Determine which format is being used and prepare the comments text
+            string commentsText;
+            if (request?.MinifiedThreads != null && request.MinifiedThreads.Any())
+            {
+                // New minified format - convert to text for analysis
+                _logger.LogInformation("Using minified comment format for analysis");
+                commentsText = SharedDump.Services.CommentMinifier.ConvertMinifiedThreadsToText(request.MinifiedThreads);
+            }
+            else if (!string.IsNullOrEmpty(request?.Comments))
+            {
+                // Legacy string format - use as-is
+                _logger.LogInformation("Using legacy string format for analysis");
+                commentsText = request.Comments;
+            }
+            else
             {
                 var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await badResponse.WriteStringAsync("Comments JSON is required");
+                await badResponse.WriteStringAsync("Either 'comments' or 'minifiedThreads' is required");
                 return badResponse;
             }
 
@@ -607,7 +621,7 @@ public class FeedbackFunctions
             var analysisBuilder = new System.Text.StringBuilder();
             await foreach (var update in _analyzerService.GetStreamingAnalysisAsync(
                 request.ServiceType, 
-                request.Comments,
+                commentsText,
                 promptToUse))
             {
                 analysisBuilder.Append(update);

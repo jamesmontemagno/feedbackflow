@@ -57,8 +57,17 @@ public class BlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackService
         var totalComments = commentCount ?? CountCommentsRecursively(feedback.Items);
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Found {totalComments} comments and replies...");
 
-        // Analyze comments using the shared AnalyzeComments method
-        var markdown = await AnalyzeCommentsInternal("bluesky", comments, totalComments);
+        // Use minified data format if we have additionalData, otherwise fall back to string format
+        string markdown;
+        if (additionalData != null)
+        {
+            markdown = await AnalyzeCommentsInternalWithMinifiedData("bluesky", additionalData, totalComments);
+        }
+        else
+        {
+            markdown = await AnalyzeCommentsInternal("bluesky", comments, totalComments);
+        }
+        
         return (markdown, feedback);
     }
 

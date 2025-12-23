@@ -161,6 +161,87 @@ public abstract class FeedbackService : IFeedbackService
         return await analyzeResponse.Content.ReadAsStringAsync();
     }
 
+    protected async Task<string> AnalyzeCommentsInternalWithMinifiedData(string serviceType, object? additionalData, int commentCount, string? explicitCustomPrompt = null)
+    {
+        var maxComments = await GetMaxCommentsToAnalyze();
+
+        // Calculate estimated analysis time (20 seconds per 100 comments)
+        var estimatedSeconds = Math.Max(10, (int)Math.Ceiling(commentCount * 20.0 / 100));
+
+        if (commentCount > maxComments)
+        {
+            UpdateStatus(
+                FeedbackProcessStatus.AnalyzingComments,
+                $"Analyzing {maxComments} comments out of {commentCount} total (analysis limited for performance). " +
+                $"Estimated time: {estimatedSeconds} seconds..."
+            );
+        }
+        else
+        {
+            UpdateStatus(
+                FeedbackProcessStatus.AnalyzingComments,
+                $"Analyzing {commentCount} comments. Estimated time: {estimatedSeconds} seconds..."
+            );
+        }
+
+        var analyzeCode = Configuration["FeedbackApi:FunctionsKey"]
+            ?? throw new InvalidOperationException("Analyze API code not configured");
+
+        var settings = await _userSettings.GetSettingsAsync();
+        
+        // Convert additionalData to minified format
+        var threads = SharedDump.Services.CommentDataConverter.ConvertAdditionalData(additionalData);
+        var minifiedThreads = SharedDump.Services.CommentMinifier.MinifyThreads(threads);
+        
+        // Determine what to send to the backend:
+        // - If temporary prompt exists (user customized in UI), send as customPrompt
+        // - If explicit custom prompt provided, send as customPrompt
+        // - If user's default is Custom prompt, send their custom prompt
+        // - Otherwise, send promptType name to let backend look up the standard prompt
+        string? customPrompt = null;
+        string? promptType = null;
+
+        if (!string.IsNullOrWhiteSpace(TemporaryPrompt))
+        {
+            // User customized prompt in UI - send full prompt
+            customPrompt = TemporaryPrompt.TrimEnd() + " Format your response in markdown.";
+        }
+        else if (!string.IsNullOrEmpty(explicitCustomPrompt))
+        {
+            // Explicit custom prompt (e.g., from manual input) - send full prompt
+            customPrompt = explicitCustomPrompt.TrimEnd() + " Format your response in markdown.";
+        }
+        else if (settings.SelectedPromptType == PromptType.Custom)
+        {
+            // User's default is custom prompt - send their custom prompt
+            customPrompt = (settings.UniversalPrompt ?? FeedbackAnalyzerService.GetUniversalPrompt()).TrimEnd() + " Format your response in markdown.";
+        }
+        else
+        {
+            // Use standard prompt type - send just the type name to minimize payload
+            promptType = settings.SelectedPromptType.ToString();
+        }
+
+        var analyzeRequestBody = JsonSerializer.Serialize(new
+        {
+            serviceType,
+            minifiedThreads,
+            customPrompt,
+            promptType
+        });
+
+        var analyzeContent = new StringContent(
+            analyzeRequestBody,
+            Encoding.UTF8,
+            "application/json");
+
+        var getAnalysisUrl = $"{BaseUrl}/api/AnalyzeComments?code={Uri.EscapeDataString(analyzeCode)}";
+        var analyzeResponse = await SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod.Post, getAnalysisUrl, analyzeContent);
+
+        UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed");
+        return await analyzeResponse.Content.ReadAsStringAsync();
+    }
+
     protected async Task<string> AnalyzeCommentsInternalWithoutStatusUpdate(string serviceType, string comments, int commentCount, string? explicitCustomPrompt = null)
     {
         var maxComments = await GetMaxCommentsToAnalyze();

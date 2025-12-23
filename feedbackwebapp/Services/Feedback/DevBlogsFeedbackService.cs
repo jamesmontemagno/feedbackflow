@@ -49,8 +49,17 @@ public class DevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackService
         var totalComments = commentCount ?? CountComments(article.Comments);
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {totalComments} comments...");
 
-        // Analyze the comments and return both the markdown result and the comments list
-        var markdown = await AnalyzeCommentsInternal("devblogs", comments, totalComments);
+        // Use minified data format if we have additionalData, otherwise fall back to string format
+        string markdown;
+        if (additionalData != null)
+        {
+            markdown = await AnalyzeCommentsInternalWithMinifiedData("devblogs", additionalData, totalComments);
+        }
+        else
+        {
+            markdown = await AnalyzeCommentsInternal("devblogs", comments, totalComments);
+        }
+        
         return (markdown, article);
     }
 

@@ -78,8 +78,17 @@ public class TwitterFeedbackService : FeedbackService, ITwitterFeedbackService
         var totalComments = commentCount ?? comments.Split("\n").Count(line => line.StartsWith("Tweet by") || line.StartsWith("Reply by"));
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {totalComments} tweets and replies...");
 
-        // Analyze comments
-        var markdownResult = await AnalyzeCommentsInternal("twitter", comments, totalComments);
+        // Use minified data format if we have additionalData, otherwise fall back to string format
+        string markdownResult;
+        if (additionalData != null)
+        {
+            markdownResult = await AnalyzeCommentsInternalWithMinifiedData("twitter", additionalData, totalComments);
+        }
+        else
+        {
+            markdownResult = await AnalyzeCommentsInternal("twitter", comments, totalComments);
+        }
+        
         return (markdownResult, additionalData);
     }
 
