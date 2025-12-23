@@ -10,6 +10,10 @@ builder.Services
     .WithTools<FeedbackFlowToolsShared>();
 
 builder.Services.AddHttpClient();
+builder.Services.ConfigureHttpClientDefaults(http =>
+{
+    http.ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(3));
+});
 builder.Services.AddScoped<IAuthenticationProvider, LocalAuthenticationProvider>();
 
 await builder.Build().RunAsync();
