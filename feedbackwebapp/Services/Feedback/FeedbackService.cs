@@ -86,6 +86,13 @@ public abstract class FeedbackService : IFeedbackService
     }
 
     /// <summary>
+    /// Maximum character length for comments sent to analysis.
+    /// This prevents timeouts and rate limiting from the AI service.
+    /// ~100K characters ≈ ~25K tokens for most content.
+    /// </summary>
+    private const int MaxCommentsCharacterLength = 100_000;
+
+    /// <summary>
     /// Prepares comments for analysis by converting platform data to optimized text format.
     /// This reduces payload size and token usage significantly.
     /// </summary>
@@ -104,37 +111,85 @@ public abstract class FeedbackService : IFeedbackService
         var maxComments = settings.MaxCommentsToAnalyze;
         var useSlimmed = settings.UseSlimmedComments;
 
+        string preparedText = rawComments;
+        int actualCount = originalCommentCount;
+
         // If we have structured data, use CommentPreparer for optimal conversion
         if (additionalData is not null)
         {
-            var (preparedText, actualCount) = CommentPreparer.PrepareForAnalysis(
+            var (text, count) = CommentPreparer.PrepareForAnalysis(
                 additionalData, 
                 maxComments, 
                 useSlimmed);
 
-            if (!string.IsNullOrEmpty(preparedText))
+            if (!string.IsNullOrEmpty(text))
             {
-                return (preparedText, actualCount > 0 ? actualCount : originalCommentCount);
+                preparedText = text;
+                actualCount = count > 0 ? count : originalCommentCount;
             }
         }
-
         // Fallback: try to parse the raw JSON and convert it
-        if (!string.IsNullOrWhiteSpace(rawComments) && rawComments.TrimStart().StartsWith('[') || rawComments.TrimStart().StartsWith('{'))
+        else if (!string.IsNullOrWhiteSpace(rawComments) && 
+                 (rawComments.TrimStart().StartsWith('[') || rawComments.TrimStart().StartsWith('{')))
         {
-            var (preparedText, actualCount) = CommentPreparer.PrepareJsonForAnalysis(
+            var (text, count) = CommentPreparer.PrepareJsonForAnalysis(
                 rawComments,
                 serviceType,
                 maxComments,
                 useSlimmed);
 
-            if (!string.IsNullOrEmpty(preparedText) && actualCount > 0)
+            if (!string.IsNullOrEmpty(text) && count > 0)
             {
-                return (preparedText, actualCount);
+                preparedText = text;
+                actualCount = count;
             }
         }
 
-        // Final fallback: return raw content (for manual input or unparseable content)
-        return (rawComments, originalCommentCount);
+        // Apply hard character limit to prevent AI rate limiting/timeouts
+        if (preparedText.Length > MaxCommentsCharacterLength)
+        {
+            var originalLength = preparedText.Length;
+            preparedText = TruncateToCharacterLimit(preparedText, MaxCommentsCharacterLength);
+            
+            // Estimate reduced comment count based on truncation ratio
+            var ratio = (double)preparedText.Length / originalLength;
+            actualCount = Math.Max(1, (int)(actualCount * ratio));
+            
+            UpdateStatus(FeedbackProcessStatus.AnalyzingComments, 
+                $"Content truncated from {originalLength:N0} to {preparedText.Length:N0} characters for optimal analysis...");
+        }
+
+        return (preparedText, actualCount);
+    }
+
+    /// <summary>
+    /// Truncates text to a maximum character limit, ensuring we don't cut in the middle of a comment.
+    /// </summary>
+    private static string TruncateToCharacterLimit(string text, int maxLength)
+    {
+        if (text.Length <= maxLength)
+            return text;
+
+        // Find a good break point (end of a comment/paragraph)
+        var truncated = text[..maxLength];
+        
+        // Try to find the last complete comment (look for double newline or markdown separator)
+        var lastBreak = truncated.LastIndexOf("\n\n", StringComparison.Ordinal);
+        if (lastBreak > maxLength * 0.7) // Only use if we keep at least 70% of content
+        {
+            truncated = truncated[..lastBreak];
+        }
+        else
+        {
+            // Fall back to last newline
+            lastBreak = truncated.LastIndexOf('\n');
+            if (lastBreak > maxLength * 0.9)
+            {
+                truncated = truncated[..lastBreak];
+            }
+        }
+
+        return truncated + "\n\n---\n_[Content truncated for analysis - showing first portion of comments]_";
     }
 
     protected async Task<string> AnalyzeCommentsInternal(string serviceType, string comments, int commentCount, string? explicitCustomPrompt = null)

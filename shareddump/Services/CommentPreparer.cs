@@ -35,7 +35,11 @@ public static class CommentPreparer
 
         var threads = ConvertToThreads(additionalData, useSlimmedFormat);
         if (!threads.Any())
+        {
+            // Log what type we received that didn't match
+            System.Diagnostics.Debug.WriteLine($"CommentPreparer: No threads converted from type {additionalData.GetType().FullName}");
             return (string.Empty, 0);
+        }
 
         return ConvertThreadsToText(threads, maxComments, useSlimmedFormat);
     }
