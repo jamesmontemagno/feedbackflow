@@ -17,7 +17,7 @@
 @using FeedbackWebApp.Components.Shared
 @namespace FeedbackWebApp.Components.Pages
 
-<PageTitle>Analysis</PageTitle>
+<PageTitle>@GetPageTitle()</PageTitle>
 
 <CopyFailedDialog 
     IsVisible="@showCopyFailedDialog"
@@ -290,6 +290,22 @@
         showSurveyLink = false;
         StateHasChanged();
         return Task.CompletedTask;
+    }
+    
+    private string GetPageTitle()
+    {
+        if (analysis == null || string.IsNullOrWhiteSpace(analysis.Title))
+        {
+            return "Analysis";
+        }
+        
+        // Format: "Analysis - Title (SourceType)"
+        if (!string.IsNullOrWhiteSpace(analysis.SourceType))
+        {
+            return $"Analysis - {analysis.Title} ({analysis.SourceType})";
+        }
+        
+        return $"Analysis - {analysis.Title}";
     }
     
     // IsValidUrl and GetYouTubeThumbnailUrl methods have been moved to UrlParsing class
