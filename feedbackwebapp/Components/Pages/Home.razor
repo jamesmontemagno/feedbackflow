@@ -140,7 +140,76 @@
                         }
                     }
 
-                    <SubmitButton ShowWhenSource="@selectedSource" IsLoading="@isLoading" OnSubmit="SubmitFeedbackRequest" ButtonText="@(canReanalyze ? "Reanalyze" : "Analyze Comments")" />
+                    @* Multi-step buttons for Auto mode *@
+                    @if (selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <div class="multi-step-buttons mt-3">
+                            <div class="d-flex gap-2 flex-wrap">
+                                @* Step 1: Get Comments Button *@
+                                <button class="btn btn-primary btn-lg flex-grow-1 action-btn" 
+                                        @onclick="FetchCommentsAsync" 
+                                        disabled="@(isLoading || (autoDataSourceForm?.GetUrls()?.Any(u => !string.IsNullOrWhiteSpace(u)) != true))">
+                                    @if (isFetchingComments)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                        <span>Fetching Comments...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-cloud-download me-2"></i>
+                                        <span>@(hasComments ? "Refresh Comments" : "Get Comments")</span>
+                                    }
+                                </button>
+
+                                @* Step 2: Analyze Comments Button (enabled after fetch) *@
+                                <button class="btn @(canAnalyze ? "btn-success" : "btn-outline-secondary") btn-lg flex-grow-1 action-btn" 
+                                        @onclick="AnalyzeCommentsAsync" 
+                                        disabled="@(!canAnalyze)">
+                                    @if (isAnalyzing)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                        <span>Analyzing...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-lightning-charge me-2"></i>
+                                        <span>@(!string.IsNullOrEmpty(markdownResult) ? "Re-analyze" : "Analyze Comments")</span>
+                                    }
+                                </button>
+                            </div>
+
+                            @* Comment count badge and warning *@
+                            @if (hasComments)
+                            {
+                                <div class="comment-status-bar mt-3">
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                        <span class="badge bg-primary comment-count-badge">
+                                            <i class="bi bi-chat-dots me-1"></i>
+                                            @cachedCommentCount.ToString("N0") comments fetched
+                                        </span>
+                                        
+                                        @if (showCommentLimitWarning)
+                                        {
+                                            <span class="badge bg-warning text-dark comment-limit-badge">
+                                                <i class="bi bi-exclamation-triangle me-1"></i>
+                                                Analysis will use @maxCommentsLimit.ToString("N0") of @cachedCommentCount.ToString("N0")
+                                            </span>
+                                        }
+
+                                        @* Export button for fetched comments *@
+                                        <ExportButton Items="@(new[] { CreateExportItemFromComments() })" 
+                                                      ButtonVariant="secondary" 
+                                                      Size="sm" />
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        @* Manual mode: single submit button *@
+                        <SubmitButton ShowWhenSource="@selectedSource" IsLoading="@isLoading" OnSubmit="SubmitManualFeedbackRequest" ButtonText="Analyze" />
+                    }
                     
                     @if (isLoading)
                     {
@@ -154,7 +223,27 @@
                                 <div class="small">@currentStatusMessage</div>
                             </div>
                         </div>
-                    }                    
+                    }
+
+                    @* Show fetched comments before analysis (Auto mode) *@
+                    @if (hasComments && fetchedThreads != null && fetchedThreads.Any() && selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <div class="fetched-comments-section mt-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-collection me-2"></i>
+                                    Fetched Comments Preview
+                                </h5>
+                                @if (!string.IsNullOrEmpty(markdownResult))
+                                {
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle me-1"></i>Analyzed
+                                    </span>
+                                }
+                            </div>
+                            <ThreadResults Threads="fetchedThreads" GroupBySourceType="true" />
+                        </div>
+                    }
                         
                     <AnalysisResults 
                         Error="@error" 
@@ -166,8 +255,8 @@
                     @* Discreet survey link (desktop only) *@
                     <SurveyLink IsVisible="@showSurveyLink" OnSurveyClicked="@OnSurveyLinkClicked" />
 
-                    @* Display additional data from FeedbackSourceData list *@
-                    @if (feedbackSources != null && feedbackSources.Any())
+                    @* Display additional data from FeedbackSourceData list (for Manual mode) *@
+                    @if (!selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase) && feedbackSources != null && feedbackSources.Any())
                     {
                         @* Use unified threading components *@
                         var allThreads = GetUnifiedThreadsFromSources(feedbackSources);
@@ -213,17 +302,24 @@
     private SharedDump.AI.PromptType selectedPromptType = SharedDump.AI.PromptType.ProductFeedback; // User-selected prompt type for this analysis
     private bool useCustomPrompts = false;
     
+    // Multi-step flow state
+    private bool hasComments = false;
+    private bool isFetchingComments = false;
+    private bool isAnalyzing = false;
+    private List<CommentThread>? fetchedThreads;
+    private int maxCommentsLimit = 1200; // Will be loaded from user settings
+    
     // Reanalyze caching state
     private string[]? lastAnalyzedUrls;
     private string? cachedComments;
     private int cachedCommentCount;
     private object? cachedAdditionalData;
     
-    // Computed property for reanalyze capability
-    private bool canReanalyze => cachedComments != null && 
-                                lastAnalyzedUrls != null && 
-                                selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase) &&
-                                UrlsUnchanged();
+    // Computed property for enabling analyze button
+    private bool canAnalyze => hasComments && cachedComments != null && !isLoading;
+    
+    // Computed property for showing comment limit warning
+    private bool showCommentLimitWarning => hasComments && cachedCommentCount > maxCommentsLimit;
 
     private static string Truncate(string value, int max)
         => string.IsNullOrEmpty(value) || value.Length <= max ? value : value.Substring(0, max) + "...";
@@ -370,39 +466,10 @@
         cachedComments = null;
         cachedCommentCount = 0;
         cachedAdditionalData = null;
-    }
-
-    private async Task PerformReanalysis()
-    {
-        if (!canReanalyze || cachedComments is null)
-            return;
-
-        currentStatus = FeedbackProcessStatus.AnalyzingComments;
-        currentStatusMessage = "Reanalyzing feedback...";
-        StateHasChanged();
-
-        // Create a new service for reanalysis
-        var service = ServiceProvider.CreateAutoDataSourceService(
-            autoDataSourceForm?.GetUrls().ToArray() ?? Array.Empty<string>(),
-            HandleStatusUpdate);
-
-        // Set the individual reports flag
-        var autoService = service as IAutoDataSourceFeedbackService;
-        autoService?.SetIncludeIndividualReports(includeIndividualReports);
-
-        // Apply the appropriate prompt
-        ApplyPromptToService(service);
-
-        // Call AnalyzeComments directly with cached data
-        var (result, additionalData) = await service.AnalyzeComments(cachedComments, cachedCommentCount, cachedAdditionalData);
-        markdownResult = result;
-        currentAdditionalData = additionalData;
-
-        // Handle feedbackSources for Auto source type
-        if (additionalData is List<FeedbackSourceData> sources)
-        {
-            feedbackSources = sources;
-        }
+        hasComments = false;
+        fetchedThreads = null;
+        markdownResult = "";
+        feedbackSources = null;
     }
 
     private Task HandleUrlsChanged(List<string> urls)
@@ -598,95 +665,216 @@
     }
 
 
-    private async Task SubmitFeedbackRequest()
+    /// <summary>
+    /// Fetches comments from URLs without analyzing them (Auto mode only)
+    /// </summary>
+    private async Task FetchCommentsAsync()
     {
+        if (!selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
+            return;
+
         try
         {
-            // Reset all previous data
+            // Reset previous data but preserve any existing analysis for re-fetch scenario
             error = "";
             markdownResult = "";
             feedbackSources = null;
             currentAdditionalData = null;
+            hasComments = false;
+            fetchedThreads = null;
+            isFetchingComments = true;
             isLoading = true;
             currentStatus = FeedbackProcessStatus.GatheringComments;
-            currentStatusMessage = "Starting analysis...";
-            showSurveyLink = false; // hide while processing
+            currentStatusMessage = "Fetching comments...";
+            showSurveyLink = false;
+            StateHasChanged();
 
-            // For Auto source, check Twitter access before submitting
-            if (selectedSource == "Auto")
+            var urls = autoDataSourceForm?.GetUrls() ?? new List<string>();
+            
+            // Check Twitter access before fetching
+            var (hasAccess, accessError) = await TwitterAccessService.CheckTwitterAccessAsync(urls);
+            if (!hasAccess && !string.IsNullOrEmpty(accessError))
             {
-                var urls = autoDataSourceForm?.GetUrls() ?? new List<string>();
-                var (hasAccess, accessError) = await TwitterAccessService.CheckTwitterAccessAsync(urls);
-                
-                if (!hasAccess && !string.IsNullOrEmpty(accessError))
-                {
-                    error = accessError;
-                    return;
-                }
-                
-                // Check if we can reanalyze with cached data
-                if (canReanalyze)
-                {
-                    await PerformReanalysis();
-                    return;
-                }
+                error = accessError;
+                return;
             }
 
-            IFeedbackService service = selectedSource switch
-            {
-                "Auto" or "auto" => ServiceProvider.CreateAutoDataSourceService(
-                    autoDataSourceForm?.GetUrls().ToArray() ?? Array.Empty<string>(),
-                    HandleStatusUpdate),
-                "Manual" or "manual" => ServiceProvider.CreateManualService(
-                    manualInputForm?.GetContent() ?? string.Empty,
-                    manualInputForm?.GetSystemPrompt(),
-                    HandleStatusUpdate),
-                _ => throw new InvalidOperationException("Please select a feedback source")
-            };
+            // Load max comments limit from user settings
+            var settings = await UserSettings.GetSettingsAsync();
+            maxCommentsLimit = settings.MaxCommentsToAnalyze;
 
-            // Set the individual reports flag for Auto services
-            if (selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
+            // Create service for fetching
+            var service = ServiceProvider.CreateAutoDataSourceService(
+                urls.ToArray(),
+                HandleStatusUpdate);
+
+            // Only fetch comments, don't analyze
+            var (rawComments, commentCount, additionalData) = await service.GetComments();
+            
+            // Cache the fetched data
+            lastAnalyzedUrls = NormalizeUrls(urls);
+            cachedComments = rawComments;
+            cachedCommentCount = commentCount;
+            cachedAdditionalData = additionalData;
+            hasComments = true;
+
+            // Handle feedbackSources for display
+            if (additionalData is List<FeedbackSourceData> sources)
             {
-                var autoService = service as IAutoDataSourceFeedbackService;
-                autoService?.SetIncludeIndividualReports(includeIndividualReports);
+                feedbackSources = sources;
+                fetchedThreads = GetUnifiedThreadsFromSources(sources);
             }
 
-            // Apply the appropriate prompt for Auto services
-            if (selectedSource.Equals("Auto", StringComparison.OrdinalIgnoreCase))
+            currentStatusMessage = $"Fetched {commentCount} comments from {urls.Count} source(s)";
+        }
+        catch (UsageLimitExceededException ex)
+        {
+            usageLimitError = ex.LimitError;
+            showUsageLimitDialog = true;
+        }
+        catch (Exception ex)
+        {
+            if (UsageLimitErrorHelper.TryParseUsageLimitError(ex.Message, out var limitError))
             {
-                ApplyPromptToService(service);
+                usageLimitError = limitError;
+                showUsageLimitDialog = true;
             }
+            else
+            {
+                error = $"Failed to fetch comments: {ex.Message}";
+            }
+        }
+        finally
+        {
+            isFetchingComments = false;
+            isLoading = false;
+            currentStatus = FeedbackProcessStatus.Completed;
+            StateHasChanged();
+        }
+    }
 
-            var (result, additionalData) = await service.GetFeedback();
+    /// <summary>
+    /// Analyzes previously fetched comments (Auto mode only)
+    /// </summary>
+    private async Task AnalyzeCommentsAsync()
+    {
+        if (!canAnalyze || cachedComments is null)
+            return;
+
+        try
+        {
+            error = "";
+            markdownResult = "";
+            isAnalyzing = true;
+            isLoading = true;
+            currentStatus = FeedbackProcessStatus.AnalyzingComments;
+            currentStatusMessage = "Analyzing comments...";
+            showSurveyLink = false;
+            StateHasChanged();
+
+            // Create service for analysis
+            var service = ServiceProvider.CreateAutoDataSourceService(
+                autoDataSourceForm?.GetUrls().ToArray() ?? Array.Empty<string>(),
+                HandleStatusUpdate);
+
+            // Set the individual reports flag
+            var autoService = service as IAutoDataSourceFeedbackService;
+            autoService?.SetIncludeIndividualReports(includeIndividualReports);
+
+            // Apply the appropriate prompt
+            ApplyPromptToService(service);
+
+            // Analyze the cached comments
+            var (result, additionalData) = await service.AnalyzeComments(cachedComments, cachedCommentCount, cachedAdditionalData);
             markdownResult = result;
             currentAdditionalData = additionalData;
 
-            // Handle feedbackSources for Auto source type
-            if (selectedSource == "Auto" && additionalData is List<FeedbackSourceData> sources)
+            // Update feedbackSources if new data returned
+            if (additionalData is List<FeedbackSourceData> sources)
             {
                 feedbackSources = sources;
-                
-                // Capture cache data for potential reanalysis if this is an ICachableFeedbackService
-                if (service is ICachableFeedbackService cachableService && cachableService.LastCommentsSnapshot.HasValue)
-                {
-                    var snapshot = cachableService.LastCommentsSnapshot.Value;
-                    var urls = autoDataSourceForm?.GetUrls() ?? new List<string>();
-                    lastAnalyzedUrls = NormalizeUrls(urls);
-                    cachedComments = snapshot.comments;
-                    cachedCommentCount = snapshot.commentCount;
-                    cachedAdditionalData = snapshot.additionalData;
-                }
             }
         }
         catch (UsageLimitExceededException ex)
         {
             usageLimitError = ex.LimitError;
             showUsageLimitDialog = true;
-            StateHasChanged();
         }
         catch (Exception ex)
         {
-            // Check if this is a usage limit error from error message
+            if (UsageLimitErrorHelper.TryParseUsageLimitError(ex.Message, out var limitError))
+            {
+                usageLimitError = limitError;
+                showUsageLimitDialog = true;
+            }
+            else
+            {
+                error = $"Failed to analyze comments: {ex.Message}";
+            }
+        }
+        finally
+        {
+            isAnalyzing = false;
+            isLoading = false;
+            currentStatus = FeedbackProcessStatus.Completed;
+            currentStatusMessage = "";
+            
+            // Show survey link on successful analysis
+            if (string.IsNullOrEmpty(error) && !string.IsNullOrWhiteSpace(markdownResult))
+            {
+                try
+                {
+                    if (UserSettings.IsSurveyEnabled())
+                    {
+                        var hasCompletedSurvey = await UserSettings.HasCompletedSurveyAsync();
+                        if (!hasCompletedSurvey)
+                        {
+                            showSurveyLink = true;
+                        }
+                    }
+                }
+                catch { /* ignore */ }
+            }
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Handles Manual mode submission (fetches and analyzes in one step)
+    /// </summary>
+    private async Task SubmitManualFeedbackRequest()
+    {
+        if (!selectedSource.Equals("Manual", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        try
+        {
+            error = "";
+            markdownResult = "";
+            feedbackSources = null;
+            currentAdditionalData = null;
+            isLoading = true;
+            currentStatus = FeedbackProcessStatus.GatheringComments;
+            currentStatusMessage = "Processing...";
+            showSurveyLink = false;
+            StateHasChanged();
+
+            var service = ServiceProvider.CreateManualService(
+                manualInputForm?.GetContent() ?? string.Empty,
+                manualInputForm?.GetSystemPrompt(),
+                HandleStatusUpdate);
+
+            var (result, additionalData) = await service.GetFeedback();
+            markdownResult = result;
+            currentAdditionalData = additionalData;
+        }
+        catch (UsageLimitExceededException ex)
+        {
+            usageLimitError = ex.LimitError;
+            showUsageLimitDialog = true;
+        }
+        catch (Exception ex)
+        {
             if (UsageLimitErrorHelper.TryParseUsageLimitError(ex.Message, out var limitError))
             {
                 usageLimitError = limitError;
@@ -696,15 +884,14 @@
             {
                 error = $"An error occurred: {ex.Message}";
             }
-            StateHasChanged();
         }
         finally
         {
-            await Task.Delay(500); // Give time for UI to update before finalizing
+            await Task.Delay(500);
             isLoading = false;
             currentStatus = FeedbackProcessStatus.Completed;
             currentStatusMessage = "";
-            // Decide whether to show survey link: only if success, have result, survey enabled, and user hasn't completed current survey
+            
             if (string.IsNullOrEmpty(error) && !string.IsNullOrWhiteSpace(markdownResult))
             {
                 try
@@ -923,6 +1110,25 @@
         }
 
         return allThreads;
+    }
+
+    /// <summary>
+    /// Creates an export item from fetched comments (before analysis)
+    /// </summary>
+    private AnalysisHistoryItem CreateExportItemFromComments()
+    {
+        var urls = autoDataSourceForm?.GetUrls() ?? new List<string>();
+        var sourceTypes = GetSourcesFromUrls();
+        
+        return new AnalysisHistoryItem
+        {
+            Id = Guid.NewGuid().ToString(),
+            FullAnalysis = $"# Raw Comments Export\n\nExported {cachedCommentCount} comments from {urls.Count} source(s).\n\n**Sources:** {sourceTypes}\n\n**URLs:**\n{string.Join("\n", urls.Select(u => $"- {u}"))}",
+            SourceType = sourceTypes,
+            UserInput = string.Join(", ", urls),
+            Timestamp = DateTime.UtcNow,
+            CommentThreads = fetchedThreads ?? new List<CommentThread>()
+        };
     }
 
     public void Dispose()
