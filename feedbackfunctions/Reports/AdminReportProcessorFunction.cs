@@ -103,6 +103,13 @@ public class AdminReportProcessorFunction
                         config.Id, config.Name);
                     failedCount++;
                 }
+
+                // Wait 45 seconds between reports to avoid rate limiting
+                if (config != activeConfigs.Last())
+                {
+                    _logger.LogInformation("Waiting 45 seconds before processing next admin report to avoid rate limiting...");
+                    await Task.Delay(TimeSpan.FromSeconds(45));
+                }
             }
 
             _logger.LogInformation("Admin report processing completed. Processed: {ProcessedCount}, Failed: {FailedCount}", 

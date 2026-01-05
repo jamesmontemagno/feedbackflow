@@ -457,6 +457,13 @@ public class ReportProcessorFunctions
                     failedRequests.Add(request.Id);
                     _logger.LogWarning("Failed to process request {RequestId}", request.Id);
                 }
+
+                // Wait 45 seconds between reports to avoid rate limiting
+                if (request != requests.Last())
+                {
+                    _logger.LogInformation("Waiting 45 seconds before processing next report to avoid rate limiting...");
+                    await Task.Delay(TimeSpan.FromSeconds(45));
+                }
             }
 
             // Store summary of the weekly processing session
