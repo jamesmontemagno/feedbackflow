@@ -144,3 +144,127 @@
     border-color: rgba(var(--primary-color-rgb), 0.5);
     box-shadow: 0 2px 6px rgba(0,0,0,0.4);
 }
+
+/* Multi-step buttons styling */
+.multi-step-buttons {
+    padding: 0.5rem 0;
+}
+
+.multi-step-buttons .btn {
+    transition: all 0.3s ease;
+    min-width: 180px;
+}
+
+.multi-step-buttons .btn:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.3);
+}
+
+.multi-step-buttons .btn-success:not(:disabled) {
+    background: var(--success-color);
+    border-color: var(--success-color);
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(var(--success-color-rgb, 40, 167, 69), 0.4);
+    }
+    50% {
+        box-shadow: 0 0 15px 3px rgba(var(--success-color-rgb, 40, 167, 69), 0.2);
+    }
+}
+
+/* Comment status bar styling */
+.comment-status-bar {
+    padding: 0.75rem 1rem;
+    background: rgba(var(--bg-secondary-rgb), 0.5);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.comment-count-badge {
+    font-size: 0.9rem;
+    padding: 0.5rem 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.comment-limit-badge {
+    font-size: 0.85rem;
+    padding: 0.5rem 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Fetched comments section styling */
+.fetched-comments-section {
+    border-top: 2px solid var(--border-color);
+    padding-top: 1.5rem;
+    animation: fadeIn 0.5s ease;
+}
+
+.fetched-comments-section h5 {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.fetched-comments-section .badge.bg-success {
+    font-size: 0.75rem;
+    padding: 0.4rem 0.6rem;
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .comment-status-bar {
+    background: rgba(var(--bg-secondary-rgb), 0.3);
+    border-color: rgba(var(--border-color-rgb), 0.5);
+}
+
+[data-theme="dark"] .multi-step-buttons .btn-outline-secondary:disabled {
+    background: transparent;
+    color: rgba(var(--text-secondary-rgb), 0.5);
+    border-color: rgba(var(--border-color-rgb), 0.3);
+}
+
+[data-theme="dark"] .comment-limit-badge {
+    background-color: var(--warning-color) !important;
+    color: #000 !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+    .multi-step-buttons .btn {
+        min-width: unset;
+        width: 100%;
+    }
+    
+    .multi-step-buttons .d-flex {
+        flex-direction: column;
+    }
+    
+    .comment-status-bar .d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 0.5rem !important;
+    }
+    
+    .comment-count-badge,
+    .comment-limit-badge {
+        width: 100%;
+        justify-content: center;
+    }
+}
