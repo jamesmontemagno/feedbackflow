@@ -23,4 +23,11 @@ public class AnalyzeCommentsRequest
     /// </summary>
     [JsonPropertyName("promptType")]
     public string? PromptType { get; set; }
+    
+    /// <summary>
+    /// Whether to use slimmed-down comment data for analysis (excludes metadata, IDs, URLs)
+    /// Defaults to true to reduce token usage while preserving essential content
+    /// </summary>
+    [JsonPropertyName("useSlimmedComments")]
+    public bool UseSlimmedComments { get; set; } = true;
 }

@@ -1,6 +1,7 @@
 using FeedbackWebApp.Services.Interfaces;
 using FeedbackWebApp.Services.Authentication;
 using SharedDump.Utils;
+using SharedDump.Services;
 
 namespace FeedbackWebApp.Services.Feedback;
 
@@ -160,11 +161,11 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         // If we have the source data list, analyze based on number of URLs
         if (additionalData is List<FeedbackSourceData> sourceData)
         {
-            // For a single URL, just analyze with the specific service type
+            // For a single URL, just analyze with the specific service type using optimized conversion
             if (sourceData.Count == 1)
             {
                 var data = sourceData[0];
-                var markdown = await AnalyzeCommentsInternal(data.Source, data.Comments, data.CommentCount);
+                var markdown = await AnalyzeCommentsWithOptimization(data.Source, data.Comments, data.CommentCount, data.AdditionalData);
                 UpdateStatus(FeedbackProcessStatus.Completed, "Analysis completed");
                 return ($"# {char.ToUpper(data.Source[0]) + data.Source[1..]} Feedback Analysis\n\n{markdown}", sourceData);
             }
@@ -174,32 +175,39 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
             
             // First do the overall analysis of everything
             UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Creating overall analysis...");
-            var allCommentsText = string.Join("\n---\n", sourceData.Select(s => s.Comments));
             
-            // Truncate combined comments if they exceed the limit
-            var actualCommentsForAnalysis = totalComments;
+            // Prepare all comments using optimized conversion for each source
+            var preparedComments = new List<string>();
+            var actualTotalComments = 0;
+            var remainingLimit = maxCommentsLimit;
+            
+            foreach (var data in sourceData)
+            {
+                if (remainingLimit <= 0)
+                    break;
+                    
+                var (preparedText, preparedCount) = await PrepareCommentsForAnalysis(
+                    data.Source, 
+                    data.Comments, 
+                    data.AdditionalData, 
+                    data.CommentCount);
+                    
+                if (!string.IsNullOrEmpty(preparedText))
+                {
+                    preparedComments.Add($"# {char.ToUpper(data.Source[0]) + data.Source[1..]} Comments\n{preparedText}");
+                    actualTotalComments += Math.Min(preparedCount, remainingLimit);
+                    remainingLimit -= preparedCount;
+                }
+            }
+            
+            var allCommentsText = string.Join("\n---\n", preparedComments);
+            
             if (totalComments > maxCommentsLimit)
             {
-                actualCommentsForAnalysis = maxCommentsLimit;
-                
-                // Estimate truncation point in the combined text
-                var commentSections = allCommentsText.Split("\n---\n");
-                var truncatedSections = new List<string>();
-                var count = 0;
-                
-                foreach (var section in commentSections)
-                {
-                    if (count >= maxCommentsLimit)
-                        break;
-                    truncatedSections.Add(section);
-                    count++;
-                }
-                
-                allCommentsText = string.Join("\n---\n", truncatedSections);
                 truncationNote = $"\n\n> **Note**: Analysis limited to {maxCommentsLimit} of {totalComments} total comments to optimize performance and stay within your analysis limit.\n";
             }
             
-            var overallAnalysis = await AnalyzeCommentsInternalWithoutStatusUpdate("auto", allCommentsText, actualCommentsForAnalysis);
+            var overallAnalysis = await AnalyzeCommentsInternalWithoutStatusUpdate("auto", allCommentsText, actualTotalComments);
             analysisBySource.Add("## Overall Analysis\n\n" + truncationNote + overallAnalysis);
 
             // Only analyze each source individually if the user requested it
@@ -209,7 +217,12 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
                 {
                     var data = sourceData[i];
                     UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {char.ToUpper(data.Source[0]) + data.Source[1..]} feedback ({i + 1}/{sourceData.Count})...");
-                    var markdown = await AnalyzeCommentsInternalWithoutStatusUpdate(data.Source, data.Comments, data.CommentCount);
+                    var (preparedText, preparedCount) = await PrepareCommentsForAnalysis(
+                        data.Source, 
+                        data.Comments, 
+                        data.AdditionalData, 
+                        data.CommentCount);
+                    var markdown = await AnalyzeCommentsInternalWithoutStatusUpdate(data.Source, preparedText, preparedCount);
                     analysisBySource.Add($"## {char.ToUpper(data.Source[0]) + data.Source[1..]} Analysis\n\n{markdown}");
                 }
                 UpdateStatus(FeedbackProcessStatus.Completed, "Multi-source analysis completed");

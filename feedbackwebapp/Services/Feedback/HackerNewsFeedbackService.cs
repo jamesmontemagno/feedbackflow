@@ -85,14 +85,21 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
         var totalComments = commentCount ?? comments.Split("\n").Count(line => line.StartsWith("Comment by"));
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {totalComments} comments...");
 
-        // Analyze the comments
-        var markdownResult = await AnalyzeCommentsInternal("hackernews", comments, totalComments);
-
-        // If we have analyses, update their MarkdownResult
+        // Extract the stories list from the analyses for optimized conversion
+        object? storiesData = null;
         if (additionalData is List<HackerNewsAnalysis> analyses && analyses.Any())
         {
-            analyses[0] = analyses[0] with { MarkdownResult = markdownResult };
-            return (markdownResult, analyses);
+            storiesData = analyses.First().Stories;
+        }
+
+        // Analyze the comments using optimized conversion
+        var markdownResult = await AnalyzeCommentsWithOptimization("hackernews", comments, totalComments, storiesData);
+
+        // If we have analyses, update their MarkdownResult
+        if (additionalData is List<HackerNewsAnalysis> resultAnalyses && resultAnalyses.Any())
+        {
+            resultAnalyses[0] = resultAnalyses[0] with { MarkdownResult = markdownResult };
+            return (markdownResult, resultAnalyses);
         }
 
         return (markdownResult, additionalData);

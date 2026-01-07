@@ -47,8 +47,13 @@ public class BlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackService
 
     public override async Task<(string markdownResult, object? additionalData)> AnalyzeComments(string comments, int? commentCount = null, object? additionalData = null)
     {
-        var feedback = JsonSerializer.Deserialize<BlueSkyFeedbackResponse>(comments);
-        if (feedback == null || feedback.Items == null || feedback.Items.Count == 0)
+        BlueSkyFeedbackResponse? feedback = additionalData as BlueSkyFeedbackResponse;
+        if (feedback is null)
+        {
+            feedback = JsonSerializer.Deserialize<BlueSkyFeedbackResponse>(comments);
+        }
+        
+        if (feedback is null || feedback.Items is null || feedback.Items.Count == 0)
         {
             UpdateStatus(FeedbackProcessStatus.Completed, "No comments to analyze");
             return ("## No Comments Available\n\nThere are no comments to analyze at this time.", null);
@@ -57,8 +62,8 @@ public class BlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackService
         var totalComments = commentCount ?? CountCommentsRecursively(feedback.Items);
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Found {totalComments} comments and replies...");
 
-        // Analyze comments using the shared AnalyzeComments method
-        var markdown = await AnalyzeCommentsInternal("bluesky", comments, totalComments);
+        // Analyze comments using optimized conversion
+        var markdown = await AnalyzeCommentsWithOptimization("bluesky", comments, totalComments, feedback);
         return (markdown, feedback);
     }
 

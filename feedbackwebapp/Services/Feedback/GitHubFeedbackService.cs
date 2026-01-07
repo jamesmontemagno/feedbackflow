@@ -92,8 +92,8 @@ public class GitHubFeedbackService : FeedbackService, IGitHubFeedbackService
 
         UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {commentCount ?? 0} comments...");
 
-        // Analyze comments using the shared AnalyzeComments method
-        var markdown = await AnalyzeCommentsInternal("github", comments, commentCount ?? 0);
+        // Analyze comments using optimized conversion
+        var markdown = await AnalyzeCommentsWithOptimization("github", comments, commentCount ?? 0, additionalData);
         return (markdown, additionalData);
     }
 

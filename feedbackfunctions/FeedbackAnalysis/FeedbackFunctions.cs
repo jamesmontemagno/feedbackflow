@@ -566,28 +566,78 @@ public class FeedbackFunctions
     public async Task<HttpResponseData> AnalyzeComments(
         [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
-        _logger.LogInformation("Processing comment analysis request");
+        _logger.LogInformation("AnalyzeComments: Starting request processing");
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         // Authenticate the request
         var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
         if (authErrorResponse != null)
+        {
+            _logger.LogWarning("AnalyzeComments: Authentication failed");
             return authErrorResponse;
+        }
+        _logger.LogInformation("AnalyzeComments: Authentication successful, userId={UserId}", user?.UserId ?? "unknown");
 
         // Validate usage limits
         var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.Analysis, _userAccountService, _logger);
         if (usageValidationResponse != null)
+        {
+            _logger.LogWarning("AnalyzeComments: Usage validation failed");
             return usageValidationResponse;
+        }
+        _logger.LogInformation("AnalyzeComments: Usage validation passed");
 
         try
         {
+            _logger.LogInformation("AnalyzeComments: Reading request body...");
             var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            var requestBodyLength = requestBody.Length;
+            _logger.LogInformation("AnalyzeComments: Request body read, length={RequestBodyLength} bytes", requestBodyLength);
+            
+            _logger.LogInformation("AnalyzeComments: Deserializing request...");
             var request = JsonSerializer.Deserialize(requestBody, FeedbackJsonContext.Default.AnalyzeCommentsRequest);
 
             if (string.IsNullOrEmpty(request?.Comments))
             {
+                _logger.LogWarning("AnalyzeComments: Comments field is empty or null");
                 var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 await badResponse.WriteStringAsync("Comments JSON is required");
                 return badResponse;
+            }
+
+            var commentsLength = request.Comments.Length;
+            var commentsPreview = request.Comments.Length > 500 
+                ? request.Comments.Substring(0, 500) + "..." 
+                : request.Comments;
+            var commentsStartsWith = request.Comments.TrimStart().Substring(0, Math.Min(50, request.Comments.TrimStart().Length));
+            
+            _logger.LogInformation(
+                "AnalyzeComments: Request details - ServiceType={ServiceType}, PromptType={PromptType}, " +
+                "CustomPromptProvided={CustomPromptProvided}, RequestBodyBytes={RequestBodyBytes}, " +
+                "CommentsLength={CommentsLength}, UseSlimmedComments={UseSlimmedComments}, " +
+                "CommentsStartsWith={CommentsStartsWith}",
+                request.ServiceType ?? "null",
+                request.PromptType ?? "null",
+                !string.IsNullOrEmpty(request.CustomPrompt),
+                requestBodyLength,
+                commentsLength,
+                request.UseSlimmedComments,
+                commentsStartsWith);
+
+            // Log if comments look like JSON (which would indicate no conversion happened)
+            var trimmedComments = request.Comments.TrimStart();
+            if (trimmedComments.StartsWith('[') || trimmedComments.StartsWith('{'))
+            {
+                _logger.LogWarning(
+                    "AnalyzeComments: Comments appear to be raw JSON (starts with [ or {). " +
+                    "This suggests frontend conversion may not have worked. CommentsLength={CommentsLength}",
+                    commentsLength);
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "AnalyzeComments: Comments appear to be converted text (not JSON). CommentsLength={CommentsLength}",
+                    commentsLength);
             }
 
             // Determine the prompt to use:
@@ -601,17 +651,52 @@ public class FeedbackFunctions
                 if (Enum.TryParse<SharedDump.AI.PromptType>(request.PromptType, true, out var parsedPromptType))
                 {
                     promptToUse = SharedDump.AI.FeedbackAnalyzerService.GetPromptByType(parsedPromptType);
+                    _logger.LogInformation("AnalyzeComments: Using standard prompt for type {PromptType}", parsedPromptType);
+                }
+                else
+                {
+                    _logger.LogWarning("AnalyzeComments: Failed to parse PromptType '{PromptType}'", request.PromptType);
                 }
             }
+            
+            _logger.LogInformation(
+                "AnalyzeComments: Prompt determined - UsingCustomPrompt={UsingCustomPrompt}, PromptLength={PromptLength}",
+                !string.IsNullOrEmpty(request.CustomPrompt),
+                promptToUse?.Length ?? 0);
 
+            _logger.LogInformation("AnalyzeComments: Starting AI analysis stream...");
+            var analysisStartTime = stopwatch.ElapsedMilliseconds;
+            
             var analysisBuilder = new System.Text.StringBuilder();
+            var chunkCount = 0;
             await foreach (var update in _analyzerService.GetStreamingAnalysisAsync(
-                request.ServiceType, 
+                request.ServiceType ?? "unknown", 
                 request.Comments,
                 promptToUse))
             {
                 analysisBuilder.Append(update);
+                chunkCount++;
+                
+                // Log progress every 10 chunks
+                if (chunkCount % 10 == 0)
+                {
+                    _logger.LogDebug(
+                        "AnalyzeComments: Received {ChunkCount} chunks, current output length={OutputLength}",
+                        chunkCount,
+                        analysisBuilder.Length);
+                }
             }
+
+            var analysisEndTime = stopwatch.ElapsedMilliseconds;
+            var analysisDuration = analysisEndTime - analysisStartTime;
+            
+            _logger.LogInformation(
+                "AnalyzeComments: AI analysis completed - Chunks={ChunkCount}, OutputLength={OutputLength}, " +
+                "AnalysisDurationMs={AnalysisDurationMs}, TotalDurationMs={TotalDurationMs}",
+                chunkCount,
+                analysisBuilder.Length,
+                analysisDuration,
+                stopwatch.ElapsedMilliseconds);
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteStringAsync(analysisBuilder.ToString());
@@ -619,13 +704,25 @@ public class FeedbackFunctions
             // Track usage on successful completion
             await user!.TrackUsageAsync(UsageType.Analysis, _userAccountService, _logger, request.ServiceType);
             
+            _logger.LogInformation(
+                "AnalyzeComments: Request completed successfully - TotalDurationMs={TotalDurationMs}",
+                stopwatch.ElapsedMilliseconds);
+            
             return response;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing comment analysis request");
+            stopwatch.Stop();
+            _logger.LogError(ex, 
+                "AnalyzeComments: ERROR - ExceptionType={ExceptionType}, Message={ErrorMessage}, " +
+                "InnerException={InnerException}, DurationMs={DurationMs}, StackTrace={StackTrace}", 
+                ex.GetType().FullName,
+                ex.Message,
+                ex.InnerException?.Message ?? "none",
+                stopwatch.ElapsedMilliseconds,
+                ex.StackTrace);
             var response = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await response.WriteStringAsync("An error occurred processing the request");
+            await response.WriteStringAsync($"An error occurred processing the request: {ex.Message}");
             return response;
         }
     }
@@ -793,6 +890,7 @@ public class FeedbackFunctions
             var maxCommentsStr = queryParams["maxComments"];
             var customPrompt = queryParams["customPrompt"];
             var typeStr = queryParams["type"];
+            var useSlimmedCommentsStr = queryParams["useSlimmedComments"];
 
             if (string.IsNullOrEmpty(url))
             {
@@ -803,6 +901,7 @@ public class FeedbackFunctions
 
             var maxComments = int.TryParse(maxCommentsStr, out var max) ? max : 1000;
             var responseType = int.TryParse(typeStr, out var type) ? type : 0;
+            var useSlimmedComments = !bool.TryParse(useSlimmedCommentsStr, out var slimmed) || slimmed; // Default to true
 
             string serviceType;
             object platformData;
@@ -813,25 +912,25 @@ public class FeedbackFunctions
             {
                 serviceType = "github";
                 platformData = await GetGitHubDataForAnalysis(url, maxComments);
-                commentsText = ConvertGitHubDataToCommentsText(platformData);
+                commentsText = ConvertGitHubDataToCommentsText(platformData, useSlimmedComments);
             }
             else if (SharedDump.Utils.UrlParsing.IsYouTubeUrl(url))
             {
                 serviceType = "youtube";
                 platformData = await GetYouTubeDataForAnalysis(url, maxComments);
-                commentsText = ConvertYouTubeDataToCommentsText(platformData);
+                commentsText = ConvertYouTubeDataToCommentsText(platformData, useSlimmedComments);
             }
             else if (SharedDump.Utils.UrlParsing.IsRedditUrl(url))
             {
                 serviceType = "reddit";
                 platformData = await GetRedditDataForAnalysis(url, maxComments);
-                commentsText = ConvertRedditDataToCommentsText(platformData);
+                commentsText = ConvertRedditDataToCommentsText(platformData, useSlimmedComments);
             }
             else if (SharedDump.Utils.UrlParsing.IsDevBlogsUrl(url))
             {
                 serviceType = "devblogs";
                 platformData = await GetDevBlogsDataForAnalysis(url, maxComments);
-                commentsText = ConvertDevBlogsDataToCommentsText(platformData);
+                commentsText = ConvertDevBlogsDataToCommentsText(platformData, useSlimmedComments);
             }
             else if (SharedDump.Utils.UrlParsing.IsTwitterUrl(url))
             {
@@ -844,7 +943,7 @@ public class FeedbackFunctions
             {
                 serviceType = "bluesky";
                 platformData = await GetBlueSkyDataForAnalysis(url, maxComments);
-                commentsText = ConvertBlueSkyDataToCommentsText(platformData);
+                commentsText = ConvertBlueSkyDataToCommentsText(platformData, useSlimmedComments);
             }
             else if (SharedDump.Utils.UrlParsing.IsHackerNewsUrl(url))
             {
@@ -857,7 +956,7 @@ public class FeedbackFunctions
                     return badResponse;
                 }
                     platformData = await GetHackerNewsDataForAnalysis(hackerNewsId, maxComments);
-                    commentsText = ConvertHackerNewsDataToCommentsText(platformData);
+                    commentsText = ConvertHackerNewsDataToCommentsText(platformData, useSlimmedComments);
                 }
                 else
                 {
@@ -1063,54 +1162,54 @@ public class FeedbackFunctions
         return itemsList;
     }
 
-    private string ConvertGitHubDataToCommentsText(object data)
+    private string ConvertGitHubDataToCommentsText(object data, bool forAnalysis = false)
     {
         return data switch
         {
-            GithubIssueModel issue => ConvertGitHubIssuesToCommentsText(new[] { issue }),
-            GithubDiscussionModel discussion => ConvertGitHubDiscussionsToCommentsText(new[] { discussion }),
+            GithubIssueModel issue => ConvertGitHubIssuesToCommentsText(new[] { issue }, forAnalysis),
+            GithubDiscussionModel discussion => ConvertGitHubDiscussionsToCommentsText(new[] { discussion }, forAnalysis),
             _ => JsonSerializer.Serialize(data)
         };
     }
 
-    private string ConvertGitHubIssuesToCommentsText(GithubIssueModel[] issues)
+    private string ConvertGitHubIssuesToCommentsText(GithubIssueModel[] issues, bool forAnalysis = false)
     {
-        var threads = SharedDump.Services.CommentDataConverter.ConvertGitHubIssues(issues.ToList());
-        return ConvertCommentThreadsToText(threads);
+        var threads = SharedDump.Services.CommentDataConverter.ConvertGitHubIssues(issues.ToList(), forAnalysis);
+        return ConvertCommentThreadsToText(threads, forAnalysis);
     }
 
-    private string ConvertGitHubDiscussionsToCommentsText(GithubDiscussionModel[] discussions)
+    private string ConvertGitHubDiscussionsToCommentsText(GithubDiscussionModel[] discussions, bool forAnalysis = false)
     {
-        var threads = SharedDump.Services.CommentDataConverter.ConvertGitHubDiscussions(discussions.ToList());
-        return ConvertCommentThreadsToText(threads);
+        var threads = SharedDump.Services.CommentDataConverter.ConvertGitHubDiscussions(discussions.ToList(), forAnalysis);
+        return ConvertCommentThreadsToText(threads, forAnalysis);
     }
 
-    private string ConvertYouTubeDataToCommentsText(object data)
+    private string ConvertYouTubeDataToCommentsText(object data, bool forAnalysis = false)
     {
         if (data is List<YouTubeOutputVideo> videos)
         {
-            var threads = SharedDump.Services.CommentDataConverter.ConvertYouTube(videos);
-            return ConvertCommentThreadsToText(threads);
+            var threads = SharedDump.Services.CommentDataConverter.ConvertYouTube(videos, forAnalysis);
+            return ConvertCommentThreadsToText(threads, forAnalysis);
         }
         return JsonSerializer.Serialize(data);
     }
 
-    private string ConvertRedditDataToCommentsText(object data)
+    private string ConvertRedditDataToCommentsText(object data, bool forAnalysis = false)
     {
         if (data is RedditThreadModel thread)
         {
-            var threadConverted = SharedDump.Services.CommentDataConverter.ConvertReddit(thread);
-            return ConvertCommentThreadsToText(new List<CommentThread> { threadConverted });
+            var threadConverted = SharedDump.Services.CommentDataConverter.ConvertReddit(thread, forAnalysis);
+            return ConvertCommentThreadsToText(new List<CommentThread> { threadConverted }, forAnalysis);
         }
         return JsonSerializer.Serialize(data);
     }
 
-    private string ConvertDevBlogsDataToCommentsText(object data)
+    private string ConvertDevBlogsDataToCommentsText(object data, bool forAnalysis = false)
     {
         if (data is DevBlogsArticleModel article)
         {
-            var threads = SharedDump.Services.CommentDataConverter.ConvertDevBlogs(article);
-            return ConvertCommentThreadsToText(threads);
+            var threads = SharedDump.Services.CommentDataConverter.ConvertDevBlogs(article, forAnalysis);
+            return ConvertCommentThreadsToText(threads, forAnalysis);
         }
         return JsonSerializer.Serialize(data);
     }
@@ -1121,27 +1220,27 @@ public class FeedbackFunctions
         return JsonSerializer.Serialize(data);
     }
 
-    private string ConvertBlueSkyDataToCommentsText(object data)
+    private string ConvertBlueSkyDataToCommentsText(object data, bool forAnalysis = false)
     {
         if (data is BlueSkyFeedbackResponse response)
         {
-            var threads = SharedDump.Services.CommentDataConverter.ConvertBlueSky(response);
-            return ConvertCommentThreadsToText(threads);
+            var threads = SharedDump.Services.CommentDataConverter.ConvertBlueSky(response, forAnalysis);
+            return ConvertCommentThreadsToText(threads, forAnalysis);
         }
         return JsonSerializer.Serialize(data);
     }
 
-    private string ConvertHackerNewsDataToCommentsText(object data)
+    private string ConvertHackerNewsDataToCommentsText(object data, bool forAnalysis = false)
     {
         if (data is List<HackerNewsItem> items)
         {
-            var threads = SharedDump.Services.CommentDataConverter.ConvertHackerNews(items);
-            return ConvertCommentThreadsToText(threads);
+            var threads = SharedDump.Services.CommentDataConverter.ConvertHackerNews(items, forAnalysis);
+            return ConvertCommentThreadsToText(threads, forAnalysis);
         }
         return JsonSerializer.Serialize(data);
     }
 
-    private string ConvertCommentThreadsToText(List<CommentThread> threads)
+    private string ConvertCommentThreadsToText(List<CommentThread> threads, bool forAnalysis = false)
     {
         if (!threads.Any())
             return string.Empty;
@@ -1158,7 +1257,9 @@ public class FeedbackFunctions
             result.AppendLine($"Author: {thread.Author}");
             result.AppendLine($"Created: {thread.CreatedAt:yyyy-MM-dd HH:mm:ss}");
             result.AppendLine($"Source: {thread.SourceType}");
-            if (!string.IsNullOrEmpty(thread.Url))
+            
+            // Exclude URL when analyzing to reduce token usage
+            if (!forAnalysis && !string.IsNullOrEmpty(thread.Url))
             {
                 result.AppendLine($"URL: {thread.Url}");
             }
@@ -1167,7 +1268,7 @@ public class FeedbackFunctions
             if (thread.Comments.Any())
             {
                 result.AppendLine("## Comments");
-                AppendCommentsToText(result, thread.Comments, 0);
+                AppendCommentsToText(result, thread.Comments, 0, forAnalysis);
             }
 
             result.AppendLine("---");
@@ -1176,7 +1277,7 @@ public class FeedbackFunctions
         return result.ToString();
     }
 
-    private void AppendCommentsToText(System.Text.StringBuilder result, List<CommentData> comments, int depth)
+    private void AppendCommentsToText(System.Text.StringBuilder result, List<CommentData> comments, int depth, bool forAnalysis = false)
     {
         foreach (var comment in comments)
         {
@@ -1191,7 +1292,7 @@ public class FeedbackFunctions
 
             if (comment.Replies.Any())
             {
-                AppendCommentsToText(result, comment.Replies, depth + 1);
+                AppendCommentsToText(result, comment.Replies, depth + 1, forAnalysis);
             }
         }
     }
