@@ -16,7 +16,6 @@ public class UserSettingsService
     private UserSettings? _cachedSettings;
     public class UserSettings
     {
-        public int MaxCommentsToAnalyze { get; set; } = 1200;
         public bool UseCustomPrompts { get; set; } = false;
         public string? PreferredVoice { get; set; }
         public DateTime? LastFeatureAnnouncementShown { get; set; }

@@ -20,7 +20,7 @@ public class MockDevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackSer
     {
     }
 
-    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null)
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock DevBlogs comments...");
         await Task.Delay(1000); // Simulate network delay

@@ -21,7 +21,7 @@ public class MockBlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackServi
     {
     }
 
-    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null)
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock BlueSky comments...");
         await Task.Delay(1000); // Simulate network delay

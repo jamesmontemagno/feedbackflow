@@ -32,16 +32,6 @@
                     </div>
                     <div class="card-body">
                         <div class="form-floating mb-3">
-                            <input type="number" class="form-control" id="maxComments" min="100" max="5000"
-                                @bind="MaxCommentsToAnalyze" @bind:event="oninput" />
-                            <label for="maxComments">Maximum Comments to Analyze</label>
-                            <div class="text-muted small">
-                                Default: 1200. Analyzing more comments will take longer but provide more comprehensive
-                                results.
-                            </div>
-                        </div>
-
-                        <div class="form-floating mb-3">
                             <select class="form-select" id="promptType" @bind="SelectedPromptType" @bind:event="onchange">
                                 <option value="@PromptType.ProductFeedback">Product Feedback Analysis</option>
                                 <option value="@PromptType.CompetitorAnalysis">Competitor Analysis</option>
@@ -217,7 +207,6 @@
 
     // Backing fields for settings properties
     private string? _preferredVoice;
-    private int _maxCommentsToAnalyze = 1200;
     private string _universalPrompt = string.Empty;
     private PromptType _selectedPromptType = PromptType.ProductFeedback;
 
@@ -252,19 +241,6 @@
             if (_preferredVoice != value)
             {
                 _preferredVoice = value;
-                hasUnsavedChanges = true;
-            }
-        }
-    }
-
-    private int MaxCommentsToAnalyze
-    {
-        get => _maxCommentsToAnalyze;
-        set
-        {
-            if (_maxCommentsToAnalyze != value)
-            {
-                _maxCommentsToAnalyze = value;
                 hasUnsavedChanges = true;
             }
         }
@@ -306,7 +282,6 @@
         if (settings != null)
         {
             _preferredVoice = settings.PreferredVoice;
-            _maxCommentsToAnalyze = settings.MaxCommentsToAnalyze;
             _universalPrompt = settings.UniversalPrompt;
             _selectedPromptType = settings.SelectedPromptType;
         }
@@ -421,9 +396,8 @@
             isSaving = true;
 
             // Apply all local values to the settings object
-            settings.PreferredVoice = _preferredVoice;
-            settings.MaxCommentsToAnalyze = _maxCommentsToAnalyze;
-            settings.UniversalPrompt = _universalPrompt;
+        settings.PreferredVoice = _preferredVoice;
+        settings.UniversalPrompt = _universalPrompt;
             settings.SelectedPromptType = _selectedPromptType;
 
             // Save to persistent storage

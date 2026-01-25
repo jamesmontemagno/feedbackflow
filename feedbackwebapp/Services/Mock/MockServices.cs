@@ -14,7 +14,8 @@ public class MockYouTubeFeedbackService(
     IAuthenticationHeaderService authenticationHeaderService,
     FeedbackStatusUpdate? onStatusUpdate = null)
     : FeedbackService(http, configuration, userSettings, authenticationHeaderService, onStatusUpdate), IYouTubeFeedbackService
-{    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null)
+{
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock YouTube comments...");
         await Task.Delay(1000); // Simulate network delay
@@ -63,7 +64,7 @@ public class MockHackerNewsFeedbackService(
     FeedbackStatusUpdate? onStatusUpdate = null)
     : FeedbackService(http, configuration, userSettings, authenticationHeaderService, onStatusUpdate), IHackerNewsFeedbackService
 {
-    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null)
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching mock Hacker News comments...");
         await Task.Delay(1000); // Simulate network delay

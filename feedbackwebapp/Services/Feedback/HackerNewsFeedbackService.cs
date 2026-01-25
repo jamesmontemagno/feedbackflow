@@ -24,7 +24,7 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
         _storyId = storyId;
     }
 
-    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null)
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         var processedId = UrlParsing.ExtractHackerNewsId(_storyId);
 
@@ -38,10 +38,8 @@ public class HackerNewsFeedbackService : FeedbackService, IHackerNewsFeedbackSer
         var hnCode = Configuration["FeedbackApi:FunctionsKey"]
             ?? throw new InvalidOperationException("Hacker News API code not configured");
 
-        var maxComments = await GetMaxCommentsToAnalyze(maxCommentsOverride);
-
         // Get comments from the Hacker News API
-        var getFeedbackUrl = $"{BaseUrl}/api/GetHackerNewsFeedback?code={Uri.EscapeDataString(hnCode)}&ids={Uri.EscapeDataString(processedId)}&maxComments={maxComments}";
+        var getFeedbackUrl = $"{BaseUrl}/api/GetHackerNewsFeedback?code={Uri.EscapeDataString(hnCode)}&ids={Uri.EscapeDataString(processedId)}";
         var feedbackResponse = await SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod.Get, getFeedbackUrl);
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
 

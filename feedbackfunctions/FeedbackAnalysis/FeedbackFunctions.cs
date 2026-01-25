@@ -95,10 +95,9 @@ public class FeedbackFunctions
     /// <remarks>
     /// Parameters:
     /// - url: Required. GitHub URL (issue, PR, discussion, or repository)
-    /// - maxComments: Optional. Maximum number of comments to return (default: 100)
     /// 
     /// Example usage:
-    /// GET /api/GetGitHubFeedback?url=https://github.com/dotnet/maui/issues/123&maxComments=50
+    /// GET /api/GetGitHubFeedback?url=https://github.com/dotnet/maui/issues/123
     /// </remarks>
     [Function("GetGitHubFeedback")]
     [Authorize]
@@ -119,16 +118,12 @@ public class FeedbackFunctions
 
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var url = queryParams["url"];
-        var maxCommentsStr = queryParams["maxComments"];
-
         if (string.IsNullOrEmpty(url))
         {
             var response = req.CreateResponse(HttpStatusCode.BadRequest);
             await response.WriteStringAsync("'url' parameter is required");
             return response;
         }
-
-        var maxComments = int.TryParse(maxCommentsStr, out var max) ? max : 100;
 
         try
         {
@@ -165,12 +160,6 @@ public class FeedbackFunctions
                             return notFoundResponse;
                         }
 
-                        // Limit comments to maxComments
-                        if (issueModel.Comments.Length > maxComments)
-                        {
-                            issueModel.Comments = issueModel.Comments.Take(maxComments).ToArray();
-                        }
-
                         result = new[] { issueModel };
                     }
                     else
@@ -193,12 +182,6 @@ public class FeedbackFunctions
                             return notFoundResponse;
                         }
 
-                        // Limit comments to maxComments
-                        if (prModel.Comments.Length > maxComments)
-                        {
-                            prModel.Comments = prModel.Comments.Take(maxComments).ToArray();
-                        }
-
                         result = new[] { prModel };
                     }
                     else
@@ -219,12 +202,6 @@ public class FeedbackFunctions
                             var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
                             await notFoundResponse.WriteStringAsync("Discussion not found");
                             return notFoundResponse;
-                        }
-
-                        // Limit comments to maxComments
-                        if (discussionModel.Comments.Length > maxComments)
-                        {
-                            discussionModel.Comments = discussionModel.Comments.Take(maxComments).ToArray();
                         }
 
                         result = new[] { discussionModel };
@@ -762,12 +739,11 @@ public class FeedbackFunctions
     /// <remarks>
     /// Parameters:
     /// - url: Required. URL from any supported platform (GitHub, YouTube, Reddit, DevBlogs, Twitter, BlueSky, HackerNews)
-    /// - maxComments: Optional. Maximum number of comments to analyze (default: 100)
     /// - customPrompt: Optional. Custom analysis prompt to use
     /// - type: Optional. Response type: 0 = analysis only (default), 1 = comments only, 2 = both comments and analysis
     /// 
     /// Example usage:
-    /// GET /api/AutoAnalyze?url=https://github.com/dotnet/maui/issues/123&maxComments=50&type=0
+    /// GET /api/AutoAnalyze?url=https://github.com/dotnet/maui/issues/123&type=0
     /// GET /api/AutoAnalyze?url=https://www.youtube.com/watch?v=VIDEO_ID&type=1
     /// GET /api/AutoAnalyze?url=https://www.reddit.com/r/programming/comments/POST_ID/&type=2
     /// </remarks>
@@ -790,9 +766,8 @@ public class FeedbackFunctions
 
             var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
             var url = queryParams["url"];
-            var maxCommentsStr = queryParams["maxComments"];
-            var customPrompt = queryParams["customPrompt"];
-            var typeStr = queryParams["type"];
+        var customPrompt = queryParams["customPrompt"];
+        var typeStr = queryParams["type"];
 
             if (string.IsNullOrEmpty(url))
             {
@@ -801,8 +776,7 @@ public class FeedbackFunctions
                 return response;
             }
 
-            var maxComments = int.TryParse(maxCommentsStr, out var max) ? max : 1000;
-            var responseType = int.TryParse(typeStr, out var type) ? type : 0;
+        var responseType = int.TryParse(typeStr, out var type) ? type : 0;
 
             string serviceType;
             object platformData;
@@ -812,53 +786,52 @@ public class FeedbackFunctions
             if (SharedDump.Utils.UrlParsing.IsGitHubUrl(url))
             {
                 serviceType = "github";
-                platformData = await GetGitHubDataForAnalysis(url, maxComments);
-                commentsText = ConvertGitHubDataToCommentsText(platformData);
-            }
-            else if (SharedDump.Utils.UrlParsing.IsYouTubeUrl(url))
+            platformData = await GetGitHubDataForAnalysis(url);
+            commentsText = ConvertGitHubDataToCommentsText(platformData);
+        }
+        else if (SharedDump.Utils.UrlParsing.IsYouTubeUrl(url))
+        {
+            serviceType = "youtube";
+            platformData = await GetYouTubeDataForAnalysis(url);
+            commentsText = ConvertYouTubeDataToCommentsText(platformData);
+        }
+        else if (SharedDump.Utils.UrlParsing.IsRedditUrl(url))
+        {
+            serviceType = "reddit";
+            platformData = await GetRedditDataForAnalysis(url);
+            commentsText = ConvertRedditDataToCommentsText(platformData);
+        }
+        else if (SharedDump.Utils.UrlParsing.IsDevBlogsUrl(url))
+        {
+            serviceType = "devblogs";
+            platformData = await GetDevBlogsDataForAnalysis(url);
+            commentsText = ConvertDevBlogsDataToCommentsText(platformData);
+        }
+        else if (SharedDump.Utils.UrlParsing.IsTwitterUrl(url))
+        {
+            serviceType = "twitter";
+            platformData = await GetTwitterDataForAnalysis(url);
+            commentsText = ConvertTwitterDataToCommentsText(platformData);
+        }
+        else if (SharedDump.Utils.UrlParsing.IsBlueSkyUrl(url))
+        {
+            serviceType = "bluesky";
+            platformData = await GetBlueSkyDataForAnalysis(url);
+            commentsText = ConvertBlueSkyDataToCommentsText(platformData);
+        }
+        else if (SharedDump.Utils.UrlParsing.IsHackerNewsUrl(url))
+        {
+            serviceType = "hackernews";
+            var hackerNewsId = SharedDump.Utils.UrlParsing.ExtractHackerNewsId(url);
+            if (string.IsNullOrEmpty(hackerNewsId))
             {
-                serviceType = "youtube";
-                platformData = await GetYouTubeDataForAnalysis(url, maxComments);
-                commentsText = ConvertYouTubeDataToCommentsText(platformData);
+                var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await badResponse.WriteStringAsync("Could not extract Hacker News ID from URL");
+                return badResponse;
             }
-            else if (SharedDump.Utils.UrlParsing.IsRedditUrl(url))
-            {
-                serviceType = "reddit";
-                platformData = await GetRedditDataForAnalysis(url, maxComments);
-                commentsText = ConvertRedditDataToCommentsText(platformData);
+                platformData = await GetHackerNewsDataForAnalysis(hackerNewsId);
+                commentsText = ConvertHackerNewsDataToCommentsText(platformData);
             }
-            else if (SharedDump.Utils.UrlParsing.IsDevBlogsUrl(url))
-            {
-                serviceType = "devblogs";
-                platformData = await GetDevBlogsDataForAnalysis(url, maxComments);
-                commentsText = ConvertDevBlogsDataToCommentsText(platformData);
-            }
-            else if (SharedDump.Utils.UrlParsing.IsTwitterUrl(url))
-            {
-                serviceType = "twitter";
-                
-                platformData = await GetTwitterDataForAnalysis(url, maxComments);
-                commentsText = ConvertTwitterDataToCommentsText(platformData);
-            }
-            else if (SharedDump.Utils.UrlParsing.IsBlueSkyUrl(url))
-            {
-                serviceType = "bluesky";
-                platformData = await GetBlueSkyDataForAnalysis(url, maxComments);
-                commentsText = ConvertBlueSkyDataToCommentsText(platformData);
-            }
-            else if (SharedDump.Utils.UrlParsing.IsHackerNewsUrl(url))
-            {
-                serviceType = "hackernews";
-                var hackerNewsId = SharedDump.Utils.UrlParsing.ExtractHackerNewsId(url);
-                if (string.IsNullOrEmpty(hackerNewsId))
-                {
-                    var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                    await badResponse.WriteStringAsync("Could not extract Hacker News ID from URL");
-                    return badResponse;
-                }
-                    platformData = await GetHackerNewsDataForAnalysis(hackerNewsId, maxComments);
-                    commentsText = ConvertHackerNewsDataToCommentsText(platformData);
-                }
                 else
                 {
                     var response = req.CreateResponse(HttpStatusCode.BadRequest);
@@ -951,7 +924,7 @@ public class FeedbackFunctions
 
     #region Helper Methods for AutoAnalyze
 
-    private async Task<object> GetGitHubDataForAnalysis(string url, int maxComments)
+    private async Task<object> GetGitHubDataForAnalysis(string url)
     {
         var urlInfo = SharedDump.Utils.GitHubUrlParser.ParseGitHubUrl(url);
         if (urlInfo == null)
@@ -977,7 +950,7 @@ public class FeedbackFunctions
         return result;
     }
 
-    private async Task<object> GetYouTubeDataForAnalysis(string url, int maxComments)
+    private async Task<object> GetYouTubeDataForAnalysis(string url)
     {
         var videoId = SharedDump.Utils.UrlParsing.ExtractVideoId(url);
         if (string.IsNullOrEmpty(videoId))
@@ -987,16 +960,10 @@ public class FeedbackFunctions
         if (video == null)
             throw new InvalidOperationException("No YouTube video found");
 
-        // Limit comments to maxComments
-        if (video.Comments.Count > maxComments)
-        {
-            video.Comments = video.Comments.Take(maxComments).ToList();
-        }
-
         return new List<YouTubeOutputVideo> { video };
     }
 
-    private async Task<object> GetRedditDataForAnalysis(string url, int maxComments)
+    private async Task<object> GetRedditDataForAnalysis(string url)
     {
         var threadId = SharedDump.Utils.UrlParsing.ExtractRedditId(url);
         if (string.IsNullOrEmpty(threadId))
@@ -1018,7 +985,7 @@ public class FeedbackFunctions
         return thread;
     }
 
-    private async Task<object> GetDevBlogsDataForAnalysis(string url, int maxComments)
+    private async Task<object> GetDevBlogsDataForAnalysis(string url)
     {
         var article = await _devBlogsService.FetchArticleWithCommentsAsync(url);
         if (article == null)
@@ -1027,7 +994,7 @@ public class FeedbackFunctions
         return article;
     }
 
-    private async Task<object> GetTwitterDataForAnalysis(string url, int maxComments)
+    private async Task<object> GetTwitterDataForAnalysis(string url)
     {
         var result = await _twitterService.GetTwitterThreadAsync(url);
         if (result == null)
@@ -1036,7 +1003,7 @@ public class FeedbackFunctions
         return result;
     }
 
-    private async Task<object> GetBlueSkyDataForAnalysis(string url, int maxComments)
+    private async Task<object> GetBlueSkyDataForAnalysis(string url)
     {
         var result = await _blueSkyService.GetBlueSkyPostAsync(url);
         if (result == null)
@@ -1045,7 +1012,7 @@ public class FeedbackFunctions
         return result;
     }
 
-    private async Task<object> GetHackerNewsDataForAnalysis(string storyId, int maxComments)
+    private async Task<object> GetHackerNewsDataForAnalysis(string storyId)
     {
         if (!int.TryParse(storyId, out var id))
             throw new InvalidOperationException("Invalid Hacker News story ID");

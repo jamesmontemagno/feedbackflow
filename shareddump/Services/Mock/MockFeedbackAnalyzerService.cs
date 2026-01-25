@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.Extensions.AI;
 using SharedDump.AI;
 
@@ -8,6 +9,7 @@ namespace SharedDump.Services.Mock;
 /// </summary>
 public class MockFeedbackAnalyzerService : IFeedbackAnalyzerService
 {
+    private const int MaxCommentsCharacterLength = 350_000;
     private readonly Random _random = new(42); // Fixed seed for deterministic results
 
     public MockFeedbackAnalyzerService()
@@ -31,11 +33,32 @@ public class MockFeedbackAnalyzerService : IFeedbackAnalyzerService
     {
         var analysisKey = serviceType.ToLowerInvariant();
         
-        // Use the shared MockAnalysisProvider for consistent mock data
-        var analysis = MockAnalysisProvider.GetMockAnalysis(analysisKey, EstimateCommentCount(comments), customSystemPrompt);
+        if (string.IsNullOrWhiteSpace(comments) || comments.Length <= MaxCommentsCharacterLength)
+        {
+            // Use the shared MockAnalysisProvider for consistent mock data
+            var analysis = MockAnalysisProvider.GetMockAnalysis(analysisKey, EstimateCommentCount(comments), customSystemPrompt);
+            return Task.Delay(100).ContinueWith(_ => analysis);
+        }
+
+        var chunks = SplitCommentsIntoChunks(comments);
+        if (chunks.Count <= 1)
+        {
+            var analysis = MockAnalysisProvider.GetMockAnalysis(analysisKey, EstimateCommentCount(comments), customSystemPrompt);
+            return Task.Delay(100).ContinueWith(_ => analysis);
+        }
+
+        var chunkAnalyses = chunks.Select(chunk =>
+            MockAnalysisProvider.GetMockAnalysis(analysisKey, EstimateCommentCount(chunk), customSystemPrompt)).ToList();
+
+        var combinePrompt = GetCombineSummariesPrompt();
+        var combinedPrefix = $"{combinePrompt}\n\nCombined {chunkAnalyses.Count} chunk analyses.";
+        var combinedAnalysis = MockAnalysisProvider.GetMockAnalysis(
+            analysisKey,
+            EstimateCommentCount(comments),
+            combinedPrefix);
 
         // Simulate processing time
-        return Task.Delay(100).ContinueWith(_ => analysis);
+        return Task.Delay(100).ContinueWith(_ => combinedAnalysis);
     }
 
     /// <summary>
@@ -79,6 +102,69 @@ public class MockFeedbackAnalyzerService : IFeedbackAnalyzerService
         for (int i = 0; i < text.Length; i += chunkSize)
         {
             yield return text.Substring(i, Math.Min(chunkSize, text.Length - i));
+        }
+    }
+
+    private static string GetCombineSummariesPrompt() =>
+        "Combine the chunk analyses into a single cohesive summary.";
+
+    private static IReadOnlyList<string> SplitCommentsIntoChunks(string comments)
+    {
+        if (string.IsNullOrWhiteSpace(comments))
+        {
+            return Array.Empty<string>();
+        }
+
+        var chunks = new List<string>();
+        var currentChunk = new StringBuilder();
+        var lines = comments.Split('\n');
+
+        foreach (var line in lines)
+        {
+            if (line.Length > MaxCommentsCharacterLength)
+            {
+                if (currentChunk.Length > 0)
+                {
+                    chunks.Add(currentChunk.ToString());
+                    currentChunk.Clear();
+                }
+
+                foreach (var oversizedChunk in SplitOversizedLine(line))
+                {
+                    chunks.Add(oversizedChunk);
+                }
+
+                continue;
+            }
+
+            var separatorLength = currentChunk.Length > 0 ? 1 : 0;
+            if (currentChunk.Length + separatorLength + line.Length > MaxCommentsCharacterLength)
+            {
+                chunks.Add(currentChunk.ToString());
+                currentChunk.Clear();
+            }
+
+            if (currentChunk.Length > 0)
+            {
+                currentChunk.Append('\n');
+            }
+
+            currentChunk.Append(line);
+        }
+
+        if (currentChunk.Length > 0)
+        {
+            chunks.Add(currentChunk.ToString());
+        }
+
+        return chunks;
+    }
+
+    private static IEnumerable<string> SplitOversizedLine(string line)
+    {
+        for (var index = 0; index < line.Length; index += MaxCommentsCharacterLength)
+        {
+            yield return line.Substring(index, Math.Min(MaxCommentsCharacterLength, line.Length - index));
         }
     }
 }

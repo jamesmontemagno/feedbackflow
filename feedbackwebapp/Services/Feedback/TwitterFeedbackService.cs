@@ -21,7 +21,7 @@ public class TwitterFeedbackService : FeedbackService, ITwitterFeedbackService
         _tweetUrlOrId = tweetUrlOrId;
     }
 
-    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null)
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         if (string.IsNullOrWhiteSpace(_tweetUrlOrId))
             throw new InvalidOperationException("Please enter a valid tweet URL or ID");
@@ -31,8 +31,7 @@ public class TwitterFeedbackService : FeedbackService, ITwitterFeedbackService
         var twitterCode = Configuration["FeedbackApi:FunctionsKey"]
             ?? throw new InvalidOperationException("Twitter API code not configured");
 
-        var maxComments = await GetMaxCommentsToAnalyze(maxCommentsOverride);
-        var getFeedbackUrl = $"{BaseUrl}/api/GetTwitterFeedback?code={Uri.EscapeDataString(twitterCode)}&tweet={Uri.EscapeDataString(_tweetUrlOrId)}&maxComments={maxComments}";
+        var getFeedbackUrl = $"{BaseUrl}/api/GetTwitterFeedback?code={Uri.EscapeDataString(twitterCode)}&tweet={Uri.EscapeDataString(_tweetUrlOrId)}";
         var feedbackResponse = await SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod.Get, getFeedbackUrl);
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
         var feedback = JsonSerializer.Deserialize<TwitterFeedbackResponse>(responseContent);

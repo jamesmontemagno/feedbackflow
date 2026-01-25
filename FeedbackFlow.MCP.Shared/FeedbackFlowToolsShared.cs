@@ -26,7 +26,6 @@ public sealed class FeedbackFlowToolsShared
     [McpServerTool, Description("Analyze feedback from various sources using AI (AutoAnalyze function).")]
     public async Task<string> AutoAnalyzeFeedback(
         [Description("The URL to analyze (GitHub, YouTube, Reddit, etc.)")] string url,
-        [Description("Maximum number of comments to analyze (default: 1000)")] int maxComments = 1000,
         [Description("Custom analysis prompt (optional)")] string? customPrompt = null,
         [Description("Output mode (optional): AnalysisOnly=0 (markdown), CommentsOnly=1 (JSON), AnalysisAndComments=2 (combined JSON)")] AnalysisType? type = null)
     {
@@ -40,7 +39,7 @@ public sealed class FeedbackFlowToolsShared
         {
             using var httpClient = _httpClientFactory.CreateClient();
             
-            var queryParams = $"url={Uri.EscapeDataString(url)}&maxComments={maxComments}";
+            var queryParams = $"url={Uri.EscapeDataString(url)}";
             if (!string.IsNullOrEmpty(customPrompt))
                 queryParams += $"&customPrompt={Uri.EscapeDataString(customPrompt)}";
             if (type.HasValue)

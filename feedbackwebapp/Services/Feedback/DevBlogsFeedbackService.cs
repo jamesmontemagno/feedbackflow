@@ -15,7 +15,7 @@ public class DevBlogsFeedbackService : FeedbackService, IDevBlogsFeedbackService
         ArticleUrl = articleUrl;
     }
 
-    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null)
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Fetching DevBlogs comments...");
         if (string.IsNullOrWhiteSpace(ArticleUrl))

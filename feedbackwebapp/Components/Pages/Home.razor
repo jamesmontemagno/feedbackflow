@@ -188,14 +188,6 @@
                                             @cachedCommentCount.ToString("N0") comments fetched
                                         </span>
                                         
-                                        @if (showCommentLimitWarning)
-                                        {
-                                            <span class="badge bg-warning text-dark comment-limit-badge">
-                                                <i class="bi bi-exclamation-triangle me-1"></i>
-                                                Analysis will use @maxCommentsLimit.ToString("N0") of @cachedCommentCount.ToString("N0")
-                                            </span>
-                                        }
-
                                         @* Export button for fetched comments *@
                                         <ExportButton Items="@(new[] { CreateExportItemFromComments() })" 
                                                       ButtonVariant="secondary" 
@@ -307,8 +299,6 @@
     private bool isFetchingComments = false;
     private bool isAnalyzing = false;
     private List<CommentThread>? fetchedThreads;
-    private int maxCommentsLimit = 1200; // Will be loaded from user settings
-    
     // Reanalyze caching state
     private string[]? lastAnalyzedUrls;
     private string? cachedComments;
@@ -318,9 +308,6 @@
     // Computed property for enabling analyze button
     private bool canAnalyze => hasComments && cachedComments != null && !isLoading;
     
-    // Computed property for showing comment limit warning
-    private bool showCommentLimitWarning => hasComments && cachedCommentCount > maxCommentsLimit;
-
     private static string Truncate(string value, int max)
         => string.IsNullOrEmpty(value) || value.Length <= max ? value : value.Substring(0, max) + "...";
 
@@ -698,10 +685,6 @@
                 error = accessError;
                 return;
             }
-
-            // Load max comments limit from user settings
-            var settings = await UserSettings.GetSettingsAsync();
-            maxCommentsLimit = settings.MaxCommentsToAnalyze;
 
             // Create service for fetching
             var service = ServiceProvider.CreateAutoDataSourceService(

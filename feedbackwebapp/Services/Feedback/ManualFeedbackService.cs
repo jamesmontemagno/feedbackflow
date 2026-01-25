@@ -26,7 +26,7 @@ public class ManualFeedbackService : FeedbackService, IManualFeedbackService
         }
     }
 
-    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null)
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         UpdateStatus(FeedbackProcessStatus.GatheringComments, "Processing manual input...");
         
