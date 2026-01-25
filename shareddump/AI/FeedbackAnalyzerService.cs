@@ -1,3 +1,4 @@
+using System.Text;
 using Azure;
 using Azure.AI.OpenAI;
 using Microsoft.Extensions.AI;
@@ -39,6 +40,13 @@ public enum PromptType
 /// </remarks>
 public class FeedbackAnalyzerService : IFeedbackAnalyzerService
 {
+    /// <summary>
+    /// Maximum character length for comments sent to analysis.
+    /// This prevents timeouts and rate limiting from the AI service.
+    /// ~300K characters ≈ ~75K tokens for most content.
+    /// </summary>
+    private const int MaxCommentsCharacterLength = 350_000;
+
     private readonly IChatClient _chatClient;
 
     /// <summary>
@@ -75,10 +83,26 @@ public class FeedbackAnalyzerService : IFeedbackAnalyzerService
     public async Task<string> AnalyzeCommentsAsync(string serviceType, string comments, string? customSystemPrompt)
     {
         var servicePrompt = customSystemPrompt ?? GetServiceSpecificPrompt(serviceType);
-        var prompt = BuildAnalysisPrompt(comments);
-        var messages = new[] { new ChatMessage(ChatRole.System, servicePrompt), new ChatMessage(ChatRole.User, prompt) };
-        var response = await _chatClient.GetResponseAsync(messages);
-        return response.ToString();
+        if (string.IsNullOrWhiteSpace(comments) || comments.Length <= MaxCommentsCharacterLength)
+        {
+            return await AnalyzeWithPromptAsync(servicePrompt, comments, isCombineContent: false);
+        }
+
+        var chunks = SplitCommentsIntoChunks(comments);
+        if (chunks.Count <= 1)
+        {
+            return await AnalyzeWithPromptAsync(servicePrompt, comments, isCombineContent: false);
+        }
+
+        var chunkAnalyses = new List<string>(chunks.Count);
+        foreach (var chunk in chunks)
+        {
+            chunkAnalyses.Add(await AnalyzeWithPromptAsync(servicePrompt, chunk, isCombineContent: false));
+        }
+
+        var combinePrompt = GetCombineSummariesPrompt();
+        var combinedInput = await PrepareCombinedInputAsync(combinePrompt, chunkAnalyses);
+        return await AnalyzeWithPromptAsync(combinePrompt, combinedInput, isCombineContent: true);
     }
 
     public async IAsyncEnumerable<string> GetStreamingAnalysisAsync(string serviceType, string comments)
@@ -92,11 +116,38 @@ public class FeedbackAnalyzerService : IFeedbackAnalyzerService
     public async IAsyncEnumerable<string> GetStreamingAnalysisAsync(string serviceType, string comments, string? customSystemPrompt)
     {
         var servicePrompt = customSystemPrompt ?? GetServiceSpecificPrompt(serviceType);
-        var prompt = BuildAnalysisPrompt(comments);
-        var messages = new[] { new ChatMessage(ChatRole.System, servicePrompt), new ChatMessage(ChatRole.User, prompt) };
-        await foreach (var update in _chatClient.GetStreamingResponseAsync(messages))
+        if (string.IsNullOrWhiteSpace(comments) || comments.Length <= MaxCommentsCharacterLength)
         {
-            yield return update.ToString();
+            await foreach (var update in StreamWithPromptAsync(servicePrompt, comments, isCombineContent: false))
+            {
+                yield return update;
+            }
+
+            yield break;
+        }
+
+        var chunks = SplitCommentsIntoChunks(comments);
+        if (chunks.Count <= 1)
+        {
+            await foreach (var update in StreamWithPromptAsync(servicePrompt, comments, isCombineContent: false))
+            {
+                yield return update;
+            }
+
+            yield break;
+        }
+
+        var chunkAnalyses = new List<string>(chunks.Count);
+        foreach (var chunk in chunks)
+        {
+            chunkAnalyses.Add(await AnalyzeWithPromptAsync(servicePrompt, chunk, isCombineContent: false));
+        }
+
+        var combinePrompt = GetCombineSummariesPrompt();
+        var combinedInput = await PrepareCombinedInputAsync(combinePrompt, chunkAnalyses);
+        await foreach (var update in StreamWithPromptAsync(combinePrompt, combinedInput, isCombineContent: true))
+        {
+            yield return update;
         }
     }    
     
@@ -408,5 +459,133 @@ Format your entire response using detailed markdown with clear section headers, 
     private static string BuildAnalysisPrompt(string comments)
     {
         return $@"Comments to analyze: {comments}";
+    }
+
+    private static string BuildCombinePrompt(string analyses)
+    {
+        return $@"Analyses to combine: {analyses}";
+    }
+
+    private static string GetCombineSummariesPrompt() =>
+        @"You are combining multiple partial analyses into a single cohesive report. Synthesize the key themes, insights, sentiment, and recommendations across all chunks. Keep the same tone and markdown structure as the provided analyses. Do not reference chunk numbers or repeat content. Format your response in markdown.";
+
+    private async Task<string> AnalyzeWithPromptAsync(string systemPrompt, string content, bool isCombineContent)
+    {
+        var prompt = isCombineContent ? BuildCombinePrompt(content) : BuildAnalysisPrompt(content);
+        var messages = new[] { new ChatMessage(ChatRole.System, systemPrompt), new ChatMessage(ChatRole.User, prompt) };
+        var response = await _chatClient.GetResponseAsync(messages);
+        return response.ToString();
+    }
+
+    private async IAsyncEnumerable<string> StreamWithPromptAsync(string systemPrompt, string content, bool isCombineContent)
+    {
+        var prompt = isCombineContent ? BuildCombinePrompt(content) : BuildAnalysisPrompt(content);
+        var messages = new[] { new ChatMessage(ChatRole.System, systemPrompt), new ChatMessage(ChatRole.User, prompt) };
+        await foreach (var update in _chatClient.GetStreamingResponseAsync(messages))
+        {
+            yield return update.ToString();
+        }
+    }
+
+    private static IReadOnlyList<string> SplitCommentsIntoChunks(string comments)
+    {
+        if (string.IsNullOrWhiteSpace(comments))
+        {
+            return Array.Empty<string>();
+        }
+
+        var chunks = new List<string>();
+        var currentChunk = new StringBuilder();
+        var lines = comments.Split('\n');
+
+        foreach (var line in lines)
+        {
+            if (line.Length > MaxCommentsCharacterLength)
+            {
+                if (currentChunk.Length > 0)
+                {
+                    chunks.Add(currentChunk.ToString());
+                    currentChunk.Clear();
+                }
+
+                foreach (var oversizedChunk in SplitOversizedLine(line))
+                {
+                    chunks.Add(oversizedChunk);
+                }
+
+                continue;
+            }
+
+            var separatorLength = currentChunk.Length > 0 ? 1 : 0;
+            if (currentChunk.Length + separatorLength + line.Length > MaxCommentsCharacterLength)
+            {
+                chunks.Add(currentChunk.ToString());
+                currentChunk.Clear();
+            }
+
+            if (currentChunk.Length > 0)
+            {
+                currentChunk.Append('\n');
+            }
+
+            currentChunk.Append(line);
+        }
+
+        if (currentChunk.Length > 0)
+        {
+            chunks.Add(currentChunk.ToString());
+        }
+
+        return chunks;
+    }
+
+    private static IEnumerable<string> SplitOversizedLine(string line)
+    {
+        for (var index = 0; index < line.Length; index += MaxCommentsCharacterLength)
+        {
+            yield return line.Substring(index, Math.Min(MaxCommentsCharacterLength, line.Length - index));
+        }
+    }
+
+    private static string BuildCombinedAnalysisContent(IReadOnlyList<string> analyses)
+    {
+        if (analyses.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var builder = new StringBuilder();
+        for (var index = 0; index < analyses.Count; index++)
+        {
+            if (index > 0)
+            {
+                builder.AppendLine();
+                builder.AppendLine("---");
+                builder.AppendLine();
+            }
+
+            builder.AppendLine($"Chunk {index + 1} Analysis:");
+            builder.AppendLine(analyses[index]);
+        }
+
+        return builder.ToString();
+    }
+
+    private async Task<string> PrepareCombinedInputAsync(string combinePrompt, IReadOnlyList<string> analyses)
+    {
+        var combinedContent = BuildCombinedAnalysisContent(analyses);
+        if (combinedContent.Length <= MaxCommentsCharacterLength)
+        {
+            return combinedContent;
+        }
+
+        var condensedChunks = SplitCommentsIntoChunks(combinedContent);
+        var condensedAnalyses = new List<string>(condensedChunks.Count);
+        foreach (var chunk in condensedChunks)
+        {
+            condensedAnalyses.Add(await AnalyzeWithPromptAsync(combinePrompt, chunk, isCombineContent: true));
+        }
+
+        return await PrepareCombinedInputAsync(combinePrompt, condensedAnalyses);
     }
 }
