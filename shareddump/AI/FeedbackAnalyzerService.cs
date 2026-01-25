@@ -45,7 +45,7 @@ public class FeedbackAnalyzerService : IFeedbackAnalyzerService
     /// This prevents timeouts and rate limiting from the AI service.
     /// ~300K characters ≈ ~75K tokens for most content.
     /// </summary>
-    private const int MaxCommentsCharacterLength = 350_000;
+    private const int MaxCommentsCharacterLength = 300_000;
 
     private readonly IChatClient _chatClient;
 
