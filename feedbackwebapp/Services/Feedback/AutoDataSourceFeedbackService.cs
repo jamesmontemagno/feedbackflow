@@ -52,43 +52,27 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         return "unknown";
     }
 
-    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null)
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         if (_urls == null || _urls.Length == 0)
         {
             throw new InvalidOperationException("Please provide at least one URL to analyze");
         }
 
-        // Get the total comment limit and distribute it across URLs
-        var totalLimit = await GetMaxCommentsToAnalyze(maxCommentsOverride);
-        var remainingLimit = totalLimit;
         var totalUrls = _urls.Length;
         
         UpdateStatus(FeedbackProcessStatus.GatheringComments, 
-            $"Analyzing source URLs... ({totalLimit} comments available across {totalUrls} URL{(totalUrls > 1 ? "s" : "")})");
+            $"Analyzing source URLs... ({totalUrls} URL{(totalUrls > 1 ? "s" : "")})");
 
         var sourceData = new List<FeedbackSourceData>();
         var totalCommentCount = 0;
         var processedCount = 0;
-        var urlsRemaining = totalUrls;
-
         foreach (var url in _urls)
         {
             processedCount++;
             
-            // If we've exhausted the limit, skip remaining URLs
-            if (remainingLimit <= 0)
-            {
-                UpdateStatus(FeedbackProcessStatus.GatheringComments, 
-                    $"Comment limit reached. Skipping remaining {urlsRemaining} URL{(urlsRemaining > 1 ? "s" : "")} to stay within your analysis limit.");
-                break;
-            }
-            
-            // Calculate fair distribution: divide remaining limit by remaining URLs
-            var perUrlLimit = Math.Max(1, remainingLimit / urlsRemaining);
-            
             UpdateStatus(FeedbackProcessStatus.GatheringComments, 
-                $"Processing URL {processedCount} of {totalUrls} (limit: {perUrlLimit} comments, {remainingLimit} remaining)...");
+                $"Processing URL {processedCount} of {totalUrls}...");
 
             try
             {
@@ -96,15 +80,14 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
                 var service = ResolveFeedbackService(url);
                 if (service != null)
                 {
-                    var (comments, commentCount, additionalData) = await GetCommentsFromUrl(url, perUrlLimit);
+                    var (comments, commentCount, additionalData) = await GetCommentsFromUrl(url);
                     if (!string.IsNullOrWhiteSpace(comments))
                     {
                         sourceData.Add(new FeedbackSourceData(serviceType, $"URL: {url}\n{comments}", commentCount, additionalData));
                         totalCommentCount += commentCount;
-                        remainingLimit -= commentCount;
                         
                         UpdateStatus(FeedbackProcessStatus.GatheringComments, 
-                            $"Collected {commentCount} comments from URL {processedCount} ({Math.Max(0, remainingLimit)} remaining for other sources)...");
+                            $"Collected {commentCount} comments from URL {processedCount}...");
                     }
                 }
             }
@@ -114,7 +97,6 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
                 Console.Error.WriteLine($"Error processing URL {url}: {ex.Message}");
             }
             
-            urlsRemaining--;
         }
 
         if (!sourceData.Any())
@@ -153,10 +135,6 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         // Calculate comment count if not provided
         int totalComments = commentCount ?? comments.Split("\n---\n").Length;
         
-        // Get the max comments limit for analysis
-        var maxCommentsLimit = await GetMaxCommentsToAnalyze();
-        string truncationNote = string.Empty;
-
         // If we have the source data list, analyze based on number of URLs
         if (additionalData is List<FeedbackSourceData> sourceData)
         {
@@ -176,31 +154,8 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
             UpdateStatus(FeedbackProcessStatus.AnalyzingComments, "Creating overall analysis...");
             var allCommentsText = string.Join("\n---\n", sourceData.Select(s => s.Comments));
             
-            // Truncate combined comments if they exceed the limit
-            var actualCommentsForAnalysis = totalComments;
-            if (totalComments > maxCommentsLimit)
-            {
-                actualCommentsForAnalysis = maxCommentsLimit;
-                
-                // Estimate truncation point in the combined text
-                var commentSections = allCommentsText.Split("\n---\n");
-                var truncatedSections = new List<string>();
-                var count = 0;
-                
-                foreach (var section in commentSections)
-                {
-                    if (count >= maxCommentsLimit)
-                        break;
-                    truncatedSections.Add(section);
-                    count++;
-                }
-                
-                allCommentsText = string.Join("\n---\n", truncatedSections);
-                truncationNote = $"\n\n> **Note**: Analysis limited to {maxCommentsLimit} of {totalComments} total comments to optimize performance and stay within your analysis limit.\n";
-            }
-            
-            var overallAnalysis = await AnalyzeCommentsInternalWithoutStatusUpdate("auto", allCommentsText, actualCommentsForAnalysis);
-            analysisBySource.Add("## Overall Analysis\n\n" + truncationNote + overallAnalysis);
+            var overallAnalysis = await AnalyzeCommentsInternalWithoutStatusUpdate("auto", allCommentsText, totalComments);
+            analysisBySource.Add("## Overall Analysis\n\n" + overallAnalysis);
 
             // Only analyze each source individually if the user requested it
             if (_includeIndividualReports)
@@ -249,7 +204,7 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         return result;
     }
 
-    private async Task<(string comments, int commentCount, object? additionalData)> GetCommentsFromUrl(string url, int? maxCommentsOverride = null)
+    private async Task<(string comments, int commentCount, object? additionalData)> GetCommentsFromUrl(string url)
     {
         if (string.IsNullOrEmpty(url))
             return (string.Empty, 0, null);
@@ -257,8 +212,7 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         var service = ResolveFeedbackService(url);
         if (service != null)
         {
-            // Get the raw comments and count, passing the limit override
-            var (rawComments, commentCount, additionalData) = await service.GetComments(maxCommentsOverride);
+            var (rawComments, commentCount, additionalData) = await service.GetComments();
             if (!string.IsNullOrWhiteSpace(rawComments))
             {
                 return (rawComments, commentCount, additionalData);

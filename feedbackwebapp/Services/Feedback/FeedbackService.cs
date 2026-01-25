@@ -48,7 +48,7 @@ public abstract class FeedbackService : IFeedbackService
             ?? throw new InvalidOperationException("Base URL not configured");
     }
 
-    public abstract Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null);
+    public abstract Task<(string rawComments, int commentCount, object? additionalData)> GetComments();
 
     public virtual async Task<(string markdownResult, object? additionalData)> AnalyzeComments(
         string comments, int? commentCount = null, object? additionalData = null)
@@ -86,26 +86,12 @@ public abstract class FeedbackService : IFeedbackService
 
     protected async Task<string> AnalyzeCommentsInternal(string serviceType, string comments, int commentCount, string? explicitCustomPrompt = null)
     {
-        var maxComments = await GetMaxCommentsToAnalyze();
-
         // Calculate estimated analysis time (20 seconds per 100 comments)
         var estimatedSeconds = Math.Max(10, (int)Math.Ceiling(commentCount * 20.0 / 100));
-
-        if (commentCount > maxComments)
-        {
-            UpdateStatus(
-                FeedbackProcessStatus.AnalyzingComments,
-                $"Analyzing {maxComments} comments out of {commentCount} total (analysis limited for performance). " +
-                $"Estimated time: {estimatedSeconds} seconds..."
-            );
-        }
-        else
-        {
-            UpdateStatus(
-                FeedbackProcessStatus.AnalyzingComments,
-                $"Analyzing {commentCount} comments. Estimated time: {estimatedSeconds} seconds..."
-            );
-        }
+        UpdateStatus(
+            FeedbackProcessStatus.AnalyzingComments,
+            $"Analyzing {commentCount} comments. Estimated time: {estimatedSeconds} seconds..."
+        );
 
         var analyzeCode = Configuration["FeedbackApi:FunctionsKey"]
             ?? throw new InvalidOperationException("Analyze API code not configured");
@@ -163,8 +149,6 @@ public abstract class FeedbackService : IFeedbackService
 
     protected async Task<string> AnalyzeCommentsInternalWithoutStatusUpdate(string serviceType, string comments, int commentCount, string? explicitCustomPrompt = null)
     {
-        var maxComments = await GetMaxCommentsToAnalyze();
-
         var analyzeCode = Configuration["FeedbackApi:FunctionsKey"]
             ?? throw new InvalidOperationException("Analyze API code not configured");
 
@@ -217,15 +201,6 @@ public abstract class FeedbackService : IFeedbackService
 
         // Note: This method doesn't call UpdateStatus to avoid multiple completion status updates
         return await analyzeResponse.Content.ReadAsStringAsync();
-    }
-
-    protected async Task<int> GetMaxCommentsToAnalyze(int? maxCommentsOverride = null)
-    {
-        if (maxCommentsOverride.HasValue)
-            return maxCommentsOverride.Value;
-            
-        var settings = await _userSettings.GetSettingsAsync();
-        return settings.MaxCommentsToAnalyze;
     }
 
     /// <summary>

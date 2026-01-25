@@ -24,7 +24,7 @@ public class BlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackService
         _postUrlOrId = postUrlOrId;
     }
 
-    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments(int? maxCommentsOverride = null)
+    public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
         if (string.IsNullOrWhiteSpace(_postUrlOrId))
             throw new InvalidOperationException("Please enter a valid BlueSky post URL or ID");
@@ -34,8 +34,7 @@ public class BlueSkyFeedbackService : FeedbackService, IBlueSkyFeedbackService
         var blueSkyCode = Configuration["FeedbackApi:FunctionsKey"]
             ?? throw new InvalidOperationException("BlueSky API code not configured");
 
-        var maxComments = await GetMaxCommentsToAnalyze(maxCommentsOverride);
-        var getFeedbackUrl = $"{BaseUrl}/api/GetBlueSkyFeedback?code={Uri.EscapeDataString(blueSkyCode)}&post={Uri.EscapeDataString(_postUrlOrId)}&maxComments={maxComments}";
+        var getFeedbackUrl = $"{BaseUrl}/api/GetBlueSkyFeedback?code={Uri.EscapeDataString(blueSkyCode)}&post={Uri.EscapeDataString(_postUrlOrId)}";
         var feedbackResponse = await SendAuthenticatedRequestWithUsageLimitCheckAsync(HttpMethod.Get, getFeedbackUrl);
         var responseContent = await feedbackResponse.Content.ReadAsStringAsync();
         
