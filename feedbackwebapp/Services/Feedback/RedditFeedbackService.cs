@@ -30,6 +30,13 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
 
     public override async Task<(string rawComments, int commentCount, object? additionalData)> GetComments()
     {
+        if (UrlParsing.IsRedditShareUrl(_threadId))
+        {
+            throw new InvalidOperationException(
+                "Reddit share links (e.g. reddit.com/r/.../s/...) are not supported. " +
+                "Please use the full Reddit thread URL instead (e.g. reddit.com/r/.../comments/...).");
+        }
+
         var processedId = UrlParsing.ExtractRedditId(_threadId);
 
         if (string.IsNullOrWhiteSpace(processedId))
