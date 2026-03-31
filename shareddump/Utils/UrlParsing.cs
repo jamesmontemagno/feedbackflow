@@ -82,11 +82,22 @@ public static class UrlParsing
             
         if (IsValidRedditId(url))
             return url;
-            
+
+        // Reddit share/short URLs (e.g. reddit.com/r/subreddit/s/code) are not supported
+        // Return null so callers can detect and show a specific error via IsRedditShareUrl
         if (RedditUrlParser.IsRedditShortUrl(url))
-            return url;
+            return null;
 
         return null;
+    }
+
+    /// <summary>
+    /// Checks if the URL is a Reddit share/short URL (e.g. https://www.reddit.com/r/dotnet/s/nInjTaac2X).
+    /// These URLs cannot be resolved to thread IDs and are not supported.
+    /// </summary>
+    public static bool IsRedditShareUrl(string url)
+    {
+        return !string.IsNullOrWhiteSpace(url) && RedditUrlParser.IsRedditShortUrl(url);
     }
 
     private static bool TryParseRedditUrl(string url, out string threadId)

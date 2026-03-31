@@ -83,4 +83,58 @@ public class UrlParsingTests
         Assert.IsNull(UrlParsing.ExtractVideoId(""));
         Assert.IsNull(UrlParsing.ExtractVideoId(null!));
     }
+
+    [TestMethod]
+    public void ExtractRedditId_ValidThreadUrl_ReturnsId()
+    {
+        var result = UrlParsing.ExtractRedditId("https://www.reddit.com/r/dotnet/comments/abc123/some-title/");
+        Assert.AreEqual("abc123", result);
+    }
+
+    [TestMethod]
+    public void ExtractRedditId_DirectId_ReturnsId()
+    {
+        var result = UrlParsing.ExtractRedditId("abc123");
+        Assert.AreEqual("abc123", result);
+    }
+
+    [TestMethod]
+    public void ExtractRedditId_T3Prefix_ReturnsId()
+    {
+        var result = UrlParsing.ExtractRedditId("t3_abc123");
+        Assert.AreEqual("abc123", result);
+    }
+
+    [TestMethod]
+    public void ExtractRedditId_ShareUrl_ReturnsNull()
+    {
+        var result = UrlParsing.ExtractRedditId("https://www.reddit.com/r/dotnet/s/nInjTaac2X");
+        Assert.IsNull(result);
+    }
+
+    [TestMethod]
+    public void ExtractRedditId_ShareUrlWithHttp_ReturnsNull()
+    {
+        var result = UrlParsing.ExtractRedditId("http://www.reddit.com/r/csharp/s/abcDEF1234");
+        Assert.IsNull(result);
+    }
+
+    [TestMethod]
+    public void IsRedditShareUrl_ValidShareUrl_ReturnsTrue()
+    {
+        Assert.IsTrue(UrlParsing.IsRedditShareUrl("https://www.reddit.com/r/dotnet/s/nInjTaac2X"));
+    }
+
+    [TestMethod]
+    public void IsRedditShareUrl_RegularThreadUrl_ReturnsFalse()
+    {
+        Assert.IsFalse(UrlParsing.IsRedditShareUrl("https://www.reddit.com/r/dotnet/comments/abc123/some-title/"));
+    }
+
+    [TestMethod]
+    public void IsRedditShareUrl_NullOrEmpty_ReturnsFalse()
+    {
+        Assert.IsFalse(UrlParsing.IsRedditShareUrl(""));
+        Assert.IsFalse(UrlParsing.IsRedditShareUrl(null!));
+    }
 }
