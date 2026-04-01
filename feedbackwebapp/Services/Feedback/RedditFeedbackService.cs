@@ -32,9 +32,7 @@ public class RedditFeedbackService : FeedbackService, IRedditFeedbackService
     {
         if (UrlParsing.IsRedditShareUrl(_threadId))
         {
-            throw new InvalidOperationException(
-                "Reddit share links (e.g. reddit.com/r/.../s/...) are not supported. " +
-                "Please use the full Reddit thread URL instead (e.g. reddit.com/r/.../comments/...).");
+            throw new InvalidOperationException(UrlParsing.UnsupportedRedditShareUrlMessage);
         }
 
         var processedId = UrlParsing.ExtractRedditId(_threadId);

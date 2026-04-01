@@ -126,6 +126,12 @@ public class UrlParsingTests
     }
 
     [TestMethod]
+    public void IsRedditShareUrl_HttpShareUrl_ReturnsTrue()
+    {
+        Assert.IsTrue(UrlParsing.IsRedditShareUrl("http://www.reddit.com/r/csharp/s/abcDEF1234"));
+    }
+
+    [TestMethod]
     public void IsRedditShareUrl_RegularThreadUrl_ReturnsFalse()
     {
         Assert.IsFalse(UrlParsing.IsRedditShareUrl("https://www.reddit.com/r/dotnet/comments/abc123/some-title/"));
