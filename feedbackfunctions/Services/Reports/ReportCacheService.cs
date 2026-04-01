@@ -19,6 +19,7 @@ public class ReportCacheService : IReportCacheService
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
     
     private DateTime _lastRefresh = DateTime.MinValue;
+    private bool _isFullCacheHydrated;
     private static readonly TimeSpan CacheExpiry = TimeSpan.FromHours(24);
 
     /// <summary>
@@ -36,7 +37,6 @@ public class ReportCacheService : IReportCacheService
     public async Task<ReportModel?> GetReportAsync(string reportId)
     {
         var stopwatch = Stopwatch.StartNew();
-        await EnsureCacheIsValidAsync();
 
         if (_cache.TryGetValue(reportId, out var cachedReport))
         {
@@ -92,8 +92,22 @@ public class ReportCacheService : IReportCacheService
     /// <inheritdoc />
     public async Task<List<ReportModel>> GetReportsAsync(string? sourceFilter = null, string? subsourceFilter = null)
     {
-        await EnsureCacheIsValidAsync();
+        if (string.IsNullOrEmpty(sourceFilter) && string.IsNullOrEmpty(subsourceFilter))
+        {
+            await EnsureFullCacheIsValidAsync();
+            return FilterCachedReports(sourceFilter, subsourceFilter);
+        }
 
+        if (_isFullCacheHydrated && !IsCacheExpired())
+        {
+            return FilterCachedReports(sourceFilter, subsourceFilter);
+        }
+
+        return await LoadFilteredReportsAsync(sourceFilter, subsourceFilter);
+    }
+
+    private List<ReportModel> FilterCachedReports(string? sourceFilter, string? subsourceFilter)
+    {
         var reports = _cache.Values
             .Select(cr => cr.Report)
             .Where(report => 
@@ -110,6 +124,62 @@ public class ReportCacheService : IReportCacheService
             reports.Count, sourceFilter ?? "any", subsourceFilter ?? "any");
 
         return reports;
+    }
+
+    private async Task<List<ReportModel>> LoadFilteredReportsAsync(string? sourceFilter, string? subsourceFilter)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var matchedReports = new Dictionary<string, ReportModel>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var cachedReport in FilterCachedReports(sourceFilter, subsourceFilter))
+        {
+            matchedReports[cachedReport.Id.ToString()] = cachedReport;
+        }
+
+        await foreach (var blob in _containerClient.GetBlobsAsync())
+        {
+            try
+            {
+                var blobClient = _containerClient.GetBlobClient(blob.Name);
+                var content = await blobClient.DownloadContentAsync();
+                var report = JsonSerializer.Deserialize<ReportModel>(content.Value.Content, _jsonOptions);
+
+                if (report == null)
+                {
+                    continue;
+                }
+
+                var matchesSource = string.IsNullOrEmpty(sourceFilter) ||
+                    string.Equals(report.Source, sourceFilter, StringComparison.OrdinalIgnoreCase);
+                var matchesSubsource = string.IsNullOrEmpty(subsourceFilter) ||
+                    string.Equals(report.SubSource, subsourceFilter, StringComparison.OrdinalIgnoreCase);
+
+                if (!matchesSource || !matchesSubsource)
+                {
+                    continue;
+                }
+
+                _cache.AddOrUpdate(
+                    report.Id.ToString(),
+                    new CachedReport(report, DateTime.UtcNow),
+                    (_, _) => new CachedReport(report, DateTime.UtcNow));
+                matchedReports[report.Id.ToString()] = report;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to load filtered report from blob {BlobName}", blob.Name);
+            }
+        }
+
+        _lastRefresh = DateTime.UtcNow;
+        _logger.LogInformation(
+            "ReportCache.LoadFilteredReportsAsync loaded {Count} filtered reports in {ElapsedMs}ms for source={Source} subsource={Subsource}",
+            matchedReports.Count,
+            stopwatch.ElapsedMilliseconds,
+            sourceFilter ?? "any",
+            subsourceFilter ?? "any");
+
+        return matchedReports.Values.ToList();
     }
 
     /// <inheritdoc />
@@ -143,6 +213,7 @@ public class ReportCacheService : IReportCacheService
     {
         _cache.Clear();
         _lastRefresh = DateTime.MinValue;
+        _isFullCacheHydrated = false;
         _logger.LogInformation("Cleared all cached reports");
         await Task.CompletedTask;
     }
@@ -187,6 +258,7 @@ public class ReportCacheService : IReportCacheService
             }
 
             _lastRefresh = DateTime.UtcNow;
+            _isFullCacheHydrated = true;
             _logger.LogInformation(
                 "Cache refresh completed. Loaded {Count} reports in {ElapsedMs}ms",
                 loadedCount,
@@ -201,12 +273,10 @@ public class ReportCacheService : IReportCacheService
     /// <summary>
     /// Ensures the cache is valid and refreshes if needed
     /// </summary>
-    private async Task EnsureCacheIsValidAsync()
+    private async Task EnsureFullCacheIsValidAsync()
     {
         var stopwatch = Stopwatch.StartNew();
-        // Only refresh if cache is completely empty and has never been refreshed
-        // This prevents automatic refresh during testing
-        if (_cache.IsEmpty && _lastRefresh == DateTime.MinValue)
+        if (!_isFullCacheHydrated && _cache.IsEmpty)
         {
             try
             {
@@ -220,9 +290,8 @@ public class ReportCacheService : IReportCacheService
                 _logger.LogWarning(ex, "Failed to refresh cache automatically, continuing with empty cache");
             }
         }
-        else if (_lastRefresh != DateTime.MinValue && DateTime.UtcNow - _lastRefresh > CacheExpiry)
+        else if (_isFullCacheHydrated && IsCacheExpired())
         {
-            // Only refresh if cache was previously loaded and has expired
             try
             {
                 await RefreshCacheAsync();
@@ -242,6 +311,9 @@ public class ReportCacheService : IReportCacheService
                 stopwatch.ElapsedMilliseconds);
         }
     }
+
+    private bool IsCacheExpired() =>
+        _lastRefresh != DateTime.MinValue && DateTime.UtcNow - _lastRefresh > CacheExpiry;
 
     /// <summary>
     /// Represents a cached report with timestamp
