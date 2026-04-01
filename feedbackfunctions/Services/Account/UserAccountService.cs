@@ -2,9 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
 using Azure.Data.Tables;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+
+using FeedbackFunctions.Services.Storage;
+
 using SharedDump.Models.Account;
 using SharedDump.Models.Admin;
 
@@ -15,6 +19,7 @@ public class UserAccountService : IUserAccountService
     private readonly TableClient _userAccountsTable;
     private readonly TableClient _usageRecordsTable;
     private readonly TableClient _apiKeysTable;
+    private readonly ITableInitializationService? _tableInitializationService;
     private readonly IConfiguration? _configuration;
     private readonly ILogger<UserAccountService>? _logger;
 
@@ -23,10 +28,28 @@ public class UserAccountService : IUserAccountService
     private const string ApiKeysTableName = "apikeys";
 
     public UserAccountService(string storageConnectionString, IConfiguration? configuration = null, ILogger<UserAccountService>? logger = null)
+        : this(
+            new TableClient(storageConnectionString, UserAccountsTableName),
+            new TableClient(storageConnectionString, UsageRecordsTableName),
+            new TableClient(storageConnectionString, ApiKeysTableName),
+            null,
+            configuration,
+            logger)
     {
-        _userAccountsTable = new TableClient(storageConnectionString, UserAccountsTableName);
-        _usageRecordsTable = new TableClient(storageConnectionString, UsageRecordsTableName);
-        _apiKeysTable = new TableClient(storageConnectionString, ApiKeysTableName);
+    }
+
+    public UserAccountService(
+        TableClient userAccountsTable,
+        TableClient usageRecordsTable,
+        TableClient apiKeysTable,
+        ITableInitializationService? tableInitializationService = null,
+        IConfiguration? configuration = null,
+        ILogger<UserAccountService>? logger = null)
+    {
+        _userAccountsTable = userAccountsTable;
+        _usageRecordsTable = usageRecordsTable;
+        _apiKeysTable = apiKeysTable;
+        _tableInitializationService = tableInitializationService;
         _configuration = configuration;
         _logger = logger;
     }
@@ -35,6 +58,8 @@ public class UserAccountService : IUserAccountService
 
     public async Task<UserAccount?> GetUserAccountAsync(string userId)
     {
+        await EnsureTablesInitializedAsync();
+
         try
         {
             var response = await _userAccountsTable.GetEntityIfExistsAsync<UserAccountEntity>(userId, "account");
@@ -51,6 +76,8 @@ public class UserAccountService : IUserAccountService
 
     public async Task UpsertUserAccountAsync(UserAccount userAccount)
     {
+        await EnsureTablesInitializedAsync();
+
         var entity = MapModelToEntity(userAccount);
         await _userAccountsTable.UpsertEntityAsync(entity);
     }
@@ -58,6 +85,8 @@ public class UserAccountService : IUserAccountService
     /// <inheritdoc />
     public async Task<UserAccount> CreateUserAccountIfNotExistsAsync(UserAccount userAccount, string? preferredEmailOverride = null)
     {
+        await EnsureTablesInitializedAsync();
+
         // Attempt fast path read
         var existing = await _userAccountsTable.GetEntityIfExistsAsync<UserAccountEntity>(userAccount.UserId, "account");
         if (existing.HasValue)
@@ -140,6 +169,8 @@ public class UserAccountService : IUserAccountService
 
     public async Task<bool> DeleteUserAccountAsync(string userId)
     {
+        await EnsureTablesInitializedAsync();
+
         try
         {
             var entity = await _userAccountsTable.GetEntityIfExistsAsync<UserAccountEntity>(userId, "account");
@@ -175,6 +206,8 @@ public class UserAccountService : IUserAccountService
 
     public async Task<Dictionary<string, SharedDump.Models.Account.AccountTier>> GetAllUserTiersAsync()
     {
+        await EnsureTablesInitializedAsync();
+
         var userTiers = new Dictionary<string, SharedDump.Models.Account.AccountTier>(StringComparer.OrdinalIgnoreCase);
         try
         {
@@ -196,6 +229,8 @@ public class UserAccountService : IUserAccountService
 
     public async Task<int> ResetAllMonthlyUsageAsync()
     {
+        await EnsureTablesInitializedAsync();
+
         var resetCount = 0;
         var resetDate = DateTime.UtcNow;
 
@@ -329,6 +364,8 @@ public class UserAccountService : IUserAccountService
 
     public async Task TrackUsageAsync(string userId, UsageType usageType, string? resourceId = null, int amount = 1)
     {
+        await EnsureTablesInitializedAsync();
+
         var user = await GetUserAccountAsync(userId);
         
         // If user account doesn't exist, they haven't registered yet - don't track usage
@@ -384,6 +421,8 @@ public class UserAccountService : IUserAccountService
 
     public async Task<List<UsageRecord>> GetUsageHistoryAsync(string userId)
     {
+        await EnsureTablesInitializedAsync();
+
         var results = new List<UsageRecord>();
         
         try
@@ -438,14 +477,15 @@ public class UserAccountService : IUserAccountService
 
     public async Task InitializeTablesAsync()
     {
-        await _userAccountsTable.CreateIfNotExistsAsync();
-        await _usageRecordsTable.CreateIfNotExistsAsync();
-        await _apiKeysTable.CreateIfNotExistsAsync();
+        await EnsureTablesInitializedAsync();
     }
 
     #endregion
 
     #region Private Helper Methods
+
+    private Task EnsureTablesInitializedAsync() =>
+        _tableInitializationService?.EnsureAccountTablesAsync() ?? Task.CompletedTask;
 
     private int GetConfigValue(string key, int defaultValue)
     {

@@ -1,24 +1,20 @@
-using System.Net;
 using System.Diagnostics;
+using System.Net;
 using System.Text.Json;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
-using Microsoft.Extensions.Logging;
-using SharedDump.Models.Reports;
-using SharedDump.Models.Account;
-using SharedDump.Utils.Account;
 using Azure.Data.Tables;
-using Azure.Storage.Blobs;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using SharedDump.Services.Interfaces;
-using SharedDump.AI;
+using Microsoft.Extensions.Logging;
 using FeedbackFunctions.Utils;
 using FeedbackFunctions.Services;
 using FeedbackFunctions.Services.Reports;
 using FeedbackFunctions.Services.Email;
 using FeedbackFunctions.Services.Account;
 using FeedbackFunctions.Models.Email;
+using SharedDump.Models.Account;
+using SharedDump.Models.Reports;
+using SharedDump.Utils.Account;
 
 namespace FeedbackFunctions;
 
@@ -28,12 +24,7 @@ namespace FeedbackFunctions;
 public class ReportProcessorFunctions
 {
     private readonly ILogger<ReportProcessorFunctions> _logger;
-    private readonly IConfiguration _configuration;
-    private const string TableName = "reportrequests";
-    private const string UserRequestsTableName = "userreportrequests";
-    private readonly TableClient _tableClient;
-    private readonly TableClient _userRequestsTableClient;
-    private readonly BlobServiceClient _serviceClient;
+    private readonly IReportStorageService _reportStorage;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
     private readonly ReportGenerator _reportGenerator;
     private readonly IReportCacheService _cacheService;
@@ -42,42 +33,18 @@ public class ReportProcessorFunctions
 
     public ReportProcessorFunctions(
         ILogger<ReportProcessorFunctions> logger,
-        IConfiguration configuration,
-        IRedditService redditService,
-        IGitHubService githubService,
-        IFeedbackAnalyzerService analyzerService,
+        IReportStorageService reportStorage,
+        ReportGenerator reportGenerator,
         IReportCacheService cacheService,
         IEmailService emailService,
         IUserAccountService userAccountService)
     {
-#if DEBUG
-        _configuration = new ConfigurationBuilder()
-                    .AddJsonFile("local.settings.json")
-                    .AddUserSecrets<Program>()
-                    .Build();
-#else
-        _configuration = configuration;
-#endif
         _logger = logger;
+        _reportStorage = reportStorage;
+        _reportGenerator = reportGenerator;
         _cacheService = cacheService;
         _emailService = emailService;
         _userAccountService = userAccountService;
-        
-        // Initialize table client
-        var storageConnection = _configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
-        var tableServiceClient = new TableServiceClient(storageConnection);
-        _tableClient = tableServiceClient.GetTableClient(TableName);
-        _tableClient.CreateIfNotExists();
-        
-        // Initialize user requests table client
-        _userRequestsTableClient = tableServiceClient.GetTableClient(UserRequestsTableName);
-        _userRequestsTableClient.CreateIfNotExists();
-
-        // Initialize blob service client
-        _serviceClient = new BlobServiceClient(storageConnection);
-
-        // Initialize report generator
-        _reportGenerator = new ReportGenerator(_logger, redditService, githubService, analyzerService, _serviceClient, _configuration, _cacheService);
     }
 
     /// <summary>
@@ -463,7 +430,9 @@ public class ReportProcessorFunctions
         {
             var requests = new List<ReportRequestModel>();
             
-            await foreach (var entity in _tableClient.QueryAsync<ReportRequestModel>())
+            await _reportStorage.EnsureInitializedAsync();
+
+            await foreach (var entity in _reportStorage.ReportRequestsTable.QueryAsync<ReportRequestModel>())
             {
                 requests.Add(entity);
             }
@@ -523,7 +492,8 @@ public class ReportProcessorFunctions
             var limitParam = queryParams["limit"];
             var limit = int.TryParse(limitParam, out var parsedLimit) ? parsedLimit : 10;
 
-            var summaryContainerClient = _serviceClient.GetBlobContainerClient("weekly-summaries");
+            await _reportStorage.EnsureInitializedAsync();
+            var summaryContainerClient = _reportStorage.WeeklySummariesContainer;
             var summaries = new List<object>();
 
             await foreach (var blob in summaryContainerClient.GetBlobsAsync())
@@ -590,10 +560,8 @@ public class ReportProcessorFunctions
             var summaryJson = JsonSerializer.Serialize(summary, new JsonSerializerOptions { WriteIndented = true });
             var summaryFileName = $"weekly-summary-{DateTime.UtcNow:yyyy-MM-dd-HH-mm-ss}.json";
             
-            var summaryContainerClient = _serviceClient.GetBlobContainerClient("weekly-summaries");
-            await summaryContainerClient.CreateIfNotExistsAsync();
-            
-            var summaryBlobClient = summaryContainerClient.GetBlobClient(summaryFileName);
+            await _reportStorage.EnsureInitializedAsync();
+            var summaryBlobClient = _reportStorage.WeeklySummariesContainer.GetBlobClient(summaryFileName);
             await using var summaryStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(summaryJson));
             await summaryBlobClient.UploadAsync(summaryStream, overwrite: true);
 

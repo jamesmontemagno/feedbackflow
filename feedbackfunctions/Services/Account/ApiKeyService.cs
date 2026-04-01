@@ -1,8 +1,12 @@
 using System.Security.Cryptography;
 using System.Text;
+
 using Azure.Data.Tables;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+
+using FeedbackFunctions.Services.Storage;
+
 using SharedDump.Models.Account;
 
 namespace FeedbackFunctions.Services.Account;
@@ -11,20 +15,23 @@ public class ApiKeyService : IApiKeyService
 {
     private readonly ILogger<ApiKeyService> _logger;
     private readonly TableClient _tableClient;
+    private readonly ITableInitializationService _tableInitializationService;
     private const string TableName = "apikeys";
 
-    public ApiKeyService(ILogger<ApiKeyService> logger, IConfiguration configuration)
+    public ApiKeyService(
+        ILogger<ApiKeyService> logger,
+        FeedbackStorageClients storageClients,
+        ITableInitializationService tableInitializationService)
     {
         _logger = logger;
-        
-        var connectionString = configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
-        var tableServiceClient = new TableServiceClient(connectionString);
-        _tableClient = tableServiceClient.GetTableClient(TableName);
-        _tableClient.CreateIfNotExists();
+        _tableClient = storageClients.ApiKeysTable;
+        _tableInitializationService = tableInitializationService;
     }
 
     public async Task<ApiKey?> GetApiKeyByUserIdAsync(string userId)
     {
+        await _tableInitializationService.EnsureAccountTablesAsync();
+
         try
         {
             var filter = $"UserId eq '{userId}'";
@@ -43,6 +50,8 @@ public class ApiKeyService : IApiKeyService
 
     public async Task<ApiKey?> GetApiKeyByKeyAsync(string apiKey)
     {
+        await _tableInitializationService.EnsureAccountTablesAsync();
+
         try
         {
             var response = await _tableClient.GetEntityIfExistsAsync<ApiKeyEntity>("apikeys", apiKey);
@@ -71,6 +80,8 @@ public class ApiKeyService : IApiKeyService
 
     public async Task<ApiKey> CreateApiKeyAsync(string userId, string? name = null)
     {
+        await _tableInitializationService.EnsureAccountTablesAsync();
+
         try
         {
             // Check if user already has an API key
@@ -107,6 +118,8 @@ public class ApiKeyService : IApiKeyService
 
     public async Task<bool> DeleteApiKeyAsync(string userId)
     {
+        await _tableInitializationService.EnsureAccountTablesAsync();
+
         try
         {
             var existingKey = await GetApiKeyByUserIdAsync(userId);
@@ -142,6 +155,8 @@ public class ApiKeyService : IApiKeyService
 
     public async Task UpdateLastUsedAsync(string apiKey)
     {
+        await _tableInitializationService.EnsureAccountTablesAsync();
+
         try
         {
             var entity = await _tableClient.GetEntityIfExistsAsync<ApiKeyEntity>("apikeys", apiKey);
@@ -160,6 +175,8 @@ public class ApiKeyService : IApiKeyService
 
     public async Task<List<ApiKey>> GetAllApiKeysAsync()
     {
+        await _tableInitializationService.EnsureAccountTablesAsync();
+
         try
         {
             var apiKeys = new List<ApiKey>();
@@ -182,6 +199,8 @@ public class ApiKeyService : IApiKeyService
 
     public async Task<bool> UpdateApiKeyStatusAsync(string apiKey, bool isEnabled)
     {
+        await _tableInitializationService.EnsureAccountTablesAsync();
+
         try
         {
             var entity = await _tableClient.GetEntityIfExistsAsync<ApiKeyEntity>("apikeys", apiKey);

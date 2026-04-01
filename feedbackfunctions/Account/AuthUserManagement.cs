@@ -17,6 +17,7 @@ using FeedbackFunctions.Models;
 using SharedDump.Models.Reports;
 using SharedDump.Models;
 using FeedbackFunctions.Extensions;
+using FeedbackFunctions.Services.Storage;
 
 namespace FeedbackFunctions.Account;
 
@@ -29,8 +30,8 @@ public class AuthUserManagement : IDisposable
     private readonly FeedbackFunctions.Middleware.AuthenticationMiddleware _authMiddleware;
     private readonly IAuthUserTableService _userService;
     private readonly IUserAccountService _userAccountService;
-    private readonly BlobServiceClient _blobServiceClient;
-    private readonly TableServiceClient _tableServiceClient;
+    private readonly FeedbackStorageClients _storage;
+    private readonly ITableInitializationService _tableInitializationService;
     private readonly SemaphoreSlim _registrationSemaphore = new SemaphoreSlim(1, 1);
     private readonly bool _allowsRegistration;
     
@@ -43,22 +44,19 @@ public class AuthUserManagement : IDisposable
         FeedbackFunctions.Middleware.AuthenticationMiddleware authMiddleware,
         IAuthUserTableService userService,
         IUserAccountService userAccountService,
+        FeedbackStorageClients storage,
+        ITableInitializationService tableInitializationService,
         IConfiguration configuration)
     {
         _logger = logger;
         _authMiddleware = authMiddleware;
         _userService = userService;
         _userAccountService = userAccountService;
+        _storage = storage;
+        _tableInitializationService = tableInitializationService;
         
         // Get registration setting with default to true
         _allowsRegistration = configuration.GetValue<bool>("AllowsRegistration", true);
-        
-        // Create storage clients using connection string, following the pattern from other services
-        var storageConnection = configuration["ProductionStorage"] ??
-                              throw new InvalidOperationException("No storage connection string configured");
-        
-        _blobServiceClient = new BlobServiceClient(storageConnection);
-        _tableServiceClient = new TableServiceClient(storageConnection);
     }
 
     /// <summary>
@@ -335,9 +333,11 @@ public class AuthUserManagement : IDisposable
         try
         {
             _logger.LogInformation("Deleting shared analyses for user {UserId}", userId);
-            
-            var containerClient = _blobServiceClient.GetBlobContainerClient("shared-analyses");
-            var sharedAnalysesTableClient = _tableServiceClient.GetTableClient("SharedAnalyses");
+
+            await _tableInitializationService.EnsureSharedAnalysesStorageAsync();
+
+            var containerClient = _storage.SharedAnalysesContainer;
+            var sharedAnalysesTableClient = _storage.SharedAnalysesTable;
             
             var containerExists = await containerClient.ExistsAsync();
             
@@ -402,20 +402,11 @@ public class AuthUserManagement : IDisposable
         try
         {
             _logger.LogInformation("Deleting report requests for user {UserId}", userId);
-            
-            var globalTableClient = _tableServiceClient.GetTableClient("reportrequests");
-            var userTableClient = _tableServiceClient.GetTableClient("userreportrequests");
-            
-            // Try to ensure tables exist, but continue if they don't
-            try
-            {
-                await globalTableClient.CreateIfNotExistsAsync();
-                await userTableClient.CreateIfNotExistsAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Could not verify table existence, proceeding anyway");
-            }
+
+            await _tableInitializationService.EnsureReportStorageAsync();
+
+            var globalTableClient = _storage.ReportRequestsTable;
+            var userTableClient = _storage.UserReportRequestsTable;
 
             var deletedUserRequestsCount = 0;
             var updatedGlobalRequestsCount = 0;
