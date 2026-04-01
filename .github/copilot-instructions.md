@@ -36,9 +36,9 @@ The github repo is jamesmontemagno/feedbackflow and the primary branch that I wo
 ## Architecture Overview
 
 ### Tech Stack
-- **.NET 9** with C# latest features, file-scoped namespaces
+- **.NET 10** with C# latest features, file-scoped namespaces
 - **Blazor Server** for interactive web UI with real-time updates
-- **Azure Functions** (.NET 9) for serverless backend APIs
+- **Azure Functions** (.NET 10) for serverless backend APIs
 - **.NET Aspire** for local orchestration and service discovery
 - **Bootstrap** + custom CSS variables for responsive theming
 
@@ -292,13 +292,13 @@ See AdminReports.razor and AdminApiKeyManagement.razor for reference implementat
 - **Local settings**: Create `feedbackfunctions/local.settings.json` with required API keys
 - **Storage emulator**: Uses `AzureWebJobsStorage: "UseDevelopmentStorage=true"` for local development  
 - **Required API keys**: GitHub PAT, YouTube API key, Azure OpenAI endpoint/key, Reddit credentials
-- **Functions runtime**: `dotnet-isolated` (.NET 9)
+- **Functions runtime**: `dotnet-isolated` (.NET 10)
 - **Key endpoints**: SaveSharedAnalysis, GetSharedAnalysis, GitHubIssuesReport, WeeklyReportProcessor
 
 ### Package Management
 - Uses **Central Package Management** via `Directory.Packages.props`
 - Key packages: Azure.AI.OpenAI, Azure.Data.Tables, Microsoft.Azure.Functions.Worker, Blazor.SpeechSynthesis
-- All projects target **.NET 9** with nullable reference types enabled
+- All projects target **.NET 10** with nullable reference types enabled
 
 ## Domain Architecture & Data Flow
 
