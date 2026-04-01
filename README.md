@@ -66,7 +66,7 @@ Comprehensive test suite using MSTest for:
 
 To use FeedbackFlow, ensure you have the following:
 
-- .NET 9.0 SDK installed
+- .NET 10.0 SDK installed
 - A valid GitHub API Key
 - A valid YouTube API Key
 
