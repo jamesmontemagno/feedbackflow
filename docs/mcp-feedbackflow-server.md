@@ -330,7 +330,7 @@ dotnet run --project FeedbackFlow.MCP.Remote/FeedbackFlow.MCP.Remote.csproj
 | Detail | Value |
 |--------|-------|
 | Image | `jamesmontemagno/feedbackflowmcp:latest` |
-| Base | .NET 9 runtime (console) |
+| Base | .NET 10 runtime (console) |
 | Version Tags | `latest` (rolling) – use a digest or future version tag for pinning |
 | Protocol | MCP (JSON-RPC over stdio) |
 
