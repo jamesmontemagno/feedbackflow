@@ -99,13 +99,11 @@ public class ReportCacheService : IReportCacheService
     public async Task<List<ReportModel>> GetReportsAsync(string? sourceFilter = null, string? subsourceFilter = null)
     {
         await EnsureStorageInitializedAsync();
-
         if (string.IsNullOrEmpty(sourceFilter) && string.IsNullOrEmpty(subsourceFilter))
         {
             await EnsureFullCacheIsValidAsync();
             return FilterCachedReports(sourceFilter, subsourceFilter);
         }
-
         if (_isFullCacheHydrated && !IsCacheExpired())
         {
             return FilterCachedReports(sourceFilter, subsourceFilter);
@@ -323,7 +321,6 @@ public class ReportCacheService : IReportCacheService
 
     private Task EnsureStorageInitializedAsync() =>
         _reportStorage?.EnsureInitializedAsync() ?? Task.CompletedTask;
-
     private bool IsCacheExpired() =>
         _lastRefresh != DateTime.MinValue && DateTime.UtcNow - _lastRefresh > CacheExpiry;
 
