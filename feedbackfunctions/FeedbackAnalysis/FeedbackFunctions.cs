@@ -549,14 +549,20 @@ public class FeedbackFunctions
 
         // Authenticate the request
         var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
-        if (authErrorResponse != null)
+        if (authErrorResponse is not null)
+        {
+            _logger.LogInformation("AnalyzeComments auth failed after {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
             return authErrorResponse;
+        }
         var authElapsedMs = stopwatch.ElapsedMilliseconds;
 
         // Validate usage limits
         var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.Analysis, _userAccountService, _logger);
-        if (usageValidationResponse != null)
+        if (usageValidationResponse is not null)
+        {
+            _logger.LogInformation("AnalyzeComments usage validation rejected after {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
             return usageValidationResponse;
+        }
         var usageValidationElapsedMs = stopwatch.ElapsedMilliseconds;
 
         try
@@ -602,15 +608,17 @@ public class FeedbackFunctions
             
             // Track usage on successful completion
             await user!.TrackUsageAsync(UsageType.Analysis, _userAccountService, _logger, request.ServiceType);
+            var usageTrackingElapsedMs = stopwatch.ElapsedMilliseconds;
 
             _logger.LogInformation(
-                "AnalyzeComments performance: totalMs={TotalMs}, authMs={AuthMs}, usageValidationMs={UsageValidationMs}, parseMs={ParseMs}, analysisMs={AnalysisMs}, responseWriteMs={ResponseWriteMs}, commentsLength={CommentsLength}, serviceType={ServiceType}",
-                stopwatch.ElapsedMilliseconds,
+                "AnalyzeComments performance: totalMs={TotalMs}, authMs={AuthMs}, usageValidationMs={UsageValidationMs}, parseMs={ParseMs}, analysisMs={AnalysisMs}, responseWriteMs={ResponseWriteMs}, usageTrackingMs={UsageTrackingMs}, commentsLength={CommentsLength}, serviceType={ServiceType}",
+                usageTrackingElapsedMs,
                 authElapsedMs,
                 usageValidationElapsedMs - authElapsedMs,
                 parseElapsedMs - usageValidationElapsedMs,
                 analysisElapsedMs - parseElapsedMs,
                 responseWriteElapsedMs - analysisElapsedMs,
+                usageTrackingElapsedMs - responseWriteElapsedMs,
                 request.Comments.Length,
                 request.ServiceType);
             

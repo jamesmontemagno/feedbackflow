@@ -235,6 +235,12 @@ public class ReportCacheService : IReportCacheService
                 _logger.LogWarning(ex, "Failed to refresh expired cache, continuing with existing cache");
             }
         }
+        else
+        {
+            _logger.LogDebug(
+                "ReportCache.EnsureCacheIsValidAsync cache is valid, checked in {ElapsedMs}ms",
+                stopwatch.ElapsedMilliseconds);
+        }
     }
 
     /// <summary>

@@ -67,8 +67,11 @@ public class OmniSearchFunction
         {
             // Authenticate the request
             var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
-            if (authErrorResponse != null)
+            if (authErrorResponse is not null)
+            {
+                _logger.LogInformation("OmniSearch auth failed after {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
                 return authErrorResponse;
+            }
             var authElapsedMs = stopwatch.ElapsedMilliseconds;
 
             // Parse request (GET or POST)
@@ -87,6 +90,7 @@ public class OmniSearchFunction
 
             if (request is null || string.IsNullOrWhiteSpace(request.Query) || request.Platforms.Count == 0)
             {
+                _logger.LogInformation("OmniSearch bad request (missing query/platforms) after {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
                 var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 await badRequestResponse.WriteStringAsync("Invalid request. 'query' and 'platforms' are required.");
                 return badRequestResponse;
@@ -102,6 +106,7 @@ public class OmniSearchFunction
 
             if (request.Platforms.Count == 0)
             {
+                _logger.LogInformation("OmniSearch bad request (no valid platforms) after {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
                 var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
                 await badRequestResponse.WriteStringAsync("No valid platforms specified. Valid options: youtube, reddit, hackernews, twitter, bluesky");
                 return badRequestResponse;

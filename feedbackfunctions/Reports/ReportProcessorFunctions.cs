@@ -203,12 +203,14 @@ public class ReportProcessorFunctions
             
             // Track API usage on successful completion (Reports = 2 usage points)
             await ApiKeyValidationHelper.TrackApiUsageAsync(userId!, 2, userAccountService, _logger, $"reddit:{subreddit}");
+            var usageTrackingElapsedMs = stopwatch.ElapsedMilliseconds;
 
             _logger.LogInformation(
-                "RedditReport performance: totalMs={TotalMs}, reportResolutionMs={ReportResolutionMs}, responseWriteMs={ResponseWriteMs}, force={Force}, usedCachedReport={UsedCachedReport}, htmlLength={HtmlLength}",
-                stopwatch.ElapsedMilliseconds,
+                "RedditReport performance: totalMs={TotalMs}, reportResolutionMs={ReportResolutionMs}, responseWriteMs={ResponseWriteMs}, usageTrackingMs={UsageTrackingMs}, force={Force}, usedCachedReport={UsedCachedReport}, htmlLength={HtmlLength}",
+                usageTrackingElapsedMs,
                 reportResolutionElapsedMs,
                 responseWriteElapsedMs - reportResolutionElapsedMs,
+                usageTrackingElapsedMs - responseWriteElapsedMs,
                 force,
                 recentReport is not null,
                 report.HtmlContent?.Length ?? 0);
@@ -319,12 +321,14 @@ public class ReportProcessorFunctions
             
             // Track API usage on successful completion (Reports = 2 usage points)
             await ApiKeyValidationHelper.TrackApiUsageAsync(userId!, 2, userAccountService, _logger, $"github:{normalizedRepo}");
+            var usageTrackingElapsedMs = stopwatch.ElapsedMilliseconds;
 
             _logger.LogInformation(
-                "GitHubIssuesReport performance: totalMs={TotalMs}, reportResolutionMs={ReportResolutionMs}, responseWriteMs={ResponseWriteMs}, force={Force}, usedCachedReport={UsedCachedReport}, days={Days}, htmlLength={HtmlLength}",
-                stopwatch.ElapsedMilliseconds,
+                "GitHubIssuesReport performance: totalMs={TotalMs}, reportResolutionMs={ReportResolutionMs}, responseWriteMs={ResponseWriteMs}, usageTrackingMs={UsageTrackingMs}, force={Force}, usedCachedReport={UsedCachedReport}, days={Days}, htmlLength={HtmlLength}",
+                usageTrackingElapsedMs,
                 reportResolutionElapsedMs,
                 responseWriteElapsedMs - reportResolutionElapsedMs,
+                usageTrackingElapsedMs - responseWriteElapsedMs,
                 force,
                 recentReport is not null,
                 days,
