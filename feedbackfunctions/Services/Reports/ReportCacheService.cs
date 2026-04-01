@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Text.Json;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Logging;
@@ -34,11 +35,17 @@ public class ReportCacheService : IReportCacheService
     /// <inheritdoc />
     public async Task<ReportModel?> GetReportAsync(string reportId)
     {
+        var stopwatch = Stopwatch.StartNew();
         await EnsureCacheIsValidAsync();
 
         if (_cache.TryGetValue(reportId, out var cachedReport))
         {
             _logger.LogDebug("Cache hit for report {ReportId}", reportId);
+            _logger.LogInformation(
+                "ReportCache.GetReportAsync performance: totalMs={TotalMs}, cacheHit={CacheHit}, reportId={ReportId}",
+                stopwatch.ElapsedMilliseconds,
+                true,
+                reportId);
             return cachedReport.Report;
         }
 
@@ -58,6 +65,12 @@ public class ReportCacheService : IReportCacheService
                     // Add to cache
                     _cache.TryAdd(reportId, new CachedReport(report, DateTime.UtcNow));
                     _logger.LogDebug("Loaded and cached report {ReportId} from blob storage", reportId);
+                    _logger.LogInformation(
+                        "ReportCache.GetReportAsync performance: totalMs={TotalMs}, cacheHit={CacheHit}, blobFallback={BlobFallback}, reportId={ReportId}",
+                        stopwatch.ElapsedMilliseconds,
+                        false,
+                        true,
+                        reportId);
                     return report;
                 }
             }
@@ -67,6 +80,12 @@ public class ReportCacheService : IReportCacheService
             _logger.LogWarning(ex, "Failed to load report {ReportId} from blob storage", reportId);
         }
 
+        _logger.LogInformation(
+            "ReportCache.GetReportAsync performance: totalMs={TotalMs}, cacheHit={CacheHit}, blobFallback={BlobFallback}, reportId={ReportId}",
+            stopwatch.ElapsedMilliseconds,
+            false,
+            false,
+            reportId);
         return null;
     }
 
@@ -139,6 +158,7 @@ public class ReportCacheService : IReportCacheService
     /// <inheritdoc />
     public async Task RefreshCacheAsync()
     {
+        var stopwatch = Stopwatch.StartNew();
         await _refreshSemaphore.WaitAsync();
         try
         {
@@ -167,7 +187,10 @@ public class ReportCacheService : IReportCacheService
             }
 
             _lastRefresh = DateTime.UtcNow;
-            _logger.LogInformation("Cache refresh completed. Loaded {Count} reports", loadedCount);
+            _logger.LogInformation(
+                "Cache refresh completed. Loaded {Count} reports in {ElapsedMs}ms",
+                loadedCount,
+                stopwatch.ElapsedMilliseconds);
         }
         finally
         {
@@ -180,6 +203,7 @@ public class ReportCacheService : IReportCacheService
     /// </summary>
     private async Task EnsureCacheIsValidAsync()
     {
+        var stopwatch = Stopwatch.StartNew();
         // Only refresh if cache is completely empty and has never been refreshed
         // This prevents automatic refresh during testing
         if (_cache.IsEmpty && _lastRefresh == DateTime.MinValue)
@@ -187,6 +211,9 @@ public class ReportCacheService : IReportCacheService
             try
             {
                 await RefreshCacheAsync();
+                _logger.LogInformation(
+                    "ReportCache.EnsureCacheIsValidAsync triggered initial refresh in {ElapsedMs}ms",
+                    stopwatch.ElapsedMilliseconds);
             }
             catch (Exception ex)
             {
@@ -199,11 +226,20 @@ public class ReportCacheService : IReportCacheService
             try
             {
                 await RefreshCacheAsync();
+                _logger.LogInformation(
+                    "ReportCache.EnsureCacheIsValidAsync refreshed expired cache in {ElapsedMs}ms",
+                    stopwatch.ElapsedMilliseconds);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to refresh expired cache, continuing with existing cache");
             }
+        }
+        else
+        {
+            _logger.LogDebug(
+                "ReportCache.EnsureCacheIsValidAsync cache is valid, checked in {ElapsedMs}ms",
+                stopwatch.ElapsedMilliseconds);
         }
     }
 

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
@@ -142,6 +143,7 @@ public class ReportProcessorFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
     {
         var startTime = DateTime.UtcNow;
+        var stopwatch = Stopwatch.StartNew();
         _logger.LogInformation("Starting Reddit Report processing for URL {RequestUrl}", req.Url);
 
         // Validate API key and check usage limits (Reports = 2 usage points)
@@ -188,6 +190,7 @@ public class ReportProcessorFunctions
                 var cutoffDate = DateTimeOffset.UtcNow.AddDays(-7);
                 report = await _reportGenerator.GenerateRedditReportAsync(subreddit, cutoffDate);
             }
+            var reportResolutionElapsedMs = stopwatch.ElapsedMilliseconds;
 
             var processingTime = DateTime.UtcNow - startTime;
             _logger.LogInformation("Reddit Report processing completed for r/{Subreddit} in {ProcessingTime:c}", 
@@ -196,9 +199,21 @@ public class ReportProcessorFunctions
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "text/html; charset=utf-8");
             await response.WriteStringAsync(report.HtmlContent ?? string.Empty);
+            var responseWriteElapsedMs = stopwatch.ElapsedMilliseconds;
             
             // Track API usage on successful completion (Reports = 2 usage points)
             await ApiKeyValidationHelper.TrackApiUsageAsync(userId!, 2, userAccountService, _logger, $"reddit:{subreddit}");
+            var usageTrackingElapsedMs = stopwatch.ElapsedMilliseconds;
+
+            _logger.LogInformation(
+                "RedditReport performance: totalMs={TotalMs}, reportResolutionMs={ReportResolutionMs}, responseWriteMs={ResponseWriteMs}, usageTrackingMs={UsageTrackingMs}, force={Force}, usedCachedReport={UsedCachedReport}, htmlLength={HtmlLength}",
+                usageTrackingElapsedMs,
+                reportResolutionElapsedMs,
+                responseWriteElapsedMs - reportResolutionElapsedMs,
+                usageTrackingElapsedMs - responseWriteElapsedMs,
+                force,
+                recentReport is not null,
+                report.HtmlContent?.Length ?? 0);
             
             return response;
         }
@@ -234,6 +249,7 @@ public class ReportProcessorFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
     {
         var startTime = DateTime.UtcNow;
+        var stopwatch = Stopwatch.StartNew();
         _logger.LogInformation("Starting GitHub Issues Report processing for URL {RequestUrl}", req.Url);
 
         // Validate API key and check usage limits (Reports = 2 usage points)
@@ -292,6 +308,7 @@ public class ReportProcessorFunctions
                 _logger.LogInformation(logMessage, repoOwner, repoName);
                 report = await _reportGenerator.GenerateGitHubReportAsync(repoOwner, repoName, days);
             }
+            var reportResolutionElapsedMs = stopwatch.ElapsedMilliseconds;
 
             var processingTime = DateTime.UtcNow - startTime;
             _logger.LogInformation("GitHub Issues Report processing completed for {RepoOwner}/{RepoName} in {ProcessingTime:c}", 
@@ -300,9 +317,22 @@ public class ReportProcessorFunctions
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "text/html; charset=utf-8");
             await response.WriteStringAsync(report.HtmlContent ?? string.Empty);
+            var responseWriteElapsedMs = stopwatch.ElapsedMilliseconds;
             
             // Track API usage on successful completion (Reports = 2 usage points)
             await ApiKeyValidationHelper.TrackApiUsageAsync(userId!, 2, userAccountService, _logger, $"github:{normalizedRepo}");
+            var usageTrackingElapsedMs = stopwatch.ElapsedMilliseconds;
+
+            _logger.LogInformation(
+                "GitHubIssuesReport performance: totalMs={TotalMs}, reportResolutionMs={ReportResolutionMs}, responseWriteMs={ResponseWriteMs}, usageTrackingMs={UsageTrackingMs}, force={Force}, usedCachedReport={UsedCachedReport}, days={Days}, htmlLength={HtmlLength}",
+                usageTrackingElapsedMs,
+                reportResolutionElapsedMs,
+                responseWriteElapsedMs - reportResolutionElapsedMs,
+                usageTrackingElapsedMs - responseWriteElapsedMs,
+                force,
+                recentReport is not null,
+                days,
+                report.HtmlContent?.Length ?? 0);
             
             return response;
         }

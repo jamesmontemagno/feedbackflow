@@ -1,4 +1,5 @@
 using System.Net;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http;
@@ -544,16 +545,25 @@ public class FeedbackFunctions
         [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
         _logger.LogInformation("Processing comment analysis request");
+        var stopwatch = Stopwatch.StartNew();
 
         // Authenticate the request
         var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
-        if (authErrorResponse != null)
+        if (authErrorResponse is not null)
+        {
+            _logger.LogInformation("AnalyzeComments auth failed after {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
             return authErrorResponse;
+        }
+        var authElapsedMs = stopwatch.ElapsedMilliseconds;
 
         // Validate usage limits
         var usageValidationResponse = await req.ValidateUsageAsync(user!, UsageType.Analysis, _userAccountService, _logger);
-        if (usageValidationResponse != null)
+        if (usageValidationResponse is not null)
+        {
+            _logger.LogInformation("AnalyzeComments usage validation rejected after {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
             return usageValidationResponse;
+        }
+        var usageValidationElapsedMs = stopwatch.ElapsedMilliseconds;
 
         try
         {
@@ -580,6 +590,7 @@ public class FeedbackFunctions
                     promptToUse = SharedDump.AI.FeedbackAnalyzerService.GetPromptByType(parsedPromptType);
                 }
             }
+            var parseElapsedMs = stopwatch.ElapsedMilliseconds;
 
             var analysisBuilder = new System.Text.StringBuilder();
             await foreach (var update in _analyzerService.GetStreamingAnalysisAsync(
@@ -589,18 +600,33 @@ public class FeedbackFunctions
             {
                 analysisBuilder.Append(update);
             }
+            var analysisElapsedMs = stopwatch.ElapsedMilliseconds;
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteStringAsync(analysisBuilder.ToString());
+            var responseWriteElapsedMs = stopwatch.ElapsedMilliseconds;
             
             // Track usage on successful completion
             await user!.TrackUsageAsync(UsageType.Analysis, _userAccountService, _logger, request.ServiceType);
+            var usageTrackingElapsedMs = stopwatch.ElapsedMilliseconds;
+
+            _logger.LogInformation(
+                "AnalyzeComments performance: totalMs={TotalMs}, authMs={AuthMs}, usageValidationMs={UsageValidationMs}, parseMs={ParseMs}, analysisMs={AnalysisMs}, responseWriteMs={ResponseWriteMs}, usageTrackingMs={UsageTrackingMs}, commentsLength={CommentsLength}, serviceType={ServiceType}",
+                usageTrackingElapsedMs,
+                authElapsedMs,
+                usageValidationElapsedMs - authElapsedMs,
+                parseElapsedMs - usageValidationElapsedMs,
+                analysisElapsedMs - parseElapsedMs,
+                responseWriteElapsedMs - analysisElapsedMs,
+                usageTrackingElapsedMs - responseWriteElapsedMs,
+                request.Comments.Length,
+                request.ServiceType);
             
             return response;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing comment analysis request");
+            _logger.LogError(ex, "Error processing comment analysis request after {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
             var response = req.CreateResponse(HttpStatusCode.InternalServerError);
             await response.WriteStringAsync("An error occurred processing the request");
             return response;
