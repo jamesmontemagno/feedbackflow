@@ -463,17 +463,10 @@ public class AuthUserManagement : IDisposable
                     
                     try
                     {
-                        // Query for the corresponding global request
-                        var globalQuery = globalTableClient.QueryAsync<ReportRequestModel>(
-                            filter: $"PartitionKey eq '{globalPartitionKey}' and RowKey eq '{globalRequestId}'",
-                            maxPerPage: 1);
-
-                        ReportRequestModel? globalRequest = null;
-                        await foreach (var entity in globalQuery)
-                        {
-                            globalRequest = entity;
-                            break;
-                        }
+                        var globalRequestResponse = await globalTableClient.GetEntityIfExistsAsync<ReportRequestModel>(
+                            globalPartitionKey,
+                            globalRequestId);
+                        var globalRequest = globalRequestResponse.HasValue ? globalRequestResponse.Value : null;
 
                         if (globalRequest != null)
                         {
