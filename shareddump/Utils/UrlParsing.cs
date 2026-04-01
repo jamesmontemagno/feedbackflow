@@ -2,6 +2,9 @@ namespace SharedDump.Utils;
 
 public static class UrlParsing
 {
+    public const string UnsupportedRedditShareUrlMessage =
+        "Reddit share links (e.g. reddit.com/r/.../s/...) are not supported. Please use the full Reddit thread URL instead (e.g. reddit.com/r/.../comments/...).";
+
     public static string? ExtractVideoId(string input)
     {
         if (string.IsNullOrWhiteSpace(input)) return null;
@@ -83,8 +86,8 @@ public static class UrlParsing
         if (IsValidRedditId(url))
             return url;
 
-        // Reddit share/short URLs (e.g. reddit.com/r/subreddit/s/code) are not supported
-        // Return null so callers can detect and show a specific error via IsRedditShareUrl
+        // Reddit share URLs (e.g. reddit.com/r/subreddit/s/code) are intentionally unsupported.
+        // Return null so callers can surface UnsupportedRedditShareUrlMessage before backend work starts.
         if (RedditUrlParser.IsRedditShortUrl(url))
             return null;
 

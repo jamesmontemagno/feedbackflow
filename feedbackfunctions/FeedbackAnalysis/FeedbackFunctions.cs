@@ -431,20 +431,13 @@ public class FeedbackFunctions
 
             foreach (var threadId in threadIds)
             {
-                if (SharedDump.Utils.RedditUrlParser.IsRedditShortUrl(threadId))
+                if (SharedDump.Utils.UrlParsing.IsRedditShareUrl(threadId))
                 {
-                    var resolvedId = await SharedDump.Utils.RedditUrlParser.GetShortlinkIdAsync2(threadId);
-                    if (!string.IsNullOrWhiteSpace(resolvedId))
-                    {
-                        threadResults.Add(await _redditService.GetThreadWithComments(resolvedId));
-                        continue;
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Could not resolve Reddit shortlink: {ThreadId}", threadId);
-                        continue;
-                    }
+                    var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                    await badResponse.WriteStringAsync(SharedDump.Utils.UrlParsing.UnsupportedRedditShareUrlMessage);
+                    return badResponse;
                 }
+
                 var thread = await _redditService.GetThreadWithComments(threadId);
                 threadResults.Add(thread);
             }
@@ -823,6 +816,13 @@ public class FeedbackFunctions
         }
         else if (SharedDump.Utils.UrlParsing.IsRedditUrl(url))
         {
+            if (SharedDump.Utils.UrlParsing.IsRedditShareUrl(url))
+            {
+                var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await badResponse.WriteStringAsync(SharedDump.Utils.UrlParsing.UnsupportedRedditShareUrlMessage);
+                return badResponse;
+            }
+
             serviceType = "reddit";
             platformData = await GetRedditDataForAnalysis(url);
             commentsText = ConvertRedditDataToCommentsText(platformData);
@@ -994,15 +994,6 @@ public class FeedbackFunctions
         var threadId = SharedDump.Utils.UrlParsing.ExtractRedditId(url);
         if (string.IsNullOrEmpty(threadId))
             throw new InvalidOperationException("Could not extract Reddit thread ID from URL");
-
-        if (SharedDump.Utils.RedditUrlParser.IsRedditShortUrl(threadId))
-        {
-            var resolvedId = await SharedDump.Utils.RedditUrlParser.GetShortlinkIdAsync(threadId);
-            if (string.IsNullOrWhiteSpace(resolvedId))
-                throw new InvalidOperationException("Could not resolve Reddit short URL");
-            
-            threadId = resolvedId;
-        }
 
         var thread = await _redditService.GetThreadWithComments(threadId);
         if (thread == null)
