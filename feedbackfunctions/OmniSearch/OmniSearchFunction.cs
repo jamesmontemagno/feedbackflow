@@ -1,4 +1,5 @@
 using System.Net;
+using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
@@ -60,6 +61,7 @@ public class OmniSearchFunction
         [HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequestData req)
     {
         _logger.LogInformation("Processing omni-search request");
+        var stopwatch = Stopwatch.StartNew();
 
         try
         {
@@ -67,6 +69,7 @@ public class OmniSearchFunction
             var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
             if (authErrorResponse != null)
                 return authErrorResponse;
+            var authElapsedMs = stopwatch.ElapsedMilliseconds;
 
             // Parse request (GET or POST)
             OmniSearchRequest? request = null;
@@ -80,6 +83,7 @@ public class OmniSearchFunction
                 var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
                 request = JsonSerializer.Deserialize(requestBody, FeedbackJsonContext.Default.OmniSearchRequest);
             }
+            var requestParseElapsedMs = stopwatch.ElapsedMilliseconds;
 
             if (request is null || string.IsNullOrWhiteSpace(request.Query) || request.Platforms.Count == 0)
             {
@@ -122,6 +126,7 @@ public class OmniSearchFunction
                     return forbiddenResponse;
                 }
             }
+            var platformValidationElapsedMs = stopwatch.ElapsedMilliseconds;
 
             // Validate usage limits - each platform counts as 1 usage
             var platformCount = request.Platforms.Count;
@@ -135,6 +140,7 @@ public class OmniSearchFunction
                 await usageValidationResponse.WriteAsJsonAsync(usageValidation);
                 return usageValidationResponse;
             }
+            var usageValidationElapsedMs = stopwatch.ElapsedMilliseconds;
 
             // Check if user has enough remaining usage for all platforms
             var remainingUsage = usageValidation.Limit - usageValidation.CurrentUsage;
@@ -164,16 +170,31 @@ public class OmniSearchFunction
 
             // Execute search (pass user for usage tracking)
             var result = await _omniSearchService.SearchAsync(request, user!, _userAccountService, req.FunctionContext.CancellationToken);
+            var searchElapsedMs = stopwatch.ElapsedMilliseconds;
 
             // Return results
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "application/json");
             await response.WriteStringAsync(JsonSerializer.Serialize(result, FeedbackJsonContext.Default.OmniSearchResponse));
+            var responseWriteElapsedMs = stopwatch.ElapsedMilliseconds;
+
+            _logger.LogInformation(
+                "OmniSearch performance: totalMs={TotalMs}, authMs={AuthMs}, requestParseMs={RequestParseMs}, platformValidationMs={PlatformValidationMs}, usageValidationMs={UsageValidationMs}, searchMs={SearchMs}, responseWriteMs={ResponseWriteMs}, platformCount={PlatformCount}, queryLength={QueryLength}",
+                stopwatch.ElapsedMilliseconds,
+                authElapsedMs,
+                requestParseElapsedMs - authElapsedMs,
+                platformValidationElapsedMs - requestParseElapsedMs,
+                usageValidationElapsedMs - platformValidationElapsedMs,
+                searchElapsedMs - usageValidationElapsedMs,
+                responseWriteElapsedMs - searchElapsedMs,
+                request.Platforms.Count,
+                request.Query.Length);
+
             return response;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing omni-search request");
+            _logger.LogError(ex, "Error processing omni-search request after {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
             var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
             await errorResponse.WriteStringAsync($"An error occurred while processing your search: {ex.Message}");
             return errorResponse;

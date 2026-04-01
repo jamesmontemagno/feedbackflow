@@ -1,4 +1,5 @@
-﻿using System.Net;
+using System.Net;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Azure.Functions.Worker;
@@ -105,28 +106,44 @@ public class ReportingFunctions
         string id)
     {
         _logger.LogInformation("Getting report with ID: {Id}", id);
+        var stopwatch = Stopwatch.StartNew();
 
         try
         {
             // Try to get from cache first
             var report = await _cacheService.GetReportAsync(id);
+            var cacheLookupElapsedMs = stopwatch.ElapsedMilliseconds;
             
             if (report == null)
             {
                 _logger.LogWarning("Report with ID {Id} not found", id);
                 var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
                 await notFoundResponse.WriteStringAsync($"Report with ID {id} not found");
+                _logger.LogInformation(
+                    "GetReport performance: totalMs={TotalMs}, cacheLookupMs={CacheLookupMs}, found={Found}",
+                    stopwatch.ElapsedMilliseconds,
+                    cacheLookupElapsedMs,
+                    false);
                 return notFoundResponse;
             }
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "application/json");
             await response.WriteStringAsync(JsonSerializer.Serialize(report));
+            var responseWriteElapsedMs = stopwatch.ElapsedMilliseconds;
+
+            _logger.LogInformation(
+                "GetReport performance: totalMs={TotalMs}, cacheLookupMs={CacheLookupMs}, responseWriteMs={ResponseWriteMs}, found={Found}",
+                stopwatch.ElapsedMilliseconds,
+                cacheLookupElapsedMs,
+                responseWriteElapsedMs - cacheLookupElapsedMs,
+                true);
+
             return response;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving report with ID {Id}", id);
+            _logger.LogError(ex, "Error retrieving report with ID {Id} after {ElapsedMs}ms", id, stopwatch.ElapsedMilliseconds);
             var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
             await errorResponse.WriteStringAsync($"Error retrieving report: {ex.Message}");
             return errorResponse;
@@ -142,11 +159,13 @@ public class ReportingFunctions
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
         _logger.LogInformation("Getting reports for authenticated user");
+        var stopwatch = Stopwatch.StartNew();
 
         // Authenticate the request
         var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
         if (authErrorResponse != null)
             return authErrorResponse;
+        var authElapsedMs = stopwatch.ElapsedMilliseconds;
 
         if (user == null)
         {
@@ -178,17 +197,29 @@ public class ReportingFunctions
                     Repo = entity.Repo
                 });
             }
+            var userRequestsQueryElapsedMs = stopwatch.ElapsedMilliseconds;
 
             if (!userReportRequests.Any())
             {
                 var emptyResponse = req.CreateResponse(HttpStatusCode.OK);
                 emptyResponse.Headers.Add("Content-Type", "application/json");
                 await emptyResponse.WriteStringAsync(JsonSerializer.Serialize(new { reports = Array.Empty<object>() }));
+                _logger.LogInformation(
+                    "GetUserReports performance: totalMs={TotalMs}, authMs={AuthMs}, userRequestsQueryMs={UserRequestsQueryMs}, cacheReadMs={CacheReadMs}, filterMs={FilterMs}, responseWriteMs={ResponseWriteMs}, requestCount={RequestCount}, matchedReportCount={MatchedReportCount}",
+                    stopwatch.ElapsedMilliseconds,
+                    authElapsedMs,
+                    userRequestsQueryElapsedMs - authElapsedMs,
+                    0,
+                    0,
+                    stopwatch.ElapsedMilliseconds - userRequestsQueryElapsedMs,
+                    0,
+                    0);
                 return emptyResponse;
             }
 
             // Get all reports from cache
             var allReports = await _cacheService.GetReportsAsync();
+            var cacheReadElapsedMs = stopwatch.ElapsedMilliseconds;
             var matchingReports = new List<object>();
 
             foreach (var report in allReports)
@@ -218,15 +249,30 @@ public class ReportingFunctions
             matchingReports = matchingReports
                 .OrderByDescending(r => ((dynamic)r).generatedAt)
                 .ToList();
+            var filterElapsedMs = stopwatch.ElapsedMilliseconds;
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "application/json");
             await response.WriteStringAsync(JsonSerializer.Serialize(new { reports = matchingReports }));
+            var responseWriteElapsedMs = stopwatch.ElapsedMilliseconds;
+
+            _logger.LogInformation(
+                "GetUserReports performance: totalMs={TotalMs}, authMs={AuthMs}, userRequestsQueryMs={UserRequestsQueryMs}, cacheReadMs={CacheReadMs}, filterMs={FilterMs}, responseWriteMs={ResponseWriteMs}, requestCount={RequestCount}, totalCachedReports={TotalCachedReports}, matchedReportCount={MatchedReportCount}",
+                stopwatch.ElapsedMilliseconds,
+                authElapsedMs,
+                userRequestsQueryElapsedMs - authElapsedMs,
+                cacheReadElapsedMs - userRequestsQueryElapsedMs,
+                filterElapsedMs - cacheReadElapsedMs,
+                responseWriteElapsedMs - filterElapsedMs,
+                userReportRequests.Count,
+                allReports.Count,
+                matchingReports.Count);
+
             return response;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting reports for user {UserId}", user.UserId);
+            _logger.LogError(ex, "Error getting reports for user {UserId} after {ElapsedMs}ms", user.UserId, stopwatch.ElapsedMilliseconds);
             var errorResponse = req.CreateResponse(HttpStatusCode.InternalServerError);
             await errorResponse.WriteStringAsync($"Error getting user reports: {ex.Message}");
             return errorResponse;
