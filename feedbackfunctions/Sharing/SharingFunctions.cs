@@ -11,6 +11,7 @@ using System.Text.Json;
 using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
+using FeedbackFunctions.Services.Storage;
 
 namespace FeedbackFunctions;
 
@@ -58,7 +59,8 @@ public class SharingFunctions
     private const string TableName = "SharedAnalyses";
     private readonly ILogger<SharingFunctions> _logger;
     private readonly AuthenticationMiddleware _authMiddleware;
-    private readonly TableClient _tableClient;
+    private readonly FeedbackStorageClients _storage;
+    private readonly ITableInitializationService _tableInitializationService;
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _sharedAnalysisCache = new();
 
     /// <summary>
@@ -70,17 +72,15 @@ public class SharingFunctions
     public SharingFunctions(
         ILogger<SharingFunctions> logger,
         AuthenticationMiddleware authMiddleware,
-        IConfiguration configuration,
+        FeedbackStorageClients storage,
+        ITableInitializationService tableInitializationService,
         FeedbackFunctions.Services.Account.IUserAccountService userAccountService)
     {
         _logger = logger;
         _authMiddleware = authMiddleware;
+        _storage = storage;
+        _tableInitializationService = tableInitializationService;
         _userAccountService = userAccountService;
-        // Initialize table client
-        var storageConnection = configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
-        var tableServiceClient = new TableServiceClient(storageConnection);
-        _tableClient = tableServiceClient.GetTableClient(TableName);
-        _tableClient.CreateIfNotExists();
     }
 
 
@@ -147,6 +147,8 @@ public class SharingFunctions
         
         try
         {
+            await _tableInitializationService.EnsureSharedAnalysesStorageAsync();
+
             // Save to blob storage with the ID as the blob name
             var blobClient = containerClient.GetBlobClient($"{id}.json");
             
@@ -157,7 +159,7 @@ public class SharingFunctions
 
             // Save metadata to table storage with public flag
             var sharedAnalysisEntity = new SharedAnalysisEntity(user.UserId, id, analysisData, isPublic);
-            await _tableClient.UpsertEntityAsync(sharedAnalysisEntity);
+            await _storage.SharedAnalysesTable.UpsertEntityAsync(sharedAnalysisEntity);
 
             // Add to in-memory cache
             _sharedAnalysisCache[id] = analysisJson;
@@ -198,9 +200,11 @@ public class SharingFunctions
         SharedAnalysisEntity? analysisEntity = null;
         try
         {
+            await _tableInitializationService.EnsureSharedAnalysesStorageAsync();
+
             _logger.LogDebug("Querying table storage for analysis with RowKey: {Id}", id);
             // Try to find the entity by scanning all partitions (since we don't know the user ID)
-            await foreach (var entity in _tableClient.QueryAsync<SharedAnalysisEntity>(
+            await foreach (var entity in _storage.SharedAnalysesTable.QueryAsync<SharedAnalysisEntity>(
                 filter: $"RowKey eq '{id}'"))
             {
                 _logger.LogDebug("Found entity in table storage: UserId={UserId}, IsPublic={IsPublic}",
@@ -332,6 +336,8 @@ public class SharingFunctions
 
         try
         {
+            await _tableInitializationService.EnsureSharedAnalysesStorageAsync();
+
             // Parse request body to get new visibility setting
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             var visibilityRequest = JsonSerializer.Deserialize<UpdateVisibilityRequest>(requestBody, 
@@ -345,7 +351,7 @@ public class SharingFunctions
             }
 
             // Check if the analysis exists and belongs to the user
-            var existingEntity = await _tableClient.GetEntityIfExistsAsync<SharedAnalysisEntity>(user.UserId, id);
+            var existingEntity = await _storage.SharedAnalysesTable.GetEntityIfExistsAsync<SharedAnalysisEntity>(user.UserId, id);
             
             if (!existingEntity.HasValue)
             {
@@ -369,7 +375,7 @@ public class SharingFunctions
             entity.PublicSharedDate = isPublic ? DateTime.UtcNow : null;
 
             // Save updated entity
-            await _tableClient.UpsertEntityAsync(entity);
+            await _storage.SharedAnalysesTable.UpsertEntityAsync(entity);
 
             // Remove from cache to ensure fresh data is loaded with updated visibility settings
             _sharedAnalysisCache.TryRemove(id, out _);
@@ -404,6 +410,7 @@ public class SharingFunctions
         [BlobInput(ContainerName, Connection = "ProductionStorage")] BlobContainerClient containerClient)
     {
         _logger.LogInformation($"Starting cleanup of old analyses at: {DateTime.UtcNow}");
+        await _tableInitializationService.EnsureSharedAnalysesStorageAsync();
 
         var deletedBlobCount = 0;
         var deletedTableCount = 0;
@@ -427,7 +434,7 @@ public class SharingFunctions
             SharedAnalysisEntity? entity = null;
             try
             {
-                await foreach (var e in _tableClient.QueryAsync<SharedAnalysisEntity>(filter: $"RowKey eq '{id}'"))
+                await foreach (var e in _storage.SharedAnalysesTable.QueryAsync<SharedAnalysisEntity>(filter: $"RowKey eq '{id}'"))
                 {
                     entity = e;
                     break;
@@ -473,7 +480,7 @@ public class SharingFunctions
         }
 
         // Clean up old table entries
-        await foreach (var entity in _tableClient.QueryAsync<SharedAnalysisEntity>())
+        await foreach (var entity in _storage.SharedAnalysesTable.QueryAsync<SharedAnalysisEntity>())
         {
             var ownerId = entity.UserId;
             
@@ -494,7 +501,7 @@ public class SharingFunctions
                 _logger.LogInformation("Deleting table entry {Id} for user {UserId} with tier {Tier} (cutoff: {CutoffDate})", 
                     entity.RowKey, ownerId, userTier, cutoffDateTime);
 
-                await _tableClient.DeleteEntityAsync(entity.PartitionKey, entity.RowKey);
+                await _storage.SharedAnalysesTable.DeleteEntityAsync(entity.PartitionKey, entity.RowKey);
                 deletedTableCount++;
             }
             else
@@ -533,10 +540,12 @@ public class SharingFunctions
 
         try
         {
+            await _tableInitializationService.EnsureSharedAnalysesStorageAsync();
+
             var savedAnalyses = new List<SharedAnalysisEntity>();
 
             // Query table storage for all analyses owned by this user
-            await foreach (var entity in _tableClient.QueryAsync<SharedAnalysisEntity>(
+            await foreach (var entity in _storage.SharedAnalysesTable.QueryAsync<SharedAnalysisEntity>(
                 filter: $"PartitionKey eq '{user.UserId}'"))
             {
                 savedAnalyses.Add(entity);
@@ -602,8 +611,10 @@ public class SharingFunctions
 
         try
         {
+            await _tableInitializationService.EnsureSharedAnalysesStorageAsync();
+
             // First, check if the analysis exists and belongs to the user
-            var existingEntity = await _tableClient.GetEntityIfExistsAsync<SharedAnalysisEntity>(user.UserId, id);
+            var existingEntity = await _storage.SharedAnalysesTable.GetEntityIfExistsAsync<SharedAnalysisEntity>(user.UserId, id);
             
             if (!existingEntity.HasValue)
             {
@@ -613,7 +624,7 @@ public class SharingFunctions
             }
 
             // Delete from table storage
-            await _tableClient.DeleteEntityAsync(user.UserId, id);
+            await _storage.SharedAnalysesTable.DeleteEntityAsync(user.UserId, id);
 
             // Delete from blob storage
             var blobClient = containerClient.GetBlobClient($"{id}.json");

@@ -4,12 +4,10 @@ using Microsoft.Extensions.Logging;
 using FeedbackFunctions.Services.Reports;
 using FeedbackFunctions.Services.Email;
 using SharedDump.Services.Interfaces;
-using SharedDump.AI;
 using FeedbackFunctions.Services;
 using FeedbackFunctions.Utils;
 using SharedDump.Models.Reports;
 using FeedbackFunctions.Models.Email;
-using Azure.Storage.Blobs;
 using System.Net;
 using Microsoft.AspNetCore.WebUtilities;
 using FeedbackFunctions.Attributes;
@@ -40,28 +38,19 @@ public class AdminReportProcessorFunction
         IAdminReportConfigService adminReportConfigService,
         IReportCacheService cacheService,
         IEmailService emailService,
-        IRedditService redditService,
-        IGitHubService githubService,
-    IFeedbackAnalyzerService analyzerService,
-    Microsoft.Extensions.Configuration.IConfiguration configuration,
-    AuthenticationMiddleware authMiddleware,
-    IUserAccountService userAccountService)
+        ReportGenerator reportGenerator,
+        Microsoft.Extensions.Configuration.IConfiguration configuration,
+        AuthenticationMiddleware authMiddleware,
+        IUserAccountService userAccountService)
     {
         _logger = logger;
         _adminReportConfigService = adminReportConfigService;
         _cacheService = cacheService;
         _emailService = emailService;
+        _reportGenerator = reportGenerator;
         _authMiddleware = authMiddleware;
         _userAccountService = userAccountService;
         _configuration = configuration;
-        
-        // Initialize ReportGenerator with required dependencies
-        var storageConnection = configuration["ProductionStorage"] ?? 
-                              throw new InvalidOperationException("ProductionStorage connection string not found");
-        var blobServiceClient = new Azure.Storage.Blobs.BlobServiceClient(storageConnection);
-        
-        _reportGenerator = new ReportGenerator(logger, redditService, githubService, analyzerService, 
-                                             blobServiceClient, configuration, cacheService);
     }
 
     /// <summary>

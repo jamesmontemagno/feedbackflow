@@ -1,14 +1,9 @@
 using System.Net;
 using System.Text.Json;
+using Azure.Data.Tables;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
-using SharedDump.Models.Reports;
-using Azure.Data.Tables;
-using Azure.Storage.Blobs;
-using Microsoft.Extensions.Configuration;
-using SharedDump.Services.Interfaces;
-using SharedDump.AI;
 using FeedbackFunctions.Utils;
 using FeedbackFunctions.Services;
 using FeedbackFunctions.Services.Authentication;
@@ -19,6 +14,8 @@ using FeedbackFunctions.Services.Account;
 using SharedDump.Services;
 using SharedDump.Models.Account;
 using FeedbackFunctions.Services.Reports;
+using SharedDump.Models.Reports;
+using SharedDump.Services.Interfaces;
 
 namespace FeedbackFunctions;
 
@@ -28,12 +25,7 @@ namespace FeedbackFunctions;
 public class ReportRequestFunctions
 {
     private readonly ILogger<ReportRequestFunctions> _logger;
-    private readonly IConfiguration _configuration;
-    private const string TableName = "reportrequests";
-    private const string UserRequestsTableName = "userreportrequests";
-    private readonly TableClient _tableClient;
-    private readonly TableClient _userRequestsTableClient;
-    private readonly BlobServiceClient _serviceClient; // Still needed for reports filtering
+    private readonly IReportStorageService _reportStorage;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
     private readonly ReportGenerator _reportGenerator;
     private readonly IReportCacheService _cacheService;
@@ -44,44 +36,22 @@ public class ReportRequestFunctions
 
     public ReportRequestFunctions(
         ILogger<ReportRequestFunctions> logger,
-        IConfiguration configuration,
+        IReportStorageService reportStorage,
+        ReportGenerator reportGenerator,
         IRedditService redditService,
         IGitHubService githubService,
-        IFeedbackAnalyzerService analyzerService,
         IReportCacheService cacheService,
         FeedbackFunctions.Middleware.AuthenticationMiddleware authMiddleware,
         IUserAccountService userAccountService)
     {
-#if DEBUG
-        _configuration = new ConfigurationBuilder()
-                    .AddJsonFile("local.settings.json")
-                    .AddUserSecrets<Program>()
-                    .Build();
-#else
-        _configuration = configuration;
-#endif
         _logger = logger;
+        _reportStorage = reportStorage;
+        _reportGenerator = reportGenerator;
         _cacheService = cacheService;
         _redditService = redditService;
         _githubService = githubService;
         _authMiddleware = authMiddleware;
         _userAccountService = userAccountService;
-        
-        // Initialize table client
-        var storageConnection = _configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
-        var tableServiceClient = new TableServiceClient(storageConnection);
-        _tableClient = tableServiceClient.GetTableClient(TableName);
-        _tableClient.CreateIfNotExists();
-
-        // Initialize user-specific requests table client
-        _userRequestsTableClient = tableServiceClient.GetTableClient(UserRequestsTableName);
-        _userRequestsTableClient.CreateIfNotExists();
-
-        // Initialize blob service client for reports filtering
-        _serviceClient = new BlobServiceClient(storageConnection);
-
-        // Initialize report generator
-        _reportGenerator = new ReportGenerator(_logger, redditService, githubService, analyzerService, _serviceClient, _configuration, _cacheService);
     }
 
     private static string GenerateRequestId(ReportRequestModel request)
@@ -282,7 +252,9 @@ public class ReportRequestFunctions
             try
             {
                 // Check if this user already has this request
-                var existingEntityResponse = await _userRequestsTableClient.GetEntityIfExistsAsync<UserReportRequestModel>(
+                await _reportStorage.EnsureInitializedAsync();
+
+                var existingEntityResponse = await _reportStorage.UserReportRequestsTable.GetEntityIfExistsAsync<UserReportRequestModel>(
                     request.PartitionKey,
                     request.RowKey);
                 var existingEntity = existingEntityResponse.HasValue ? existingEntityResponse.Value : null;
@@ -295,7 +267,7 @@ public class ReportRequestFunctions
                 }
 
                 // Add the user request
-                await _userRequestsTableClient.AddEntityAsync(request);
+                await _reportStorage.UserReportRequestsTable.AddEntityAsync(request);
                 
                 _logger.LogInformation("Created new user report request {RequestId} for user {UserId}, {Type}: {Details}", 
                     request.Id, request.UserId, request.Type, 
@@ -316,7 +288,7 @@ public class ReportRequestFunctions
                 globalRequest.RowKey = globalRequestId;
 
                 // Check if global request exists and increment subscriber count
-                var globalExistingEntityResponse = await _tableClient.GetEntityIfExistsAsync<ReportRequestModel>(
+                var globalExistingEntityResponse = await _reportStorage.ReportRequestsTable.GetEntityIfExistsAsync<ReportRequestModel>(
                     globalRequest.PartitionKey,
                     globalRequest.RowKey);
                 var globalExistingEntity = globalExistingEntityResponse.HasValue ? globalExistingEntityResponse.Value : null;
@@ -324,11 +296,11 @@ public class ReportRequestFunctions
                 if (globalExistingEntity != null)
                 {
                     globalExistingEntity.SubscriberCount++;
-                    await _tableClient.UpdateEntityAsync(globalExistingEntity, globalExistingEntity.ETag);
+                    await _reportStorage.ReportRequestsTable.UpdateEntityAsync(globalExistingEntity, globalExistingEntity.ETag);
                 }
                 else
                 {
-                    await _tableClient.AddEntityAsync(globalRequest);
+                    await _reportStorage.ReportRequestsTable.AddEntityAsync(globalRequest);
                     
                     // Start report generation in the background
                     _ = Task.Run(async () =>
@@ -420,7 +392,9 @@ public class ReportRequestFunctions
             try
             {
                 // Check if user request exists
-                var existingEntityResponse = await _userRequestsTableClient.GetEntityIfExistsAsync<UserReportRequestModel>(
+                await _reportStorage.EnsureInitializedAsync();
+
+                var existingEntityResponse = await _reportStorage.UserReportRequestsTable.GetEntityIfExistsAsync<UserReportRequestModel>(
                     partitionKey,
                     rowKey);
                 var existingEntity = existingEntityResponse.HasValue ? existingEntityResponse.Value : null;
@@ -433,7 +407,7 @@ public class ReportRequestFunctions
                 }
 
                 // Remove the user request
-                await _userRequestsTableClient.DeleteEntityAsync(partitionKey, rowKey);
+                await _reportStorage.UserReportRequestsTable.DeleteEntityAsync(partitionKey, rowKey);
                 
                 // Also decrement global request subscriber count
                 var globalRequest = new ReportRequestModel
@@ -447,7 +421,7 @@ public class ReportRequestFunctions
                 var globalRequestId = GenerateRequestId(globalRequest);
                 var globalPartitionKey = globalRequest.Type.ToLowerInvariant();
 
-                var globalExistingEntityResponse = await _tableClient.GetEntityIfExistsAsync<ReportRequestModel>(
+                var globalExistingEntityResponse = await _reportStorage.ReportRequestsTable.GetEntityIfExistsAsync<ReportRequestModel>(
                     globalPartitionKey,
                     globalRequestId);
                 var globalExistingEntity = globalExistingEntityResponse.HasValue ? globalExistingEntityResponse.Value : null;
@@ -457,11 +431,11 @@ public class ReportRequestFunctions
                     if (globalExistingEntity.SubscriberCount > 1)
                     {
                         globalExistingEntity.SubscriberCount--;
-                        await _tableClient.UpdateEntityAsync(globalExistingEntity, globalExistingEntity.ETag);
+                        await _reportStorage.ReportRequestsTable.UpdateEntityAsync(globalExistingEntity, globalExistingEntity.ETag);
                     }
                     else
                     {
-                        await _tableClient.DeleteEntityAsync(globalPartitionKey, globalRequestId);
+                        await _reportStorage.ReportRequestsTable.DeleteEntityAsync(globalPartitionKey, globalRequestId);
                     }
                 }
                 
@@ -537,7 +511,9 @@ public class ReportRequestFunctions
             var rowKey = id;
 
             // Check if user request exists
-            var existingEntityResponse = await _userRequestsTableClient.GetEntityIfExistsAsync<UserReportRequestModel>(
+            await _reportStorage.EnsureInitializedAsync();
+
+            var existingEntityResponse = await _reportStorage.UserReportRequestsTable.GetEntityIfExistsAsync<UserReportRequestModel>(
                 partitionKey,
                 rowKey);
             var existingEntity = existingEntityResponse.HasValue ? existingEntityResponse.Value : null;
@@ -571,7 +547,7 @@ public class ReportRequestFunctions
             existingEntity.EmailEnabled = emailEnabled;
 
             // Update the entity in table storage
-            await _userRequestsTableClient.UpdateEntityAsync(existingEntity, existingEntity.ETag);
+            await _reportStorage.UserReportRequestsTable.UpdateEntityAsync(existingEntity, existingEntity.ETag);
             
             _logger.LogInformation("Updated email settings for user report request {RequestId} for user {UserId}: EmailEnabled={EmailEnabled}", 
                 id, user.UserId, emailEnabled);
@@ -629,7 +605,9 @@ public class ReportRequestFunctions
             var requests = new List<UserReportRequestModel>();
             
             // Query for this user's requests
-            await foreach (var entity in _userRequestsTableClient.QueryAsync<UserReportRequestModel>(
+            await _reportStorage.EnsureInitializedAsync();
+
+            await foreach (var entity in _reportStorage.UserReportRequestsTable.QueryAsync<UserReportRequestModel>(
                 filter: $"PartitionKey eq '{user.UserId}'"))
             {
                 requests.Add(entity);

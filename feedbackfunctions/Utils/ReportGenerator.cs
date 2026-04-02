@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SharedDump.AI;
@@ -23,8 +22,7 @@ public class ReportGenerator
     private readonly IRedditService _redditService;
     private readonly IGitHubService _githubService;
     private readonly IFeedbackAnalyzerService _analyzerService;
-    private readonly BlobContainerClient _containerClient;
-    private readonly BlobContainerClient _summaryContainerClient;
+    private readonly IReportStorageService _reportStorage;
     private readonly IReportCacheService? _cacheService;
     private readonly IConfiguration _configuration;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
@@ -34,7 +32,7 @@ public class ReportGenerator
         IRedditService redditService,
         IGitHubService githubService,
         IFeedbackAnalyzerService analyzerService,
-        BlobServiceClient blobServiceClient,
+        IReportStorageService reportStorage,
         IConfiguration configuration,
         IReportCacheService? cacheService = null)
     {
@@ -42,15 +40,9 @@ public class ReportGenerator
         _redditService = redditService;
         _githubService = githubService;
         _analyzerService = analyzerService;
+        _reportStorage = reportStorage;
         _configuration = configuration;
         _cacheService = cacheService;
-        
-        // Initialize both blob container clients
-        _containerClient = blobServiceClient.GetBlobContainerClient("reports");
-        _containerClient.CreateIfNotExists();
-        
-        _summaryContainerClient = blobServiceClient.GetBlobContainerClient("reports-summary");
-        _summaryContainerClient.CreateIfNotExists();
     }
 
     /// <summary>
@@ -412,11 +404,12 @@ Keep each section very brief and focused. Total analysis should be no more than 
     public async Task<string> StoreReportAsync(ReportModel report)
     {
         _logger.LogInformation("Storing report {ReportId} to blob storage", report.Id);
+        await _reportStorage.EnsureInitializedAsync();
 
         try
         {
             var blobName = $"{report.Id}.json";
-            var blobClient = _containerClient.GetBlobClient(blobName);
+            var blobClient = _reportStorage.ReportsContainer.GetBlobClient(blobName);
             
             var reportJson = JsonSerializer.Serialize(report);
             await using var ms = new MemoryStream(Encoding.UTF8.GetBytes(reportJson));
@@ -447,11 +440,12 @@ Keep each section very brief and focused. Total analysis should be no more than 
     public async Task<string> StoreSummaryReportAsync(ReportModel report)
     {
         _logger.LogInformation("Storing summary report {ReportId} to blob storage", report.Id);
+        await _reportStorage.EnsureInitializedAsync();
 
         try
         {
             var blobName = $"{report.Id}-summary.json";
-            var blobClient = _summaryContainerClient.GetBlobClient(blobName);
+            var blobClient = _reportStorage.ReportsSummaryContainer.GetBlobClient(blobName);
             
             var reportJson = JsonSerializer.Serialize(report);
             await using var ms = new MemoryStream(Encoding.UTF8.GetBytes(reportJson));
@@ -475,6 +469,8 @@ Keep each section very brief and focused. Total analysis should be no more than 
     /// <returns>The most recent summary report if found within 24 hours, otherwise null</returns>
     public async Task<ReportModel?> GetRecentSummaryReportAsync(string source, string subSource)
     {
+        await _reportStorage.EnsureInitializedAsync();
+
         try
         {
             _logger.LogDebug("Checking for recent summary reports with source '{Source}' and subsource '{SubSource}'", source, subSource);
@@ -482,13 +478,13 @@ Keep each section very brief and focused. Total analysis should be no more than 
             var cutoff = DateTimeOffset.UtcNow.AddHours(-24);
             var recentReport = (ReportModel?)null;
             
-            await foreach (var blob in _summaryContainerClient.GetBlobsAsync())
+            await foreach (var blob in _reportStorage.ReportsSummaryContainer.GetBlobsAsync())
             {
                 if (blob.Properties.LastModified >= cutoff)
                 {
                     try
                     {
-                        var blobClient = _summaryContainerClient.GetBlobClient(blob.Name);
+                        var blobClient = _reportStorage.ReportsSummaryContainer.GetBlobClient(blob.Name);
                         var content = await blobClient.DownloadContentAsync();
                         var report = JsonSerializer.Deserialize<ReportModel>(content.Value.Content, _jsonOptions);
                         

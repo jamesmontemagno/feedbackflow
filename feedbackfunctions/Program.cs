@@ -1,5 +1,7 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
+using Azure.Data.Tables;
+using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -18,9 +20,10 @@ using FeedbackFunctions.Services.Authentication;
 using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Services.Account;
 using FeedbackFunctions.Services.Email;
+using FeedbackFunctions.Services.Storage;
 using System.Configuration;
-using Azure.Storage.Blobs;
 using FeedbackFunctions.Services.Reports;
+using FeedbackFunctions.Utils;
 using FeedbackFunctions.OmniSearch;
 
 var builder = FunctionsApplication.CreateBuilder(args);
@@ -52,26 +55,21 @@ builder.Services.ConfigureHttpClientDefaults(http =>
 });
 
 // Register authentication services
-builder.Services.AddScoped<IAuthUserTableService, AuthUserTableService>();
 builder.Services.AddScoped<FeedbackFunctions.Middleware.AuthenticationMiddleware>();
 
-// Register unified account service
+RegisterStorageServices(builder.Services);
 RegisterAccountServices(builder.Services);
 
 // Register blob storage and cache services
 builder.Services.AddSingleton<IReportCacheService>(serviceProvider =>
 {
-    var configuration = GetConfig(serviceProvider);
     var logger = serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ReportCacheService>>();
-    var storageConnection = configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
-    var serviceClient = new BlobServiceClient(storageConnection);
-    var containerClient = serviceClient.GetBlobContainerClient("reports");
-    containerClient.CreateIfNotExists();
-    return new ReportCacheService(logger, containerClient);
+    var reportStorage = serviceProvider.GetRequiredService<IReportStorageService>();
+    return new ReportCacheService(logger, reportStorage.ReportsContainer, reportStorage);
 });
 
 // Register admin report config service
-builder.Services.AddScoped<IAdminReportConfigService, AdminReportConfigService>();
+builder.Services.AddSingleton<IAdminReportConfigService, AdminReportConfigService>();
 
 // Register OmniSearch service
 builder.Services.AddScoped<OmniSearchService>();
@@ -89,9 +87,6 @@ if (useMocks)
     builder.Services.AddScoped<ITwitterService, MockTwitterService>();
     builder.Services.AddScoped<IBlueSkyService, MockBlueSkyService>();
     builder.Services.AddScoped<IEmailService, MockEmailService>();
-    
-    // Register unified account service
-    RegisterAccountServices(builder.Services);
 }
 else
 {
@@ -229,10 +224,17 @@ else
         
         return new EmailService(configuration, logger);
     });
-    
-    // Register unified account service
-    RegisterAccountServices(builder.Services);
 }
+
+builder.Services.AddScoped<ReportGenerator>(serviceProvider =>
+    new ReportGenerator(
+        serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ReportGenerator>>(),
+        serviceProvider.GetRequiredService<IRedditService>(),
+        serviceProvider.GetRequiredService<IGitHubService>(),
+        serviceProvider.GetRequiredService<IFeedbackAnalyzerService>(),
+        serviceProvider.GetRequiredService<IReportStorageService>(),
+        GetConfig(serviceProvider),
+        serviceProvider.GetService<IReportCacheService>()));
 
 IConfiguration GetConfig(IServiceProvider? serviceProvider = null)
 {
@@ -243,19 +245,46 @@ IConfiguration GetConfig(IServiceProvider? serviceProvider = null)
 #endif
 }
 
+void RegisterStorageServices(IServiceCollection services)
+{
+    services.AddSingleton(sp =>
+    {
+        var config = GetConfig(sp);
+        var storage = config["ProductionStorage"] ?? "UseDevelopmentStorage=true";
+        return new BlobServiceClient(storage);
+    });
+
+    services.AddSingleton(sp =>
+    {
+        var config = GetConfig(sp);
+        var storage = config["ProductionStorage"] ?? "UseDevelopmentStorage=true";
+        return new TableServiceClient(storage);
+    });
+
+    services.AddSingleton<FeedbackStorageClients>();
+    services.AddSingleton<ITableInitializationService, TableInitializationService>();
+    services.AddSingleton<IReportStorageService, ReportStorageService>();
+}
+
 void RegisterAccountServices(IServiceCollection services)
 {
-    // Register the unified user account service
     services.AddSingleton<IUserAccountService>(sp =>
     {
         var config = GetConfig(sp);
         var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<UserAccountService>>();
-        var storage = config["ProductionStorage"] ?? "UseDevelopmentStorage=true";
-        return new UserAccountService(storage, config, logger);
+        var storageClients = sp.GetRequiredService<FeedbackStorageClients>();
+        var initializer = sp.GetRequiredService<ITableInitializationService>();
+        return new UserAccountService(
+            storageClients.UserAccountsTable,
+            storageClients.UsageRecordsTable,
+            storageClients.ApiKeysTable,
+            initializer,
+            config,
+            logger);
     });
-    
-    // Register the API key service
-    services.AddScoped<IApiKeyService, ApiKeyService>();
+
+    services.AddSingleton<IAuthUserTableService, AuthUserTableService>();
+    services.AddSingleton<IApiKeyService, ApiKeyService>();
 }
 
 // Application Insights isn't enabled by default. See https://aka.ms/AAt8mw4.
@@ -264,12 +293,5 @@ builder.Services
     .ConfigureFunctionsApplicationInsights();
 
 var app = builder.Build();
-
-// Ensure tables exist on startup
-using (var scope = app.Services.CreateScope())
-{
-    var userAccountService = scope.ServiceProvider.GetRequiredService<IUserAccountService>();
-    await userAccountService.InitializeTablesAsync();
-}
 
 app.Run();

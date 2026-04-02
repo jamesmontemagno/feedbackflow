@@ -14,6 +14,7 @@ public class ReportCacheService : IReportCacheService
 {
     private readonly ILogger<ReportCacheService> _logger;
     private readonly BlobContainerClient _containerClient;
+    private readonly IReportStorageService? _reportStorage;
     private readonly ConcurrentDictionary<string, CachedReport> _cache = new();
     private readonly SemaphoreSlim _refreshSemaphore = new(1, 1);
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
@@ -27,16 +28,21 @@ public class ReportCacheService : IReportCacheService
     /// </summary>
     /// <param name="logger">Logger instance</param>
     /// <param name="containerClient">Blob container client for reports</param>
-    public ReportCacheService(ILogger<ReportCacheService> logger, BlobContainerClient containerClient)
+    public ReportCacheService(
+        ILogger<ReportCacheService> logger,
+        BlobContainerClient containerClient,
+        IReportStorageService? reportStorage = null)
     {
         _logger = logger;
         _containerClient = containerClient;
+        _reportStorage = reportStorage;
     }
 
     /// <inheritdoc />
     public async Task<ReportModel?> GetReportAsync(string reportId)
     {
         var stopwatch = Stopwatch.StartNew();
+        await EnsureStorageInitializedAsync();
 
         if (_cache.TryGetValue(reportId, out var cachedReport))
         {
@@ -92,6 +98,8 @@ public class ReportCacheService : IReportCacheService
     /// <inheritdoc />
     public async Task<List<ReportModel>> GetReportsAsync(string? sourceFilter = null, string? subsourceFilter = null)
     {
+        await EnsureStorageInitializedAsync();
+
         if (string.IsNullOrEmpty(sourceFilter) && string.IsNullOrEmpty(subsourceFilter))
         {
             await EnsureFullCacheIsValidAsync();
@@ -230,6 +238,7 @@ public class ReportCacheService : IReportCacheService
     public async Task RefreshCacheAsync()
     {
         var stopwatch = Stopwatch.StartNew();
+        await EnsureStorageInitializedAsync();
         await _refreshSemaphore.WaitAsync();
         try
         {
@@ -311,6 +320,9 @@ public class ReportCacheService : IReportCacheService
                 stopwatch.ElapsedMilliseconds);
         }
     }
+
+    private Task EnsureStorageInitializedAsync() =>
+        _reportStorage?.EnsureInitializedAsync() ?? Task.CompletedTask;
 
     private bool IsCacheExpired() =>
         _lastRefresh != DateTime.MinValue && DateTime.UtcNow - _lastRefresh > CacheExpiry;

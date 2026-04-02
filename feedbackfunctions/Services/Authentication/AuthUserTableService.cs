@@ -1,6 +1,9 @@
 using Azure.Data.Tables;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+
+using FeedbackFunctions.Services.Storage;
+
 using SharedDump.Models.Authentication;
 
 namespace FeedbackFunctions.Services.Authentication;
@@ -10,8 +13,8 @@ namespace FeedbackFunctions.Services.Authentication;
 /// </summary>
 public class AuthUserTableService : IAuthUserTableService
 {
-    private readonly TableServiceClient _tableServiceClient;
     private readonly TableClient _userTableClient;
+    private readonly ITableInitializationService _tableInitializationService;
     private readonly ILogger<AuthUserTableService> _logger;
     private const string AUTH_USERS_TABLE = "AuthUsers";
 
@@ -20,25 +23,21 @@ public class AuthUserTableService : IAuthUserTableService
     /// </summary>
     /// <param name="configuration">Configuration for connection string</param>
     /// <param name="logger">Logger for diagnostic information</param>
-    public AuthUserTableService(IConfiguration configuration, ILogger<AuthUserTableService> logger)
+    public AuthUserTableService(
+        FeedbackStorageClients storageClients,
+        ITableInitializationService tableInitializationService,
+        ILogger<AuthUserTableService> logger)
     {
-        var connectionString = configuration["ProductionStorage"] ??
-                             throw new InvalidOperationException("No storage connection string configured");
-
-        _tableServiceClient = new TableServiceClient(connectionString);
-        _userTableClient = _tableServiceClient.GetTableClient(AUTH_USERS_TABLE);
+        _userTableClient = storageClients.AuthUsersTable;
+        _tableInitializationService = tableInitializationService;
         _logger = logger;
-
-        // Ensure tables exist
-        _ = Task.Run(async () =>
-        {
-            await _userTableClient.CreateIfNotExistsAsync();
-        });
     }
 
     /// <inheritdoc />
     public async Task<AuthUserEntity?> GetUserByProviderAsync(string provider, string providerUserId)
     {
+        await _tableInitializationService.EnsureAuthTablesAsync();
+
         try
         {
             var response = await _userTableClient.GetEntityIfExistsAsync<AuthUserEntity>(provider, providerUserId);
@@ -54,6 +53,8 @@ public class AuthUserTableService : IAuthUserTableService
     /// <inheritdoc />
     public async Task<AuthUserEntity?> GetUserByEmailAsync(string email)
     {
+        await _tableInitializationService.EnsureAuthTablesAsync();
+
         try
         {
             // Direct query across all partitions - this is more expensive but simpler
@@ -74,6 +75,8 @@ public class AuthUserTableService : IAuthUserTableService
     /// <inheritdoc />
     public async Task<AuthUserEntity?> GetUserByIdAsync(string userId)
     {
+        await _tableInitializationService.EnsureAuthTablesAsync();
+
         try
         {
             // This requires a cross-partition query, which is more expensive
@@ -94,6 +97,8 @@ public class AuthUserTableService : IAuthUserTableService
     /// <inheritdoc />
     public async Task<AuthUserEntity> CreateOrUpdateUserAsync(AuthUserEntity user)
     {
+        await _tableInitializationService.EnsureAuthTablesAsync();
+
         try
         {
             var existing = await GetUserByProviderAsync(user.AuthProvider, user.ProviderUserId);
@@ -114,6 +119,8 @@ public class AuthUserTableService : IAuthUserTableService
     /// <inheritdoc />
     public async Task<AuthUserEntity> CreateUserIfNotExistsAsync(AuthUserEntity user)
     {
+        await _tableInitializationService.EnsureAuthTablesAsync();
+
         try
         {
             // First try to add the entity atomically - this will fail if it already exists
@@ -175,6 +182,8 @@ public class AuthUserTableService : IAuthUserTableService
     /// <inheritdoc />
     public async Task<bool> DeleteUserAsync(string userId)
     {
+        await _tableInitializationService.EnsureAuthTablesAsync();
+
         try
         {
             var user = await GetUserByIdAsync(userId);
@@ -195,6 +204,8 @@ public class AuthUserTableService : IAuthUserTableService
     /// <inheritdoc />
     public async Task<IEnumerable<AuthUserEntity>> GetAllUsersAsync()
     {
+        await _tableInitializationService.EnsureAuthTablesAsync();
+
         var users = new List<AuthUserEntity>();
         try
         {

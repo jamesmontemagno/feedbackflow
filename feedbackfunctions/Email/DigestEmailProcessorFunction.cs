@@ -11,6 +11,7 @@ using Microsoft.Extensions.Configuration;
 using FeedbackFunctions.Services.Email;
 using FeedbackFunctions.Services.Account;
 using FeedbackFunctions.Services.Reports;
+using FeedbackFunctions.Services.Storage;
 using FeedbackFunctions.Utils;
 using System.Text.Json;
 
@@ -23,8 +24,8 @@ public class DigestEmailProcessorFunction
 {
     private readonly ILogger<DigestEmailProcessorFunction> _logger;
     private readonly IConfiguration _configuration;
-    private readonly TableClient _userAccountsTableClient;
-    private readonly TableClient _userRequestsTableClient;
+    private readonly FeedbackStorageClients _storage;
+    private readonly ITableInitializationService _tableInitializationService;
     private readonly IReportCacheService _reportCacheService;
     private readonly IEmailService _emailService;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
@@ -32,31 +33,17 @@ public class DigestEmailProcessorFunction
     public DigestEmailProcessorFunction(
         ILogger<DigestEmailProcessorFunction> logger,
         IConfiguration configuration,
+        FeedbackStorageClients storage,
+        ITableInitializationService tableInitializationService,
         IEmailService emailService,
         IReportCacheService reportCacheService)
     {
         _logger = logger;
+        _configuration = configuration;
+        _storage = storage;
+        _tableInitializationService = tableInitializationService;
         _emailService = emailService;
         _reportCacheService = reportCacheService;
-        
-#if DEBUG
-        _configuration = new ConfigurationBuilder()
-                    .AddJsonFile("local.settings.json")
-                    .AddUserSecrets<Program>()
-                    .Build();
-#else
-        _configuration = configuration;
-#endif
-
-        // Initialize table clients
-        var storageConnection = _configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
-        var tableServiceClient = new TableServiceClient(storageConnection);
-        
-        _userAccountsTableClient = tableServiceClient.GetTableClient("useraccounts");
-        _userAccountsTableClient.CreateIfNotExists();
-        
-        _userRequestsTableClient = tableServiceClient.GetTableClient("userreportrequests");
-        _userRequestsTableClient.CreateIfNotExists();
     }
 
     /// <summary>
@@ -113,6 +100,9 @@ public class DigestEmailProcessorFunction
     {
         try
         {
+            await _tableInitializationService.EnsureAccountTablesAsync();
+            await _tableInitializationService.EnsureReportStorageAsync();
+
             var cutoffDate = DateTime.UtcNow.AddDays(-7); // Only reports from the last week
             _logger.LogInformation("Processing individual report emails for reports since {CutoffDate}", cutoffDate);
 
@@ -121,7 +111,7 @@ public class DigestEmailProcessorFunction
             var emailsSent = 0;
             var usersProcessed = 0;
 
-            await foreach (var userRequest in _userRequestsTableClient.QueryAsync<UserReportRequestModel>(filter))
+            await foreach (var userRequest in _storage.UserReportRequestsTable.QueryAsync<UserReportRequestModel>(filter))
             {
                 try
                 {
@@ -129,7 +119,7 @@ public class DigestEmailProcessorFunction
                     var userId = userRequest.UserId;
                     
                     // Get user account to check tier, email settings, and email address
-                    var userAccountEntity = await _userAccountsTableClient.GetEntityAsync<UserAccountEntity>(userId, "account");
+                    var userAccountEntity = await _storage.UserAccountsTable.GetEntityAsync<UserAccountEntity>(userId, "account");
                     
                     // Check if user's tier supports email notifications
                     if (!AccountTierUtils.SupportsEmailNotifications((AccountTier)userAccountEntity.Value.Tier))
@@ -207,7 +197,7 @@ public class DigestEmailProcessorFunction
 
                     // Update last email sent timestamp
                     userAccountEntity.Value.LastEmailSent = DateTime.UtcNow;
-                    await _userAccountsTableClient.UpdateEntityAsync(userAccountEntity.Value, userAccountEntity.Value.ETag);
+                    await _storage.UserAccountsTable.UpdateEntityAsync(userAccountEntity.Value, userAccountEntity.Value.ETag);
                 }
                 catch (Exception ex)
                 {
@@ -231,6 +221,9 @@ public class DigestEmailProcessorFunction
     {
         try
         {
+            await _tableInitializationService.EnsureAccountTablesAsync();
+            await _tableInitializationService.EnsureReportStorageAsync();
+
             var cutoffDate = DateTime.UtcNow.AddDays(-7); // Only reports from the last week
             _logger.LogInformation("Processing weekly digest emails for reports since {CutoffDate}", cutoffDate);
 
@@ -238,7 +231,7 @@ public class DigestEmailProcessorFunction
             var digestRequests = new Dictionary<string, List<UserReportRequestModel>>();
             var filter = "EmailEnabled eq true";
 
-            await foreach (var userRequest in _userRequestsTableClient.QueryAsync<UserReportRequestModel>(filter))
+            await foreach (var userRequest in _storage.UserReportRequestsTable.QueryAsync<UserReportRequestModel>(filter))
             {
                 if (!digestRequests.ContainsKey(userRequest.UserId))
                 {
@@ -259,7 +252,7 @@ public class DigestEmailProcessorFunction
                     var userRequests = userDigestGroup.Value;
                     
                     // Get user account to check tier, email settings, and email address
-                    var userAccountEntity = await _userAccountsTableClient.GetEntityAsync<UserAccountEntity>(userId, "account");
+                    var userAccountEntity = await _storage.UserAccountsTable.GetEntityAsync<UserAccountEntity>(userId, "account");
                     
                     // Check if user's tier supports email notifications
                     if (!AccountTierUtils.SupportsEmailNotifications((AccountTier)userAccountEntity.Value.Tier))
@@ -328,7 +321,7 @@ public class DigestEmailProcessorFunction
 
                         // Update last email sent timestamp
                         userAccountEntity.Value.LastEmailSent = DateTime.UtcNow;
-                        await _userAccountsTableClient.UpdateEntityAsync(userAccountEntity.Value, userAccountEntity.Value.ETag);
+                        await _storage.UserAccountsTable.UpdateEntityAsync(userAccountEntity.Value, userAccountEntity.Value.ETag);
                     }
                     else
                     {
