@@ -217,33 +217,37 @@ public class ReportingFunctions
                 return emptyResponse;
             }
 
-            // Get all reports from cache
-            var allReports = await _cacheService.GetReportsAsync();
-            var cacheReadElapsedMs = stopwatch.ElapsedMilliseconds;
-            var matchingReports = new List<object>();
-
-            foreach (var report in allReports)
-            {
-                // Check if this report matches any of the user's requests
-                var matchesRequest = userReportRequests.Any(userReq =>
-                    userReq.Type == report.Source &&
-                    ((userReq.Type == "reddit" && userReq.Subreddit == report.SubSource) ||
-                     (userReq.Type == "github" && $"{userReq.Owner}/{userReq.Repo}" == report.SubSource)));
-
-                if (matchesRequest)
+            var allReports = new List<ReportModel>();
+            foreach (var userRequest in userReportRequests
+                .Select(request => new
                 {
-                    matchingReports.Add(new
-                    {
-                        id = report.Id,
-                        source = report.Source,
-                        subSource = report.SubSource,
-                        generatedAt = report.GeneratedAt,
-                        threadCount = report.ThreadCount,
-                        commentCount = report.CommentCount,
-                        cutoffDate = report.CutoffDate
-                    });
-                }
+                    Source = request.Type,
+                    SubSource = request.Type == "reddit"
+                        ? request.Subreddit
+                        : $"{request.Owner}/{request.Repo}"
+                })
+                .Where(request => !string.IsNullOrWhiteSpace(request.Source) && !string.IsNullOrWhiteSpace(request.SubSource))
+                .Distinct())
+            {
+                var reportsForRequest = await _cacheService.GetReportsAsync(userRequest.Source, userRequest.SubSource);
+                allReports.AddRange(reportsForRequest);
             }
+
+            var cacheReadElapsedMs = stopwatch.ElapsedMilliseconds;
+            var matchingReports = allReports
+                .DistinctBy(report => report.Id)
+                .Select(report => new
+                {
+                    id = report.Id,
+                    source = report.Source,
+                    subSource = report.SubSource,
+                    generatedAt = report.GeneratedAt,
+                    threadCount = report.ThreadCount,
+                    commentCount = report.CommentCount,
+                    cutoffDate = report.CutoffDate
+                })
+                .Cast<object>()
+                .ToList();
 
             // Sort by generation date (newest first)
             matchingReports = matchingReports
