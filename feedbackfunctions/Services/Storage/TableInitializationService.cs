@@ -53,8 +53,9 @@ public class TableInitializationService : ITableInitializationService
                 _storage.SharedAnalysesContainer.CreateIfNotExistsAsync());
         });
 
-    private Task EnsureAsync(string key, Func<Task> initialize) =>
-        _initializers.GetOrAdd(
+    private Task EnsureAsync(string key, Func<Task> initialize)
+    {
+        var initializer = _initializers.GetOrAdd(
             key,
             _ => new Lazy<Task>(
                 async () =>
@@ -62,5 +63,22 @@ public class TableInitializationService : ITableInitializationService
                     _logger.LogInformation("Initializing storage scope {Scope}", key);
                     await initialize();
                 },
-                LazyThreadSafetyMode.ExecutionAndPublication)).Value;
+                LazyThreadSafetyMode.ExecutionAndPublication));
+
+        return AwaitInitializerAsync(key, initializer);
+    }
+
+    private async Task AwaitInitializerAsync(string key, Lazy<Task> initializer)
+    {
+        try
+        {
+            await initializer.Value;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Storage scope {Scope} initialization failed and will be retried", key);
+            _initializers.TryRemove(new KeyValuePair<string, Lazy<Task>>(key, initializer));
+            throw;
+        }
+    }
 }

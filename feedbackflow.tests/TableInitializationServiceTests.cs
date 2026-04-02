@@ -148,6 +148,58 @@ public class TableInitializationServiceTests
         Assert.AreEqual(1, weeklySummariesCalls);
     }
 
+    [TestMethod]
+    public async Task EnsureAccountTablesAsync_WhenInitializationFails_RetriesOnNextCall()
+    {
+        var userAccountsTable = Substitute.For<TableClient>();
+        var usageRecordsTable = Substitute.For<TableClient>();
+        var apiKeysTable = Substitute.For<TableClient>();
+
+        var storage = CreateStorage(
+            userAccountsTable: userAccountsTable,
+            usageRecordsTable: usageRecordsTable,
+            apiKeysTable: apiKeysTable);
+
+        var service = new TableInitializationService(
+            storage,
+            Substitute.For<ILogger<TableInitializationService>>());
+
+        var userAccountsCalls = 0;
+
+        userAccountsTable
+            .CreateIfNotExistsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                var callNumber = Interlocked.Increment(ref userAccountsCalls);
+                return callNumber == 1
+                    ? Task.FromException<Response<TableItem>>(new InvalidOperationException("Transient failure"))
+                    : Task.FromResult<Response<TableItem>>(null!);
+            });
+
+        usageRecordsTable
+            .CreateIfNotExistsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<Response<TableItem>>(null!));
+
+        apiKeysTable
+            .CreateIfNotExistsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<Response<TableItem>>(null!));
+
+        var failed = false;
+        try
+        {
+            await service.EnsureAccountTablesAsync();
+        }
+        catch (InvalidOperationException)
+        {
+            failed = true;
+        }
+
+        Assert.IsTrue(failed);
+        await service.EnsureAccountTablesAsync();
+
+        Assert.AreEqual(2, userAccountsCalls);
+    }
+
     private static FeedbackStorageClients CreateStorage(
         TableClient? userAccountsTable = null,
         TableClient? usageRecordsTable = null,
