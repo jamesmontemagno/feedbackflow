@@ -282,16 +282,10 @@ public class ReportRequestFunctions
             try
             {
                 // Check if this user already has this request
-                var existingEntities = _userRequestsTableClient.QueryAsync<UserReportRequestModel>(
-                    filter: $"PartitionKey eq '{request.PartitionKey}' and RowKey eq '{request.RowKey}'",
-                    maxPerPage: 1);
-
-                UserReportRequestModel? existingEntity = null;
-                await foreach (var entity in existingEntities)
-                {
-                    existingEntity = entity;
-                    break;
-                }
+                var existingEntityResponse = await _userRequestsTableClient.GetEntityIfExistsAsync<UserReportRequestModel>(
+                    request.PartitionKey,
+                    request.RowKey);
+                var existingEntity = existingEntityResponse.HasValue ? existingEntityResponse.Value : null;
                 
                 if (existingEntity != null)
                 {
@@ -322,16 +316,10 @@ public class ReportRequestFunctions
                 globalRequest.RowKey = globalRequestId;
 
                 // Check if global request exists and increment subscriber count
-                var globalExistingEntities = _tableClient.QueryAsync<ReportRequestModel>(
-                    filter: $"PartitionKey eq '{globalRequest.PartitionKey}' and RowKey eq '{globalRequest.RowKey}'",
-                    maxPerPage: 1);
-
-                ReportRequestModel? globalExistingEntity = null;
-                await foreach (var entity in globalExistingEntities)
-                {
-                    globalExistingEntity = entity;
-                    break;
-                }
+                var globalExistingEntityResponse = await _tableClient.GetEntityIfExistsAsync<ReportRequestModel>(
+                    globalRequest.PartitionKey,
+                    globalRequest.RowKey);
+                var globalExistingEntity = globalExistingEntityResponse.HasValue ? globalExistingEntityResponse.Value : null;
                 
                 if (globalExistingEntity != null)
                 {
@@ -432,16 +420,10 @@ public class ReportRequestFunctions
             try
             {
                 // Check if user request exists
-                var existingEntities = _userRequestsTableClient.QueryAsync<UserReportRequestModel>(
-                    filter: $"PartitionKey eq '{partitionKey}' and RowKey eq '{rowKey}'",
-                    maxPerPage: 1);
-
-                UserReportRequestModel? existingEntity = null;
-                await foreach (var entity in existingEntities)
-                {
-                    existingEntity = entity;
-                    break;
-                }
+                var existingEntityResponse = await _userRequestsTableClient.GetEntityIfExistsAsync<UserReportRequestModel>(
+                    partitionKey,
+                    rowKey);
+                var existingEntity = existingEntityResponse.HasValue ? existingEntityResponse.Value : null;
                 
                 if (existingEntity == null)
                 {
@@ -465,16 +447,10 @@ public class ReportRequestFunctions
                 var globalRequestId = GenerateRequestId(globalRequest);
                 var globalPartitionKey = globalRequest.Type.ToLowerInvariant();
 
-                var globalExistingEntities = _tableClient.QueryAsync<ReportRequestModel>(
-                    filter: $"PartitionKey eq '{globalPartitionKey}' and RowKey eq '{globalRequestId}'",
-                    maxPerPage: 1);
-
-                ReportRequestModel? globalExistingEntity = null;
-                await foreach (var entity in globalExistingEntities)
-                {
-                    globalExistingEntity = entity;
-                    break;
-                }
+                var globalExistingEntityResponse = await _tableClient.GetEntityIfExistsAsync<ReportRequestModel>(
+                    globalPartitionKey,
+                    globalRequestId);
+                var globalExistingEntity = globalExistingEntityResponse.HasValue ? globalExistingEntityResponse.Value : null;
                 
                 if (globalExistingEntity != null)
                 {
@@ -561,16 +537,10 @@ public class ReportRequestFunctions
             var rowKey = id;
 
             // Check if user request exists
-            var existingEntities = _userRequestsTableClient.QueryAsync<UserReportRequestModel>(
-                filter: $"PartitionKey eq '{partitionKey}' and RowKey eq '{rowKey}'",
-                maxPerPage: 1);
-
-            UserReportRequestModel? existingEntity = null;
-            await foreach (var entity in existingEntities)
-            {
-                existingEntity = entity;
-                break;
-            }
+            var existingEntityResponse = await _userRequestsTableClient.GetEntityIfExistsAsync<UserReportRequestModel>(
+                partitionKey,
+                rowKey);
+            var existingEntity = existingEntityResponse.HasValue ? existingEntityResponse.Value : null;
             
             if (existingEntity == null)
             {
