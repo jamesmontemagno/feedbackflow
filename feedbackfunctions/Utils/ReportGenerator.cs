@@ -444,9 +444,9 @@ Keep each section very brief and focused. Total analysis should be no more than 
 
         try
         {
-            var blobName = $"{report.Id}-summary.json";
+            var blobName = GetSummaryBlobName(report.Source, report.SubSource);
             var blobClient = _reportStorage.ReportsSummaryContainer.GetBlobClient(blobName);
-            
+             
             var reportJson = JsonSerializer.Serialize(report);
             await using var ms = new MemoryStream(Encoding.UTF8.GetBytes(reportJson));
             await blobClient.UploadAsync(ms, overwrite: true);
@@ -474,32 +474,47 @@ Keep each section very brief and focused. Total analysis should be no more than 
         try
         {
             _logger.LogDebug("Checking for recent summary reports with source '{Source}' and subsource '{SubSource}'", source, subSource);
-            
+             
             var cutoff = DateTimeOffset.UtcNow.AddHours(-24);
+
+            var directBlobClient = _reportStorage.ReportsSummaryContainer.GetBlobClient(GetSummaryBlobName(source, subSource));
+            if (await directBlobClient.ExistsAsync())
+            {
+                var content = await directBlobClient.DownloadContentAsync();
+                var report = JsonSerializer.Deserialize<ReportModel>(content.Value.Content, _jsonOptions);
+                if (report != null && report.GeneratedAt >= cutoff)
+                {
+                    _logger.LogInformation("Found direct summary report {ReportId} generated at {GeneratedAt} for {Source}/{SubSource}",
+                        report.Id, report.GeneratedAt, source, subSource);
+                    return report;
+                }
+            }
+
             var recentReport = (ReportModel?)null;
-            
             await foreach (var blob in _reportStorage.ReportsSummaryContainer.GetBlobsAsync())
             {
-                if (blob.Properties.LastModified >= cutoff)
+                if (blob.Properties.LastModified < cutoff)
                 {
-                    try
+                    continue;
+                }
+
+                try
+                {
+                    var blobClient = _reportStorage.ReportsSummaryContainer.GetBlobClient(blob.Name);
+                    var content = await blobClient.DownloadContentAsync();
+                    var report = JsonSerializer.Deserialize<ReportModel>(content.Value.Content, _jsonOptions);
+
+                    if (report != null && report.Source == source && report.SubSource == subSource)
                     {
-                        var blobClient = _reportStorage.ReportsSummaryContainer.GetBlobClient(blob.Name);
-                        var content = await blobClient.DownloadContentAsync();
-                        var report = JsonSerializer.Deserialize<ReportModel>(content.Value.Content, _jsonOptions);
-                        
-                        if (report != null && report.Source == source && report.SubSource == subSource)
+                        if (recentReport == null || report.GeneratedAt > recentReport.GeneratedAt)
                         {
-                            if (recentReport == null || report.GeneratedAt > recentReport.GeneratedAt)
-                            {
-                                recentReport = report;
-                            }
+                            recentReport = report;
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Error reading summary report blob {BlobName}", blob.Name);
-                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error reading summary report blob {BlobName}", blob.Name);
                 }
             }
 
@@ -520,6 +535,20 @@ Keep each section very brief and focused. Total analysis should be no more than 
             _logger.LogWarning(ex, "Error checking for recent summary reports for {Source}/{SubSource}. Will proceed with generating new report.", source, subSource);
             return null;
         }
+    }
+
+    private static string GetSummaryBlobName(string source, string subSource)
+    {
+        var normalizedSource = source.Trim().ToLowerInvariant();
+        var normalizedSubSource = subSource.Trim().ToLowerInvariant();
+
+        var invalidChars = Path.GetInvalidFileNameChars();
+        var sanitizedSubSource = new string(
+            normalizedSubSource
+                .Select(ch => invalidChars.Contains(ch) || ch == '/' || ch == '\\' ? '-' : ch)
+                .ToArray());
+
+        return $"{normalizedSource}--{sanitizedSubSource}--summary.json";
     }
 
     /// <summary>

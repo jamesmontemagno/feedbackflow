@@ -5,8 +5,6 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using FeedbackFunctions.Services;
 using SharedDump.Models.Reports;
-using System.Text;
-using System.Text.Json;
 using Azure;
 using FeedbackFunctions.Services.Reports;
 
@@ -175,6 +173,29 @@ public class ReportCacheServiceTests
         // Assert
         Assert.HasCount(1, filteredResults);
         Assert.AreEqual("dotnet", filteredResults[0].SubSource);
+    }
+
+    [TestMethod]
+    public async Task GetReportsAsync_WithOnlyCachedReports_DoesNotRequireBlobWarmup()
+    {
+        var report = new ReportModel
+        {
+            Id = Guid.NewGuid(),
+            Source = "reddit",
+            SubSource = "gaming",
+            GeneratedAt = DateTime.UtcNow,
+            ThreadCount = 2,
+            CommentCount = 20,
+            CutoffDate = DateTime.UtcNow.AddDays(-7),
+            HtmlContent = "Cached only"
+        };
+
+        await _cacheService.SetReportAsync(report);
+
+        var results = await _cacheService.GetReportsAsync("reddit", "gaming");
+
+        Assert.HasCount(1, results);
+        Assert.AreEqual(report.Id, results[0].Id);
     }
 
     [TestMethod]
