@@ -193,19 +193,48 @@ app.UseHttpsRedirection();
 
 app.UseAntiforgery();
 
-app.MapStaticAssets();
-// Conditionally expose robots.txt only for non-production environments.
-// In Production we want to allow crawling (so we serve nothing / 404 which permits crawling by default).
-// In Staging or Development we return a disallow-all robots file.
-if (!app.Environment.IsProduction())
+// Serve robots.txt: disallow-all in non-production, production file otherwise.
+app.MapGet("/robots.txt", async context =>
 {
-    app.MapGet("/robots.txt", async context =>
-    {
-        context.Response.ContentType = "text/plain";
-        // File content maintained in wwwroot/robots.staging.txt
-        await context.Response.SendFileAsync(Path.Combine(app.Environment.WebRootPath, "robots.staging.txt"));
-    });
-}
+    context.Response.ContentType = "text/plain";
+    var fileName = app.Environment.IsProduction() ? "robots.txt" : "robots.staging.txt";
+    await context.Response.SendFileAsync(Path.Combine(app.Environment.WebRootPath, fileName));
+});
+
+// Dynamic sitemap.xml for Google Search Console
+app.MapGet("/sitemap.xml", context =>
+{
+    var baseUrl = $"{context.Request.Scheme}://{context.Request.Host}";
+    var sitemap = $"""
+        <?xml version="1.0" encoding="UTF-8"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+          <url>
+            <loc>{baseUrl}/</loc>
+            <changefreq>weekly</changefreq>
+            <priority>1.0</priority>
+          </url>
+          <url>
+            <loc>{baseUrl}/whats-new</loc>
+            <changefreq>weekly</changefreq>
+            <priority>0.7</priority>
+          </url>
+          <url>
+            <loc>{baseUrl}/docs/api</loc>
+            <changefreq>monthly</changefreq>
+            <priority>0.8</priority>
+          </url>
+          <url>
+            <loc>{baseUrl}/docs/mcp</loc>
+            <changefreq>monthly</changefreq>
+            <priority>0.8</priority>
+          </url>
+        </urlset>
+        """;
+    context.Response.ContentType = "application/xml";
+    return context.Response.WriteAsync(sitemap);
+});
+
+app.MapStaticAssets();
 app.MapRazorComponents<FeedbackWebApp.Components.App>()
     .AddInteractiveServerRenderMode();
 
