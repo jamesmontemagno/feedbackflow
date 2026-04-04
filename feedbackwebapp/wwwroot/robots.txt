@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Allow: /whats-new
+Allow: /docs/api
+Allow: /docs/mcp
+
+Disallow: /admin
+Disallow: /history
+Disallow: /history-local
+Disallow: /settings
+Disallow: /account-settings
+Disallow: /content-feeds
+Disallow: /reports/manage
+Disallow: /analysis/
+Disallow: /report/
+
+Sitemap: https://feedbackflow.app/sitemap.xml
