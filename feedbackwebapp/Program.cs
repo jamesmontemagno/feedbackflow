@@ -35,6 +35,7 @@ builder.Services.AddMemoryCache();
 // Register ToastService and other services
 builder.Services.AddScoped<IToastService, ToastService>();
 builder.Services.AddScoped<IHistoryHelper, HistoryHelper>();
+builder.Services.AddScoped<IFeatureGateService, FeatureGateService>();
 
 builder.Services.AddHttpClient("DefaultClient")
     .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromMinutes(3));

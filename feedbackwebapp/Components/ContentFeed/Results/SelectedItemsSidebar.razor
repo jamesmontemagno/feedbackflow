@@ -1,12 +1,14 @@
 @namespace FeedbackWebApp.Components.ContentFeed.Results
 @using FeedbackWebApp.Components.Pages
+@using SharedDump.Services.Interfaces
+@inject IFeatureGateService FeatureGateService
 
 <div class="selected-items-sidebar @(isCollapsed ? "collapsed" : "expanded")">
     <div class="sidebar-header" @onclick="ToggleCollapse">
         <div class="d-flex align-items-center justify-content-between">
             <h5 class="mb-0">
                 <i class="bi bi-collection me-2"></i>
-                Selected Items (@SelectedItems.Count/@MaxItems)
+                Selected Items (@GetVisibleItemCount()/@MaxItems)
             </h5>
             <button class="btn btn-sm btn-link text-decoration-none" aria-label="@(isCollapsed ? "Expand" : "Collapse")">
                 <i class="bi bi-@(isCollapsed ? "chevron-left" : "chevron-right")"></i>
@@ -17,7 +19,10 @@
     @if (!isCollapsed)
     {
         <div class="sidebar-body">
-            @if (SelectedItems.Any())
+            @{
+                var visibleItems = GetVisibleItems();
+            }
+            @if (visibleItems.Any())
             {
                 <div class="mb-3">
                     <button class="btn btn-primary w-100 mb-2" @onclick="OnAnalyzeClick" disabled="@IsAnalyzing">
@@ -38,7 +43,7 @@
                 </div>
 
                 <div class="selected-items-list">
-                    @foreach (var item in SelectedItems)
+                    @foreach (var item in visibleItems)
                     {
                         <div class="selected-item-card">
                             <div class="d-flex gap-2">
@@ -148,5 +153,23 @@
         {
             return url.Length > 40 ? url.Substring(0, 40) + "..." : url;
         }
+    }
+
+    private IEnumerable<ContentFeeds.SelectedItem> GetVisibleItems()
+    {
+        // Filter out Twitter items if X is disabled
+        if (FeatureGateService.IsXEnabled)
+        {
+            return SelectedItems;
+        }
+        
+        return SelectedItems.Where(item => !item.SourceType.Equals("twitter", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private int GetVisibleItemCount()
+    {
+        return FeatureGateService.IsXEnabled
+            ? SelectedItems.Count
+            : SelectedItems.Count(item => !item.SourceType.Equals("twitter", StringComparison.OrdinalIgnoreCase));
     }
 }

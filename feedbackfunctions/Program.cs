@@ -268,6 +268,7 @@ void RegisterStorageServices(IServiceCollection services)
     services.AddSingleton<FeedbackStorageClients>();
     services.AddSingleton<ITableInitializationService, TableInitializationService>();
     services.AddSingleton<IReportStorageService, ReportStorageService>();
+    services.AddScoped<IFeatureGateService, FeatureGateService>();
 }
 
 void RegisterAccountServices(IServiceCollection services)
