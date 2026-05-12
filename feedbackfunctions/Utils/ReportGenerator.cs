@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Security.Cryptography;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SharedDump.AI;
@@ -482,7 +483,11 @@ Keep each section very brief and focused. Total analysis should be no more than 
             {
                 var content = await directBlobClient.DownloadContentAsync();
                 var report = JsonSerializer.Deserialize<ReportModel>(content.Value.Content, _jsonOptions);
-                if (report != null && report.GeneratedAt >= cutoff)
+                var isSourceMatch = report is not null &&
+                    string.Equals(report.Source, source, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(report.SubSource, subSource, StringComparison.OrdinalIgnoreCase);
+
+                if (isSourceMatch && report!.GeneratedAt >= cutoff)
                 {
                     _logger.LogInformation("Found direct summary report {ReportId} generated at {GeneratedAt} for {Source}/{SubSource}",
                         report.Id, report.GeneratedAt, source, subSource);
@@ -504,7 +509,9 @@ Keep each section very brief and focused. Total analysis should be no more than 
                     var content = await blobClient.DownloadContentAsync();
                     var report = JsonSerializer.Deserialize<ReportModel>(content.Value.Content, _jsonOptions);
 
-                    if (report != null && report.Source == source && report.SubSource == subSource)
+                    if (report is not null &&
+                        string.Equals(report.Source, source, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(report.SubSource, subSource, StringComparison.OrdinalIgnoreCase))
                     {
                         if (recentReport == null || report.GeneratedAt > recentReport.GeneratedAt)
                         {
@@ -539,16 +546,25 @@ Keep each section very brief and focused. Total analysis should be no more than 
 
     private static string GetSummaryBlobName(string source, string subSource)
     {
-        var normalizedSource = source.Trim().ToLowerInvariant();
-        var normalizedSubSource = subSource.Trim().ToLowerInvariant();
+        var normalizedSource = NormalizeKeyPart(source);
+        var normalizedSubSource = NormalizeKeyPart(subSource);
+        var keyMaterial = $"{normalizedSource}\n{normalizedSubSource}";
+        var digestBytes = SHA256.HashData(Encoding.UTF8.GetBytes(keyMaterial));
+        var digest = Convert.ToHexString(digestBytes).ToLowerInvariant();
 
+        return $"{normalizedSource}--{digest}--summary.json";
+    }
+
+    private static string NormalizeKeyPart(string value)
+    {
+        var normalizedValue = value.Trim().ToLowerInvariant();
         var invalidChars = Path.GetInvalidFileNameChars();
-        var sanitizedSubSource = new string(
-            normalizedSubSource
+        var sanitizedValue = new string(
+            normalizedValue
                 .Select(ch => invalidChars.Contains(ch) || ch == '/' || ch == '\\' ? '-' : ch)
                 .ToArray());
 
-        return $"{normalizedSource}--{sanitizedSubSource}--summary.json";
+        return string.IsNullOrWhiteSpace(sanitizedValue) ? "unknown" : sanitizedValue;
     }
 
     /// <summary>

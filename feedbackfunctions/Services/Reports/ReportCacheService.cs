@@ -136,16 +136,19 @@ public class ReportCacheService : IReportCacheService
     {
         var stopwatch = Stopwatch.StartNew();
         var matchedReports = new Dictionary<string, ReportModel>(StringComparer.OrdinalIgnoreCase);
-
         foreach (var cachedReport in FilterCachedReports(sourceFilter, subsourceFilter))
         {
             matchedReports[cachedReport.Id.ToString()] = cachedReport;
         }
 
+        var hydratedReportIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var scannedBlobCount = 0;
+
         await foreach (var blob in _containerClient.GetBlobsAsync())
         {
             try
             {
+                scannedBlobCount++;
                 var blobClient = _containerClient.GetBlobClient(blob.Name);
                 var content = await blobClient.DownloadContentAsync();
                 var report = JsonSerializer.Deserialize<ReportModel>(content.Value.Content, _jsonOptions);
@@ -154,6 +157,13 @@ public class ReportCacheService : IReportCacheService
                 {
                     continue;
                 }
+
+                var reportId = report.Id.ToString();
+                hydratedReportIds.Add(reportId);
+                _cache.AddOrUpdate(
+                    reportId,
+                    new CachedReport(report, DateTime.UtcNow),
+                    (_, _) => new CachedReport(report, DateTime.UtcNow));
 
                 var matchesSource = string.IsNullOrEmpty(sourceFilter) ||
                     string.Equals(report.Source, sourceFilter, StringComparison.OrdinalIgnoreCase);
@@ -165,11 +175,7 @@ public class ReportCacheService : IReportCacheService
                     continue;
                 }
 
-                _cache.AddOrUpdate(
-                    report.Id.ToString(),
-                    new CachedReport(report, DateTime.UtcNow),
-                    (_, _) => new CachedReport(report, DateTime.UtcNow));
-                matchedReports[report.Id.ToString()] = report;
+                matchedReports[reportId] = report;
             }
             catch (Exception ex)
             {
@@ -177,13 +183,24 @@ public class ReportCacheService : IReportCacheService
             }
         }
 
+        if (scannedBlobCount > 0)
+        {
+            foreach (var cachedReportId in _cache.Keys.Where(cachedReportId => !hydratedReportIds.Contains(cachedReportId)))
+            {
+                _cache.TryRemove(cachedReportId, out _);
+            }
+
+            _isFullCacheHydrated = true;
+        }
+
         _lastRefresh = DateTime.UtcNow;
         _logger.LogInformation(
-            "ReportCache.LoadFilteredReportsAsync loaded {Count} filtered reports in {ElapsedMs}ms for source={Source} subsource={Subsource}",
+            "ReportCache.LoadFilteredReportsAsync loaded {Count} filtered reports in {ElapsedMs}ms for source={Source} subsource={Subsource} and hydrated {HydratedCount} reports",
             matchedReports.Count,
             stopwatch.ElapsedMilliseconds,
             sourceFilter ?? "any",
-            subsourceFilter ?? "any");
+            subsourceFilter ?? "any",
+            hydratedReportIds.Count);
 
         return matchedReports.Values.ToList();
     }
