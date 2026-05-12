@@ -180,8 +180,7 @@ public class ReportingFunctions
                 return emptyResponse;
             }
 
-            var allReports = new List<ReportModel>();
-            foreach (var userRequest in userReportRequests
+            var requestedSources = userReportRequests
                 .Select(request => new
                 {
                     Source = request.Type,
@@ -190,11 +189,14 @@ public class ReportingFunctions
                         : $"{request.Owner}/{request.Repo}"
                 })
                 .Where(request => !string.IsNullOrWhiteSpace(request.Source) && !string.IsNullOrWhiteSpace(request.SubSource))
-                .Distinct())
-            {
-                var reportsForRequest = await _cacheService.GetReportsAsync(userRequest.Source, userRequest.SubSource);
-                allReports.AddRange(reportsForRequest);
-            }
+                .Select(request => $"{request.Source.Trim().ToLowerInvariant()}\n{request.SubSource.Trim().ToLowerInvariant()}")
+                .Distinct(StringComparer.Ordinal)
+                .ToHashSet(StringComparer.Ordinal);
+
+            var allCachedReports = await _cacheService.GetReportsAsync();
+            var allReports = allCachedReports
+                .Where(report => requestedSources.Contains($"{report.Source.Trim().ToLowerInvariant()}\n{report.SubSource.Trim().ToLowerInvariant()}"))
+                .ToList();
 
             var cacheReadElapsedMs = stopwatch.ElapsedMilliseconds;
             var matchingReports = allReports
