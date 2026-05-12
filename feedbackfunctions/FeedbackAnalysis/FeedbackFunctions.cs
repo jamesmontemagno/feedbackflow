@@ -51,6 +51,7 @@ public class FeedbackFunctions
     private readonly AuthenticationMiddleware _authMiddleware;
     private readonly IUserAccountService _userAccountService;
     private readonly ITwitterThreadCacheService _twitterThreadCacheService;
+    private readonly IFeatureGateService _featureGateService;
 
     /// <summary>
     /// Initializes a new instance of the FeedbackFunctions class
@@ -76,7 +77,8 @@ public class FeedbackFunctions
         IBlueSkyService blueSkyService,
         AuthenticationMiddleware authMiddleware,
         IUserAccountService userAccountService,
-        ITwitterThreadCacheService twitterThreadCacheService)
+        ITwitterThreadCacheService twitterThreadCacheService,
+        IFeatureGateService featureGateService)
     {
         _logger = logger;
         _githubService = githubService;
@@ -90,6 +92,7 @@ public class FeedbackFunctions
         _authMiddleware = authMiddleware;
         _userAccountService = userAccountService;
         _twitterThreadCacheService = twitterThreadCacheService;
+        _featureGateService = featureGateService;
     }
 
     /// <summary>
@@ -639,6 +642,18 @@ public class FeedbackFunctions
         var stopwatch = Stopwatch.StartNew();
         _logger.LogInformation("Processing Twitter/X feedback request");
         
+        // Check if X/Twitter is enabled
+        if (!_featureGateService.IsXEnabled)
+        {
+            var disabledResponse = req.CreateResponse(HttpStatusCode.ServiceUnavailable);
+            await disabledResponse.WriteAsJsonAsync(new
+            {
+                ErrorCode = "X_FEATURE_DISABLED",
+                Message = "X/Twitter integration is currently disabled."
+            });
+            return disabledResponse;
+        }
+        
         // Authenticate the request
         var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
         if (authErrorResponse != null)
@@ -854,6 +869,11 @@ public class FeedbackFunctions
         }
         else if (SharedDump.Utils.UrlParsing.IsTwitterUrl(url))
         {
+            // Check if X/Twitter is enabled
+            if (!_featureGateService.IsXEnabled)
+            {
+                throw new InvalidOperationException("X/Twitter integration is currently disabled");
+            }
             serviceType = "twitter";
             platformData = await GetTwitterDataForAnalysis(url);
             commentsText = ConvertTwitterDataToCommentsText(platformData);
