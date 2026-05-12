@@ -140,6 +140,49 @@ public class TwitterThreadCacheServiceTests
         Assert.AreEqual("42", result.Response.Items[0].Id);
     }
 
+    [TestMethod]
+    public async Task GetThreadAsync_InvalidL2Payload_FallsBackToFetch()
+    {
+        _configuration["Twitter:UseL2Cache"].Returns("true");
+        _distributedCache.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(System.Text.Encoding.UTF8.GetBytes("{invalid-json"));
+
+        var service = new TwitterThreadCacheService(_logger, _configuration, _distributedCache);
+        var fetchCount = 0;
+
+        var result = await service.GetThreadAsync(
+            "https://x.com/user/status/55",
+            () =>
+            {
+                Interlocked.Increment(ref fetchCount);
+                return Task.FromResult<TwitterFeedbackResponse?>(CreateResponse("55"));
+            });
+
+        Assert.AreEqual(1, fetchCount);
+        Assert.IsFalse(result.CacheHit);
+        Assert.IsNotNull(result.Response);
+        await _distributedCache.Received(2).RemoveAsync("raw:https://x.com/user/status/55", Arg.Any<CancellationToken>());
+    }
+
+    [TestMethod]
+    public async Task GetThreadAsync_L2WriteFailure_DoesNotFailRequest()
+    {
+        _configuration["Twitter:UseL2Cache"].Returns("true");
+        _distributedCache
+            .SetAsync(Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<DistributedCacheEntryOptions>(), Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException(new InvalidOperationException("cache unavailable")));
+
+        var service = new TwitterThreadCacheService(_logger, _configuration, _distributedCache);
+
+        var result = await service.GetThreadAsync(
+            "https://x.com/user/status/77",
+            () => Task.FromResult<TwitterFeedbackResponse?>(CreateResponse("77")));
+
+        Assert.IsNotNull(result.Response);
+        Assert.AreEqual("77", result.Response.Items[0].Id);
+        Assert.IsFalse(result.CacheHit);
+    }
+
     private static TwitterFeedbackResponse CreateResponse(string id) =>
         new()
         {

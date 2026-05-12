@@ -137,13 +137,34 @@ public class TwitterThreadCacheService : ITwitterThreadCacheService
             return null;
         }
 
-        var cachedPayload = await _distributedCache.GetStringAsync(cacheKey, cancellationToken);
-        if (string.IsNullOrWhiteSpace(cachedPayload))
+        try
         {
+            var cachedPayload = await _distributedCache.GetStringAsync(cacheKey, cancellationToken);
+            if (string.IsNullOrWhiteSpace(cachedPayload))
+            {
+                return null;
+            }
+
+            return JsonSerializer.Deserialize(cachedPayload, TwitterFeedbackJsonContext.Default.TwitterFeedbackResponse);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to deserialize L2 Twitter cache payload for key {CacheKey}. Falling back to upstream fetch.", cacheKey);
+            try
+            {
+                await _distributedCache.RemoveAsync(cacheKey, cancellationToken);
+            }
+            catch (Exception removeEx)
+            {
+                _logger.LogWarning(removeEx, "Failed to evict malformed L2 Twitter cache key {CacheKey}.", cacheKey);
+            }
             return null;
         }
-
-        return JsonSerializer.Deserialize(cachedPayload, TwitterFeedbackJsonContext.Default.TwitterFeedbackResponse);
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read L2 Twitter cache for key {CacheKey}. Falling back to upstream fetch.", cacheKey);
+            return null;
+        }
     }
 
     private async Task SetL2EntryAsync(string cacheKey, TwitterFeedbackResponse response, CancellationToken cancellationToken)
@@ -158,7 +179,14 @@ public class TwitterThreadCacheService : ITwitterThreadCacheService
         {
             AbsoluteExpirationRelativeToNow = _l2CacheTtl
         };
-        await _distributedCache.SetStringAsync(cacheKey, payload, options, cancellationToken);
+        try
+        {
+            await _distributedCache.SetStringAsync(cacheKey, payload, options, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to write L2 Twitter cache for key {CacheKey}. Continuing without L2 cache update.", cacheKey);
+        }
     }
 
     private static string BuildCacheKey(string tweetUrlOrId)
