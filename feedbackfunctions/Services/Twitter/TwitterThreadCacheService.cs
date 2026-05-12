@@ -1,6 +1,9 @@
 using System.Collections.Concurrent;
+using System.Text.Json;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using SharedDump.Json;
 using SharedDump.Models.TwitterFeedback;
 using SharedDump.Utils;
 
@@ -10,14 +13,19 @@ public class TwitterThreadCacheService : ITwitterThreadCacheService
 {
     private readonly ILogger<TwitterThreadCacheService> _logger;
     private readonly TimeSpan _cacheTtl;
+    private readonly TimeSpan _l2CacheTtl;
+    private readonly bool _useL2Cache;
+    private readonly IDistributedCache? _distributedCache;
     private readonly ConcurrentDictionary<string, CachedThread> _cache = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _cacheLocks = new(StringComparer.OrdinalIgnoreCase);
 
     public TwitterThreadCacheService(
         ILogger<TwitterThreadCacheService> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IDistributedCache? distributedCache = null)
     {
         _logger = logger;
+        _distributedCache = distributedCache;
         var cacheTtlConfig = configuration["Twitter:ThreadCacheTTL"];
         if (!TimeSpan.TryParse(cacheTtlConfig, out _cacheTtl))
         {
@@ -26,6 +34,20 @@ public class TwitterThreadCacheService : ITwitterThreadCacheService
                 "Invalid Twitter:ThreadCacheTTL value '{ConfiguredValue}'. Using default {DefaultTtl}.",
                 cacheTtlConfig,
                 _cacheTtl);
+        }
+
+        _useL2Cache = bool.TryParse(configuration["Twitter:UseL2Cache"], out var useL2Cache) && useL2Cache;
+
+        var l2CacheTtlConfig = configuration["Twitter:ThreadL2CacheTTL"];
+        if (!TimeSpan.TryParse(l2CacheTtlConfig, out _l2CacheTtl))
+        {
+            _l2CacheTtl = TimeSpan.FromMinutes(30);
+        }
+
+        if (_useL2Cache && _distributedCache is null)
+        {
+            _logger.LogWarning(
+                "Twitter:UseL2Cache is enabled but no IDistributedCache is registered. Running with L1 cache only.");
         }
     }
 
@@ -41,6 +63,16 @@ public class TwitterThreadCacheService : ITwitterThreadCacheService
             return new TwitterThreadCacheResult(cachedResponse, true, cacheKey);
         }
 
+        if (!forceRefresh)
+        {
+            var l2CachedResponse = await TryGetL2EntryAsync(cacheKey, cancellationToken);
+            if (l2CachedResponse is not null)
+            {
+                _cache[cacheKey] = new CachedThread(l2CachedResponse, DateTimeOffset.UtcNow);
+                return new TwitterThreadCacheResult(l2CachedResponse, true, cacheKey);
+            }
+        }
+
         var cacheLock = _cacheLocks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
         await cacheLock.WaitAsync(cancellationToken);
         try
@@ -50,18 +82,30 @@ public class TwitterThreadCacheService : ITwitterThreadCacheService
                 return new TwitterThreadCacheResult(cachedResponse, true, cacheKey);
             }
 
+            if (!forceRefresh)
+            {
+                var l2CachedResponse = await TryGetL2EntryAsync(cacheKey, cancellationToken);
+                if (l2CachedResponse is not null)
+                {
+                    _cache[cacheKey] = new CachedThread(l2CachedResponse, DateTimeOffset.UtcNow);
+                    return new TwitterThreadCacheResult(l2CachedResponse, true, cacheKey);
+                }
+            }
+
             var response = await fetchThreadAsync();
             if (response is not null)
             {
                 _cache[cacheKey] = new CachedThread(response, DateTimeOffset.UtcNow);
+                await SetL2EntryAsync(cacheKey, response, cancellationToken);
             }
 
             _logger.LogInformation(
-                "TwitterThreadCache fetched upstream result for key {CacheKey}. forceRefresh={ForceRefresh}, storedInCache={StoredInCache}, ttlSeconds={TtlSeconds}",
+                "TwitterThreadCache fetched upstream result for key {CacheKey}. forceRefresh={ForceRefresh}, storedInCache={StoredInCache}, l1TtlSeconds={L1TtlSeconds}, l2Enabled={L2Enabled}",
                 cacheKey,
                 forceRefresh,
                 response is not null,
-                _cacheTtl.TotalSeconds);
+                _cacheTtl.TotalSeconds,
+                _useL2Cache);
 
             return new TwitterThreadCacheResult(response, false, cacheKey);
         }
@@ -84,6 +128,77 @@ public class TwitterThreadCacheService : ITwitterThreadCacheService
         _cache.TryRemove(cacheKey, out _);
         response = null;
         return false;
+    }
+
+    private async Task<TwitterFeedbackResponse?> TryGetL2EntryAsync(string cacheKey, CancellationToken cancellationToken)
+    {
+        if (!_useL2Cache || _distributedCache is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var cachedPayload = await _distributedCache.GetStringAsync(cacheKey, cancellationToken);
+            if (string.IsNullOrWhiteSpace(cachedPayload))
+            {
+                return null;
+            }
+
+            return JsonSerializer.Deserialize(cachedPayload, TwitterFeedbackJsonContext.Default.TwitterFeedbackResponse);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to deserialize L2 Twitter cache payload for key {CacheKey}. Falling back to upstream fetch.", cacheKey);
+            try
+            {
+                await _distributedCache.RemoveAsync(cacheKey, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception removeEx)
+            {
+                _logger.LogWarning(removeEx, "Failed to evict malformed L2 Twitter cache key {CacheKey}.", cacheKey);
+            }
+            return null;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read L2 Twitter cache for key {CacheKey}. Falling back to upstream fetch.", cacheKey);
+            return null;
+        }
+    }
+
+    private async Task SetL2EntryAsync(string cacheKey, TwitterFeedbackResponse response, CancellationToken cancellationToken)
+    {
+        if (!_useL2Cache || _distributedCache is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var payload = JsonSerializer.Serialize(response, TwitterFeedbackJsonContext.Default.TwitterFeedbackResponse);
+            var options = new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = _l2CacheTtl
+            };
+            await _distributedCache.SetStringAsync(cacheKey, payload, options, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to write L2 Twitter cache for key {CacheKey}. Continuing without L2 cache update.", cacheKey);
+        }
     }
 
     private static string BuildCacheKey(string tweetUrlOrId)

@@ -16,7 +16,10 @@
       "AccessToken": ""
     },
     "Twitter": {
-      "BearerToken": ""
+      "BearerToken": "",
+      "UseL2Cache": false,
+      "ThreadCacheTTL": "00:05:00",
+      "ThreadL2CacheTTL": "00:30:00"
     },
     "BlueSky": {
       "Username": "",
