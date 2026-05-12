@@ -342,11 +342,20 @@ public class UserAccountService : IUserAccountService
         var currentUsage = GetCurrentUsage(user, usageType);
         var usageLimit = GetLimitForUsageType(limits, usageType);
         var remainingUsage = Math.Max(usageLimit - currentUsage, 0);
-        var usagePercentage = usageLimit > 0
-            ? (int)Math.Round((double)currentUsage / usageLimit * 100, MidpointRounding.AwayFromZero)
-            : 0;
+        var usagePercentage = 0;
+        if (usageLimit > 0)
+        {
+            usagePercentage = (int)Math.Floor((double)currentUsage / usageLimit * 100);
+            usagePercentage = Math.Min(usagePercentage, 100);
+            if (withinLimit && usagePercentage >= 100)
+            {
+                usagePercentage = 99;
+            }
+        }
+
         var warningThresholdPercentage = GetConfigValue("Usage:WarningThresholdPercent", 80);
         var isNearLimit = withinLimit && usageLimit > 0 && usagePercentage >= warningThresholdPercentage;
+        var usageDisplayLabel = GetUsageDisplayLabel(usageType, remainingUsage);
 
         return new UsageValidationResult 
         { 
@@ -358,7 +367,7 @@ public class UserAccountService : IUserAccountService
             UsagePercentage = usagePercentage,
             IsNearLimit = isNearLimit,
             WarningMessage = isNearLimit
-                ? $"You have {remainingUsage} {usageType} usage remaining this period."
+                ? $"You have {remainingUsage} {usageDisplayLabel} remaining this period."
                 : null,
             CurrentTier = user.Tier,
             ResetDate = usageType == UsageType.ReportCreated ? null : user.LastResetDate.AddDays(30),
@@ -533,6 +542,16 @@ public class UserAccountService : IUserAccountService
             _ => 0
         };
     }
+
+    private static string GetUsageDisplayLabel(UsageType usageType, int count) =>
+        usageType switch
+        {
+            UsageType.Analysis => count == 1 ? "analysis" : "analyses",
+            UsageType.FeedQuery => count == 1 ? "feed query" : "feed queries",
+            UsageType.ReportCreated or UsageType.ReportDeleted => count == 1 ? "report" : "reports",
+            UsageType.ApiCall => count == 1 ? "API call" : "API calls",
+            _ => count == 1 ? "credit" : "credits"
+        };
 
     private static UserAccount MapEntityToModel(UserAccountEntity entity)
     {

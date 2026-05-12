@@ -2,6 +2,7 @@
 @using FeedbackWebApp.Components.Account
 @using SharedDump.Models.Account
 @using SharedDump.Utils.Account
+@inject IConfiguration Configuration
 
 <div class="usage-dashboard">
     @if (IsLoading)
@@ -87,6 +88,12 @@
         }
 
         var usagePercent = (double)UserAccount.FeedQueriesUsed / Limits.FeedQueryLimit * 100;
-        return usagePercent >= 80 && usagePercent < 100;
+        return usagePercent >= GetWarningThresholdPercent() && usagePercent < 100;
+    }
+
+    private int GetWarningThresholdPercent()
+    {
+        var configuredThreshold = Configuration["Usage:WarningThresholdPercent"];
+        return int.TryParse(configuredThreshold, out var threshold) ? threshold : 80;
     }
 }
