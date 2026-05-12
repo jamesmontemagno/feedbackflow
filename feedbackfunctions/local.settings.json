@@ -69,7 +69,8 @@
     },
     "Usage": {
       "ResetPeriodDays": "30",
-      "EnableTracking": "true"
+      "EnableTracking": "true",
+      "WarningThresholdPercent": "80"
     },
     "Development": {
       "UserId": "dev-user-demo",

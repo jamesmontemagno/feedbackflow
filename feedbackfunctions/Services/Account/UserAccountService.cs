@@ -339,12 +339,27 @@ public class UserAccountService : IUserAccountService
             _ => true
         };
 
+        var currentUsage = GetCurrentUsage(user, usageType);
+        var usageLimit = GetLimitForUsageType(limits, usageType);
+        var remainingUsage = Math.Max(usageLimit - currentUsage, 0);
+        var usagePercentage = usageLimit > 0
+            ? (int)Math.Round((double)currentUsage / usageLimit * 100, MidpointRounding.AwayFromZero)
+            : 0;
+        var warningThresholdPercentage = GetConfigValue("Usage:WarningThresholdPercent", 80);
+        var isNearLimit = withinLimit && usageLimit > 0 && usagePercentage >= warningThresholdPercentage;
+
         return new UsageValidationResult 
         { 
             IsWithinLimit = withinLimit, 
             UsageType = usageType,
-            CurrentUsage = GetCurrentUsage(user, usageType),
-            Limit = GetLimitForUsageType(limits, usageType),
+            CurrentUsage = currentUsage,
+            Limit = usageLimit,
+            RemainingUsage = remainingUsage,
+            UsagePercentage = usagePercentage,
+            IsNearLimit = isNearLimit,
+            WarningMessage = isNearLimit
+                ? $"You have {remainingUsage} {usageType} usage remaining this period."
+                : null,
             CurrentTier = user.Tier,
             ResetDate = usageType == UsageType.ReportCreated ? null : user.LastResetDate.AddDays(30),
             ErrorMessage = withinLimit ? null : $"Usage limit exceeded for {usageType}",

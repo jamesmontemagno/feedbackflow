@@ -43,6 +43,20 @@
     margin-bottom: 1rem;
 }
 
+.usage-warning {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--border-radius-sm);
+    background: rgba(var(--warning-color-rgb), 0.12);
+    border: 1px solid rgba(var(--warning-color-rgb), 0.35);
+    color: var(--text-primary);
+    transition: color 0.3s ease, background-color 0.3s ease;
+}
+
+.usage-warning i {
+    color: var(--warning-color);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .usage-dashboard {
