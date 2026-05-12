@@ -1,6 +1,9 @@
 using Azure.Data.Tables;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+
+using FeedbackFunctions.Services.Storage;
+
 using SharedDump.Models.Reports;
 
 namespace FeedbackFunctions.Services.Reports;
@@ -8,33 +11,24 @@ namespace FeedbackFunctions.Services.Reports;
 public class AdminReportConfigService : IAdminReportConfigService
 {
     private readonly TableClient _tableClient;
+    private readonly ITableInitializationService _tableInitializationService;
     private readonly ILogger<AdminReportConfigService> _logger;
     private const string TableName = "AdminReportConfigs";
 
-    public AdminReportConfigService(IConfiguration configuration, ILogger<AdminReportConfigService> logger)
+    public AdminReportConfigService(
+        FeedbackStorageClients storageClients,
+        ITableInitializationService tableInitializationService,
+        ILogger<AdminReportConfigService> logger)
     {
         _logger = logger;
-        var connectionString = configuration["ProductionStorage"] ??
-                             throw new InvalidOperationException("ProductionStorage connection string not found");
-        
-        _tableClient = new TableClient(connectionString, TableName);
-        
-        // Ensure table exists
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await _tableClient.CreateIfNotExistsAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Could not ensure table {TableName} exists", TableName);
-            }
-        });
+        _tableClient = storageClients.AdminReportConfigsTable;
+        _tableInitializationService = tableInitializationService;
     }
 
     public async Task<List<AdminReportConfigModel>> GetAllActiveConfigsAsync()
     {
+        await _tableInitializationService.EnsureAdminReportConfigsAsync();
+
         try
         {
             var configs = new List<AdminReportConfigModel>();
@@ -53,6 +47,8 @@ public class AdminReportConfigService : IAdminReportConfigService
 
     public async Task<List<AdminReportConfigModel>> GetAllConfigsAsync()
     {
+        await _tableInitializationService.EnsureAdminReportConfigsAsync();
+
         try
         {
             var configs = new List<AdminReportConfigModel>();
@@ -71,6 +67,8 @@ public class AdminReportConfigService : IAdminReportConfigService
 
     public async Task<AdminReportConfigModel?> GetConfigAsync(string id)
     {
+        await _tableInitializationService.EnsureAdminReportConfigsAsync();
+
         try
         {
             var response = await _tableClient.GetEntityIfExistsAsync<AdminReportConfigModel>("AdminReports", id);
@@ -85,6 +83,8 @@ public class AdminReportConfigService : IAdminReportConfigService
 
     public async Task<AdminReportConfigModel> CreateConfigAsync(AdminReportConfigModel config)
     {
+        await _tableInitializationService.EnsureAdminReportConfigsAsync();
+
         try
         {
             // Generate ID if not provided
@@ -111,6 +111,8 @@ public class AdminReportConfigService : IAdminReportConfigService
 
     public async Task<AdminReportConfigModel> UpdateConfigAsync(AdminReportConfigModel config)
     {
+        await _tableInitializationService.EnsureAdminReportConfigsAsync();
+
         try
         {
             // Ensure partition key and row key are set
@@ -131,6 +133,8 @@ public class AdminReportConfigService : IAdminReportConfigService
 
     public async Task<bool> DeleteConfigAsync(string id)
     {
+        await _tableInitializationService.EnsureAdminReportConfigsAsync();
+
         try
         {
             // Get the entity first to ensure it exists and get the ETag
@@ -154,6 +158,8 @@ public class AdminReportConfigService : IAdminReportConfigService
 
     public async Task MarkConfigProcessedAsync(string id, DateTimeOffset processedAt)
     {
+        await _tableInitializationService.EnsureAdminReportConfigsAsync();
+
         try
         {
             var config = await GetConfigAsync(id);

@@ -1,6 +1,6 @@
 using System.Text;
 using System.Text.Json;
-using Azure.Storage.Blobs;
+using System.Security.Cryptography;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SharedDump.AI;
@@ -23,8 +23,7 @@ public class ReportGenerator
     private readonly IRedditService _redditService;
     private readonly IGitHubService _githubService;
     private readonly IFeedbackAnalyzerService _analyzerService;
-    private readonly BlobContainerClient _containerClient;
-    private readonly BlobContainerClient _summaryContainerClient;
+    private readonly IReportStorageService _reportStorage;
     private readonly IReportCacheService? _cacheService;
     private readonly IConfiguration _configuration;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
@@ -34,7 +33,7 @@ public class ReportGenerator
         IRedditService redditService,
         IGitHubService githubService,
         IFeedbackAnalyzerService analyzerService,
-        BlobServiceClient blobServiceClient,
+        IReportStorageService reportStorage,
         IConfiguration configuration,
         IReportCacheService? cacheService = null)
     {
@@ -42,15 +41,9 @@ public class ReportGenerator
         _redditService = redditService;
         _githubService = githubService;
         _analyzerService = analyzerService;
+        _reportStorage = reportStorage;
         _configuration = configuration;
         _cacheService = cacheService;
-        
-        // Initialize both blob container clients
-        _containerClient = blobServiceClient.GetBlobContainerClient("reports");
-        _containerClient.CreateIfNotExists();
-        
-        _summaryContainerClient = blobServiceClient.GetBlobContainerClient("reports-summary");
-        _summaryContainerClient.CreateIfNotExists();
     }
 
     /// <summary>
@@ -412,11 +405,12 @@ Keep each section very brief and focused. Total analysis should be no more than 
     public async Task<string> StoreReportAsync(ReportModel report)
     {
         _logger.LogInformation("Storing report {ReportId} to blob storage", report.Id);
+        await _reportStorage.EnsureInitializedAsync();
 
         try
         {
             var blobName = $"{report.Id}.json";
-            var blobClient = _containerClient.GetBlobClient(blobName);
+            var blobClient = _reportStorage.ReportsContainer.GetBlobClient(blobName);
             
             var reportJson = JsonSerializer.Serialize(report);
             await using var ms = new MemoryStream(Encoding.UTF8.GetBytes(reportJson));
@@ -447,12 +441,13 @@ Keep each section very brief and focused. Total analysis should be no more than 
     public async Task<string> StoreSummaryReportAsync(ReportModel report)
     {
         _logger.LogInformation("Storing summary report {ReportId} to blob storage", report.Id);
+        await _reportStorage.EnsureInitializedAsync();
 
         try
         {
-            var blobName = $"{report.Id}-summary.json";
-            var blobClient = _summaryContainerClient.GetBlobClient(blobName);
-            
+            var blobName = GetSummaryBlobName(report.Source, report.SubSource);
+            var blobClient = _reportStorage.ReportsSummaryContainer.GetBlobClient(blobName);
+             
             var reportJson = JsonSerializer.Serialize(report);
             await using var ms = new MemoryStream(Encoding.UTF8.GetBytes(reportJson));
             await blobClient.UploadAsync(ms, overwrite: true);
@@ -475,35 +470,58 @@ Keep each section very brief and focused. Total analysis should be no more than 
     /// <returns>The most recent summary report if found within 24 hours, otherwise null</returns>
     public async Task<ReportModel?> GetRecentSummaryReportAsync(string source, string subSource)
     {
+        await _reportStorage.EnsureInitializedAsync();
+
         try
         {
             _logger.LogDebug("Checking for recent summary reports with source '{Source}' and subsource '{SubSource}'", source, subSource);
-            
+             
             var cutoff = DateTimeOffset.UtcNow.AddHours(-24);
-            var recentReport = (ReportModel?)null;
-            
-            await foreach (var blob in _summaryContainerClient.GetBlobsAsync())
+
+            var directBlobClient = _reportStorage.ReportsSummaryContainer.GetBlobClient(GetSummaryBlobName(source, subSource));
+            if (await directBlobClient.ExistsAsync())
             {
-                if (blob.Properties.LastModified >= cutoff)
+                var content = await directBlobClient.DownloadContentAsync();
+                var report = JsonSerializer.Deserialize<ReportModel>(content.Value.Content, _jsonOptions);
+                var isSourceMatch = report is not null &&
+                    string.Equals(report.Source, source, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(report.SubSource, subSource, StringComparison.OrdinalIgnoreCase);
+
+                if (isSourceMatch && report!.GeneratedAt >= cutoff)
                 {
-                    try
+                    _logger.LogInformation("Found direct summary report {ReportId} generated at {GeneratedAt} for {Source}/{SubSource}",
+                        report.Id, report.GeneratedAt, source, subSource);
+                    return report;
+                }
+            }
+
+            var recentReport = (ReportModel?)null;
+            await foreach (var blob in _reportStorage.ReportsSummaryContainer.GetBlobsAsync())
+            {
+                if (blob.Properties.LastModified < cutoff)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var blobClient = _reportStorage.ReportsSummaryContainer.GetBlobClient(blob.Name);
+                    var content = await blobClient.DownloadContentAsync();
+                    var report = JsonSerializer.Deserialize<ReportModel>(content.Value.Content, _jsonOptions);
+
+                    if (report is not null &&
+                        string.Equals(report.Source, source, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(report.SubSource, subSource, StringComparison.OrdinalIgnoreCase))
                     {
-                        var blobClient = _summaryContainerClient.GetBlobClient(blob.Name);
-                        var content = await blobClient.DownloadContentAsync();
-                        var report = JsonSerializer.Deserialize<ReportModel>(content.Value.Content, _jsonOptions);
-                        
-                        if (report != null && report.Source == source && report.SubSource == subSource)
+                        if (recentReport == null || report.GeneratedAt > recentReport.GeneratedAt)
                         {
-                            if (recentReport == null || report.GeneratedAt > recentReport.GeneratedAt)
-                            {
-                                recentReport = report;
-                            }
+                            recentReport = report;
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Error reading summary report blob {BlobName}", blob.Name);
-                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error reading summary report blob {BlobName}", blob.Name);
                 }
             }
 
@@ -524,6 +542,29 @@ Keep each section very brief and focused. Total analysis should be no more than 
             _logger.LogWarning(ex, "Error checking for recent summary reports for {Source}/{SubSource}. Will proceed with generating new report.", source, subSource);
             return null;
         }
+    }
+
+    private static string GetSummaryBlobName(string source, string subSource)
+    {
+        var normalizedSource = NormalizeKeyPart(source);
+        var normalizedSubSource = NormalizeKeyPart(subSource);
+        var keyMaterial = $"{normalizedSource}\n{normalizedSubSource}";
+        var digestBytes = SHA256.HashData(Encoding.UTF8.GetBytes(keyMaterial));
+        var digest = Convert.ToHexString(digestBytes).ToLowerInvariant();
+
+        return $"{normalizedSource}--{digest}--summary.json";
+    }
+
+    private static string NormalizeKeyPart(string value)
+    {
+        var normalizedValue = value.Trim().ToLowerInvariant();
+        var invalidChars = Path.GetInvalidFileNameChars();
+        var sanitizedValue = new string(
+            normalizedValue
+                .Select(ch => invalidChars.Contains(ch) || ch == '/' || ch == '\\' ? '-' : ch)
+                .ToArray());
+
+        return string.IsNullOrWhiteSpace(sanitizedValue) ? "unknown" : sanitizedValue;
     }
 
     /// <summary>

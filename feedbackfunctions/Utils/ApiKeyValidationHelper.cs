@@ -69,16 +69,15 @@ public static class ApiKeyValidationHelper
     {
         try
         {
-            var isValid = await apiKeyService.ValidateApiKeyAsync(apiKey);
-            if (!isValid)
+            var apiKeyRecord = await apiKeyService.GetApiKeyByKeyAsync(apiKey);
+            if (apiKeyRecord == null || !apiKeyRecord.IsEnabled)
             {
                 var errorResponse = req.CreateResponse(HttpStatusCode.Unauthorized);
                 await errorResponse.WriteStringAsync("Invalid or disabled API key. Contact admin to enable your API key.");
                 return (false, errorResponse, null);
             }
 
-            // Get user ID for usage tracking
-            var userId = await apiKeyService.GetUserIdByApiKeyAsync(apiKey);
+            var userId = apiKeyRecord.UserId;
             if (string.IsNullOrEmpty(userId))
             {
                 logger.LogError("Could not find user ID for valid API key");

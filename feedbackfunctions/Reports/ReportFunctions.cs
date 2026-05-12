@@ -1,19 +1,13 @@
-using System.Net;
 using System.Diagnostics;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using SharedDump.Models.Reddit;
-using SharedDump.Models.GitHub;
 using SharedDump.Models.Reports;
-using SharedDump.AI;
 using SharedDump.Services;
-using SharedDump.Services.Interfaces;
 using SharedDump.Utils;
-using Azure.Storage.Blobs;
 using FeedbackFunctions.Utils;
 using FeedbackFunctions.Services;
 using FeedbackFunctions.Services.Reports;
@@ -35,14 +29,9 @@ namespace FeedbackFunctions;
 public class ReportingFunctions
 {
     private readonly ILogger<ReportingFunctions> _logger;
-    private readonly IRedditService _redditService;
-    private readonly IGitHubService _githubService;
-    private readonly IFeedbackAnalyzerService _analyzerService;
-    private readonly IConfiguration _configuration;
     private readonly IReportCacheService _cacheService;
+    private readonly IReportStorageService _reportStorage;
     private readonly FeedbackFunctions.Middleware.AuthenticationMiddleware _authMiddleware;
-    private const string ContainerName = "reports";
-    private readonly BlobContainerClient _containerClient;
     private readonly ReportGenerator _reportGenerator;
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -58,39 +47,16 @@ public class ReportingFunctions
     /// <param name="authMiddleware">Authentication middleware for request validation</param>
     public ReportingFunctions(
         ILogger<ReportingFunctions> logger,
-        IConfiguration configuration,
-        IRedditService redditService,
-        IGitHubService githubService,
-        IFeedbackAnalyzerService analyzerService,
+        IReportStorageService reportStorage,
         IReportCacheService cacheService,
-        FeedbackFunctions.Middleware.AuthenticationMiddleware authMiddleware)
+        FeedbackFunctions.Middleware.AuthenticationMiddleware authMiddleware,
+        ReportGenerator reportGenerator)
     {
-
-#if DEBUG
-
-        _configuration = new ConfigurationBuilder()
-                    .AddJsonFile("local.settings.json")
-                    .AddUserSecrets<Program>()
-                    .Build();
-#else
-
-        _configuration = configuration;
-#endif
         _logger = logger;
-        _redditService = redditService;
-        _githubService = githubService;
-        _analyzerService = analyzerService;
+        _reportStorage = reportStorage;
         _cacheService = cacheService;
         _authMiddleware = authMiddleware;
-        
-        // Initialize blob container
-        var storageConnection = _configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
-        var serviceClient = new BlobServiceClient(storageConnection);
-        _containerClient = serviceClient.GetBlobContainerClient(ContainerName);
-        _containerClient.CreateIfNotExists();
-
-        // Initialize report generator
-        _reportGenerator = new ReportGenerator(_logger, _redditService, _githubService, _analyzerService, serviceClient, _configuration, _cacheService);
+        _reportGenerator = reportGenerator;
     }
 
   
@@ -176,16 +142,13 @@ public class ReportingFunctions
 
         try
         {
+            await _reportStorage.EnsureInitializedAsync();
+
             // Get user's report requests instead of parsing from request body
             // This ensures we only return reports for sources the user has actually requested
             var userReportRequests = new List<ReportRequestModel>();
-            
-            // Connect to user requests table
-            var storageConnection = _configuration["ProductionStorage"] ?? throw new InvalidOperationException("Production storage connection string not configured");
-            var tableServiceClient = new Azure.Data.Tables.TableServiceClient(storageConnection);
-            var userRequestsTableClient = tableServiceClient.GetTableClient("userreportrequests");
 
-            await foreach (var entity in userRequestsTableClient.QueryAsync<UserReportRequestModel>(
+            await foreach (var entity in _reportStorage.UserReportRequestsTable.QueryAsync<UserReportRequestModel>(
                 filter: $"PartitionKey eq '{user.UserId}'"))
             {
                 // Convert user request to ReportRequestModel for consistency
@@ -217,33 +180,39 @@ public class ReportingFunctions
                 return emptyResponse;
             }
 
-            // Get all reports from cache
-            var allReports = await _cacheService.GetReportsAsync();
-            var cacheReadElapsedMs = stopwatch.ElapsedMilliseconds;
-            var matchingReports = new List<object>();
-
-            foreach (var report in allReports)
-            {
-                // Check if this report matches any of the user's requests
-                var matchesRequest = userReportRequests.Any(userReq =>
-                    userReq.Type == report.Source &&
-                    ((userReq.Type == "reddit" && userReq.Subreddit == report.SubSource) ||
-                     (userReq.Type == "github" && $"{userReq.Owner}/{userReq.Repo}" == report.SubSource)));
-
-                if (matchesRequest)
+            var requestedSources = userReportRequests
+                .Select(request => new
                 {
-                    matchingReports.Add(new
-                    {
-                        id = report.Id,
-                        source = report.Source,
-                        subSource = report.SubSource,
-                        generatedAt = report.GeneratedAt,
-                        threadCount = report.ThreadCount,
-                        commentCount = report.CommentCount,
-                        cutoffDate = report.CutoffDate
-                    });
-                }
-            }
+                    Source = request.Type,
+                    SubSource = request.Type == "reddit"
+                        ? request.Subreddit
+                        : $"{request.Owner}/{request.Repo}"
+                })
+                .Where(request => !string.IsNullOrWhiteSpace(request.Source) && !string.IsNullOrWhiteSpace(request.SubSource))
+                .Select(request => $"{request.Source.Trim().ToLowerInvariant()}\n{request.SubSource.Trim().ToLowerInvariant()}")
+                .Distinct(StringComparer.Ordinal)
+                .ToHashSet(StringComparer.Ordinal);
+
+            var allCachedReports = await _cacheService.GetReportsAsync();
+            var allReports = allCachedReports
+                .Where(report => requestedSources.Contains($"{report.Source.Trim().ToLowerInvariant()}\n{report.SubSource.Trim().ToLowerInvariant()}"))
+                .ToList();
+
+            var cacheReadElapsedMs = stopwatch.ElapsedMilliseconds;
+            var matchingReports = allReports
+                .DistinctBy(report => report.Id)
+                .Select(report => new
+                {
+                    id = report.Id,
+                    source = report.Source,
+                    subSource = report.SubSource,
+                    generatedAt = report.GeneratedAt,
+                    threadCount = report.ThreadCount,
+                    commentCount = report.CommentCount,
+                    cutoffDate = report.CutoffDate
+                })
+                .Cast<object>()
+                .ToList();
 
             // Sort by generation date (newest first)
             matchingReports = matchingReports
