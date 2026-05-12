@@ -13,17 +13,21 @@ public class TwitterFeedbackFetcher
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<TwitterFeedbackFetcher> _logger;
+    private readonly int _maxReplies;
     private bool _hitRateLimit = false;
+    private bool _hitReplyLimit = false;
     private int _maxReplySearches = 60; // Limit per 15 minutes
     private int _currentReplySearches = 0;
     private HashSet<string> _processedTweetIds = new();
     private const int MaxRetryAttempts = 3;
+    public const int DefaultMaxReplies = 500;
     private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromSeconds(30);
 
-    public TwitterFeedbackFetcher(HttpClient httpClient, ILogger<TwitterFeedbackFetcher> logger)
+    public TwitterFeedbackFetcher(HttpClient httpClient, ILogger<TwitterFeedbackFetcher> logger, int maxReplies = DefaultMaxReplies)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _maxReplies = maxReplies > 0 ? maxReplies : DefaultMaxReplies;
     }
 
     private async Task<List<TwitterFeedbackItem>> FetchRepliesRecursivelyAsync(string conversationId, string parentTweetId, string authorId, CancellationToken cancellationToken)
@@ -33,6 +37,12 @@ public class TwitterFeedbackFetcher
         {
             _hitRateLimit = true;
             _logger.LogWarning("Rate limit reached for reply searches (60 per 15 minutes). Skipping replies for {ParentTweetId}", parentTweetId);
+            return new List<TwitterFeedbackItem>();
+        }
+
+        // Check if we already hit the max replies cap
+        if (_hitReplyLimit)
+        {
             return new List<TwitterFeedbackItem>();
         }
 
@@ -171,6 +181,16 @@ public class TwitterFeedbackFetcher
                     // Add all replies to our collection
                     // They will be properly organized later in the tree structure
                     replies.Add(replyItem);
+
+                    // Check if we've hit the reply cap
+                    if (replies.Count >= _maxReplies)
+                    {
+                        _hitReplyLimit = true;
+                        _logger.LogWarning(
+                            "Reply cap of {MaxReplies} reached for conversation {ConversationId}. Stopping pagination.",
+                            _maxReplies, conversationId);
+                        break;
+                    }
                     
                     // Note: We no longer make the recursive call here, as we're getting all replies in one go
                 }
@@ -186,7 +206,7 @@ public class TwitterFeedbackFetcher
                 nextToken = null; // No more pages
             }
 
-        } while (!string.IsNullOrEmpty(nextToken) && !cancellationToken.IsCancellationRequested && !_hitRateLimit && _currentReplySearches < _maxReplySearches);
+        } while (!string.IsNullOrEmpty(nextToken) && !cancellationToken.IsCancellationRequested && !_hitRateLimit && !_hitReplyLimit && _currentReplySearches < _maxReplySearches);
 
         return replies;
     }
@@ -195,6 +215,7 @@ public class TwitterFeedbackFetcher
     {
         // Reset tracking variables
         _hitRateLimit = false;
+        _hitReplyLimit = false;
         _currentReplySearches = 0;
         _processedTweetIds.Clear();
         
@@ -297,20 +318,25 @@ public class TwitterFeedbackFetcher
             var response = new TwitterFeedbackResponse
             {
                 Items = new List<TwitterFeedbackItem> { mainTweet },
-                MayBeIncomplete = _hitRateLimit || _currentReplySearches >= _maxReplySearches,
+                MayBeIncomplete = _hitRateLimit || _currentReplySearches >= _maxReplySearches || _hitReplyLimit,
                 ProcessedTweetCount = _processedTweetIds.Count
             };
             
-            if (response.MayBeIncomplete)
+            if (_hitReplyLimit)
+            {
+                response.RateLimitInfo = $"Reply collection was capped at {_maxReplies} replies to limit API usage. The thread may have more replies not shown.";
+            }
+            else if (response.MayBeIncomplete)
             {
                 response.RateLimitInfo = $"Some replies may be missing due to Twitter API rate limits (60 reply searches per 15 minutes). Processed {_processedTweetIds.Count} unique tweets.";
             }
 
             _logger.LogInformation(
-                "Twitter thread fetch performance: processedTweetCount={ProcessedTweetCount}, replySearches={ReplySearches}, mayBeIncomplete={MayBeIncomplete}",
+                "Twitter thread fetch performance: processedTweetCount={ProcessedTweetCount}, replySearches={ReplySearches}, mayBeIncomplete={MayBeIncomplete}, hitReplyLimit={HitReplyLimit}",
                 response.ProcessedTweetCount,
                 _currentReplySearches,
-                response.MayBeIncomplete);
+                response.MayBeIncomplete,
+                _hitReplyLimit);
             return response;
         }
         catch (Exception ex)

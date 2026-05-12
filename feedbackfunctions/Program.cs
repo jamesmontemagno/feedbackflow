@@ -185,7 +185,8 @@ else
         }
         var twitterHttpClient = httpClientFactory.CreateClient("Twitter");
         twitterHttpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", twitterBearerToken);
-        var twitterFetcher = new TwitterFeedbackFetcher(twitterHttpClient, Microsoft.Extensions.Logging.Abstractions.NullLogger<TwitterFeedbackFetcher>.Instance);
+        var maxReplies = configuration.GetValue<int>("Twitter:MaxReplies", TwitterFeedbackFetcher.DefaultMaxReplies);
+        var twitterFetcher = new TwitterFeedbackFetcher(twitterHttpClient, Microsoft.Extensions.Logging.Abstractions.NullLogger<TwitterFeedbackFetcher>.Instance, maxReplies);
         return new TwitterServiceAdapter(twitterFetcher);
     });
     
