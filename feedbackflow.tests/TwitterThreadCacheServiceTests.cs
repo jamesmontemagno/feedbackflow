@@ -1,7 +1,9 @@
 using FeedbackFunctions.Services.Twitter;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
+using SharedDump.Json;
 using SharedDump.Models.TwitterFeedback;
 using System.Threading;
 
@@ -12,19 +14,22 @@ public class TwitterThreadCacheServiceTests
 {
     private ILogger<TwitterThreadCacheService> _logger = null!;
     private IConfiguration _configuration = null!;
+    private IDistributedCache _distributedCache = null!;
 
     [TestInitialize]
     public void Setup()
     {
         _logger = Substitute.For<ILogger<TwitterThreadCacheService>>();
         _configuration = Substitute.For<IConfiguration>();
+        _distributedCache = Substitute.For<IDistributedCache>();
         _configuration["Twitter:ThreadCacheTTL"].Returns("00:05:00");
+        _configuration["Twitter:UseL2Cache"].Returns("false");
     }
 
     [TestMethod]
     public async Task GetThreadAsync_RepeatedKey_ReturnsCacheHitWithoutRefetch()
     {
-        var service = new TwitterThreadCacheService(_logger, _configuration);
+        var service = new TwitterThreadCacheService(_logger, _configuration, _distributedCache);
         var fetchCount = 0;
         var response = CreateResponse("123");
 
@@ -54,7 +59,7 @@ public class TwitterThreadCacheServiceTests
     [TestMethod]
     public async Task GetThreadAsync_ForceRefresh_BypassesCache()
     {
-        var service = new TwitterThreadCacheService(_logger, _configuration);
+        var service = new TwitterThreadCacheService(_logger, _configuration, _distributedCache);
         var fetchCount = 0;
 
         await service.GetThreadAsync(
@@ -81,7 +86,7 @@ public class TwitterThreadCacheServiceTests
     [TestMethod]
     public async Task GetThreadAsync_ConcurrentCalls_SingleFlightsFetch()
     {
-        var service = new TwitterThreadCacheService(_logger, _configuration);
+        var service = new TwitterThreadCacheService(_logger, _configuration, _distributedCache);
         var fetchCount = 0;
 
         async Task<TwitterFeedbackResponse?> FetchAsync()
@@ -101,6 +106,38 @@ public class TwitterThreadCacheServiceTests
         var cacheMissCount = new[] { firstTask.Result, secondTask.Result }.Count(result => !result.CacheHit);
         Assert.AreEqual(1, cacheHitCount);
         Assert.AreEqual(1, cacheMissCount);
+    }
+
+    [TestMethod]
+    public async Task GetThreadAsync_L2CacheHit_ReturnsWithoutRefetch()
+    {
+        // Arrange
+        _configuration["Twitter:UseL2Cache"].Returns("true");
+        _configuration["Twitter:ThreadL2CacheTTL"].Returns("00:30:00");
+        var l2Response = CreateResponse("42");
+        var l2Payload = System.Text.Json.JsonSerializer.Serialize(
+            l2Response,
+            TwitterFeedbackJsonContext.Default.TwitterFeedbackResponse);
+        _distributedCache.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(System.Text.Encoding.UTF8.GetBytes(l2Payload));
+
+        var service = new TwitterThreadCacheService(_logger, _configuration, _distributedCache);
+        var fetchCount = 0;
+
+        // Act
+        var result = await service.GetThreadAsync(
+            "https://x.com/user/status/42",
+            () =>
+            {
+                Interlocked.Increment(ref fetchCount);
+                return Task.FromResult<TwitterFeedbackResponse?>(CreateResponse("42"));
+            });
+
+        // Assert
+        Assert.IsTrue(result.CacheHit);
+        Assert.AreEqual(0, fetchCount);
+        Assert.IsNotNull(result.Response);
+        Assert.AreEqual("42", result.Response.Items[0].Id);
     }
 
     private static TwitterFeedbackResponse CreateResponse(string id) =>

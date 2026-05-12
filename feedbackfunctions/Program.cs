@@ -48,6 +48,7 @@ throwIfNullOrEmpty = true;
 
 // Register HTTP client factory
 builder.Services.AddHttpClient();
+builder.Services.AddDistributedMemoryCache();
 
 // Configure default timeout for all HttpClients to 3 minutes
 builder.Services.ConfigureHttpClientDefaults(http =>
