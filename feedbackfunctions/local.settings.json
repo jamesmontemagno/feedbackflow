@@ -19,7 +19,8 @@
       "BearerToken": "",
       "UseL2Cache": false,
       "ThreadCacheTTL": "00:05:00",
-      "ThreadL2CacheTTL": "00:30:00"
+      "ThreadL2CacheTTL": "00:30:00",
+      "MaxReplies": 500
     },
     "BlueSky": {
       "Username": "",
