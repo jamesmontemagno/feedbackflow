@@ -20,7 +20,7 @@ public class TwitterFeedbackFetcher
     private int _currentReplySearches = 0;
     private HashSet<string> _processedTweetIds = new();
     private const int MaxRetryAttempts = 3;
-    private const int DefaultMaxReplies = 500;
+    public const int DefaultMaxReplies = 500;
     private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromSeconds(30);
 
     public TwitterFeedbackFetcher(HttpClient httpClient, ILogger<TwitterFeedbackFetcher> logger, int maxReplies = DefaultMaxReplies)
