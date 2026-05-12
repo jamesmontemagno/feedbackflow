@@ -53,6 +53,18 @@ public static class UsageValidationExtensions
                 
                 return errorResponse;
             }
+
+            if (result.IsNearLimit)
+            {
+                logger?.LogWarning(
+                    "Usage near limit for user {UserId}: type={UsageType}, usage={CurrentUsage}/{Limit} ({UsagePercentage}%), remaining={RemainingUsage}",
+                    user.UserId,
+                    usageType,
+                    result.CurrentUsage,
+                    result.Limit,
+                    result.UsagePercentage,
+                    result.RemainingUsage);
+            }
             
             return null; // Validation passed
         }

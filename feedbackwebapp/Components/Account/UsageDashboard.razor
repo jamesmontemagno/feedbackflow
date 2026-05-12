@@ -2,6 +2,7 @@
 @using FeedbackWebApp.Components.Account
 @using SharedDump.Models.Account
 @using SharedDump.Utils.Account
+@inject IConfiguration Configuration
 
 <div class="usage-dashboard">
     @if (IsLoading)
@@ -26,6 +27,18 @@
                 <UsageMetric Label="API Calls" Used="@UserAccount.ApiUsed" Limit="@Limits.ApiLimit" />
             }
         </div>
+        @if (IsFeedQueryNearLimit())
+        {
+            <div class="usage-warning d-flex align-items-start gap-2">
+                <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+                <div>
+                    <strong>Feed query budget is running low.</strong>
+                    <div>
+                        You have @GetRemainingFeedQueries() of @Limits.FeedQueryLimit feed queries remaining this period.
+                    </div>
+                </div>
+            </div>
+        }
         @if (IsOverAnyLimit())
         {
             <UpgradePrompt />
@@ -55,5 +68,32 @@
                UserAccount.ActiveReports >= Limits.ReportLimit ||
                UserAccount.FeedQueriesUsed >= Limits.FeedQueryLimit ||
                (AccountTierUtils.SupportsApiKeyGeneration(UserAccount.Tier) && UserAccount.ApiUsed >= Limits.ApiLimit);
+    }
+
+    private int GetRemainingFeedQueries()
+    {
+        if (UserAccount is null || Limits is null)
+        {
+            return 0;
+        }
+
+        return Math.Max(Limits.FeedQueryLimit - UserAccount.FeedQueriesUsed, 0);
+    }
+
+    private bool IsFeedQueryNearLimit()
+    {
+        if (UserAccount is null || Limits is null || Limits.FeedQueryLimit <= 0)
+        {
+            return false;
+        }
+
+        var usagePercent = (double)UserAccount.FeedQueriesUsed / Limits.FeedQueryLimit * 100;
+        return usagePercent >= GetWarningThresholdPercent() && usagePercent < 100;
+    }
+
+    private int GetWarningThresholdPercent()
+    {
+        var configuredThreshold = Configuration["Usage:WarningThresholdPercent"];
+        return int.TryParse(configuredThreshold, out var threshold) ? threshold : 80;
     }
 }
