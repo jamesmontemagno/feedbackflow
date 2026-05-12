@@ -2,8 +2,10 @@
 @using SharedDump.Utils.Account
 @using SharedDump.Models.Account
 @using FeedbackWebApp.Services.Account
+@using SharedDump.Services.Interfaces
 @inject IAccountServiceProvider AccountServiceProvider
 @inject Microsoft.JSInterop.IJSRuntime JSRuntime
+@inject IFeatureGateService FeatureGateService
 
 <div class="omni-search-form">
     <div class="mb-3">
@@ -49,21 +51,24 @@
                     <i class="bi bi-newspaper text-warning"></i> Hacker News
                 </label>
             </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" 
-                       type="checkbox" 
-                       id="platform-twitter" 
-                       @bind="EnableTwitter"
-                       @bind:after="UpdateUsageCount"
-                       disabled="@(!canUseTwitter)" />
-                <label class="form-check-label" for="platform-twitter">
-                    <i class="bi bi-twitter-x"></i> Twitter
-                    @if (!canUseTwitter)
-                    {
-                        <span class="badge bg-warning ms-1" title="Pro account required">Pro</span>
-                    }
-                </label>
-            </div>
+            @if (isXEnabled)
+            {
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" 
+                           type="checkbox" 
+                           id="platform-twitter" 
+                           @bind="EnableTwitter"
+                           @bind:after="UpdateUsageCount"
+                           disabled="@(!canUseTwitter)" />
+                    <label class="form-check-label" for="platform-twitter">
+                        <i class="bi bi-twitter-x"></i> Twitter
+                        @if (!canUseTwitter)
+                        {
+                            <span class="badge bg-warning ms-1" title="Pro account required">Pro</span>
+                        }
+                    </label>
+                </div>
+            }
             <div class="form-check form-check-inline">
                 <input class="form-check-input" 
                        type="checkbox" 
@@ -149,6 +154,7 @@
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }
 
+    private bool isXEnabled = false;
     private bool canUseTwitter = false;
     private (UserAccount? account, AccountLimits limits)? accountLimits;
     private int currentUsage = 0;
@@ -156,6 +162,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Check if X/Twitter is enabled
+        isXEnabled = FeatureGateService.IsXEnabled;
+
         // Check if user can access Twitter and get account limits
         var accountService = AccountServiceProvider.GetService();
         accountLimits = await accountService.GetUserAccountAndLimitsAsync();
@@ -186,7 +195,7 @@
         if (EnableYouTube) platforms.Add("youtube");
         if (EnableReddit) platforms.Add("reddit");
         if (EnableHackerNews) platforms.Add("hackernews");
-        if (EnableTwitter && canUseTwitter) platforms.Add("twitter");
+        if (EnableTwitter && canUseTwitter && isXEnabled) platforms.Add("twitter");
         if (EnableBlueSky) platforms.Add("bluesky");
         return platforms;
     }
@@ -228,9 +237,13 @@
             if (bool.TryParse(hn, out var enableHN))
                 EnableHackerNews = enableHN;
 
-            var twitter = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "omniSearch_twitter");
-            if (bool.TryParse(twitter, out var enableTwitter))
-                EnableTwitter = enableTwitter;
+            // Only load Twitter preference if X is enabled
+            if (isXEnabled)
+            {
+                var twitter = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "omniSearch_twitter");
+                if (bool.TryParse(twitter, out var enableTwitter))
+                    EnableTwitter = enableTwitter;
+            }
 
             var bluesky = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "omniSearch_bluesky");
             if (bool.TryParse(bluesky, out var enableBlueSky))

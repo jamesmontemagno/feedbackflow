@@ -22,6 +22,7 @@
 @using SharedDump.Models.YouTube
 @using SharedDump.Utils
 @using SharedDump.Services
+@using SharedDump.Services.Interfaces
 @using SharedDump.AI
 
 @inject IConfiguration Configuration
@@ -33,6 +34,7 @@
 @inject IAuthenticationService AuthService
 @inject IRegistrationErrorService RegistrationErrorService
 @inject ITwitterAccessService TwitterAccessService
+@inject IFeatureGateService FeatureGateService
 @implements IDisposable
 
 <PageTitle>Feedback Analysis - FeedbackFlow</PageTitle>
@@ -448,9 +450,10 @@
         .OrderBy(u => u)
         .ToArray();
 
-    private static string NormalizeUrlForComparison(string url)
+    private string NormalizeUrlForComparison(string url)
     {
-        if (UrlParsing.IsTwitterUrl(url))
+        // Only process Twitter URLs if X is enabled
+        if (FeatureGateService.IsXEnabled && UrlParsing.IsTwitterUrl(url))
         {
             var tweetId = TwitterUrlParser.ExtractTweetId(url);
             if (!string.IsNullOrWhiteSpace(tweetId))

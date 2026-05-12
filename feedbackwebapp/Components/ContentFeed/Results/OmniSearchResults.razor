@@ -1,6 +1,8 @@
 @namespace FeedbackWebApp.Components.ContentFeed.Results
 @using SharedDump.Models.ContentSearch
+@using SharedDump.Services.Interfaces
 @inject NavigationManager Navigation
+@inject IFeatureGateService FeatureGateService
 
 <div class="omni-search-results">
     @if (Response is not null)

@@ -7,6 +7,7 @@
 @inject FeedbackWebApp.Services.IToastService ToastService
 @inject FeedbackWebApp.Services.IHistoryHelper HistoryHelper
 @inject FeedbackWebApp.Services.UserSettingsService UserSettings
+@inject SharedDump.Services.Interfaces.IFeatureGateService FeatureGateService
 @using SharedDump.Models
 @using Markdig
 @using Microsoft.JSInterop
@@ -14,6 +15,7 @@
 @using Microsoft.AspNetCore.Components.Web.Virtualization
 @using FeedbackWebApp.Services.Interfaces
 @using SharedDump.Utils
+@using SharedDump.Services.Interfaces
 @using FeedbackWebApp.Utils
 @using FeedbackWebApp.Services
 @using FeedbackWebApp.Components.Shared
@@ -103,7 +105,10 @@
                             <option value="YouTube">YouTube</option>
                             <option value="GitHub">GitHub</option>
                             <option value="Reddit">Reddit</option>
-                            <option value="Twitter">Twitter</option>
+                            @if (FeatureGateService.IsXEnabled)
+                            {
+                                <option value="Twitter">Twitter</option>
+                            }
                             <option value="HackerNews">HackerNews</option>
                             <option value="DevBlogs">DevBlogs</option>
                             <option value="Manual">Manual</option>

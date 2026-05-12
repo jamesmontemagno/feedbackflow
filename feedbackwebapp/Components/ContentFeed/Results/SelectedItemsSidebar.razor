@@ -1,5 +1,7 @@
 @namespace FeedbackWebApp.Components.ContentFeed.Results
 @using FeedbackWebApp.Components.Pages
+@using SharedDump.Services.Interfaces
+@inject IFeatureGateService FeatureGateService
 
 <div class="selected-items-sidebar @(isCollapsed ? "collapsed" : "expanded")">
     <div class="sidebar-header" @onclick="ToggleCollapse">
@@ -38,7 +40,7 @@
                 </div>
 
                 <div class="selected-items-list">
-                    @foreach (var item in SelectedItems)
+                    @foreach (var item in GetVisibleItems())
                     {
                         <div class="selected-item-card">
                             <div class="d-flex gap-2">
@@ -148,5 +150,18 @@
         {
             return url.Length > 40 ? url.Substring(0, 40) + "..." : url;
         }
+    }
+
+    private List<ContentFeeds.SelectedItem> GetVisibleItems()
+    {
+        // Filter out Twitter items if X is disabled
+        if (FeatureGateService.IsXEnabled)
+        {
+            return SelectedItems;
+        }
+        
+        return SelectedItems
+            .Where(item => !item.SourceType.Equals("twitter", StringComparison.OrdinalIgnoreCase))
+            .ToList();
     }
 }

@@ -26,6 +26,7 @@ public class OmniSearchService
     private readonly IHackerNewsService _hackerNewsService;
     private readonly ITwitterService _twitterService;
     private readonly IBlueSkyService _blueSkyService;
+    private readonly IFeatureGateService _featureGateService;
     
     // In-memory cache for search results
     private static readonly ConcurrentDictionary<string, (OmniSearchResponse Response, DateTimeOffset CachedAt)> _cache = new();
@@ -40,7 +41,8 @@ public class OmniSearchService
         IRedditService redditService,
         IHackerNewsService hackerNewsService,
         ITwitterService twitterService,
-        IBlueSkyService blueSkyService)
+        IBlueSkyService blueSkyService,
+        IFeatureGateService featureGateService)
     {
         _logger = logger;
         _configuration = configuration;
@@ -49,6 +51,7 @@ public class OmniSearchService
         _hackerNewsService = hackerNewsService;
         _twitterService = twitterService;
         _blueSkyService = blueSkyService;
+        _featureGateService = featureGateService;
 
         // Read configuration with defaults
         _cacheTTL = TimeSpan.Parse(configuration["OmniSearch:CacheTTL"] ?? "00:05:00");
@@ -208,7 +211,9 @@ public class OmniSearchService
                 "youtube" => await SearchYouTubeAsync(request, cancellationToken),
                 "reddit" => await SearchRedditAsync(request, cancellationToken),
                 "hackernews" or "hacker news" => await SearchHackerNewsAsync(request, cancellationToken),
-                "twitter" => await SearchTwitterAsync(request, cancellationToken),
+                "twitter" => _featureGateService.IsXEnabled 
+                    ? await SearchTwitterAsync(request, cancellationToken)
+                    : new List<OmniSearchResult>(),
                 "bluesky" => await SearchBlueSkyAsync(request, cancellationToken),
                 _ => new List<OmniSearchResult>()
             };
