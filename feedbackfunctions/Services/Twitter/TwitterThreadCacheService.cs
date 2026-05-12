@@ -154,11 +154,19 @@ public class TwitterThreadCacheService : ITwitterThreadCacheService
             {
                 await _distributedCache.RemoveAsync(cacheKey, cancellationToken);
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception removeEx)
             {
                 _logger.LogWarning(removeEx, "Failed to evict malformed L2 Twitter cache key {CacheKey}.", cacheKey);
             }
             return null;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -174,14 +182,18 @@ public class TwitterThreadCacheService : ITwitterThreadCacheService
             return;
         }
 
-        var payload = JsonSerializer.Serialize(response, TwitterFeedbackJsonContext.Default.TwitterFeedbackResponse);
-        var options = new DistributedCacheEntryOptions
-        {
-            AbsoluteExpirationRelativeToNow = _l2CacheTtl
-        };
         try
         {
+            var payload = JsonSerializer.Serialize(response, TwitterFeedbackJsonContext.Default.TwitterFeedbackResponse);
+            var options = new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = _l2CacheTtl
+            };
             await _distributedCache.SetStringAsync(cacheKey, payload, options, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

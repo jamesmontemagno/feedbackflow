@@ -183,6 +183,46 @@ public class TwitterThreadCacheServiceTests
         Assert.IsFalse(result.CacheHit);
     }
 
+    [TestMethod]
+    public async Task GetThreadAsync_L2ReadCancellation_PropagatesCancellation()
+    {
+        _configuration["Twitter:UseL2Cache"].Returns("true");
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        _distributedCache.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromCanceled<byte[]?>(cts.Token));
+
+        var service = new TwitterThreadCacheService(_logger, _configuration, _distributedCache);
+
+        await Assert.ThrowsExactlyAsync<TaskCanceledException>(() => service.GetThreadAsync(
+            "https://x.com/user/status/88",
+            () => Task.FromResult<TwitterFeedbackResponse?>(CreateResponse("88")),
+            cancellationToken: cts.Token));
+    }
+
+    [TestMethod]
+    public async Task GetThreadAsync_L2WriteCancellation_PropagatesCancellation()
+    {
+        _configuration["Twitter:UseL2Cache"].Returns("true");
+        using var cts = new CancellationTokenSource();
+        _distributedCache.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<byte[]?>(null));
+        _distributedCache
+            .SetAsync(Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<DistributedCacheEntryOptions>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                cts.Cancel();
+                return Task.FromCanceled(cts.Token);
+            });
+
+        var service = new TwitterThreadCacheService(_logger, _configuration, _distributedCache);
+
+        await Assert.ThrowsExactlyAsync<TaskCanceledException>(() => service.GetThreadAsync(
+            "https://x.com/user/status/99",
+            () => Task.FromResult<TwitterFeedbackResponse?>(CreateResponse("99")),
+            cancellationToken: cts.Token));
+    }
+
     private static TwitterFeedbackResponse CreateResponse(string id) =>
         new()
         {
