@@ -68,20 +68,26 @@ public class OmniSearchService
         CancellationToken cancellationToken = default)
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var effectiveRequest = CreateEffectiveRequest(request);
+
         // Check cache first
-        var cacheKey = GenerateCacheKey(request);
+        var cacheKey = GenerateCacheKey(effectiveRequest);
         if (_cache.TryGetValue(cacheKey, out var cached))
         {
             if (DateTimeOffset.UtcNow - cached.CachedAt < _cacheTTL)
             {
-                _logger.LogInformation("Cache hit for omni-search query: {Query}", request.Query);
+                _logger.LogInformation("Cache hit for omni-search query: {Query}", effectiveRequest.Query);
                 // Still track usage even on cache hit - user is consuming the resource
-                await TrackPlatformUsageAsync(user, userAccountService, request.Platforms.Count, request.Query);
+                await TrackPlatformUsageAsync(
+                    user,
+                    userAccountService,
+                    cached.Response.PlatformsSearched.Count,
+                    effectiveRequest.Query);
                 _logger.LogInformation(
                     "OmniSearch performance: totalMs={TotalMs}, cacheHit={CacheHit}, platformCount={PlatformCount}, resultCount={ResultCount}",
                     stopwatch.ElapsedMilliseconds,
                     true,
-                    request.Platforms.Count,
+                    cached.Response.PlatformsSearched.Count,
                     cached.Response.TotalCount);
                 return cached.Response;
             }
@@ -99,26 +105,30 @@ public class OmniSearchService
             if (_cache.TryGetValue(cacheKey, out cached) &&
                 DateTimeOffset.UtcNow - cached.CachedAt < _cacheTTL)
             {
-                await TrackPlatformUsageAsync(user, userAccountService, request.Platforms.Count, request.Query);
+                await TrackPlatformUsageAsync(
+                    user,
+                    userAccountService,
+                    cached.Response.PlatformsSearched.Count,
+                    effectiveRequest.Query);
                 _logger.LogInformation(
                     "OmniSearch performance: totalMs={TotalMs}, cacheHit={CacheHit}, platformCount={PlatformCount}, resultCount={ResultCount}",
                     stopwatch.ElapsedMilliseconds,
                     true,
-                    request.Platforms.Count,
+                    cached.Response.PlatformsSearched.Count,
                     cached.Response.TotalCount);
                 return cached.Response;
             }
 
             _logger.LogInformation("Executing omni-search for query: {Query} across platforms: {Platforms}", 
-                request.Query, string.Join(", ", request.Platforms));
+                effectiveRequest.Query, string.Join(", ", effectiveRequest.Platforms));
 
             var results = new List<OmniSearchResult>();
             var searchTasks = new List<Task<List<OmniSearchResult>>>();
 
             // Launch platform searches in parallel
-            foreach (var platform in request.Platforms)
+            foreach (var platform in effectiveRequest.Platforms)
             {
-                searchTasks.Add(SearchPlatformAsync(platform.ToLowerInvariant(), request, cancellationToken));
+                searchTasks.Add(SearchPlatformAsync(platform.ToLowerInvariant(), effectiveRequest, cancellationToken));
             }
 
             // Wait for all platforms to complete
@@ -131,7 +141,7 @@ public class OmniSearchService
             }
 
             // Sort results (filtering for zero comments is handled on client side)
-            results = request.SortMode.ToLowerInvariant() == "ranked"
+            results = effectiveRequest.SortMode.ToLowerInvariant() == "ranked"
                 ? RankResults(results)
                 : results.OrderByDescending(r => r.CommentCount).ThenByDescending(r => r.PublishedAt).ToList();
 
@@ -146,24 +156,24 @@ public class OmniSearchService
                 Page = 1,
                 PageSize = totalCount, // PageSize equals total count
                 CachedAt = DateTimeOffset.UtcNow,
-                Query = request.Query,
-                PlatformsSearched = request.Platforms
+                Query = effectiveRequest.Query,
+                PlatformsSearched = effectiveRequest.Platforms
             };
 
             // Cache the response
             _cache[cacheKey] = (response, DateTimeOffset.UtcNow);
         
             _logger.LogInformation("Omni-search completed. Found {Count} total results across {PlatformCount} platforms", 
-                totalCount, request.Platforms.Count);
+                totalCount, effectiveRequest.Platforms.Count);
 
             // Track usage - one credit per platform searched
-            await TrackPlatformUsageAsync(user, userAccountService, request.Platforms.Count, request.Query);
+            await TrackPlatformUsageAsync(user, userAccountService, effectiveRequest.Platforms.Count, effectiveRequest.Query);
 
             _logger.LogInformation(
                 "OmniSearch performance: totalMs={TotalMs}, cacheHit={CacheHit}, platformCount={PlatformCount}, resultCount={ResultCount}",
                 stopwatch.ElapsedMilliseconds,
                 false,
-                request.Platforms.Count,
+                effectiveRequest.Platforms.Count,
                 totalCount);
 
             return response;
@@ -184,6 +194,12 @@ public class OmniSearchService
         int platformCount,
         string query)
     {
+        if (platformCount <= 0)
+        {
+            _logger.LogInformation("No searchable platforms selected for query {Query}; skipping usage tracking", query);
+            return;
+        }
+
         try
         {
             // Track usage for each platform (amount = platformCount)
@@ -200,6 +216,29 @@ public class OmniSearchService
             _logger.LogError(ex, "Error tracking usage for user {UserId}", user.UserId);
             // Don't throw - tracking failures shouldn't break the search
         }
+    }
+
+    private OmniSearchRequest CreateEffectiveRequest(OmniSearchRequest request)
+    {
+        var platforms = request.Platforms;
+
+        if (!_featureGateService.IsXEnabled)
+        {
+            platforms = request.Platforms
+                .Where(platform => !platform.Equals("twitter", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        return new OmniSearchRequest
+        {
+            Query = request.Query,
+            Platforms = platforms,
+            FromDate = request.FromDate,
+            ToDate = request.ToDate,
+            MaxResults = request.MaxResults,
+            SortMode = request.SortMode,
+            Page = request.Page
+        };
     }
 
     private async Task<List<OmniSearchResult>> SearchPlatformAsync(string platform, OmniSearchRequest request, CancellationToken cancellationToken)

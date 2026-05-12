@@ -641,6 +641,11 @@ public class FeedbackFunctions
     {
         var stopwatch = Stopwatch.StartNew();
         _logger.LogInformation("Processing Twitter/X feedback request");
+
+        // Authenticate the request
+        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
+        if (authErrorResponse != null)
+            return authErrorResponse;
         
         // Check if X/Twitter is enabled
         if (!_featureGateService.IsXEnabled)
@@ -653,11 +658,6 @@ public class FeedbackFunctions
             });
             return disabledResponse;
         }
-        
-        // Authenticate the request
-        var (user, authErrorResponse) = await req.AuthenticateAsync(_authMiddleware);
-        if (authErrorResponse != null)
-            return authErrorResponse;
 
         // Check if user's tier supports Twitter/X access
         var userAccount = await _userAccountService.GetUserAccountAsync(user!.UserId);
@@ -872,7 +872,13 @@ public class FeedbackFunctions
             // Check if X/Twitter is enabled
             if (!_featureGateService.IsXEnabled)
             {
-                throw new InvalidOperationException("X/Twitter integration is currently disabled");
+                var disabledResponse = req.CreateResponse(HttpStatusCode.ServiceUnavailable);
+                await disabledResponse.WriteAsJsonAsync(new
+                {
+                    ErrorCode = "X_FEATURE_DISABLED",
+                    Message = "X/Twitter integration is currently disabled."
+                });
+                return disabledResponse;
             }
             serviceType = "twitter";
             platformData = await GetTwitterDataForAnalysis(url);

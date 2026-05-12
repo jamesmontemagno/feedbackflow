@@ -90,7 +90,6 @@ if (useMocks)
     builder.Services.AddScoped<ITwitterService, MockTwitterService>();
     builder.Services.AddScoped<IBlueSkyService, MockBlueSkyService>();
     builder.Services.AddScoped<IEmailService, MockEmailService>();
-    builder.Services.AddScoped<IFeatureGateService, FeatureGateService>();
 }
 else
 {

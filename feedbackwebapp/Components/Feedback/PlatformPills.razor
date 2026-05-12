@@ -20,17 +20,17 @@
 @code {
     private List<PlatformOption> supportedPlatforms = new();
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         var allPlatforms = new[]
         {
-            new PlatformOption("YouTube", "bi-youtube", "#FF0000"),
-            new PlatformOption("GitHub", "bi-github", "#333333"),
-            new PlatformOption("Reddit", "bi-reddit", "#FF4500"),
-            new PlatformOption("HackerNews", "bi-braces", "#FF6600"),
-            new PlatformOption("DevBlogs", "bi-journal-richtext", "#0078D4"),
-            new PlatformOption("Twitter", "bi-twitter-x", "#1DA1F2"),
-            new PlatformOption("BlueSky", "bi-cloud-fill", "#00A8E8")
+            new PlatformOption("YouTube", "bi-youtube"),
+            new PlatformOption("GitHub", "bi-github"),
+            new PlatformOption("Reddit", "bi-reddit"),
+            new PlatformOption("HackerNews", "bi-braces"),
+            new PlatformOption("DevBlogs", "bi-journal-richtext"),
+            new PlatformOption("Twitter", "bi-twitter-x"),
+            new PlatformOption("BlueSky", "bi-cloud-fill")
         };
 
         // Filter out Twitter if X is disabled
@@ -42,9 +42,7 @@
         {
             supportedPlatforms = allPlatforms.Where(p => p.Name != "Twitter").ToList();
         }
-
-        await base.OnInitializedAsync();
     }
 
-    private record PlatformOption(string Name, string IconClass, string Color);
+    private record PlatformOption(string Name, string IconClass);
 }
