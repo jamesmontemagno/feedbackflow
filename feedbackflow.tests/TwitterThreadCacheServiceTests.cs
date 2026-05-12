@@ -97,8 +97,10 @@ public class TwitterThreadCacheServiceTests
         await Task.WhenAll(firstTask, secondTask);
 
         Assert.AreEqual(1, fetchCount);
-        Assert.IsFalse(firstTask.Result.CacheHit);
-        Assert.IsTrue(secondTask.Result.CacheHit);
+        var cacheHitCount = new[] { firstTask.Result, secondTask.Result }.Count(result => result.CacheHit);
+        var cacheMissCount = new[] { firstTask.Result, secondTask.Result }.Count(result => !result.CacheHit);
+        Assert.AreEqual(1, cacheHitCount);
+        Assert.AreEqual(1, cacheMissCount);
     }
 
     private static TwitterFeedbackResponse CreateResponse(string id) =>

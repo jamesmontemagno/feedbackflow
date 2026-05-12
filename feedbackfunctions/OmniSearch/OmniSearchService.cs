@@ -168,6 +168,7 @@ public class OmniSearchService
         finally
         {
             cacheLock.Release();
+            _cacheLocks.TryRemove(cacheKey, out _);
         }
     }
 

@@ -18,6 +18,7 @@ public class TwitterFeedbackFetcher
     private int _currentReplySearches = 0;
     private HashSet<string> _processedTweetIds = new();
     private const int MaxRetryAttempts = 3;
+    private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromSeconds(30);
 
     public TwitterFeedbackFetcher(HttpClient httpClient, ILogger<TwitterFeedbackFetcher> logger)
     {
@@ -64,7 +65,7 @@ public class TwitterFeedbackFetcher
                 repliesUrl += $"&next_token={nextToken}";
             }
 
-            var repliesResp = await GetWithRetryAsync(repliesUrl, $"conversation replies for {parentTweetId}", cancellationToken);
+            using var repliesResp = await GetWithRetryAsync(repliesUrl, $"conversation replies for {parentTweetId}", cancellationToken);
             if (repliesResp is null)
             {
                 break;
@@ -188,7 +189,9 @@ public class TwitterFeedbackFetcher
         } while (!string.IsNullOrEmpty(nextToken) && !cancellationToken.IsCancellationRequested && !_hitRateLimit && _currentReplySearches < _maxReplySearches);
 
         return replies;
-    }    public async Task<TwitterFeedbackResponse?> FetchFeedbackAsync(string tweetUrlOrId, CancellationToken cancellationToken = default)
+    }
+
+    public async Task<TwitterFeedbackResponse?> FetchFeedbackAsync(string tweetUrlOrId, CancellationToken cancellationToken = default)
     {
         // Reset tracking variables
         _hitRateLimit = false;
@@ -205,7 +208,7 @@ public class TwitterFeedbackFetcher
             }
 
             // Fetch the main tweet with more comprehensive information
-            var tweetResp = await GetWithRetryAsync(
+            using var tweetResp = await GetWithRetryAsync(
                 $"https://api.twitter.com/2/tweets/{tweetId}?tweet.fields=author_id,created_at,conversation_id,referenced_tweets&expansions=author_id&user.fields=name,username",
                 $"main tweet {tweetId}",
                 cancellationToken);
@@ -440,7 +443,7 @@ public class TwitterFeedbackFetcher
 
             _logger.LogInformation("Twitter search URL: {Url}", searchUrl.Replace(_httpClient.DefaultRequestHeaders.Authorization?.ToString() ?? "", "[AUTH]"));
 
-            var response = await GetWithRetryAsync(searchUrl, $"search for query '{query}'", cancellationToken);
+            using var response = await GetWithRetryAsync(searchUrl, $"search for query '{query}'", cancellationToken);
             if (response is null)
             {
                 return results;
@@ -531,14 +534,14 @@ public class TwitterFeedbackFetcher
     private static bool ShouldRetry(HttpStatusCode statusCode) =>
         statusCode == HttpStatusCode.TooManyRequests || (int)statusCode >= 500;
 
-    private static TimeSpan GetRetryDelay(HttpResponseMessage response, int attempt)
+    private TimeSpan GetRetryDelay(HttpResponseMessage response, int attempt)
     {
+        var delay = TimeSpan.Zero;
         if (response.Headers.RetryAfter?.Delta is { } retryAfterDelta && retryAfterDelta > TimeSpan.Zero)
         {
-            return retryAfterDelta;
+            delay = retryAfterDelta;
         }
-
-        if (response.Headers.TryGetValues("x-rate-limit-reset", out var resetValues))
+        else if (response.Headers.TryGetValues("x-rate-limit-reset", out var resetValues))
         {
             var resetValue = resetValues.FirstOrDefault();
             if (long.TryParse(resetValue, out var unixReset))
@@ -547,13 +550,27 @@ public class TwitterFeedbackFetcher
                 var untilReset = resetAt - DateTimeOffset.UtcNow;
                 if (untilReset > TimeSpan.Zero)
                 {
-                    return untilReset;
+                    delay = untilReset;
                 }
             }
         }
 
-        var seconds = Math.Min((int)Math.Pow(2, attempt), 30);
-        return TimeSpan.FromSeconds(seconds);
+        if (delay <= TimeSpan.Zero)
+        {
+            var seconds = Math.Min((int)Math.Pow(2, attempt), (int)MaxRetryDelay.TotalSeconds);
+            delay = TimeSpan.FromSeconds(seconds);
+        }
+
+        if (delay > MaxRetryDelay)
+        {
+            _logger.LogWarning(
+                "Capping Twitter retry delay from {OriginalDelayMs}ms to {CappedDelayMs}ms to avoid long-running function waits.",
+                delay.TotalMilliseconds,
+                MaxRetryDelay.TotalMilliseconds);
+            return MaxRetryDelay;
+        }
+
+        return delay;
     }
 
 }

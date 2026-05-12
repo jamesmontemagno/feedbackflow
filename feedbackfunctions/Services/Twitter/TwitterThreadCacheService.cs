@@ -18,7 +18,15 @@ public class TwitterThreadCacheService : ITwitterThreadCacheService
         IConfiguration configuration)
     {
         _logger = logger;
-        _cacheTtl = TimeSpan.Parse(configuration["Twitter:ThreadCacheTTL"] ?? "00:05:00");
+        var cacheTtlConfig = configuration["Twitter:ThreadCacheTTL"];
+        if (!TimeSpan.TryParse(cacheTtlConfig, out _cacheTtl))
+        {
+            _cacheTtl = TimeSpan.FromMinutes(5);
+            _logger.LogWarning(
+                "Invalid Twitter:ThreadCacheTTL value '{ConfiguredValue}'. Using default {DefaultTtl}.",
+                cacheTtlConfig,
+                _cacheTtl);
+        }
     }
 
     public async Task<TwitterThreadCacheResult> GetThreadAsync(
@@ -49,7 +57,7 @@ public class TwitterThreadCacheService : ITwitterThreadCacheService
             }
 
             _logger.LogInformation(
-                "TwitterThreadCache fetched upstream result for key {CacheKey}. forceRefresh={ForceRefresh}, cached={Cached}, ttlSeconds={TtlSeconds}",
+                "TwitterThreadCache fetched upstream result for key {CacheKey}. forceRefresh={ForceRefresh}, storedInCache={StoredInCache}, ttlSeconds={TtlSeconds}",
                 cacheKey,
                 forceRefresh,
                 response is not null,
@@ -60,6 +68,7 @@ public class TwitterThreadCacheService : ITwitterThreadCacheService
         finally
         {
             cacheLock.Release();
+            _cacheLocks.TryRemove(cacheKey, out _);
         }
     }
 
