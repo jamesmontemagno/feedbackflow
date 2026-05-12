@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using SharedDump.Json;
@@ -16,12 +17,15 @@ public class TwitterFeedbackFetcher
     private int _maxReplySearches = 60; // Limit per 15 minutes
     private int _currentReplySearches = 0;
     private HashSet<string> _processedTweetIds = new();
+    private const int MaxRetryAttempts = 3;
 
     public TwitterFeedbackFetcher(HttpClient httpClient, ILogger<TwitterFeedbackFetcher> logger)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }    private async Task<List<TwitterFeedbackItem>> FetchRepliesRecursivelyAsync(string conversationId, string parentTweetId, string authorId, CancellationToken cancellationToken)
+    }
+
+    private async Task<List<TwitterFeedbackItem>> FetchRepliesRecursivelyAsync(string conversationId, string parentTweetId, string authorId, CancellationToken cancellationToken)
     {
         // Check if we hit rate limits
         if (_hitRateLimit || _currentReplySearches >= _maxReplySearches)
@@ -47,7 +51,7 @@ public class TwitterFeedbackFetcher
         
         // Modified query to get all replies in the conversation
         // Instead of excluding the author, we get all tweets in the conversation
-        var baseUrl = $"https://api.twitter.com/2/tweets/search/recent?query=conversation_id:{conversationId}&tweet.fields=author_id,created_at,conversation_id,in_reply_to_user_id,referenced_tweets&expansions=author_id,referenced_tweets.id&user.fields=name,username&max_results=100";
+        var baseUrl = $"https://api.twitter.com/2/tweets/search/recent?query=conversation_id:{conversationId}&tweet.fields=author_id,created_at,referenced_tweets&expansions=author_id&user.fields=name,username&max_results=100";
 
         do
         {
@@ -60,7 +64,11 @@ public class TwitterFeedbackFetcher
                 repliesUrl += $"&next_token={nextToken}";
             }
 
-            var repliesResp = await _httpClient.GetAsync(repliesUrl, cancellationToken);
+            var repliesResp = await GetWithRetryAsync(repliesUrl, $"conversation replies for {parentTweetId}", cancellationToken);
+            if (repliesResp is null)
+            {
+                break;
+            }
 
             if (!repliesResp.IsSuccessStatusCode)
             {
@@ -197,9 +205,14 @@ public class TwitterFeedbackFetcher
             }
 
             // Fetch the main tweet with more comprehensive information
-            var tweetResp = await _httpClient.GetAsync(
-                $"https://api.twitter.com/2/tweets/{tweetId}?tweet.fields=author_id,created_at,conversation_id,referenced_tweets&expansions=author_id,referenced_tweets.id&user.fields=name,username", 
+            var tweetResp = await GetWithRetryAsync(
+                $"https://api.twitter.com/2/tweets/{tweetId}?tweet.fields=author_id,created_at,conversation_id,referenced_tweets&expansions=author_id&user.fields=name,username",
+                $"main tweet {tweetId}",
                 cancellationToken);
+            if (tweetResp is null)
+            {
+                return null;
+            }
                 
             if (!tweetResp.IsSuccessStatusCode)
             {
@@ -290,6 +303,11 @@ public class TwitterFeedbackFetcher
                 response.RateLimitInfo = $"Some replies may be missing due to Twitter API rate limits (60 reply searches per 15 minutes). Processed {_processedTweetIds.Count} unique tweets.";
             }
 
+            _logger.LogInformation(
+                "Twitter thread fetch performance: processedTweetCount={ProcessedTweetCount}, replySearches={ReplySearches}, mayBeIncomplete={MayBeIncomplete}",
+                response.ProcessedTweetCount,
+                _currentReplySearches,
+                response.MayBeIncomplete);
             return response;
         }
         catch (Exception ex)
@@ -297,7 +315,9 @@ public class TwitterFeedbackFetcher
             _logger.LogError(ex, "Failed to fetch Twitter feedback for {TweetUrlOrId}", tweetUrlOrId);
             return null;
         }
-    }/// <summary>
+    }
+
+    /// <summary>
     /// Organizes a flat list of replies into a proper tree structure based on ParentId
     /// </summary>
     private void OrganizeRepliesIntoTree(TwitterFeedbackItem rootTweet, List<TwitterFeedbackItem> allReplies)
@@ -402,7 +422,7 @@ public class TwitterFeedbackFetcher
             var escapedQuery = Uri.EscapeDataString(enhancedQuery);
             
             var searchUrl = $"https://api.twitter.com/2/tweets/search/recent?query={escapedQuery}" +
-                           $"&tweet.fields=author_id,created_at,public_metrics" +
+                           $"&tweet.fields=author_id,created_at" +
                            $"&expansions=author_id" +
                            $"&user.fields=name,username" +
                            $"&max_results={Math.Min(maxResults, 100)}";
@@ -420,7 +440,11 @@ public class TwitterFeedbackFetcher
 
             _logger.LogInformation("Twitter search URL: {Url}", searchUrl.Replace(_httpClient.DefaultRequestHeaders.Authorization?.ToString() ?? "", "[AUTH]"));
 
-            var response = await _httpClient.GetAsync(searchUrl, cancellationToken);
+            var response = await GetWithRetryAsync(searchUrl, $"search for query '{query}'", cancellationToken);
+            if (response is null)
+            {
+                return results;
+            }
 
             if (!response.IsSuccessStatusCode)
             {
@@ -472,6 +496,64 @@ public class TwitterFeedbackFetcher
             _logger.LogError(ex, "Error searching Twitter");
             return results;
         }
+    }
+
+    private async Task<HttpResponseMessage?> GetWithRetryAsync(string requestUrl, string operation, CancellationToken cancellationToken)
+    {
+        for (var attempt = 1; attempt <= MaxRetryAttempts; attempt++)
+        {
+            var response = await _httpClient.GetAsync(requestUrl, cancellationToken);
+            if (response.IsSuccessStatusCode)
+            {
+                return response;
+            }
+
+            if (!ShouldRetry(response.StatusCode) || attempt == MaxRetryAttempts)
+            {
+                return response;
+            }
+
+            var delay = GetRetryDelay(response, attempt);
+            _logger.LogWarning(
+                "Retrying Twitter API request for {Operation}. status={StatusCode}, attempt={Attempt}, delayMs={DelayMs}",
+                operation,
+                (int)response.StatusCode,
+                attempt,
+                delay.TotalMilliseconds);
+
+            response.Dispose();
+            await Task.Delay(delay, cancellationToken);
+        }
+
+        return null;
+    }
+
+    private static bool ShouldRetry(HttpStatusCode statusCode) =>
+        statusCode == HttpStatusCode.TooManyRequests || (int)statusCode >= 500;
+
+    private static TimeSpan GetRetryDelay(HttpResponseMessage response, int attempt)
+    {
+        if (response.Headers.RetryAfter?.Delta is { } retryAfterDelta && retryAfterDelta > TimeSpan.Zero)
+        {
+            return retryAfterDelta;
+        }
+
+        if (response.Headers.TryGetValues("x-rate-limit-reset", out var resetValues))
+        {
+            var resetValue = resetValues.FirstOrDefault();
+            if (long.TryParse(resetValue, out var unixReset))
+            {
+                var resetAt = DateTimeOffset.FromUnixTimeSeconds(unixReset);
+                var untilReset = resetAt - DateTimeOffset.UtcNow;
+                if (untilReset > TimeSpan.Zero)
+                {
+                    return untilReset;
+                }
+            }
+        }
+
+        var seconds = Math.Min((int)Math.Pow(2, attempt), 30);
+        return TimeSpan.FromSeconds(seconds);
     }
 
 }

@@ -25,9 +25,9 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
         FeedbackStatusUpdate? onStatusUpdate = null)
         : base(http, configuration, userSettings, authenticationHeaderService, onStatusUpdate)
     {
-        _urls = urls;
+        _urls = NormalizeInputUrls(urls);
         _serviceProvider = serviceProvider;
-    }    
+    }
     
     private string GetServiceType(string url)
     {
@@ -77,18 +77,14 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
             try
             {
                 var serviceType = GetServiceType(url);
-                var service = ResolveFeedbackService(url);
-                if (service != null)
+                var (comments, commentCount, additionalData) = await GetCommentsFromUrl(url);
+                if (!string.IsNullOrWhiteSpace(comments))
                 {
-                    var (comments, commentCount, additionalData) = await GetCommentsFromUrl(url);
-                    if (!string.IsNullOrWhiteSpace(comments))
-                    {
-                        sourceData.Add(new FeedbackSourceData(serviceType, $"URL: {url}\n{comments}", commentCount, additionalData));
-                        totalCommentCount += commentCount;
-                        
-                        UpdateStatus(FeedbackProcessStatus.GatheringComments, 
-                            $"Collected {commentCount} comments from URL {processedCount}...");
-                    }
+                    sourceData.Add(new FeedbackSourceData(serviceType, $"URL: {url}\n{comments}", commentCount, additionalData));
+                    totalCommentCount += commentCount;
+                    
+                    UpdateStatus(FeedbackProcessStatus.GatheringComments, 
+                        $"Collected {commentCount} comments from URL {processedCount}...");
                 }
             }
             catch (Exception ex)
@@ -223,6 +219,27 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
     }
 
     private IFeedbackService? ResolveFeedbackService(string url) => _serviceProvider.GetService(url);
+
+    private static string[] NormalizeInputUrls(IEnumerable<string> urls) => urls
+        .Where(url => !string.IsNullOrWhiteSpace(url))
+        .Select(url => url.Trim())
+        .GroupBy(GetCanonicalUrlKey, StringComparer.OrdinalIgnoreCase)
+        .Select(group => group.First())
+        .ToArray();
+
+    private static string GetCanonicalUrlKey(string url)
+    {
+        if (UrlParsing.IsTwitterUrl(url))
+        {
+            var tweetId = TwitterUrlParser.ExtractTweetId(url);
+            if (!string.IsNullOrWhiteSpace(tweetId))
+            {
+                return $"twitter:{tweetId.Trim().ToLowerInvariant()}";
+            }
+        }
+
+        return url.Trim().ToLowerInvariant();
+    }
 }
 
 

@@ -443,10 +443,24 @@
     // URL normalization and comparison helpers for reanalyze feature
     private string[] NormalizeUrls(IEnumerable<string> urls) => urls
         .Where(u => !string.IsNullOrWhiteSpace(u))
-        .Select(u => u.Trim().ToLowerInvariant()) // Normalize casing  
+        .Select(u => NormalizeUrlForComparison(u.Trim()))
         .Distinct()
         .OrderBy(u => u)
         .ToArray();
+
+    private static string NormalizeUrlForComparison(string url)
+    {
+        if (UrlParsing.IsTwitterUrl(url))
+        {
+            var tweetId = TwitterUrlParser.ExtractTweetId(url);
+            if (!string.IsNullOrWhiteSpace(tweetId))
+            {
+                return $"twitter:{tweetId.Trim().ToLowerInvariant()}";
+            }
+        }
+
+        return url.ToLowerInvariant();
+    }
 
     private bool UrlsUnchanged()
     {
@@ -669,6 +683,14 @@
 
         try
         {
+            var urls = autoDataSourceForm?.GetUrls() ?? new List<string>();
+            if (hasComments && UrlsUnchanged())
+            {
+                currentStatus = FeedbackProcessStatus.Completed;
+                currentStatusMessage = "Using existing fetched comments for unchanged URLs.";
+                return;
+            }
+
             // Reset previous data but preserve any existing analysis for re-fetch scenario
             error = "";
             markdownResult = "";
@@ -682,8 +704,6 @@
             currentStatusMessage = "Fetching comments...";
             showSurveyLink = false;
             StateHasChanged();
-
-            var urls = autoDataSourceForm?.GetUrls() ?? new List<string>();
             
             // Check Twitter access before fetching
             var (hasAccess, accessError) = await TwitterAccessService.CheckTwitterAccessAsync(urls);

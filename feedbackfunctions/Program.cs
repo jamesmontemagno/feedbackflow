@@ -21,6 +21,7 @@ using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Services.Account;
 using FeedbackFunctions.Services.Email;
 using FeedbackFunctions.Services.Storage;
+using FeedbackFunctions.Services.Twitter;
 using System.Configuration;
 using FeedbackFunctions.Services.Reports;
 using FeedbackFunctions.Utils;
@@ -73,6 +74,7 @@ builder.Services.AddSingleton<IAdminReportConfigService, AdminReportConfigServic
 
 // Register OmniSearch service
 builder.Services.AddScoped<OmniSearchService>();
+builder.Services.AddSingleton<ITwitterThreadCacheService, TwitterThreadCacheService>();
 
 // Register services based on UseMocks setting
 if (useMocks)
