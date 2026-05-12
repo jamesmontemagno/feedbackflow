@@ -29,6 +29,7 @@ public class OmniSearchService
     
     // In-memory cache for search results
     private static readonly ConcurrentDictionary<string, (OmniSearchResponse Response, DateTimeOffset CachedAt)> _cache = new();
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> _cacheLocks = new();
     private readonly TimeSpan _cacheTTL;
     private readonly int _maxConcurrency;
 
@@ -63,6 +64,7 @@ public class OmniSearchService
         FeedbackFunctions.Services.Account.IUserAccountService userAccountService,
         CancellationToken cancellationToken = default)
     {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         // Check cache first
         var cacheKey = GenerateCacheKey(request);
         if (_cache.TryGetValue(cacheKey, out var cached))
@@ -72,6 +74,12 @@ public class OmniSearchService
                 _logger.LogInformation("Cache hit for omni-search query: {Query}", request.Query);
                 // Still track usage even on cache hit - user is consuming the resource
                 await TrackPlatformUsageAsync(user, userAccountService, request.Platforms.Count, request.Query);
+                _logger.LogInformation(
+                    "OmniSearch performance: totalMs={TotalMs}, cacheHit={CacheHit}, platformCount={PlatformCount}, resultCount={ResultCount}",
+                    stopwatch.ElapsedMilliseconds,
+                    true,
+                    request.Platforms.Count,
+                    cached.Response.TotalCount);
                 return cached.Response;
             }
             else
@@ -81,57 +89,87 @@ public class OmniSearchService
             }
         }
 
-        _logger.LogInformation("Executing omni-search for query: {Query} across platforms: {Platforms}", 
-            request.Query, string.Join(", ", request.Platforms));
-
-        var results = new List<OmniSearchResult>();
-        var searchTasks = new List<Task<List<OmniSearchResult>>>();
-
-        // Launch platform searches in parallel
-        foreach (var platform in request.Platforms)
+        var cacheLock = _cacheLocks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
+        await cacheLock.WaitAsync(cancellationToken);
+        try
         {
-            searchTasks.Add(SearchPlatformAsync(platform.ToLowerInvariant(), request, cancellationToken));
-        }
+            if (_cache.TryGetValue(cacheKey, out cached) &&
+                DateTimeOffset.UtcNow - cached.CachedAt < _cacheTTL)
+            {
+                await TrackPlatformUsageAsync(user, userAccountService, request.Platforms.Count, request.Query);
+                _logger.LogInformation(
+                    "OmniSearch performance: totalMs={TotalMs}, cacheHit={CacheHit}, platformCount={PlatformCount}, resultCount={ResultCount}",
+                    stopwatch.ElapsedMilliseconds,
+                    true,
+                    request.Platforms.Count,
+                    cached.Response.TotalCount);
+                return cached.Response;
+            }
 
-        // Wait for all platforms to complete
-        var platformResults = await Task.WhenAll(searchTasks);
+            _logger.LogInformation("Executing omni-search for query: {Query} across platforms: {Platforms}", 
+                request.Query, string.Join(", ", request.Platforms));
+
+            var results = new List<OmniSearchResult>();
+            var searchTasks = new List<Task<List<OmniSearchResult>>>();
+
+            // Launch platform searches in parallel
+            foreach (var platform in request.Platforms)
+            {
+                searchTasks.Add(SearchPlatformAsync(platform.ToLowerInvariant(), request, cancellationToken));
+            }
+
+            // Wait for all platforms to complete
+            var platformResults = await Task.WhenAll(searchTasks);
         
-        // Merge results
-        foreach (var platformResult in platformResults)
-        {
-            results.AddRange(platformResult);
-        }
+            // Merge results
+            foreach (var platformResult in platformResults)
+            {
+                results.AddRange(platformResult);
+            }
 
-        // Sort results (filtering for zero comments is handled on client side)
-        results = request.SortMode.ToLowerInvariant() == "ranked"
-            ? RankResults(results)
-            : results.OrderByDescending(r => r.CommentCount).ThenByDescending(r => r.PublishedAt).ToList();
+            // Sort results (filtering for zero comments is handled on client side)
+            results = request.SortMode.ToLowerInvariant() == "ranked"
+                ? RankResults(results)
+                : results.OrderByDescending(r => r.CommentCount).ThenByDescending(r => r.PublishedAt).ToList();
 
-        // Don't apply pagination - return all results from all platforms
-        // If user selects 2 platforms, they get 200 results (100 per platform)
-        var totalCount = results.Count;
+            // Don't apply pagination - return all results from all platforms
+            // If user selects 2 platforms, they get 200 results (100 per platform)
+            var totalCount = results.Count;
 
-        var response = new OmniSearchResponse
-        {
-            Results = results, // Return all results, no pagination
-            TotalCount = totalCount,
-            Page = 1,
-            PageSize = totalCount, // PageSize equals total count
-            CachedAt = DateTimeOffset.UtcNow,
-            Query = request.Query,
-            PlatformsSearched = request.Platforms
-        };
+            var response = new OmniSearchResponse
+            {
+                Results = results, // Return all results, no pagination
+                TotalCount = totalCount,
+                Page = 1,
+                PageSize = totalCount, // PageSize equals total count
+                CachedAt = DateTimeOffset.UtcNow,
+                Query = request.Query,
+                PlatformsSearched = request.Platforms
+            };
 
-        // Cache the response
-        _cache[cacheKey] = (response, DateTimeOffset.UtcNow);
+            // Cache the response
+            _cache[cacheKey] = (response, DateTimeOffset.UtcNow);
         
-        _logger.LogInformation("Omni-search completed. Found {Count} total results across {PlatformCount} platforms", 
-            totalCount, request.Platforms.Count);
+            _logger.LogInformation("Omni-search completed. Found {Count} total results across {PlatformCount} platforms", 
+                totalCount, request.Platforms.Count);
 
-        // Track usage - one credit per platform searched
-        await TrackPlatformUsageAsync(user, userAccountService, request.Platforms.Count, request.Query);
+            // Track usage - one credit per platform searched
+            await TrackPlatformUsageAsync(user, userAccountService, request.Platforms.Count, request.Query);
 
-        return response;
+            _logger.LogInformation(
+                "OmniSearch performance: totalMs={TotalMs}, cacheHit={CacheHit}, platformCount={PlatformCount}, resultCount={ResultCount}",
+                stopwatch.ElapsedMilliseconds,
+                false,
+                request.Platforms.Count,
+                totalCount);
+
+            return response;
+        }
+        finally
+        {
+            cacheLock.Release();
+            _cacheLocks.TryRemove(cacheKey, out _);
+        }
     }
 
     /// <summary>

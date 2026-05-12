@@ -24,6 +24,7 @@ using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
 using FeedbackFunctions.Services.Account;
+using FeedbackFunctions.Services.Twitter;
 using FeedbackFunctions.Utils;
 using SharedDump.Models.Account;
 
@@ -49,6 +50,7 @@ public class FeedbackFunctions
     private readonly IBlueSkyService _blueSkyService;
     private readonly AuthenticationMiddleware _authMiddleware;
     private readonly IUserAccountService _userAccountService;
+    private readonly ITwitterThreadCacheService _twitterThreadCacheService;
 
     /// <summary>
     /// Initializes a new instance of the FeedbackFunctions class
@@ -73,7 +75,8 @@ public class FeedbackFunctions
         ITwitterService twitterService,
         IBlueSkyService blueSkyService,
         AuthenticationMiddleware authMiddleware,
-        IUserAccountService userAccountService)
+        IUserAccountService userAccountService,
+        ITwitterThreadCacheService twitterThreadCacheService)
     {
         _logger = logger;
         _githubService = githubService;
@@ -86,6 +89,7 @@ public class FeedbackFunctions
         _blueSkyService = blueSkyService;
         _authMiddleware = authMiddleware;
         _userAccountService = userAccountService;
+        _twitterThreadCacheService = twitterThreadCacheService;
     }
 
     /// <summary>
@@ -632,6 +636,7 @@ public class FeedbackFunctions
     public async Task<HttpResponseData> GetTwitterFeedback(
         [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequestData req)
     {
+        var stopwatch = Stopwatch.StartNew();
         _logger.LogInformation("Processing Twitter/X feedback request");
         
         // Authenticate the request
@@ -662,6 +667,7 @@ public class FeedbackFunctions
             
         var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
         var tweetUrlOrId = queryParams["tweet"];
+        var forceRefresh = bool.TryParse(queryParams["forceRefresh"], out var parsedForceRefresh) && parsedForceRefresh;
         if (string.IsNullOrWhiteSpace(tweetUrlOrId))
         {
             var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
@@ -670,7 +676,11 @@ public class FeedbackFunctions
         }
         try
         {
-            var result = await _twitterService.GetTwitterThreadAsync(tweetUrlOrId);
+            var cachedResult = await _twitterThreadCacheService.GetThreadAsync(
+                tweetUrlOrId,
+                () => _twitterService.GetTwitterThreadAsync(tweetUrlOrId),
+                forceRefresh);
+            var result = cachedResult.Response;
             if (result == null)
             {
                 var notFound = req.CreateResponse(HttpStatusCode.NotFound);
@@ -683,12 +693,21 @@ public class FeedbackFunctions
             
             // Track usage on successful completion
             await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, tweetUrlOrId);
+
+            _logger.LogInformation(
+                "GetTwitterFeedback performance: totalMs={TotalMs}, cacheHit={CacheHit}, forceRefresh={ForceRefresh}, cacheKey={CacheKey}, mayBeIncomplete={MayBeIncomplete}, itemCount={ItemCount}",
+                stopwatch.ElapsedMilliseconds,
+                cachedResult.CacheHit,
+                forceRefresh,
+                cachedResult.CacheKey,
+                result.MayBeIncomplete,
+                result.Items?.Count ?? 0);
             
             return response;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing Twitter feedback request");
+            _logger.LogError(ex, "Error processing Twitter feedback request after {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
             var response = req.CreateResponse(HttpStatusCode.InternalServerError);
             await response.WriteStringAsync("An error occurred processing the request");
             return response;
@@ -1013,9 +1032,18 @@ public class FeedbackFunctions
 
     private async Task<object> GetTwitterDataForAnalysis(string url)
     {
-        var result = await _twitterService.GetTwitterThreadAsync(url);
+        var cachedResult = await _twitterThreadCacheService.GetThreadAsync(
+            url,
+            () => _twitterService.GetTwitterThreadAsync(url));
+        var result = cachedResult.Response;
         if (result == null)
             throw new InvalidOperationException("Could not fetch Twitter/X feedback");
+
+        _logger.LogInformation(
+            "AutoAnalyze Twitter cache usage: cacheHit={CacheHit}, cacheKey={CacheKey}, itemCount={ItemCount}",
+            cachedResult.CacheHit,
+            cachedResult.CacheKey,
+            result.Items?.Count ?? 0);
 
         return result;
     }
