@@ -90,6 +90,7 @@ if (useMocks)
     builder.Services.AddScoped<ITwitterService, MockTwitterService>();
     builder.Services.AddScoped<IBlueSkyService, MockBlueSkyService>();
     builder.Services.AddScoped<IEmailService, MockEmailService>();
+    builder.Services.AddScoped<IFeatureGateService, FeatureGateService>();
 }
 else
 {
@@ -268,6 +269,7 @@ void RegisterStorageServices(IServiceCollection services)
     services.AddSingleton<FeedbackStorageClients>();
     services.AddSingleton<ITableInitializationService, TableInitializationService>();
     services.AddSingleton<IReportStorageService, ReportStorageService>();
+    services.AddScoped<IFeatureGateService, FeatureGateService>();
 }
 
 void RegisterAccountServices(IServiceCollection services)

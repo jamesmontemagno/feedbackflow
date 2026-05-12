@@ -82,6 +82,11 @@
       "CacheTTL": "00:05:00",
       "MaxConcurrencyPerPlatform": "4"
     },
+    "Features": {
+      "X": {
+        "Enabled": false
+      }
+    },
     "WebUrl": "https://www.feedbackflow.app"
   }
 }
