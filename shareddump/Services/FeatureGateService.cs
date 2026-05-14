@@ -24,11 +24,11 @@ public class FeatureGateService : IFeatureGateService
         }
     }
 
-    public bool IsTwitterDisabledOnSearchPage
+    public bool IsXDisabledOnSearchPage
     {
         get
         {
-            var value = _configuration["Features:Twitter:DisableOnSearchPage"];
+            var value = _configuration["Features:X:DisableOnSearchPage"];
             return bool.TryParse(value, out var result) && result;
         }
     }

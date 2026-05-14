@@ -11,7 +11,7 @@ public interface IFeatureGateService
     bool IsXEnabled { get; }
 
     /// <summary>
-    /// Checks if Twitter should be disabled on the omni search page.
+    /// Checks if X/Twitter should be disabled on the omni search page.
     /// </summary>
-    bool IsTwitterDisabledOnSearchPage { get; }
+    bool IsXDisabledOnSearchPage { get; }
 }
