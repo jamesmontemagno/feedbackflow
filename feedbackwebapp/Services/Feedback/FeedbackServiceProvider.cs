@@ -1,3 +1,9 @@
+    public IMastodonFeedbackService CreateMastodonService(string statusUrlOrQuery, string instance, FeedbackStatusUpdate? onStatusUpdate = null)
+    {
+        return _useMocks
+            ? new MockMastodonFeedbackService(_http, _configuration, _authHeaderService)
+            : new MastodonFeedbackService(_http, _configuration, _authHeaderService);
+    }
 using FeedbackWebApp.Services.Interfaces;
 using FeedbackWebApp.Services.Mock;
 using FeedbackWebApp.Services.Authentication;
@@ -146,6 +152,13 @@ public class FeedbackServiceProvider
         // Dev.to or Microsoft DevBlogs URLs
         if (UrlParsing.IsDevBlogsUrl(url))
             return CreateDevBlogsService(url);
+
+        // Mastodon URLs
+        if (SharedDump.Utils.UrlParsing.IsMastodonUrl(url))
+        {
+            var instance = SharedDump.Utils.UrlParsing.ExtractMastodonInstance(url) ?? "mastodon.social";
+            return CreateMastodonService(url, instance);
+        }
 
         // If no specific service matches, treat it as a manual input
         return CreateManualService(url);

@@ -90,9 +90,18 @@ if (useMocks)
     builder.Services.AddScoped<ITwitterService, MockTwitterService>();
     builder.Services.AddScoped<IBlueSkyService, MockBlueSkyService>();
     builder.Services.AddScoped<IEmailService, MockEmailService>();
+
+    // Mastodon mock service registration
+    builder.Services.AddScoped<IMastodonService, MockMastodonService>();
 }
 else
 {
+        builder.Services.AddScoped<IMastodonService>(serviceProvider =>
+        {
+            var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
+            var logger = serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<MastodonServiceAdapter>>();
+            return new MastodonServiceAdapter(httpClientFactory.CreateClient("Mastodon"), logger);
+        });
     builder.Services.AddScoped<IGitHubService>(serviceProvider =>
     {
         var configuration = GetConfig(serviceProvider);

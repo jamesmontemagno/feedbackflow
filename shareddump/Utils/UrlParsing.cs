@@ -1,3 +1,36 @@
+    public static bool IsMastodonUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return false;
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return false;
+        // Heuristic: must contain /@username/ and end with a numeric ID
+        var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length >= 2 && segments[0].StartsWith("@") && long.TryParse(segments[^1], out _))
+            return true;
+        return false;
+    }
+
+    public static string? ExtractMastodonInstance(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return null;
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return null;
+        return uri.Host;
+    }
+
+    public static string? ExtractMastodonStatusId(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return null;
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return null;
+        var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length >= 2 && long.TryParse(segments[^1], out var id))
+            return segments[^1];
+        return null;
+    }
 namespace SharedDump.Utils;
 
 public static class UrlParsing
