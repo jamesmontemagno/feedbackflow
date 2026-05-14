@@ -23,4 +23,13 @@ public class FeatureGateService : IFeatureGateService
             return bool.TryParse(value, out var result) && result;
         }
     }
+
+    public bool IsTwitterDisabledOnSearchPage
+    {
+        get
+        {
+            var value = _configuration["Features:Twitter:DisableOnSearchPage"];
+            return bool.TryParse(value, out var result) && result;
+        }
+    }
 }
