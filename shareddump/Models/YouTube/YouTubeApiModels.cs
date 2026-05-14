@@ -58,6 +58,18 @@ public class YouTubeVideoResponse
     public required List<YouTubeVideoItem> Items { get; set; }
 }
 
+public class YouTubeVideoItemWithId
+{
+    public required string Id { get; set; }
+    public required YouTubeVideoSnippet Snippet { get; set; }
+}
+
+public class YouTubeVideoResponseWithId
+{
+    public string? NextPageToken { get; set; }
+    public required List<YouTubeVideoItemWithId> Items { get; set; }
+}
+
 public class YouTubeVideoItem
 {
     public required YouTubeVideoSnippet Snippet { get; set; }

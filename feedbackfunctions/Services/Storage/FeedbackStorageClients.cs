@@ -15,6 +15,7 @@ public class FeedbackStorageClients
             blobServiceClient.GetBlobContainerClient(StorageNames.ReportsSummaryContainer),
             blobServiceClient.GetBlobContainerClient(StorageNames.WeeklySummariesContainer),
             blobServiceClient.GetBlobContainerClient(StorageNames.SharedAnalysesContainer),
+            blobServiceClient.GetBlobContainerClient(StorageNames.YouTubeCacheContainer),
             tableServiceClient.GetTableClient(StorageNames.UserAccountsTable),
             tableServiceClient.GetTableClient(StorageNames.UsageRecordsTable),
             tableServiceClient.GetTableClient(StorageNames.ApiKeysTable),
@@ -33,6 +34,7 @@ public class FeedbackStorageClients
         BlobContainerClient reportsSummaryContainer,
         BlobContainerClient weeklySummariesContainer,
         BlobContainerClient sharedAnalysesContainer,
+        BlobContainerClient youtubeCacheContainer,
         TableClient userAccountsTable,
         TableClient usageRecordsTable,
         TableClient apiKeysTable,
@@ -48,6 +50,7 @@ public class FeedbackStorageClients
         ReportsSummaryContainer = reportsSummaryContainer;
         WeeklySummariesContainer = weeklySummariesContainer;
         SharedAnalysesContainer = sharedAnalysesContainer;
+        YouTubeCacheContainer = youtubeCacheContainer;
         UserAccountsTable = userAccountsTable;
         UsageRecordsTable = usageRecordsTable;
         ApiKeysTable = apiKeysTable;
@@ -69,6 +72,8 @@ public class FeedbackStorageClients
     public BlobContainerClient WeeklySummariesContainer { get; }
 
     public BlobContainerClient SharedAnalysesContainer { get; }
+
+    public BlobContainerClient YouTubeCacheContainer { get; }
 
     public TableClient UserAccountsTable { get; }
 
