@@ -51,7 +51,7 @@
                     <i class="bi bi-newspaper text-warning"></i> Hacker News
                 </label>
             </div>
-            @if (isXEnabled)
+            @if (isXEnabled && !disableXOnSearchPage)
             {
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" 
@@ -159,11 +159,19 @@
     private (UserAccount? account, AccountLimits limits)? accountLimits;
     private int currentUsage = 0;
     private int selectedPlatformCount = 0;
+    private bool disableXOnSearchPage = false;
 
     protected override async Task OnInitializedAsync()
     {
         // Check if X/Twitter is enabled
         isXEnabled = FeatureGateService.IsXEnabled;
+
+        // Check if X/Twitter is disabled specifically for the search page
+        disableXOnSearchPage = FeatureGateService.IsXDisabledOnSearchPage;
+        if (disableXOnSearchPage)
+        {
+            EnableTwitter = false;
+        }
 
         // Check if user can access Twitter and get account limits
         var accountService = AccountServiceProvider.GetService();
@@ -195,7 +203,7 @@
         if (EnableYouTube) platforms.Add("youtube");
         if (EnableReddit) platforms.Add("reddit");
         if (EnableHackerNews) platforms.Add("hackernews");
-        if (EnableTwitter && canUseTwitter && isXEnabled) platforms.Add("twitter");
+        if (EnableTwitter && canUseTwitter && isXEnabled && !disableXOnSearchPage) platforms.Add("twitter");
         if (EnableBlueSky) platforms.Add("bluesky");
         return platforms;
     }
@@ -237,12 +245,16 @@
             if (bool.TryParse(hn, out var enableHN))
                 EnableHackerNews = enableHN;
 
-            // Only load Twitter preference if X is enabled
-            if (isXEnabled)
+            // Only load Twitter preference if X is enabled for this page.
+            if (isXEnabled && !disableXOnSearchPage)
             {
                 var twitter = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "omniSearch_twitter");
                 if (bool.TryParse(twitter, out var enableTwitter))
                     EnableTwitter = enableTwitter;
+            }
+            else
+            {
+                EnableTwitter = false;
             }
 
             var bluesky = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "omniSearch_bluesky");

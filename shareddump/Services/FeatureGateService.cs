@@ -23,4 +23,13 @@ public class FeatureGateService : IFeatureGateService
             return bool.TryParse(value, out var result) && result;
         }
     }
+
+    public bool IsXDisabledOnSearchPage
+    {
+        get
+        {
+            var value = _configuration["Features:X:DisableOnSearchPage"];
+            return bool.TryParse(value, out var result) && result;
+        }
+    }
 }
