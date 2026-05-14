@@ -103,81 +103,116 @@ public class YouTubeService : IYouTubeService
 
     public async Task<YouTubeOutputVideo> ProcessVideo(string videoId)
     {
-        var video = new YouTubeOutputVideo
-        {
-            Id = videoId,
-            Url = $"https://www.youtube.com/watch?v={videoId}"
-        };
+        var results = await ProcessVideosBatch([videoId]);
+        return results.Count > 0 ? results[0] : new YouTubeOutputVideo { Id = videoId, Url = $"https://www.youtube.com/watch?v={videoId}" };
+    }
 
-        try
-        {
-            var videoUrl = $"https://youtube.googleapis.com/youtube/v3/videos?part=snippet&id={videoId}&key={_apiKey}";
-            var videoResponse = await _client.GetFromJsonAsync<YouTubeVideoResponse>(videoUrl, YouTubeJsonContext.Default.YouTubeVideoResponse);
+    public async Task<List<YouTubeOutputVideo>> ProcessVideosBatch(IEnumerable<string> videoIds)
+    {
+        var idList = videoIds.ToList();
+        if (idList.Count == 0)
+            return [];
 
-            if (videoResponse?.Items.Count > 0)
+        // Batch-fetch all video metadata — YouTube supports up to 50 IDs per request (1 quota unit vs N units)
+        var titleLookup = new Dictionary<string, (string title, DateTime uploadDate)>();
+        foreach (var chunk in idList.Chunk(50))
+        {
+            var ids = string.Join(",", chunk);
+            var videoUrl = $"https://youtube.googleapis.com/youtube/v3/videos?part=snippet&id={ids}&key={_apiKey}";
+            try
             {
-                var videoInfo = videoResponse.Items[0];
-                video.Title = videoInfo.Snippet.Title;
-                video.UploadDate = videoInfo.Snippet.PublishedAt;
+                var videoResponse = await _client.GetFromJsonAsync<YouTubeVideoResponseWithId>(videoUrl, YouTubeJsonContext.Default.YouTubeVideoResponseWithId);
+                if (videoResponse?.Items is not null)
+                {
+                    foreach (var item in videoResponse.Items)
+                        titleLookup[item.Id] = (item.Snippet.Title, item.Snippet.PublishedAt);
+                }
             }
-
-            var commentsList = new List<YouTubeOutputComment>();
-            string? nextPageToken = null;
-
-            do
+            catch (Exception ex)
             {
-                var commentsUrl = $"https://youtube.googleapis.com/youtube/v3/commentThreads?part=snippet,replies&maxResults=100&videoId={videoId}&key={_apiKey}";
-                if (nextPageToken is not null)
+                Console.WriteLine($"An error occurred fetching video metadata batch: {ex.Message}");
+            }
+        }
+
+        // Fetch comments for all videos in parallel, capped at 3 concurrent to respect rate limits
+        var semaphore = new SemaphoreSlim(3, 3);
+        var tasks = idList.Select(async videoId =>
+        {
+            await semaphore.WaitAsync();
+            try
+            {
+                var video = new YouTubeOutputVideo
                 {
-                    commentsUrl += $"&pageToken={nextPageToken}";
+                    Id = videoId,
+                    Url = $"https://www.youtube.com/watch?v={videoId}"
+                };
+
+                if (titleLookup.TryGetValue(videoId, out var meta))
+                {
+                    video.Title = meta.title;
+                    video.UploadDate = meta.uploadDate;
                 }
 
-                var commentResponse = await _client.GetFromJsonAsync<YouTubeCommentResponse>(commentsUrl, YouTubeJsonContext.Default.YouTubeCommentResponse);
+                var commentsList = new List<YouTubeOutputComment>();
+                string? nextPageToken = null;
 
-                if (commentResponse?.Items is null)
+                do
                 {
-                    break;
-                }
+                    var commentsUrl = $"https://youtube.googleapis.com/youtube/v3/commentThreads?part=snippet,replies&maxResults=100&videoId={videoId}&key={_apiKey}";
+                    if (nextPageToken is not null)
+                        commentsUrl += $"&pageToken={nextPageToken}";
 
-                foreach (var item in commentResponse.Items)
-                {
-                    var comment = item.Snippet.TopLevelComment;
-                    commentsList.Add(new YouTubeOutputComment
+                    try
                     {
-                        Id = comment.Id,
-                        Author = comment.Snippet.AuthorDisplayName,
-                        Text = comment.Snippet.TextDisplay,
-                        PublishedAt = comment.Snippet.PublishedAt
-                    });
+                        var commentResponse = await _client.GetFromJsonAsync<YouTubeCommentResponse>(commentsUrl, YouTubeJsonContext.Default.YouTubeCommentResponse);
 
-                    if (item.Replies.Comments.Count > 0)
-                    {
-                        foreach (var reply in item.Replies.Comments)
+                        if (commentResponse?.Items is null)
+                            break;
+
+                        foreach (var item in commentResponse.Items)
                         {
+                            var comment = item.Snippet.TopLevelComment;
                             commentsList.Add(new YouTubeOutputComment
                             {
-                                Id = reply.Id,
-                                Author = reply.Snippet.AuthorDisplayName,
-                                Text = reply.Snippet.TextDisplay,
-                                PublishedAt = reply.Snippet.PublishedAt,
-                                ParentId = item.Id
+                                Id = comment.Id,
+                                Author = comment.Snippet.AuthorDisplayName,
+                                Text = comment.Snippet.TextDisplay,
+                                PublishedAt = comment.Snippet.PublishedAt
                             });
+
+                            foreach (var reply in item.Replies.Comments)
+                            {
+                                commentsList.Add(new YouTubeOutputComment
+                                {
+                                    Id = reply.Id,
+                                    Author = reply.Snippet.AuthorDisplayName,
+                                    Text = reply.Snippet.TextDisplay,
+                                    PublishedAt = reply.Snippet.PublishedAt,
+                                    ParentId = item.Id
+                                });
+                            }
                         }
+
+                        nextPageToken = commentResponse.NextPageToken;
                     }
-                }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"An error occurred fetching comments for {videoId}: {ex.Message}");
+                        break;
+                    }
+                } while (!string.IsNullOrEmpty(nextPageToken));
 
-                nextPageToken = commentResponse.NextPageToken;
+                video.Comments = commentsList;
+                return video;
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        });
 
-            } while (!string.IsNullOrEmpty(nextPageToken));
-
-            video.Comments = commentsList;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"An error occurred: {ex.Message}");
-        }
-
-        return video;
+        var results = await Task.WhenAll(tasks);
+        return [.. results];
     }
 
     public async Task<List<YouTubeOutputVideo>> SearchVideos(string topic, string tag, DateTimeOffset cutoffDate)
@@ -239,13 +274,7 @@ public class YouTubeService : IYouTubeService
             }
         } while (!string.IsNullOrEmpty(pageToken));
 
-        var videos = new List<YouTubeOutputVideo>();
-        foreach (var videoId in videoIds)
-        {
-            var video = await ProcessVideo(videoId);
-            videos.Add(video);
-        }
-
+        var videos = await ProcessVideosBatch(videoIds);
         return videos;
     }
 

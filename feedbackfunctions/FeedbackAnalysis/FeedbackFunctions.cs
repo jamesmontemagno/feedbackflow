@@ -2,6 +2,7 @@ using System.Net;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
@@ -24,6 +25,7 @@ using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
 using FeedbackFunctions.Services.Account;
+using FeedbackFunctions.Services.Storage;
 using FeedbackFunctions.Services.Twitter;
 using FeedbackFunctions.Utils;
 using SharedDump.Models.Account;
@@ -52,6 +54,8 @@ public class FeedbackFunctions
     private readonly IUserAccountService _userAccountService;
     private readonly ITwitterThreadCacheService _twitterThreadCacheService;
     private readonly IFeatureGateService _featureGateService;
+    private readonly BlobContainerClient _youtubeCacheContainer;
+    private static readonly TimeSpan _youtubeVideoCacheTtl = TimeSpan.FromHours(1);
 
     /// <summary>
     /// Initializes a new instance of the FeedbackFunctions class
@@ -78,7 +82,8 @@ public class FeedbackFunctions
         AuthenticationMiddleware authMiddleware,
         IUserAccountService userAccountService,
         ITwitterThreadCacheService twitterThreadCacheService,
-        IFeatureGateService featureGateService)
+        IFeatureGateService featureGateService,
+        FeedbackStorageClients storageClients)
     {
         _logger = logger;
         _githubService = githubService;
@@ -93,6 +98,7 @@ public class FeedbackFunctions
         _userAccountService = userAccountService;
         _twitterThreadCacheService = twitterThreadCacheService;
         _featureGateService = featureGateService;
+        _youtubeCacheContainer = storageClients.YouTubeCacheContainer;
     }
 
     /// <summary>
@@ -370,13 +376,40 @@ public class FeedbackFunctions
                 }
             }
 
+            // Check blob cache for each video — only fetch uncached ones from the API
+            await _youtubeCacheContainer.CreateIfNotExistsAsync();
             var outputVideos = new List<YouTubeOutputVideo>();
+            var uncachedIds = new List<string>();
 
             foreach (var videoId in allVideoIds)
             {
-                var video = await _ytService.ProcessVideo(videoId);
-                outputVideos.Add(video);
+                var cached = await TryGetCachedVideoAsync(videoId);
+                if (cached is not null)
+                {
+                    _logger.LogInformation("YouTube cache hit for video {VideoId}", videoId);
+                    outputVideos.Add(cached);
+                }
+                else
+                {
+                    uncachedIds.Add(videoId);
+                }
             }
+
+            if (uncachedIds.Count > 0)
+            {
+                var freshVideos = await _ytService.ProcessVideosBatch(uncachedIds);
+                foreach (var video in freshVideos)
+                {
+                    await SetCachedVideoAsync(video);
+                }
+                outputVideos.AddRange(freshVideos);
+            }
+
+            // Preserve original order
+            outputVideos = [.. allVideoIds
+                .Select(id => outputVideos.FirstOrDefault(v => v.Id == id))
+                .Where(v => v is not null)
+                .Select(v => v!)];
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(outputVideos);
@@ -1231,6 +1264,49 @@ public class FeedbackFunctions
             {
                 AppendCommentsToText(result, comment.Replies, depth + 1);
             }
+        }
+    }
+
+    #endregion
+
+    #region YouTube Cache Helpers
+
+    private sealed record YouTubeCacheEntry(YouTubeOutputVideo Video, DateTimeOffset CachedAt);
+
+    private async Task<YouTubeOutputVideo?> TryGetCachedVideoAsync(string videoId)
+    {
+        try
+        {
+            var blobClient = _youtubeCacheContainer.GetBlobClient($"{videoId}.json");
+            if (!await blobClient.ExistsAsync())
+                return null;
+
+            var download = await blobClient.DownloadContentAsync();
+            var entry = JsonSerializer.Deserialize<YouTubeCacheEntry>(download.Value.Content.ToStream());
+            if (entry is null || DateTimeOffset.UtcNow - entry.CachedAt > _youtubeVideoCacheTtl)
+                return null;
+
+            return entry.Video;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read YouTube cache for video {VideoId}", videoId);
+            return null;
+        }
+    }
+
+    private async Task SetCachedVideoAsync(YouTubeOutputVideo video)
+    {
+        try
+        {
+            var entry = new YouTubeCacheEntry(video, DateTimeOffset.UtcNow);
+            var json = JsonSerializer.SerializeToUtf8Bytes(entry);
+            var blobClient = _youtubeCacheContainer.GetBlobClient($"{video.Id}.json");
+            await blobClient.UploadAsync(new BinaryData(json), overwrite: true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to write YouTube cache for video {VideoId}", video.Id);
         }
     }
 

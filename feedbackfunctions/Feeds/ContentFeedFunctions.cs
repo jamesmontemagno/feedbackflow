@@ -1,4 +1,6 @@
 using System.Net;
+using System.Text.Json;
+using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
@@ -12,6 +14,7 @@ using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
 using FeedbackFunctions.Services.Account;
+using FeedbackFunctions.Services.Storage;
 using SharedDump.Models.Account;
 
 namespace FeedbackFunctions;
@@ -32,7 +35,9 @@ public class ContentFeedFunctions
     private readonly IRedditService _redditService;
     private readonly AuthenticationMiddleware _authMiddleware;
     private readonly IUserAccountService _userAccountService;
+    private readonly BlobContainerClient _youtubeCacheContainer;
     private static readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan _youtubeSearchCacheTtl = TimeSpan.FromMinutes(30);
 
     /// <summary>
     /// Initializes a new instance of the ContentFeedFunctions class
@@ -41,14 +46,14 @@ public class ContentFeedFunctions
     /// <param name="hackerNewsService">HackerNews service for story operations</param>
     /// <param name="youtubeService">YouTube service for video operations</param>
     /// <param name="redditService">Reddit service for thread operations</param>
-    /// <param name="authMiddleware">Authentication middleware for request validation</param>
     public ContentFeedFunctions(
         ILogger<ContentFeedFunctions> logger,
         IHackerNewsService hackerNewsService,
         IYouTubeService youtubeService,
         IRedditService redditService,
         AuthenticationMiddleware authMiddleware,
-        IUserAccountService userAccountService)
+        IUserAccountService userAccountService,
+        FeedbackStorageClients storageClients)
     {
         _logger = logger;
         _hnService = hackerNewsService;
@@ -56,6 +61,7 @@ public class ContentFeedFunctions
         _redditService = redditService;
         _authMiddleware = authMiddleware;
         _userAccountService = userAccountService;
+        _youtubeCacheContainer = storageClients.YouTubeCacheContainer;
     }
 
     /// <summary>
@@ -112,7 +118,24 @@ public class ContentFeedFunctions
             }
 
             var cutoffDate = DateTimeOffset.UtcNow.AddDays(-days);
-            var videos = await _ytService.SearchVideosBasicInfo(topic ?? "", tag ?? "", cutoffDate); // Changed method name
+
+            // Check blob cache for this search query before hitting the YouTube API
+            await _youtubeCacheContainer.CreateIfNotExistsAsync();
+            var cacheKey = $"search-{SanitizeCacheKey(topic ?? "")}-{SanitizeCacheKey(tag ?? "")}-{days}d.json";
+            var cachedVideos = await TryGetCachedSearchResultAsync(cacheKey);
+            if (cachedVideos is not null)
+            {
+                _logger.LogInformation("YouTube search cache hit for key {CacheKey}", cacheKey);
+                var cachedResponse = req.CreateResponse(HttpStatusCode.OK);
+                await cachedResponse.WriteAsJsonAsync(cachedVideos);
+                await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, $"Topic: {topic ?? tag}, Videos: {cachedVideos.Count} (cached)");
+                return cachedResponse;
+            }
+
+            var videos = await _ytService.SearchVideosBasicInfo(topic ?? "", tag ?? "", cutoffDate);
+
+            // Store fresh results in cache for next request
+            await SetCachedSearchResultAsync(cacheKey, videos);
             
             var response = req.CreateResponse(HttpStatusCode.OK);
             await response.WriteAsJsonAsync(videos);
@@ -264,4 +287,46 @@ public class ContentFeedFunctions
             return string.Empty;
         }
     }
+
+    private sealed record YouTubeSearchCacheEntry(List<YouTubeOutputVideo> Videos, DateTimeOffset CachedAt);
+
+    private async Task<List<YouTubeOutputVideo>?> TryGetCachedSearchResultAsync(string cacheKey)
+    {
+        try
+        {
+            var blobClient = _youtubeCacheContainer.GetBlobClient(cacheKey);
+            if (!await blobClient.ExistsAsync())
+                return null;
+
+            var download = await blobClient.DownloadContentAsync();
+            var entry = JsonSerializer.Deserialize<YouTubeSearchCacheEntry>(download.Value.Content.ToStream());
+            if (entry is null || DateTimeOffset.UtcNow - entry.CachedAt > _youtubeSearchCacheTtl)
+                return null;
+
+            return entry.Videos;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to read YouTube search cache for key {CacheKey}", cacheKey);
+            return null;
+        }
+    }
+
+    private async Task SetCachedSearchResultAsync(string cacheKey, List<YouTubeOutputVideo> videos)
+    {
+        try
+        {
+            var entry = new YouTubeSearchCacheEntry(videos, DateTimeOffset.UtcNow);
+            var json = JsonSerializer.SerializeToUtf8Bytes(entry);
+            var blobClient = _youtubeCacheContainer.GetBlobClient(cacheKey);
+            await blobClient.UploadAsync(new BinaryData(json), overwrite: true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to write YouTube search cache for key {CacheKey}", cacheKey);
+        }
+    }
+
+    private static string SanitizeCacheKey(string value) =>
+        string.Concat(value.ToLowerInvariant().Where(c => char.IsLetterOrDigit(c) || c == '-').Take(50));
 }

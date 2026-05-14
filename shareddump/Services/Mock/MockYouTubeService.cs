@@ -42,27 +42,35 @@ public class MockYouTubeService : IYouTubeService
 
     public async Task<YouTubeOutputVideo> ProcessVideo(string videoId)
     {
-        // Simulate processing delay
-        await Task.Delay(800);
+        var results = await ProcessVideosBatch([videoId]);
+        return results.Count > 0 ? results[0] : new YouTubeOutputVideo { Id = videoId, Url = $"https://www.youtube.com/watch?v={videoId}" };
+    }
 
-        // Generate mock video data based on the video ID
-        var baseDate = DateTime.UtcNow.AddDays(-Random.Shared.Next(1, 30));
-        
-        return new YouTubeOutputVideo
+    public async Task<List<YouTubeOutputVideo>> ProcessVideosBatch(IEnumerable<string> videoIds)
+    {
+        await Task.Delay(300); // Simulate batch network delay
+
+        var results = new List<YouTubeOutputVideo>();
+        foreach (var videoId in videoIds)
         {
-            Id = videoId,
-            Title = $"Mock Video: {GetMockTitle(videoId)}",
-            Url = $"https://www.youtube.com/watch?v={videoId}",
-            UploadDate = baseDate,
-            PublishedAt = baseDate,
-            ChannelId = "mockChannelId123",
-            ChannelTitle = "Mock Developer Channel",
-            Description = GetMockDescription(videoId),
-            ViewCount = Random.Shared.Next(1000, 100000),
-            LikeCount = Random.Shared.Next(50, 5000),
-            CommentCount = Random.Shared.Next(10, 500),
-            Comments = GenerateMockComments(videoId, baseDate)
-        };
+            var baseDate = DateTime.UtcNow.AddDays(-Random.Shared.Next(1, 30));
+            results.Add(new YouTubeOutputVideo
+            {
+                Id = videoId,
+                Title = $"Mock Video: {GetMockTitle(videoId)}",
+                Url = $"https://www.youtube.com/watch?v={videoId}",
+                UploadDate = baseDate,
+                PublishedAt = baseDate,
+                ChannelId = "mockChannelId123",
+                ChannelTitle = "Mock Developer Channel",
+                Description = GetMockDescription(videoId),
+                ViewCount = Random.Shared.Next(1000, 100000),
+                LikeCount = Random.Shared.Next(50, 5000),
+                CommentCount = Random.Shared.Next(10, 500),
+                Comments = GenerateMockComments(videoId, baseDate)
+            });
+        }
+        return results;
     }
 
     public async Task<List<YouTubeOutputVideo>> SearchVideos(string topic, string tag, DateTimeOffset cutoffDate)

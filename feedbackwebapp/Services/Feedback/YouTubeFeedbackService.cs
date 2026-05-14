@@ -111,7 +111,6 @@ public class YouTubeFeedbackService : FeedbackService, IYouTubeFeedbackService
             var videoComments = $"Video: {video.Title}\n\n" + string.Join("\n\n", video.Comments.Select(c => $"Comment by {c.Author}: {c.Text}"));
 
             UpdateStatus(FeedbackProcessStatus.AnalyzingComments, $"Analyzing {video.Comments.Count} comments for video: {video.Title}...");
-            await Task.Delay(1500); // Simulate some processing delay
             try
             {
                 var videoMarkdown = await AnalyzeCommentsInternal($"YouTube", videoComments, video.Comments.Count);
