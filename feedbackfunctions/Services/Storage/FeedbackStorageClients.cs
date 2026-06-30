@@ -16,6 +16,7 @@ public class FeedbackStorageClients
             blobServiceClient.GetBlobContainerClient(StorageNames.WeeklySummariesContainer),
             blobServiceClient.GetBlobContainerClient(StorageNames.SharedAnalysesContainer),
             blobServiceClient.GetBlobContainerClient(StorageNames.RedditReportDataContainer),
+            blobServiceClient.GetBlobContainerClient(StorageNames.RedditExportsContainer),
             tableServiceClient.GetTableClient(StorageNames.UserAccountsTable),
             tableServiceClient.GetTableClient(StorageNames.UsageRecordsTable),
             tableServiceClient.GetTableClient(StorageNames.ApiKeysTable),
@@ -35,6 +36,7 @@ public class FeedbackStorageClients
         BlobContainerClient weeklySummariesContainer,
         BlobContainerClient sharedAnalysesContainer,
         BlobContainerClient redditReportDataContainer,
+        BlobContainerClient redditExportsContainer,
         TableClient userAccountsTable,
         TableClient usageRecordsTable,
         TableClient apiKeysTable,
@@ -51,6 +53,7 @@ public class FeedbackStorageClients
         WeeklySummariesContainer = weeklySummariesContainer;
         SharedAnalysesContainer = sharedAnalysesContainer;
         RedditReportDataContainer = redditReportDataContainer;
+        RedditExportsContainer = redditExportsContainer;
         UserAccountsTable = userAccountsTable;
         UsageRecordsTable = usageRecordsTable;
         ApiKeysTable = apiKeysTable;
@@ -74,6 +77,8 @@ public class FeedbackStorageClients
     public BlobContainerClient SharedAnalysesContainer { get; }
 
     public BlobContainerClient RedditReportDataContainer { get; }
+
+    public BlobContainerClient RedditExportsContainer { get; }
 
     public TableClient UserAccountsTable { get; }
 

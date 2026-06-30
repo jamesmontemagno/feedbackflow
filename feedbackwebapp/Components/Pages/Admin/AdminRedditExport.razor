@@ -1,0 +1,572 @@
+@page "/admin/reddit-export"
+@using FeedbackWebApp.Services
+@using FeedbackWebApp.Services.Authentication
+@using FeedbackWebApp.Services.Account
+@using SharedDump.Models.Reports
+@using SharedDump.Models.Account
+@using Microsoft.JSInterop
+@inject FeedbackWebApp.Services.IRedditExportService RedditExportService
+@inject IAuthenticationService AuthService
+@inject IAccountServiceProvider AccountServiceProvider
+@inject IToastService ToastService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+
+@using FeedbackWebApp.Components.Admin
+@namespace FeedbackWebApp.Components.Pages.Admin
+
+<PageTitle>Reddit Export - FeedbackFlow</PageTitle>
+
+<div class="container my-4">
+    <div class="mb-3">
+        <a href="/admin" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Admin Home
+        </a>
+    </div>
+
+    @if (isLoading)
+    {
+        <AdminLoadingSpinner LoadingTitle="Reddit Export"
+                           LoadingMessage="Loading the subreddit export portal..."
+                           SpinnerIcon="bi-reddit" />
+    }
+    else if (!isAdmin)
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-shield-exclamation me-2"></i>
+            <strong>Access Denied:</strong> This page is only available to administrators.
+        </div>
+    }
+    else
+    {
+        <div class="d-flex justify-content-between align-items-center mb-4 admin-header">
+            <div>
+                <h1 class="feedbackflow-title mb-2">
+                    <i class="bi bi-reddit me-2"></i>
+                    Reddit Export
+                </h1>
+                <p class="text-muted mb-0">Export all threads and comments for a subreddit over a date range (max 7 days)</p>
+            </div>
+            <button class="btn btn-outline-primary" @onclick="LoadExports" disabled="@(isRefreshing || isGenerating)">
+                <i class="bi bi-arrow-clockwise me-2"></i>
+                Refresh
+            </button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                @errorMessage
+            </div>
+        }
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-plus-circle me-1"></i>
+                New Export
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12 col-lg-6">
+                        <label class="form-label">Subreddit <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">r/</span>
+                            <input type="text" class="form-control" @bind="subreddit" placeholder="e.g., dotnet" disabled="@isGenerating" />
+                        </div>
+                        <div class="form-text">Enter the subreddit name without the "r/" prefix</div>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <label class="form-label">Time zone</label>
+                        <select class="form-select" @bind="selectedTimeZoneId" disabled="@isGenerating">
+                            @foreach (var tz in timeZones)
+                            {
+                                <option value="@tz.Id">@tz.DisplayName</option>
+                            }
+                        </select>
+                        <div class="form-text">Start and end times are interpreted in this time zone</div>
+                    </div>
+                </div>
+
+                <div class="quick-ranges mt-3">
+                    <span class="form-label mb-0 me-2">Quick range</span>
+                    <div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="Quick date ranges">
+                        @foreach (var preset in QuickRanges)
+                        {
+                            var isActive = activeQuickRangeHours == preset.Hours;
+                            <button type="button"
+                                    class="btn @(isActive ? "btn-primary" : "btn-outline-primary")"
+                                    disabled="@isGenerating"
+                                    @onclick="() => ApplyQuickRange(preset.Hours)">
+                                @preset.Label
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <div class="row g-3 align-items-end mt-1">
+                    <div class="col-12 col-sm-6 col-lg-4">
+                        <label class="form-label">Start <span class="text-danger">*</span></label>
+                        <input type="datetime-local" class="form-control" @bind="startDate" @bind:after="OnRangeEdited" disabled="@isGenerating" />
+                    </div>
+                    <div class="col-12 col-sm-6 col-lg-4">
+                        <label class="form-label">End <span class="text-danger">*</span></label>
+                        <input type="datetime-local" class="form-control" @bind="endDate" @bind:after="OnRangeEdited" disabled="@isGenerating" />
+                    </div>
+                    <div class="col-12 col-sm-6 col-lg-2">
+                        <label class="form-label">Max threads</label>
+                        <input type="number" class="form-control" @bind="maxThreads" min="1" max="500" disabled="@isGenerating" />
+                    </div>
+                    <div class="col-12 col-sm-6 col-lg-2">
+                        <button class="btn btn-primary w-100" @onclick="GenerateExport" disabled="@isGenerating">
+                            @if (isGenerating)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span>Generating…</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-download me-2"></i>
+                                <span>Generate</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(validationMessage))
+                {
+                    <div class="alert alert-warning mt-3 mb-0" role="alert">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        @validationMessage
+                    </div>
+                }
+
+                @if (isGenerating)
+                {
+                    <div class="text-muted small mt-2">
+                        <i class="bi bi-hourglass-split me-1"></i>
+                        Fetching threads &amp; comments — this can take a little while.
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-clock-history me-1"></i>
+                Export History
+            </div>
+            <div class="card-body">
+                @if (isRefreshing)
+                {
+                    <div class="text-center py-3">
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        Loading exports…
+                    </div>
+                }
+                else if (exports.Count == 0)
+                {
+                    <div class="alert alert-info mb-0" role="alert">
+                        <i class="bi bi-info-circle me-2"></i>
+                        No exports yet. Create your first export above.
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle admin-reddit-export-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Subreddit</th>
+                                    <th scope="col" class="d-none d-md-table-cell">Range</th>
+                                    <th scope="col" class="d-none d-lg-table-cell">Generated</th>
+                                    <th scope="col" class="text-center d-none d-sm-table-cell">Threads</th>
+                                    <th scope="col" class="text-center d-none d-sm-table-cell">Comments</th>
+                                    <th scope="col" class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var export in exports)
+                                {
+                                    <tr @key="export.Id">
+                                        <td>
+                                            <div class="item-name">
+                                                <i class="bi bi-reddit me-1"></i>
+                                                r/@export.Subreddit
+                                            </div>
+                                        </td>
+                                        <td class="d-none d-md-table-cell">
+                                            <span class="item-date">
+                                                <i class="bi bi-calendar-range me-1"></i>
+                                                @FormatInZone(export.StartDate) &ndash; @FormatInZone(export.EndDate)
+                                            </span>
+                                        </td>
+                                        <td class="d-none d-lg-table-cell">
+                                            <span class="item-date">
+                                                <i class="bi bi-clock me-1"></i>
+                                                @export.GeneratedAt.ToLocalTime().ToString("g")
+                                            </span>
+                                        </td>
+                                        <td class="text-center d-none d-sm-table-cell">
+                                            @export.ThreadCount
+                                            @if (export.ThreadLimitReached)
+                                            {
+                                                <i class="bi bi-exclamation-circle text-warning ms-1" title="Thread cap was reached; more threads may exist in this window."></i>
+                                            }
+                                        </td>
+                                        <td class="text-center d-none d-sm-table-cell">@export.CommentCount</td>
+                                        <td class="text-center">
+                                            <div class="action-buttons">
+                                                <button class="btn btn-sm btn-outline-primary"
+                                                        title="Download JSON"
+                                                        disabled="@(downloadingId == export.Id)"
+                                                        @onclick="() => DownloadExport(export)">
+                                                    @if (downloadingId == export.Id)
+                                                    {
+                                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="bi bi-download"></i>
+                                                    }
+                                                    <span class="ms-1 d-none d-md-inline">Download</span>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger"
+                                                        title="Delete export"
+                                                        disabled="@(deletingId == export.Id)"
+                                                        @onclick="() => DeleteExport(export)">
+                                                    @if (deletingId == export.Id)
+                                                    {
+                                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="bi bi-trash"></i>
+                                                    }
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private const int MaxWindowDays = 7;
+
+    private bool isLoading = true;
+    private bool isAdmin = false;
+    private bool isRefreshing = false;
+    private bool isGenerating = false;
+    private string errorMessage = string.Empty;
+    private string validationMessage = string.Empty;
+
+    private string subreddit = string.Empty;
+    private DateTime startDate;
+    private DateTime endDate;
+    private int maxThreads = 200;
+
+    private IReadOnlyList<TimeZoneInfo> timeZones = Array.Empty<TimeZoneInfo>();
+    private string selectedTimeZoneId = TimeZoneInfo.Utc.Id;
+    private int? activeQuickRangeHours = 168;
+
+    private record QuickRangePreset(string Label, int Hours);
+
+    private static readonly QuickRangePreset[] QuickRanges =
+    {
+        new("Last 24 hours", 24),
+        new("Last 48 hours", 48),
+        new("Last 3 days", 72),
+        new("Last 7 days", 168)
+    };
+
+    private List<RedditExportListItem> exports = new();
+    private Guid? downloadingId = null;
+    private Guid? deletingId = null;
+
+    private TimeZoneInfo SelectedTimeZone
+    {
+        get
+        {
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById(selectedTimeZoneId);
+            }
+            catch
+            {
+                return TimeZoneInfo.Utc;
+            }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+
+            timeZones = TimeZoneInfo.GetSystemTimeZones();
+            selectedTimeZoneId = TimeZoneInfo.Local.Id;
+            ApplyQuickRange(168);
+
+            var isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (!isAuthenticated)
+            {
+                Navigation.NavigateTo("/");
+                return;
+            }
+
+            var accountService = AccountServiceProvider.GetService();
+            var accountResult = await accountService.GetUserAccountAndLimitsAsync();
+            if (accountResult.HasValue)
+            {
+                isAdmin = accountResult.Value.account?.Tier == AccountTier.Admin;
+            }
+
+            if (isAdmin)
+            {
+                await LoadExports();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading export portal: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !isAdmin)
+        {
+            return;
+        }
+
+        try
+        {
+            var ianaId = await JSRuntime.InvokeAsync<string>("getBrowserTimeZone");
+            if (string.IsNullOrWhiteSpace(ianaId))
+            {
+                return;
+            }
+
+            string? resolvedId = null;
+            if (timeZones.Any(tz => tz.Id == ianaId))
+            {
+                resolvedId = ianaId;
+            }
+            else if (TimeZoneInfo.TryConvertIanaIdToWindowsId(ianaId, out var windowsId)
+                     && timeZones.Any(tz => tz.Id == windowsId))
+            {
+                resolvedId = windowsId;
+            }
+
+            if (resolvedId is not null && resolvedId != selectedTimeZoneId)
+            {
+                selectedTimeZoneId = resolvedId;
+                if (activeQuickRangeHours is int hours)
+                {
+                    ApplyQuickRange(hours);
+                }
+                StateHasChanged();
+            }
+        }
+        catch
+        {
+            // Time zone detection is best-effort; fall back to the server's local zone.
+        }
+    }
+
+    private void ApplyQuickRange(int hours)
+    {
+        activeQuickRangeHours = hours;
+        var nowInZone = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, SelectedTimeZone).DateTime;
+        // Trim to whole minutes so the datetime-local control shows clean values.
+        nowInZone = new DateTime(nowInZone.Year, nowInZone.Month, nowInZone.Day, nowInZone.Hour, nowInZone.Minute, 0);
+        endDate = nowInZone;
+        startDate = nowInZone.AddHours(-hours);
+    }
+
+    private void OnRangeEdited()
+    {
+        // Manual edits clear the active quick-range highlight.
+        activeQuickRangeHours = null;
+    }
+
+    private string FormatInZone(DateTimeOffset value)
+    {
+        var local = TimeZoneInfo.ConvertTime(value, SelectedTimeZone);
+        return local.ToString("MMM d, HH:mm");
+    }
+
+    private async Task LoadExports()
+    {
+        try
+        {
+            isRefreshing = true;
+            errorMessage = string.Empty;
+            exports = await RedditExportService.GetExportsAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading exports: {ex.Message}";
+        }
+        finally
+        {
+            isRefreshing = false;
+        }
+    }
+
+    private bool Validate()
+    {
+        validationMessage = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(subreddit))
+        {
+            validationMessage = "A subreddit is required.";
+            return false;
+        }
+
+        if (endDate <= startDate)
+        {
+            validationMessage = "The end date must be after the start date.";
+            return false;
+        }
+
+        if ((endDate - startDate).TotalDays > MaxWindowDays)
+        {
+            validationMessage = $"The date range cannot exceed {MaxWindowDays} days.";
+            return false;
+        }
+
+        if (maxThreads < 1 || maxThreads > 500)
+        {
+            validationMessage = "Max threads must be between 1 and 500.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private DateTimeOffset ToUtcOffset(DateTime wallClock)
+    {
+        var unspecified = DateTime.SpecifyKind(wallClock, DateTimeKind.Unspecified);
+        var utc = TimeZoneInfo.ConvertTimeToUtc(unspecified, SelectedTimeZone);
+        return new DateTimeOffset(utc, TimeSpan.Zero);
+    }
+
+    private async Task GenerateExport()
+    {
+        if (!Validate())
+        {
+            return;
+        }
+
+        try
+        {
+            isGenerating = true;
+            errorMessage = string.Empty;
+
+            var request = new CreateRedditExportRequest
+            {
+                Subreddit = subreddit.Trim(),
+                StartDate = ToUtcOffset(startDate),
+                EndDate = ToUtcOffset(endDate),
+                MaxThreads = maxThreads
+            };
+
+            var created = await RedditExportService.CreateExportAsync(request);
+            exports.Insert(0, created);
+
+            if (created.ThreadCount == 0)
+            {
+                await ToastService.ShowWarningAsync("No threads were found in that window.");
+            }
+            else
+            {
+                await ToastService.ShowSuccessAsync(
+                    $"Export created: {created.ThreadCount} threads, {created.CommentCount} comments.");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to create export: {ex.Message}";
+            await ToastService.ShowErrorAsync(errorMessage);
+        }
+        finally
+        {
+            isGenerating = false;
+        }
+    }
+
+    private async Task DownloadExport(RedditExportListItem export)
+    {
+        try
+        {
+            downloadingId = export.Id;
+            var json = await RedditExportService.DownloadExportAsync(export.Id);
+            if (string.IsNullOrEmpty(json))
+            {
+                await ToastService.ShowErrorAsync("No data available for this export.");
+                return;
+            }
+
+            var base64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(json));
+            var dataUrl = $"data:application/json;base64,{base64}";
+            var fileName = $"reddit-export-{export.Subreddit}-{export.Id}.json";
+
+            await JSRuntime.InvokeAsync<bool>("downloadFile", dataUrl, fileName);
+        }
+        catch (Exception ex)
+        {
+            await ToastService.ShowErrorAsync($"Failed to download export: {ex.Message}");
+        }
+        finally
+        {
+            downloadingId = null;
+        }
+    }
+
+    private async Task DeleteExport(RedditExportListItem export)
+    {
+        try
+        {
+            var confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
+                $"Delete the export for r/{export.Subreddit}? This cannot be undone.");
+            if (!confirmed)
+            {
+                return;
+            }
+
+            deletingId = export.Id;
+            var success = await RedditExportService.DeleteExportAsync(export.Id);
+            if (success)
+            {
+                exports.Remove(export);
+                await ToastService.ShowSuccessAsync("Export deleted.");
+            }
+            else
+            {
+                await ToastService.ShowErrorAsync("Export not found.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await ToastService.ShowErrorAsync($"Failed to delete export: {ex.Message}");
+        }
+        finally
+        {
+            deletingId = null;
+        }
+    }
+}

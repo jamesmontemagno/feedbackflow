@@ -211,11 +211,41 @@ public class MockRedditService : IRedditService
         }).ToList();
     }
 
-    // New unified interface methods
+    public async Task<(List<RedditThreadModel> Threads, bool LimitReached)> GetSubredditThreadsInDateRange(
+        string subreddit, DateTimeOffset startDate, DateTimeOffset endDate, int maxThreads = 200)
+    {
+        await Task.Delay(200); // Simulate API delay
+
+        var threads = _mockSubmissions
+            .Where(s => s.Subreddit.Equals(subreddit, StringComparison.OrdinalIgnoreCase))
+            .Select(s => DateTimeOffset.FromUnixTimeSeconds(s.CreatedUtc) is var created && created >= startDate && created <= endDate
+                ? s : null)
+            .Where(s => s is not null)
+            .Select(s => s!)
+            .Take(maxThreads)
+            .Select(s => new RedditThreadModel
+            {
+                Id = s.Id,
+                Title = s.Title,
+                Author = s.Author,
+                SelfText = s.SelfText,
+                Url = s.Url,
+                Subreddit = subreddit,
+                Score = s.Score,
+                UpvoteRatio = s.UpvoteRatio,
+                NumComments = s.NumComments,
+                Comments = new List<RedditCommentModel>(),
+                CreatedUtc = DateTimeOffset.FromUnixTimeSeconds(s.CreatedUtc),
+                Permalink = s.Permalink
+            })
+            .ToList();
+
+        return (threads, false);
+    }
     public async Task<RedditListing<RedditSubmission>> GetSubredditPostsAsync(string subreddit, string sort = "hot", int limit = 25)
     {
         await Task.Delay(200); // Simulate API delay
-        
+
         var filteredPosts = _mockSubmissions
             .Where(s => s.Subreddit.Equals(subreddit, StringComparison.OrdinalIgnoreCase))
             .Take(limit)

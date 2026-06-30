@@ -1,0 +1,95 @@
+.admin-header {
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.admin-reddit-export-table {
+    width: 100%;
+    margin-bottom: 0;
+    /* Override Bootstrap's table CSS variables so cells follow the app theme
+       instead of defaulting to a white background in dark mode. */
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--text-primary);
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+.admin-reddit-export-table th {
+    background: rgba(var(--bg-secondary-rgb), 0.8);
+    color: var(--text-primary);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.admin-reddit-export-table td {
+    background: var(--card-bg);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.3s ease;
+}
+
+.admin-reddit-export-table tbody tr:hover td {
+    background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.05) 0%, rgba(var(--primary-color-rgb), 0.1) 100%);
+}
+
+.admin-reddit-export-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.item-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    display: inline-flex;
+    align-items: center;
+}
+
+.item-name .bi-reddit {
+    color: #ff4500;
+}
+
+.item-date {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    display: inline-flex;
+    align-items: center;
+}
+
+.action-buttons {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+/* Quick-range presets */
+.quick-ranges {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.quick-ranges .btn-group {
+    gap: 0.4rem;
+}
+
+.quick-ranges .btn-group .btn {
+    border-radius: var(--border-radius) !important;
+}
+
+/* The new-export card header uses the app's primary gradient for a clear accent */
+.card-header {
+    color: var(--text-primary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+    .admin-reddit-export-table th,
+    .admin-reddit-export-table td {
+        font-size: 0.85rem;
+    }
+}

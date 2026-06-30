@@ -114,6 +114,24 @@ builder.Services.AddScoped<FeedbackWebApp.Services.IReportDataAdminService>(serv
     }
 });
 
+// Register Admin Reddit Export Service
+builder.Services.AddScoped<FeedbackWebApp.Services.IRedditExportService>(serviceProvider =>
+{
+    if (useMocks)
+    {
+        var logger = serviceProvider.GetRequiredService<ILogger<FeedbackWebApp.Services.Mock.MockRedditExportService>>();
+        return new FeedbackWebApp.Services.Mock.MockRedditExportService(logger);
+    }
+    else
+    {
+        var httpClient = serviceProvider.GetRequiredService<IHttpClientFactory>().CreateClient("DefaultClient");
+        var headerService = serviceProvider.GetRequiredService<IAuthenticationHeaderService>();
+        var logger = serviceProvider.GetRequiredService<ILogger<RedditExportService>>();
+        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+        return new RedditExportService(httpClient, headerService, logger, configuration);
+    }
+});
+
 // Register Admin Dashboard Service
 builder.Services.AddScoped<IAdminDashboardService>(serviceProvider =>
 {

@@ -204,6 +204,105 @@ public sealed class RedditService : IDisposable
         return threads;
     }
 
+    /// <summary>
+    /// Fetches basic info for all threads in a subreddit created within the given UTC window,
+    /// paginating the "new" listing until threads fall before <paramref name="startDate"/> or the
+    /// <paramref name="maxThreads"/> cap is reached.
+    /// </summary>
+    /// <param name="subreddit">The subreddit name (without the "r/" prefix)</param>
+    /// <param name="startDate">Start of the window (inclusive, UTC)</param>
+    /// <param name="endDate">End of the window (inclusive, UTC)</param>
+    /// <param name="maxThreads">Maximum number of threads to return</param>
+    /// <returns>The matching threads (basic info only) and whether the cap was hit</returns>
+    public async Task<(List<RedditThreadModel> Threads, bool LimitReached)> GetSubredditThreadsInDateRange(
+        string subreddit, DateTimeOffset startDate, DateTimeOffset endDate, int maxThreads = 200)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(subreddit);
+
+        var collected = new List<RedditThreadModel>();
+        string? after = null;
+        var limitReached = false;
+        const int pageSize = 100;
+
+        // Reddit's "new" listing only reaches ~1000 items back; bound the loop accordingly.
+        for (var page = 0; page < 11; page++)
+        {
+            await EnsureValidTokenAsync();
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+
+            var url = $"https://oauth.reddit.com/r/{subreddit}/new?limit={pageSize}";
+            if (!string.IsNullOrEmpty(after))
+            {
+                url += $"&after={Uri.EscapeDataString(after)}";
+            }
+
+            var response = await _client.GetStringAsync(url);
+            var listing = JsonSerializer.Deserialize(response, RedditJsonContext.Default.RedditListing);
+            if (listing?.Data?.Children == null || listing.Data.Children.Length == 0)
+            {
+                break;
+            }
+
+            var reachedOlderThanStart = false;
+            foreach (var child in listing.Data.Children)
+            {
+                if (child.Data == null) continue;
+
+                var created = DateTimeOffset.FromUnixTimeSeconds((long)child.Data.CreatedUtc);
+
+                // "new" is newest-first; once we pass the start of the window we can stop.
+                if (created < startDate)
+                {
+                    reachedOlderThanStart = true;
+                    break;
+                }
+
+                if (created > endDate)
+                {
+                    // Newer than the window - skip but keep paging back.
+                    continue;
+                }
+
+                collected.Add(new RedditThreadModel
+                {
+                    Id = child.Data.Id,
+                    Title = child.Data.Title ?? "[No Title]",
+                    Author = child.Data.Author,
+                    SelfText = child.Data.Selftext ?? string.Empty,
+                    CreatedUtc = created,
+                    Score = child.Data.Score,
+                    NumComments = child.Data.NumComments,
+                    Url = child.Data.Permalink.StartsWith("http")
+                        ? child.Data.Permalink
+                        : $"https://www.reddit.com{child.Data.Permalink}",
+                    Permalink = child.Data.Permalink,
+                    Subreddit = subreddit,
+                    UpvoteRatio = 1.0,
+                    Comments = []
+                });
+
+                if (collected.Count >= maxThreads)
+                {
+                    limitReached = true;
+                    break;
+                }
+            }
+
+            if (reachedOlderThanStart || limitReached)
+            {
+                break;
+            }
+
+            after = listing.Data.After;
+            if (string.IsNullOrEmpty(after))
+            {
+                break;
+            }
+        }
+
+        return (collected, limitReached);
+    }
+
     public async Task<RedditSubredditInfo> GetSubredditInfo(string subreddit)
     {
         await EnsureValidTokenAsync();

@@ -23,6 +23,12 @@ public class RedditServiceAdapter : IRedditService
         return await _redditService.GetSubredditThreadsBasicInfo(subreddit, sortBy, cutoffDate);
     }
 
+    public async Task<(List<RedditThreadModel> Threads, bool LimitReached)> GetSubredditThreadsInDateRange(
+        string subreddit, DateTimeOffset startDate, DateTimeOffset endDate, int maxThreads = 200)
+    {
+        return await _redditService.GetSubredditThreadsInDateRange(subreddit, startDate, endDate, maxThreads);
+    }
+
     // New unified interface methods
     public async Task<RedditListing<RedditSubmission>> GetSubredditPostsAsync(string subreddit, string sort = "hot", int limit = 25)
     {

@@ -169,6 +169,18 @@ function downloadFile(dataUrl, fileName) {
 
 window.downloadFile = downloadFile;
 
+// Returns the browser's IANA time zone identifier (e.g., "America/Los_Angeles")
+function getBrowserTimeZone() {
+    try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    } catch (error) {
+        console.error('Error resolving browser time zone:', error);
+        return '';
+    }
+}
+
+window.getBrowserTimeZone = getBrowserTimeZone;
+
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Add the toast container to the DOM if it doesn't exist
