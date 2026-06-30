@@ -6,6 +6,10 @@
 .admin-report-data-table {
     width: 100%;
     margin-bottom: 0;
+    /* Override Bootstrap's table CSS variables so cells follow the app theme
+       instead of defaulting to a white background in dark mode. */
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--text-primary);
     background: var(--card-bg);
     border-radius: var(--border-radius);
     overflow: hidden;
@@ -22,6 +26,7 @@
 }
 
 .admin-report-data-table td {
+    background: var(--card-bg);
     color: var(--text-primary);
     border-bottom: 1px solid var(--border-color);
     transition: background-color 0.3s ease;
@@ -29,6 +34,10 @@
 
 .admin-report-data-table tbody tr:hover td {
     background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.05) 0%, rgba(var(--primary-color-rgb), 0.1) 100%);
+}
+
+.admin-report-data-table tbody tr:last-child td {
+    border-bottom: none;
 }
 
 .item-name {
