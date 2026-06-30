@@ -67,8 +67,8 @@
                 New Export
             </div>
             <div class="card-body">
-                <div class="row g-3 align-items-end">
-                    <div class="col-12 col-md-4">
+                <div class="row g-3">
+                    <div class="col-12 col-lg-6">
                         <label class="form-label">Subreddit <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text">r/</span>
@@ -76,17 +76,60 @@
                         </div>
                         <div class="form-text">Enter the subreddit name without the "r/" prefix</div>
                     </div>
-                    <div class="col-6 col-md-3">
-                        <label class="form-label">Start (UTC) <span class="text-danger">*</span></label>
-                        <input type="datetime-local" class="form-control" @bind="startDate" disabled="@isGenerating" />
+                    <div class="col-12 col-lg-6">
+                        <label class="form-label">Time zone</label>
+                        <select class="form-select" @bind="selectedTimeZoneId" disabled="@isGenerating">
+                            @foreach (var tz in timeZones)
+                            {
+                                <option value="@tz.Id">@tz.DisplayName</option>
+                            }
+                        </select>
+                        <div class="form-text">Start and end times are interpreted in this time zone</div>
                     </div>
-                    <div class="col-6 col-md-3">
-                        <label class="form-label">End (UTC) <span class="text-danger">*</span></label>
-                        <input type="datetime-local" class="form-control" @bind="endDate" disabled="@isGenerating" />
+                </div>
+
+                <div class="quick-ranges mt-3">
+                    <span class="form-label mb-0 me-2">Quick range</span>
+                    <div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="Quick date ranges">
+                        @foreach (var preset in QuickRanges)
+                        {
+                            var isActive = activeQuickRangeHours == preset.Hours;
+                            <button type="button"
+                                    class="btn @(isActive ? "btn-primary" : "btn-outline-primary")"
+                                    disabled="@isGenerating"
+                                    @onclick="() => ApplyQuickRange(preset.Hours)">
+                                @preset.Label
+                            </button>
+                        }
                     </div>
-                    <div class="col-6 col-md-2">
+                </div>
+
+                <div class="row g-3 align-items-end mt-1">
+                    <div class="col-12 col-sm-6 col-lg-4">
+                        <label class="form-label">Start <span class="text-danger">*</span></label>
+                        <input type="datetime-local" class="form-control" @bind="startDate" @bind:after="OnRangeEdited" disabled="@isGenerating" />
+                    </div>
+                    <div class="col-12 col-sm-6 col-lg-4">
+                        <label class="form-label">End <span class="text-danger">*</span></label>
+                        <input type="datetime-local" class="form-control" @bind="endDate" @bind:after="OnRangeEdited" disabled="@isGenerating" />
+                    </div>
+                    <div class="col-12 col-sm-6 col-lg-2">
                         <label class="form-label">Max threads</label>
                         <input type="number" class="form-control" @bind="maxThreads" min="1" max="500" disabled="@isGenerating" />
+                    </div>
+                    <div class="col-12 col-sm-6 col-lg-2">
+                        <button class="btn btn-primary w-100" @onclick="GenerateExport" disabled="@isGenerating">
+                            @if (isGenerating)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span>Generating…</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-download me-2"></i>
+                                <span>Generate</span>
+                            }
+                        </button>
                     </div>
                 </div>
 
@@ -98,24 +141,13 @@
                     </div>
                 }
 
-                <div class="mt-3 d-flex align-items-center gap-2">
-                    <button class="btn btn-primary" @onclick="GenerateExport" disabled="@isGenerating">
-                        @if (isGenerating)
-                        {
-                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                            <span>Generating…</span>
-                        }
-                        else
-                        {
-                            <i class="bi bi-download me-2"></i>
-                            <span>Generate Export</span>
-                        }
-                    </button>
-                    @if (isGenerating)
-                    {
-                        <span class="text-muted small">Fetching threads &amp; comments — this can take a little while.</span>
-                    }
-                </div>
+                @if (isGenerating)
+                {
+                    <div class="text-muted small mt-2">
+                        <i class="bi bi-hourglass-split me-1"></i>
+                        Fetching threads &amp; comments — this can take a little while.
+                    </div>
+                }
             </div>
         </div>
 
@@ -146,7 +178,7 @@
                             <thead>
                                 <tr>
                                     <th scope="col">Subreddit</th>
-                                    <th scope="col" class="d-none d-md-table-cell">Range (UTC)</th>
+                                    <th scope="col" class="d-none d-md-table-cell">Range</th>
                                     <th scope="col" class="d-none d-lg-table-cell">Generated</th>
                                     <th scope="col" class="text-center d-none d-sm-table-cell">Threads</th>
                                     <th scope="col" class="text-center d-none d-sm-table-cell">Comments</th>
@@ -166,7 +198,7 @@
                                         <td class="d-none d-md-table-cell">
                                             <span class="item-date">
                                                 <i class="bi bi-calendar-range me-1"></i>
-                                                @export.StartDate.UtcDateTime.ToString("MMM d, HH:mm") &ndash; @export.EndDate.UtcDateTime.ToString("MMM d, HH:mm")
+                                                @FormatInZone(export.StartDate) &ndash; @FormatInZone(export.EndDate)
                                             </span>
                                         </td>
                                         <td class="d-none d-lg-table-cell">
@@ -236,13 +268,42 @@
     private string validationMessage = string.Empty;
 
     private string subreddit = string.Empty;
-    private DateTime startDate = DateTime.UtcNow.AddDays(-7);
-    private DateTime endDate = DateTime.UtcNow;
+    private DateTime startDate;
+    private DateTime endDate;
     private int maxThreads = 200;
+
+    private IReadOnlyList<TimeZoneInfo> timeZones = Array.Empty<TimeZoneInfo>();
+    private string selectedTimeZoneId = TimeZoneInfo.Utc.Id;
+    private int? activeQuickRangeHours = 168;
+
+    private record QuickRangePreset(string Label, int Hours);
+
+    private static readonly QuickRangePreset[] QuickRanges =
+    {
+        new("Last 24 hours", 24),
+        new("Last 48 hours", 48),
+        new("Last 3 days", 72),
+        new("Last 7 days", 168)
+    };
 
     private List<RedditExportListItem> exports = new();
     private Guid? downloadingId = null;
     private Guid? deletingId = null;
+
+    private TimeZoneInfo SelectedTimeZone
+    {
+        get
+        {
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById(selectedTimeZoneId);
+            }
+            catch
+            {
+                return TimeZoneInfo.Utc;
+            }
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -250,6 +311,10 @@
         {
             isLoading = true;
             errorMessage = string.Empty;
+
+            timeZones = TimeZoneInfo.GetSystemTimeZones();
+            selectedTimeZoneId = TimeZoneInfo.Local.Id;
+            ApplyQuickRange(168);
 
             var isAuthenticated = await AuthService.IsAuthenticatedAsync();
             if (!isAuthenticated)
@@ -278,6 +343,70 @@
         {
             isLoading = false;
         }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !isAdmin)
+        {
+            return;
+        }
+
+        try
+        {
+            var ianaId = await JSRuntime.InvokeAsync<string>("getBrowserTimeZone");
+            if (string.IsNullOrWhiteSpace(ianaId))
+            {
+                return;
+            }
+
+            string? resolvedId = null;
+            if (timeZones.Any(tz => tz.Id == ianaId))
+            {
+                resolvedId = ianaId;
+            }
+            else if (TimeZoneInfo.TryConvertIanaIdToWindowsId(ianaId, out var windowsId)
+                     && timeZones.Any(tz => tz.Id == windowsId))
+            {
+                resolvedId = windowsId;
+            }
+
+            if (resolvedId is not null && resolvedId != selectedTimeZoneId)
+            {
+                selectedTimeZoneId = resolvedId;
+                if (activeQuickRangeHours is int hours)
+                {
+                    ApplyQuickRange(hours);
+                }
+                StateHasChanged();
+            }
+        }
+        catch
+        {
+            // Time zone detection is best-effort; fall back to the server's local zone.
+        }
+    }
+
+    private void ApplyQuickRange(int hours)
+    {
+        activeQuickRangeHours = hours;
+        var nowInZone = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, SelectedTimeZone).DateTime;
+        // Trim to whole minutes so the datetime-local control shows clean values.
+        nowInZone = new DateTime(nowInZone.Year, nowInZone.Month, nowInZone.Day, nowInZone.Hour, nowInZone.Minute, 0);
+        endDate = nowInZone;
+        startDate = nowInZone.AddHours(-hours);
+    }
+
+    private void OnRangeEdited()
+    {
+        // Manual edits clear the active quick-range highlight.
+        activeQuickRangeHours = null;
+    }
+
+    private string FormatInZone(DateTimeOffset value)
+    {
+        var local = TimeZoneInfo.ConvertTime(value, SelectedTimeZone);
+        return local.ToString("MMM d, HH:mm");
     }
 
     private async Task LoadExports()
@@ -329,6 +458,13 @@
         return true;
     }
 
+    private DateTimeOffset ToUtcOffset(DateTime wallClock)
+    {
+        var unspecified = DateTime.SpecifyKind(wallClock, DateTimeKind.Unspecified);
+        var utc = TimeZoneInfo.ConvertTimeToUtc(unspecified, SelectedTimeZone);
+        return new DateTimeOffset(utc, TimeSpan.Zero);
+    }
+
     private async Task GenerateExport()
     {
         if (!Validate())
@@ -344,8 +480,8 @@
             var request = new CreateRedditExportRequest
             {
                 Subreddit = subreddit.Trim(),
-                StartDate = new DateTimeOffset(DateTime.SpecifyKind(startDate, DateTimeKind.Utc)),
-                EndDate = new DateTimeOffset(DateTime.SpecifyKind(endDate, DateTimeKind.Utc)),
+                StartDate = ToUtcOffset(startDate),
+                EndDate = ToUtcOffset(endDate),
                 MaxThreads = maxThreads
             };
 

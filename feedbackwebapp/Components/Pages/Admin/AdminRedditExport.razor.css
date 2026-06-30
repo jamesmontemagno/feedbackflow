@@ -65,6 +65,22 @@
     gap: 0.5rem;
 }
 
+/* Quick-range presets */
+.quick-ranges {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.quick-ranges .btn-group {
+    gap: 0.4rem;
+}
+
+.quick-ranges .btn-group .btn {
+    border-radius: var(--border-radius) !important;
+}
+
 /* The new-export card header uses the app's primary gradient for a clear accent */
 .card-header {
     color: var(--text-primary);
