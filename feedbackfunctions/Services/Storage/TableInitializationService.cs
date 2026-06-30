@@ -40,7 +40,8 @@ public class TableInitializationService : ITableInitializationService
                 _storage.ReportsContainer.CreateIfNotExistsAsync(),
                 _storage.ReportsSummaryContainer.CreateIfNotExistsAsync(),
                 _storage.WeeklySummariesContainer.CreateIfNotExistsAsync(),
-                _storage.RedditReportDataContainer.CreateIfNotExistsAsync());
+                _storage.RedditReportDataContainer.CreateIfNotExistsAsync(),
+                _storage.RedditExportsContainer.CreateIfNotExistsAsync());
         });
 
     public Task EnsureAdminReportConfigsAsync() =>

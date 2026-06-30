@@ -13,6 +13,8 @@ public interface IReportStorageService
 
     BlobContainerClient RedditReportDataContainer { get; }
 
+    BlobContainerClient RedditExportsContainer { get; }
+
     TableClient ReportRequestsTable { get; }
 
     TableClient UserReportRequestsTable { get; }

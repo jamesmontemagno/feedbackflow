@@ -7,6 +7,13 @@ public interface IRedditService
     // Original service methods for compatibility
     Task<RedditThreadModel> GetThreadWithComments(string threadId);
     Task<List<RedditThreadModel>> GetSubredditThreadsBasicInfo(string subreddit, string sortBy = "hot", DateTimeOffset? cutoffDate = null);
+
+    /// <summary>
+    /// Fetches basic info for all threads created within a UTC window, capped at <paramref name="maxThreads"/>.
+    /// Returns the threads and whether the cap was reached.
+    /// </summary>
+    Task<(List<RedditThreadModel> Threads, bool LimitReached)> GetSubredditThreadsInDateRange(
+        string subreddit, DateTimeOffset startDate, DateTimeOffset endDate, int maxThreads = 200);
     
     // New unified interface methods
     Task<RedditListing<RedditSubmission>> GetSubredditPostsAsync(string subreddit, string sort = "hot", int limit = 25);

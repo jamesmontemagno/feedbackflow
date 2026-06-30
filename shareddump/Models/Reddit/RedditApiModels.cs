@@ -18,6 +18,9 @@ public class RedditListing
 public class RedditListingData
 {
     public RedditThingData[] Children { get; set; } = Array.Empty<RedditThingData>();
+
+    [JsonPropertyName("after")]
+    public string? After { get; set; }
 }
 
 public class RedditThingData

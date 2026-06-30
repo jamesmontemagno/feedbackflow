@@ -26,6 +26,8 @@ public class ReportStorageService : IReportStorageService
 
     public BlobContainerClient RedditReportDataContainer => _storage.RedditReportDataContainer;
 
+    public BlobContainerClient RedditExportsContainer => _storage.RedditExportsContainer;
+
     public TableClient ReportRequestsTable => _storage.ReportRequestsTable;
 
     public TableClient UserReportRequestsTable => _storage.UserReportRequestsTable;
