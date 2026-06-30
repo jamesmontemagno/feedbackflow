@@ -11,6 +11,8 @@ public interface IReportStorageService
 
     BlobContainerClient WeeklySummariesContainer { get; }
 
+    BlobContainerClient RedditReportDataContainer { get; }
+
     TableClient ReportRequestsTable { get; }
 
     TableClient UserReportRequestsTable { get; }

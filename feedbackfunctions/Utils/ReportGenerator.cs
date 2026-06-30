@@ -185,7 +185,21 @@ Keep each section very brief and focused. Total analysis should be no more than 
             if (storeToBlob.HasValue && storeToBlob.Value)
             {
                 await StoreReportAsync(report);
-                
+
+                // Store the raw fetched data (threads + comments + subreddit info) for later download
+                var rawData = new RedditReportRawData
+                {
+                    ReportId = report.Id,
+                    Subreddit = subreddit,
+                    GeneratedAt = report.GeneratedAt,
+                    CutoffDate = report.CutoffDate,
+                    ThreadCount = topThreads.Count,
+                    CommentCount = allComments.Count,
+                    SubredditInfo = subredditInfo,
+                    Threads = results.Select(r => r.Thread).ToList()
+                };
+                await StoreRedditRawDataAsync(rawData);
+
                 // Also create and store a summary report
                 _logger.LogInformation("Generating summary report for r/{Subreddit}", subreddit);
                 var summaryReport = new ReportModel
@@ -429,6 +443,36 @@ Keep each section very brief and focused. Total analysis should be no more than 
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error storing report {ReportId} to blob storage", report.Id);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Stores the raw fetched Reddit data (threads + comments + subreddit info) in blob storage
+    /// </summary>
+    /// <param name="rawData">The raw data to store, keyed by the report id</param>
+    /// <returns>The blob name where the raw data was stored</returns>
+    public async Task<string> StoreRedditRawDataAsync(RedditReportRawData rawData)
+    {
+        _logger.LogInformation("Storing raw Reddit data for report {ReportId} to blob storage", rawData.ReportId);
+        await _reportStorage.EnsureInitializedAsync();
+
+        try
+        {
+            var blobName = $"{rawData.ReportId}.json";
+            var blobClient = _reportStorage.RedditReportDataContainer.GetBlobClient(blobName);
+
+            var rawJson = JsonSerializer.Serialize(rawData);
+            await using var ms = new MemoryStream(Encoding.UTF8.GetBytes(rawJson));
+            await blobClient.UploadAsync(ms, overwrite: true);
+
+            _logger.LogInformation("Successfully stored raw Reddit data for report {ReportId} as blob {BlobName}",
+                rawData.ReportId, blobName);
+            return blobName;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error storing raw Reddit data for report {ReportId} to blob storage", rawData.ReportId);
             throw;
         }
     }

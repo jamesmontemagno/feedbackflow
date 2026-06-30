@@ -1,0 +1,84 @@
+.admin-header {
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.admin-report-data-table {
+    width: 100%;
+    margin-bottom: 0;
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+.admin-report-data-table th {
+    background: rgba(var(--bg-secondary-rgb), 0.8);
+    color: var(--text-primary);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.admin-report-data-table td {
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.3s ease;
+}
+
+.admin-report-data-table tbody tr:hover td {
+    background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.05) 0%, rgba(var(--primary-color-rgb), 0.1) 100%);
+}
+
+.item-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    display: inline-flex;
+    align-items: center;
+}
+
+.item-name .bi-reddit {
+    color: #ff4500;
+}
+
+.item-date {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    display: inline-flex;
+    align-items: center;
+}
+
+.action-buttons {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--border-radius-pill);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    gap: 0.25rem;
+    transition: all 0.3s ease;
+}
+
+.status-unavailable {
+    background: rgba(var(--bg-secondary-rgb), 0.6);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+    .admin-report-data-table th,
+    .admin-report-data-table td {
+        font-size: 0.85rem;
+    }
+}

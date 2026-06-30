@@ -39,7 +39,8 @@ public class TableInitializationService : ITableInitializationService
                 _storage.UserReportRequestsTable.CreateIfNotExistsAsync(),
                 _storage.ReportsContainer.CreateIfNotExistsAsync(),
                 _storage.ReportsSummaryContainer.CreateIfNotExistsAsync(),
-                _storage.WeeklySummariesContainer.CreateIfNotExistsAsync());
+                _storage.WeeklySummariesContainer.CreateIfNotExistsAsync(),
+                _storage.RedditReportDataContainer.CreateIfNotExistsAsync());
         });
 
     public Task EnsureAdminReportConfigsAsync() =>

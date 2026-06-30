@@ -1,0 +1,235 @@
+@page "/admin/report-data"
+@using FeedbackWebApp.Services
+@using FeedbackWebApp.Services.Authentication
+@using FeedbackWebApp.Services.Account
+@using SharedDump.Models.Reports
+@using SharedDump.Models.Account
+@using Microsoft.JSInterop
+@inject FeedbackWebApp.Services.IReportDataAdminService ReportDataAdminService
+@inject IAuthenticationService AuthService
+@inject IAccountServiceProvider AccountServiceProvider
+@inject IToastService ToastService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+
+@using FeedbackWebApp.Components.Admin
+@namespace FeedbackWebApp.Components.Pages.Admin
+
+<PageTitle>Report Data - FeedbackFlow</PageTitle>
+
+<div class="container my-4">
+    <div class="mb-3">
+        <a href="/admin" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Admin Home
+        </a>
+    </div>
+
+    @if (isLoading)
+    {
+        <AdminLoadingSpinner LoadingTitle="Report Data"
+                           LoadingMessage="Loading generated reports and raw data availability..."
+                           SpinnerIcon="bi-database-down" />
+    }
+    else if (!isAdmin)
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-shield-exclamation me-2"></i>
+            <strong>Access Denied:</strong> This page is only available to administrators.
+        </div>
+    }
+    else
+    {
+        <div class="d-flex justify-content-between align-items-center mb-4 admin-header">
+            <div>
+                <h1 class="feedbackflow-title mb-2">
+                    <i class="bi bi-database-down me-2"></i>
+                    Report Data
+                </h1>
+                <p class="text-muted mb-0">Browse all generated reports and download their raw data</p>
+            </div>
+            <button class="btn btn-outline-primary" @onclick="LoadReports" disabled="@isRefreshing">
+                <i class="bi bi-arrow-clockwise me-2"></i>
+                Refresh
+            </button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                @errorMessage
+            </div>
+        }
+
+        @if (reports.Count == 0)
+        {
+            <div class="alert alert-info" role="alert">
+                <i class="bi bi-info-circle me-2"></i>
+                No generated reports found.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle admin-report-data-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Subreddit</th>
+                            <th scope="col" class="d-none d-md-table-cell">Generated</th>
+                            <th scope="col" class="text-center d-none d-sm-table-cell">Threads</th>
+                            <th scope="col" class="text-center d-none d-sm-table-cell">Comments</th>
+                            <th scope="col" class="d-none d-lg-table-cell">Cutoff</th>
+                            <th scope="col" class="text-center">Raw Data</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var report in reports)
+                        {
+                            <tr @key="report.Id">
+                                <td>
+                                    <div class="item-name">
+                                        <i class="bi bi-reddit me-1"></i>
+                                        r/@report.SubSource
+                                    </div>
+                                </td>
+                                <td class="d-none d-md-table-cell">
+                                    <span class="item-date">
+                                        <i class="bi bi-calendar me-1"></i>
+                                        @report.GeneratedAt.ToLocalTime().ToString("g")
+                                    </span>
+                                </td>
+                                <td class="text-center d-none d-sm-table-cell">@report.ThreadCount</td>
+                                <td class="text-center d-none d-sm-table-cell">@report.CommentCount</td>
+                                <td class="d-none d-lg-table-cell">
+                                    <span class="item-date">
+                                        <i class="bi bi-clock-history me-1"></i>
+                                        @report.CutoffDate.ToLocalTime().ToString("d")
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <div class="action-buttons">
+                                        @if (report.HasRawData)
+                                        {
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                    title="Download raw data"
+                                                    disabled="@(downloadingId == report.Id)"
+                                                    @onclick="() => DownloadRawData(report)">
+                                                @if (downloadingId == report.Id)
+                                                {
+                                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                                }
+                                                else
+                                                {
+                                                    <i class="bi bi-download"></i>
+                                                }
+                                                <span class="ms-1 d-none d-md-inline">Download</span>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <span class="status-badge status-unavailable" title="No raw data was captured for this report">
+                                                <i class="bi bi-dash-circle"></i>
+                                                N/A
+                                            </span>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private bool isAdmin = false;
+    private bool isRefreshing = false;
+    private string errorMessage = string.Empty;
+    private List<ReportDataListItem> reports = new();
+    private Guid? downloadingId = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+
+            var isAuthenticated = await AuthService.IsAuthenticatedAsync();
+            if (!isAuthenticated)
+            {
+                Navigation.NavigateTo("/");
+                return;
+            }
+
+            var accountService = AccountServiceProvider.GetService();
+            var accountResult = await accountService.GetUserAccountAndLimitsAsync();
+            if (accountResult.HasValue)
+            {
+                isAdmin = accountResult.Value.account?.Tier == AccountTier.Admin;
+            }
+
+            if (isAdmin)
+            {
+                await LoadReports();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading report data: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadReports()
+    {
+        try
+        {
+            isRefreshing = true;
+            errorMessage = string.Empty;
+            reports = await ReportDataAdminService.GetAllReportsAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading reports: {ex.Message}";
+        }
+        finally
+        {
+            isRefreshing = false;
+        }
+    }
+
+    private async Task DownloadRawData(ReportDataListItem report)
+    {
+        try
+        {
+            downloadingId = report.Id;
+            var json = await ReportDataAdminService.DownloadRawDataAsync(report.Id);
+            if (string.IsNullOrEmpty(json))
+            {
+                await ToastService.ShowErrorAsync("No raw data available for this report.");
+                return;
+            }
+
+            var base64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(json));
+            var dataUrl = $"data:application/json;base64,{base64}";
+            var fileName = $"reddit-report-{report.SubSource}-{report.Id}.json";
+
+            await JSRuntime.InvokeAsync<bool>("downloadFile", dataUrl, fileName);
+        }
+        catch (Exception ex)
+        {
+            await ToastService.ShowErrorAsync($"Failed to download raw data: {ex.Message}");
+        }
+        finally
+        {
+            downloadingId = null;
+        }
+    }
+}
