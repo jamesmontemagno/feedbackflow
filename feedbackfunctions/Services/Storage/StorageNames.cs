@@ -6,6 +6,7 @@ public static class StorageNames
     public const string ReportsSummaryContainer = "reports-summary";
     public const string WeeklySummariesContainer = "weekly-summaries";
     public const string SharedAnalysesContainer = "shared-analyses";
+    public const string RedditReportDataContainer = "reddit-report-data";
 
     public const string UserAccountsTable = "UserAccounts";
     public const string UsageRecordsTable = "UsageRecords";

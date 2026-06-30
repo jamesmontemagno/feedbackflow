@@ -4,6 +4,7 @@ using SharedDump.Models.HackerNews;
 using SharedDump.Models.YouTube;
 using SharedDump.Models.Reddit;
 using SharedDump.Models.ContentSearch;
+using SharedDump.Models.Reports;
 
 namespace FeedbackFunctions;
 
@@ -14,6 +15,7 @@ namespace FeedbackFunctions;
 [JsonSerializable(typeof(HackerNewsItem[]))]
 [JsonSerializable(typeof(YouTubeOutputVideo[]))]
 [JsonSerializable(typeof(RedditThreadModel[]))]
+[JsonSerializable(typeof(RedditReportRawData))]
 [JsonSerializable(typeof(AnalyzeCommentsRequest))]
 [JsonSerializable(typeof(SaveAnalysisRequest))]
 [JsonSerializable(typeof(UpdateVisibilityRequest))]

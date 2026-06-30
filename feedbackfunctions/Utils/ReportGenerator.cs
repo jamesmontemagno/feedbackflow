@@ -185,7 +185,74 @@ Keep each section very brief and focused. Total analysis should be no more than 
             if (storeToBlob.HasValue && storeToBlob.Value)
             {
                 await StoreReportAsync(report);
-                
+
+                // Store the raw fetched data for later download. Unlike the report itself (which
+                // only analyzes the top threads), the raw data captures EVERY thread from the last
+                // week along with all of its comments so nothing is lost.
+                try
+                {
+                    // Reuse the full threads already fetched for analysis, then fetch the rest.
+                    var fullThreadsById = results
+                        .Select(r => r.Thread)
+                        .GroupBy(t => t.Id)
+                        .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+                    var remainingThreads = threads
+                        .Where(t => !fullThreadsById.ContainsKey(t.Id))
+                        .ToList();
+
+                    _logger.LogInformation(
+                        "Capturing complete raw data: fetching full comments for {RemainingCount} additional threads (total {TotalCount} threads from the last week)",
+                        remainingThreads.Count, threads.Count);
+
+                    // Bound concurrency to avoid hammering the Reddit API / hitting rate limits.
+                    using var throttler = new SemaphoreSlim(5);
+                    var remainingTasks = remainingThreads.Select(async t =>
+                    {
+                        await throttler.WaitAsync();
+                        try
+                        {
+                            return await _redditService.GetThreadWithComments(t.Id);
+                        }
+                        finally
+                        {
+                            throttler.Release();
+                        }
+                    }).ToList();
+
+                    var remainingFullThreads = await Task.WhenAll(remainingTasks);
+                    foreach (var fullThread in remainingFullThreads)
+                    {
+                        fullThreadsById[fullThread.Id] = fullThread;
+                    }
+
+                    // Preserve the original listing order from the subreddit.
+                    var allFullThreads = threads
+                        .Where(t => fullThreadsById.ContainsKey(t.Id))
+                        .Select(t => fullThreadsById[t.Id])
+                        .ToList();
+
+                    var totalRawCommentCount = allFullThreads.Sum(t => FlattenComments(t.Comments).Count);
+
+                    var rawData = new RedditReportRawData
+                    {
+                        ReportId = report.Id,
+                        Subreddit = subreddit,
+                        GeneratedAt = report.GeneratedAt,
+                        CutoffDate = report.CutoffDate,
+                        ThreadCount = allFullThreads.Count,
+                        CommentCount = totalRawCommentCount,
+                        SubredditInfo = subredditInfo,
+                        Threads = allFullThreads
+                    };
+                    await StoreRedditRawDataAsync(rawData);
+                }
+                catch (Exception rawEx)
+                {
+                    // Raw data capture is best-effort; never fail the report because of it.
+                    _logger.LogError(rawEx, "Failed to capture/store complete raw Reddit data for report {ReportId}", report.Id);
+                }
+
                 // Also create and store a summary report
                 _logger.LogInformation("Generating summary report for r/{Subreddit}", subreddit);
                 var summaryReport = new ReportModel
@@ -429,6 +496,44 @@ Keep each section very brief and focused. Total analysis should be no more than 
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error storing report {ReportId} to blob storage", report.Id);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Stores the raw fetched Reddit data (threads + comments + subreddit info) in blob storage
+    /// </summary>
+    /// <param name="rawData">The raw data to store, keyed by the report id</param>
+    /// <returns>The blob name where the raw data was stored</returns>
+    public async Task<string> StoreRedditRawDataAsync(RedditReportRawData rawData)
+    {
+        _logger.LogInformation("Storing raw Reddit data for report {ReportId} to blob storage", rawData.ReportId);
+        await _reportStorage.EnsureInitializedAsync();
+
+        try
+        {
+            var blobName = $"{rawData.ReportId}.json";
+            var blobClient = _reportStorage.RedditReportDataContainer.GetBlobClient(blobName);
+
+            var rawJson = JsonSerializer.Serialize(rawData);
+            await using var ms = new MemoryStream(Encoding.UTF8.GetBytes(rawJson));
+            await blobClient.UploadAsync(ms, overwrite: true);
+
+            // Persist lightweight counts as blob metadata so the admin report-data list can
+            // surface accurate totals without downloading the (potentially large) raw blob.
+            await blobClient.SetMetadataAsync(new Dictionary<string, string>
+            {
+                ["threadCount"] = rawData.ThreadCount.ToString(),
+                ["commentCount"] = rawData.CommentCount.ToString()
+            });
+
+            _logger.LogInformation("Successfully stored raw Reddit data for report {ReportId} as blob {BlobName}",
+                rawData.ReportId, blobName);
+            return blobName;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error storing raw Reddit data for report {ReportId} to blob storage", rawData.ReportId);
             throw;
         }
     }

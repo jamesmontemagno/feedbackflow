@@ -212,7 +212,8 @@ public class TableInitializationServiceTests
         BlobContainerClient? reportsContainer = null,
         BlobContainerClient? reportsSummaryContainer = null,
         BlobContainerClient? weeklySummariesContainer = null,
-        BlobContainerClient? sharedAnalysesContainer = null)
+        BlobContainerClient? sharedAnalysesContainer = null,
+        BlobContainerClient? redditReportDataContainer = null)
     {
         return new FeedbackStorageClients(
             blobServiceClient: null,
@@ -221,6 +222,7 @@ public class TableInitializationServiceTests
             reportsSummaryContainer: reportsSummaryContainer ?? Substitute.For<BlobContainerClient>(),
             weeklySummariesContainer: weeklySummariesContainer ?? Substitute.For<BlobContainerClient>(),
             sharedAnalysesContainer: sharedAnalysesContainer ?? Substitute.For<BlobContainerClient>(),
+            redditReportDataContainer: redditReportDataContainer ?? Substitute.For<BlobContainerClient>(),
             userAccountsTable: userAccountsTable ?? Substitute.For<TableClient>(),
             usageRecordsTable: usageRecordsTable ?? Substitute.For<TableClient>(),
             apiKeysTable: apiKeysTable ?? Substitute.For<TableClient>(),

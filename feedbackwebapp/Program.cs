@@ -96,6 +96,24 @@ builder.Services.AddScoped<FeedbackWebApp.Services.IAdminReportConfigService>(se
     }
 });
 
+// Register Admin Report Data Service
+builder.Services.AddScoped<FeedbackWebApp.Services.IReportDataAdminService>(serviceProvider =>
+{
+    if (useMocks)
+    {
+        var logger = serviceProvider.GetRequiredService<ILogger<FeedbackWebApp.Services.Mock.MockReportDataAdminService>>();
+        return new FeedbackWebApp.Services.Mock.MockReportDataAdminService(logger);
+    }
+    else
+    {
+        var httpClient = serviceProvider.GetRequiredService<IHttpClientFactory>().CreateClient("DefaultClient");
+        var headerService = serviceProvider.GetRequiredService<IAuthenticationHeaderService>();
+        var logger = serviceProvider.GetRequiredService<ILogger<ReportDataAdminService>>();
+        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+        return new ReportDataAdminService(httpClient, headerService, logger, configuration);
+    }
+});
+
 // Register Admin Dashboard Service
 builder.Services.AddScoped<IAdminDashboardService>(serviceProvider =>
 {
