@@ -46,7 +46,8 @@ public class RedditReportRawData
     public RedditSubredditInfo? SubredditInfo { get; set; }
 
     /// <summary>
-    /// The full threads (including nested comments) that were analyzed for the report.
+    /// The full threads (including nested comments) captured from the last week.
+    /// Includes every thread from the report's time window, not just the analyzed top threads.
     /// </summary>
     public List<RedditThreadModel> Threads { get; set; } = new();
 }

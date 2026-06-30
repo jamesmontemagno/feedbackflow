@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using Azure.Storage.Blobs.Models;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
@@ -61,25 +62,46 @@ public class ReportDataAdminFunctions
             var reports = await _cacheService.GetReportsAsync("reddit", null);
             await _reportStorage.EnsureInitializedAsync();
 
-            // Determine which reports have raw data available
-            var rawDataIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            await foreach (var blob in _reportStorage.RedditReportDataContainer.GetBlobsAsync())
+            // Determine which reports have raw data available and read the captured totals
+            // (stored as blob metadata) so the list reflects the full downloadable dataset.
+            var rawDataInfo = new Dictionary<string, (int ThreadCount, int CommentCount)>(StringComparer.OrdinalIgnoreCase);
+            await foreach (var blob in _reportStorage.RedditReportDataContainer.GetBlobsAsync(BlobTraits.Metadata))
             {
-                rawDataIds.Add(Path.GetFileNameWithoutExtension(blob.Name));
+                var blobId = Path.GetFileNameWithoutExtension(blob.Name);
+                var threadCount = 0;
+                var commentCount = 0;
+                if (blob.Metadata is not null)
+                {
+                    if (blob.Metadata.TryGetValue("threadCount", out var tc))
+                    {
+                        int.TryParse(tc, out threadCount);
+                    }
+                    if (blob.Metadata.TryGetValue("commentCount", out var cc))
+                    {
+                        int.TryParse(cc, out commentCount);
+                    }
+                }
+                rawDataInfo[blobId] = (threadCount, commentCount);
             }
 
             var items = reports
                 .OrderByDescending(r => r.GeneratedAt)
-                .Select(r => new ReportDataListItem
+                .Select(r =>
                 {
-                    Id = r.Id,
-                    Source = r.Source,
-                    SubSource = r.SubSource,
-                    GeneratedAt = r.GeneratedAt,
-                    CutoffDate = r.CutoffDate,
-                    ThreadCount = r.ThreadCount,
-                    CommentCount = r.CommentCount,
-                    HasRawData = rawDataIds.Contains(r.Id.ToString())
+                    var hasRaw = rawDataInfo.TryGetValue(r.Id.ToString(), out var rawCounts);
+                    return new ReportDataListItem
+                    {
+                        Id = r.Id,
+                        Source = r.Source,
+                        SubSource = r.SubSource,
+                        GeneratedAt = r.GeneratedAt,
+                        CutoffDate = r.CutoffDate,
+                        // Prefer the full raw-data totals; fall back to the report's analyzed
+                        // counts for older reports captured before raw data was stored.
+                        ThreadCount = hasRaw && rawCounts.ThreadCount > 0 ? rawCounts.ThreadCount : r.ThreadCount,
+                        CommentCount = hasRaw && rawCounts.CommentCount > 0 ? rawCounts.CommentCount : r.CommentCount,
+                        HasRawData = hasRaw
+                    };
                 })
                 .ToList();
 
