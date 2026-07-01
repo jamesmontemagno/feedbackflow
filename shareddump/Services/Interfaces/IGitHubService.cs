@@ -11,6 +11,8 @@ public interface IGitHubService
     Task<GithubIssueModel?> GetIssueWithCommentsAsync(string repoOwner, string repoName, int issueNumber);
     Task<GithubIssueModel?> GetPullRequestWithCommentsAsync(string repoOwner, string repoName, int pullNumber);
     Task<GithubDiscussionModel?> GetDiscussionWithCommentsAsync(string repoOwner, string repoName, int discussionNumber);
+    Task<GithubDiscussionModel?> GetOrganizationDiscussionWithCommentsAsync(string organizationLogin, int discussionNumber);
+    Task<GithubDiscussionModel?> GetUserDiscussionWithCommentsAsync(string userLogin, int discussionNumber);
     Task<List<GithubIssueSummary>> GetRecentIssuesForReportAsync(string repoOwner, string repoName, int daysBack = 7);
     Task<List<GithubIssueSummary>> GetOldestImportantIssuesWithRecentActivityAsync(string repoOwner, string repoName, int recentDays = 7, int topCount = 3);
 }

@@ -21,6 +21,11 @@ public static class GitHubUrlParser
         if (segments.Length < 2)
             return null;
 
+        if (TryParseScopedDiscussionUrl(segments, out var scopedDiscussionUrlInfo))
+        {
+            return scopedDiscussionUrlInfo;
+        }
+
         var owner = segments[0];
         var repository = segments[1];
 
@@ -53,7 +58,8 @@ public static class GitHubUrlParser
                         Owner = owner,
                         Repository = repository,
                         Type = GitHubUrlType.Discussion,
-                        Number = number
+                        Number = number,
+                        DiscussionScope = GitHubDiscussionScope.Repository
                     },
                     _ => null
                 };
@@ -74,6 +80,39 @@ public static class GitHubUrlParser
     {
         return ParseGitHubUrl(url) != null;
     }
+
+    private static bool TryParseScopedDiscussionUrl(string[] segments, out GitHubUrlInfo? urlInfo)
+    {
+        urlInfo = null;
+
+        if (segments.Length < 4 || !segments[2].Equals("discussions", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var scope = segments[0].ToLowerInvariant() switch
+        {
+            "orgs" => GitHubDiscussionScope.Organization,
+            "users" => GitHubDiscussionScope.User,
+            _ => GitHubDiscussionScope.Repository
+        };
+
+        if (scope is GitHubDiscussionScope.Repository || !int.TryParse(segments[3], out var number))
+        {
+            return false;
+        }
+
+        urlInfo = new GitHubUrlInfo
+        {
+            Owner = segments[1],
+            Repository = string.Empty,
+            Type = GitHubUrlType.Discussion,
+            Number = number,
+            DiscussionScope = scope
+        };
+
+        return true;
+    }
 }
 
 public class GitHubUrlInfo
@@ -82,6 +121,7 @@ public class GitHubUrlInfo
     public required string Repository { get; set; }
     public required GitHubUrlType Type { get; set; }
     public int? Number { get; set; }
+    public GitHubDiscussionScope DiscussionScope { get; set; } = GitHubDiscussionScope.Repository;
 }
 
 public enum GitHubUrlType
@@ -90,4 +130,11 @@ public enum GitHubUrlType
     Issue,
     PullRequest,
     Discussion
+}
+
+public enum GitHubDiscussionScope
+{
+    Repository,
+    Organization,
+    User
 }

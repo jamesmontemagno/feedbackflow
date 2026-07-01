@@ -34,10 +34,26 @@ public class DiscussionConnection
 public class Discussion
 {
     public required string Id { get; set; }
+    public int? Number { get; set; }
     public required string Title { get; set; }
     public required string Url { get; set; }
     public Answer? Answer { get; set; }
     public required CommentConnection Comments { get; set; }
+}
+
+public class DiscussionSearchGraphqlResponse
+{
+    public required DiscussionSearchData Data { get; set; }
+}
+
+public class DiscussionSearchData
+{
+    public required DiscussionSearchResult Search { get; set; }
+}
+
+public class DiscussionSearchResult
+{
+    public required List<Discussion> Nodes { get; set; }
 }
 
 public class Answer
@@ -243,5 +259,17 @@ public class GithubSingleDiscussionQuery
         public required string Name { get; set; }
         public string? After { get; set; }
         public required int DiscussionNumber { get; set; }
+    }
+}
+
+public class GithubDiscussionSearchQuery
+{
+    public required string Query { get; set; }
+    public required DiscussionSearchQueryVariables Variables { get; set; }
+
+    public class DiscussionSearchQueryVariables
+    {
+        public required string Query { get; set; }
+        public string? After { get; set; }
     }
 }

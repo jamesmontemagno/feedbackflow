@@ -144,8 +144,10 @@ public class FeedbackFunctions
                 return response;
             }
 
-            // Validate repository exists
-            if (!await _githubService.CheckRepositoryValid(urlInfo.Owner, urlInfo.Repository))
+            // Validate repository exists for repository-scoped GitHub URLs.
+            if ((urlInfo.Type != SharedDump.Utils.GitHubUrlType.Discussion ||
+                 urlInfo.DiscussionScope == SharedDump.Utils.GitHubDiscussionScope.Repository) &&
+                !await _githubService.CheckRepositoryValid(urlInfo.Owner, urlInfo.Repository))
             {
                 var response = req.CreateResponse(HttpStatusCode.BadRequest);
                 await response.WriteStringAsync("Invalid repository");
@@ -203,7 +205,15 @@ public class FeedbackFunctions
                 case SharedDump.Utils.GitHubUrlType.Discussion:
                     if (urlInfo.Number.HasValue)
                     {
-                        var discussionModel = await _githubService.GetDiscussionWithCommentsAsync(urlInfo.Owner, urlInfo.Repository, urlInfo.Number.Value);
+                        var discussionModel = urlInfo.DiscussionScope switch
+                        {
+                            SharedDump.Utils.GitHubDiscussionScope.Organization =>
+                                await _githubService.GetOrganizationDiscussionWithCommentsAsync(urlInfo.Owner, urlInfo.Number.Value),
+                            SharedDump.Utils.GitHubDiscussionScope.User =>
+                                await _githubService.GetUserDiscussionWithCommentsAsync(urlInfo.Owner, urlInfo.Number.Value),
+                            _ =>
+                                await _githubService.GetDiscussionWithCommentsAsync(urlInfo.Owner, urlInfo.Repository, urlInfo.Number.Value)
+                        };
                         
                         if (discussionModel == null)
                         {
@@ -235,6 +245,13 @@ public class FeedbackFunctions
             await user!.TrackUsageAsync(UsageType.FeedQuery, _userAccountService, _logger, url);
             
             return successResponse;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "GitHub authentication failed while processing feedback request for URL: {Url}", url);
+            var response = req.CreateResponse(HttpStatusCode.BadGateway);
+            await response.WriteStringAsync("GitHub API authentication failed. Please check the server GitHub access token configuration.");
+            return response;
         }
         catch (Exception ex)
         {

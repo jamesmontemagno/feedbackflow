@@ -257,7 +257,15 @@ public abstract class FeedbackService : IFeedbackService
             }
         }
         
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            throw new HttpRequestException(
+                string.IsNullOrWhiteSpace(errorContent)
+                    ? $"Request failed with status code {(int)response.StatusCode} ({response.ReasonPhrase})"
+                    : errorContent);
+        }
+
         return response;
     }
 }

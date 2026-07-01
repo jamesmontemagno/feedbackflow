@@ -55,6 +55,43 @@ public class GitHubUrlParserTests
         Assert.AreEqual("feedbackflow", result.Repository);
         Assert.AreEqual(GitHubUrlType.Discussion, result.Type);
         Assert.AreEqual(789, result.Number);
+        Assert.AreEqual(GitHubDiscussionScope.Repository, result.DiscussionScope);
+    }
+
+    [TestMethod]
+    public void ParseGitHubUrl_ValidOrganizationDiscussionUrl_ReturnsCorrectInfo()
+    {
+        // Arrange
+        var url = "https://github.com/orgs/community/discussions/197089";
+
+        // Act
+        var result = GitHubUrlParser.ParseGitHubUrl(url);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.AreEqual("community", result.Owner);
+        Assert.AreEqual(string.Empty, result.Repository);
+        Assert.AreEqual(GitHubUrlType.Discussion, result.Type);
+        Assert.AreEqual(197089, result.Number);
+        Assert.AreEqual(GitHubDiscussionScope.Organization, result.DiscussionScope);
+    }
+
+    [TestMethod]
+    public void ParseGitHubUrl_ValidUserDiscussionUrl_ReturnsCorrectInfo()
+    {
+        // Arrange
+        var url = "https://github.com/users/octocat/discussions/42";
+
+        // Act
+        var result = GitHubUrlParser.ParseGitHubUrl(url);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.AreEqual("octocat", result.Owner);
+        Assert.AreEqual(string.Empty, result.Repository);
+        Assert.AreEqual(GitHubUrlType.Discussion, result.Type);
+        Assert.AreEqual(42, result.Number);
+        Assert.AreEqual(GitHubDiscussionScope.User, result.DiscussionScope);
     }
 
     [TestMethod]
