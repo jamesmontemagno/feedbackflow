@@ -246,6 +246,13 @@ public class FeedbackFunctions
             
             return successResponse;
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "GitHub authentication failed while processing feedback request for URL: {Url}", url);
+            var response = req.CreateResponse(HttpStatusCode.BadGateway);
+            await response.WriteStringAsync("GitHub API authentication failed. Please check the server GitHub access token configuration.");
+            return response;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing GitHub feedback request for URL: {Url}", url);

@@ -9,7 +9,7 @@ public class GitHubDiscussionServiceTests
     [TestMethod]
     public async Task GetOrganizationDiscussionWithCommentsAsync_SearchesScopedDiscussion_ReturnsComments()
     {
-        var handler = new CapturingGitHubMessageHandler("""
+        var handler = new CapturingGitHubMessageHandler(HttpStatusCode.OK, """
             {
               "data": {
                 "search": {
@@ -71,24 +71,45 @@ public class GitHubDiscussionServiceTests
         StringAssert.Contains(handler.RequestContent, "197089 org:community");
     }
 
+    [TestMethod]
+    public async Task GetOrganizationDiscussionWithCommentsAsync_UnauthorizedResponse_ThrowsWithoutRetrying()
+    {
+        var handler = new CapturingGitHubMessageHandler(HttpStatusCode.Unauthorized, """
+            {
+              "message": "Bad credentials"
+            }
+            """);
+        var service = new GitHubService("invalid-token", new HttpClient(handler));
+
+        var exception = await Assert.ThrowsExactlyAsync<UnauthorizedAccessException>(
+            () => service.GetOrganizationDiscussionWithCommentsAsync("community", 197089));
+
+        StringAssert.Contains(exception.Message, "GitHub API authentication failed");
+        Assert.AreEqual(1, handler.RequestCount);
+    }
+
     private sealed class CapturingGitHubMessageHandler : HttpMessageHandler
     {
+        private readonly HttpStatusCode _statusCode;
         private readonly string _responseContent;
 
-        public CapturingGitHubMessageHandler(string responseContent)
+        public CapturingGitHubMessageHandler(HttpStatusCode statusCode, string responseContent)
         {
+            _statusCode = statusCode;
             _responseContent = responseContent;
         }
 
         public string RequestContent { get; private set; } = string.Empty;
+        public int RequestCount { get; private set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            RequestCount++;
             RequestContent = request.Content is null
                 ? string.Empty
                 : await request.Content.ReadAsStringAsync(cancellationToken);
 
-            return new HttpResponseMessage(HttpStatusCode.OK)
+            return new HttpResponseMessage(_statusCode)
             {
                 Content = new StringContent(_responseContent)
             };

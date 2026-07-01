@@ -65,6 +65,7 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
             $"Analyzing source URLs... ({totalUrls} URL{(totalUrls > 1 ? "s" : "")})");
 
         var sourceData = new List<FeedbackSourceData>();
+        var errors = new List<string>();
         var totalCommentCount = 0;
         var processedCount = 0;
         foreach (var url in _urls)
@@ -91,12 +92,18 @@ public class AutoDataSourceFeedbackService: FeedbackService, IAutoDataSourceFeed
             {
                 // Log the error but continue processing other URLs
                 Console.Error.WriteLine($"Error processing URL {url}: {ex.Message}");
+                errors.Add($"{url}: {ex.Message}");
             }
             
         }
 
         if (!sourceData.Any())
         {
+            if (errors.Any())
+            {
+                throw new InvalidOperationException($"No valid comments were found from the provided URLs. Errors: {string.Join("; ", errors)}");
+            }
+
             throw new InvalidOperationException("No valid comments were found from the provided URLs");
         }
 

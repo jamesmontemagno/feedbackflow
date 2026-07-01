@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -786,15 +787,40 @@ public class GitHubService : IGitHubService
 
     private static async Task HandleRateLimit(HttpResponseMessage response)
     {
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            throw new UnauthorizedAccessException("GitHub API authentication failed. Check that GitHub:AccessToken is configured and valid.");
+        }
+
+        if (response.StatusCode is not HttpStatusCode.Forbidden and not HttpStatusCode.TooManyRequests)
+        {
+            var failureBody = await response.Content.ReadAsStringAsync();
+            throw new HttpRequestException($"GitHub API request failed with {(int)response.StatusCode} {response.ReasonPhrase}: {failureBody}");
+        }
+
         if (response.Headers.RetryAfter is { } retryAfter)
         {
             var delay = retryAfter.Delta ?? TimeSpan.FromSeconds(60);
             await Task.Delay(delay);
         }
-        else
+
+        if (response.Headers.TryGetValues("X-RateLimit-Remaining", out var remainingValues) &&
+            remainingValues.FirstOrDefault() == "0" &&
+            response.Headers.TryGetValues("X-RateLimit-Reset", out var resetValues) &&
+            long.TryParse(resetValues.FirstOrDefault(), out var resetUnixTime))
         {
-            await Task.Delay(TimeSpan.FromSeconds(60));
+            var resetTime = DateTimeOffset.FromUnixTimeSeconds(resetUnixTime);
+            var delay = resetTime - DateTimeOffset.UtcNow;
+
+            if (delay > TimeSpan.Zero)
+            {
+                await Task.Delay(delay);
+                return;
+            }
         }
+
+        var rejectedBody = await response.Content.ReadAsStringAsync();
+        throw new HttpRequestException($"GitHub API request was rejected with {(int)response.StatusCode} {response.ReasonPhrase}: {rejectedBody}");
     }
 
     /// <summary>
