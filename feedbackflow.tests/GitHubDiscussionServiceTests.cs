@@ -88,6 +88,39 @@ public class GitHubDiscussionServiceTests
         Assert.AreEqual(1, handler.RequestCount);
     }
 
+    [TestMethod]
+    public async Task CheckRepositoryValid_UnauthorizedResponse_ThrowsWithoutReturningInvalidRepository()
+    {
+        var handler = new CapturingGitHubMessageHandler(HttpStatusCode.Unauthorized, """
+            {
+              "message": "Bad credentials"
+            }
+            """);
+        var service = new GitHubService("invalid-token", new HttpClient(handler));
+
+        var exception = await Assert.ThrowsExactlyAsync<UnauthorizedAccessException>(
+            () => service.CheckRepositoryValid("dotnet", "aspnetcore"));
+
+        StringAssert.Contains(exception.Message, "GitHub API authentication failed");
+        Assert.AreEqual(1, handler.RequestCount);
+    }
+
+    [TestMethod]
+    public async Task CheckRepositoryValid_NotFoundResponse_ReturnsFalse()
+    {
+        var handler = new CapturingGitHubMessageHandler(HttpStatusCode.NotFound, """
+            {
+              "message": "Not Found"
+            }
+            """);
+        var service = new GitHubService("test-token", new HttpClient(handler));
+
+        var isValid = await service.CheckRepositoryValid("missing", "repo");
+
+        Assert.IsFalse(isValid);
+        Assert.AreEqual(1, handler.RequestCount);
+    }
+
     private sealed class CapturingGitHubMessageHandler : HttpMessageHandler
     {
         private readonly HttpStatusCode _statusCode;

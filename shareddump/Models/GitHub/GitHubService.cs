@@ -39,7 +39,12 @@ public class GitHubService : IGitHubService
 
         if (!response.IsSuccessStatusCode)
         {
-            Console.WriteLine(await response.Content.ReadAsStringAsync());
+            if (response.StatusCode is HttpStatusCode.NotFound)
+            {
+                return false;
+            }
+
+            await HandleRateLimit(response);
             return false;
         }
 
