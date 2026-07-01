@@ -4,6 +4,7 @@
 @using FeedbackWebApp.Services.Account
 @using SharedDump.Models.Reports
 @using SharedDump.Models.Account
+@using SharedDump.Utils.Account
 @using Microsoft.JSInterop
 @inject FeedbackWebApp.Services.IRedditExportService RedditExportService
 @inject IAuthenticationService AuthService
@@ -327,7 +328,7 @@
             var accountResult = await accountService.GetUserAccountAndLimitsAsync();
             if (accountResult.HasValue)
             {
-                isAdmin = accountResult.Value.account?.Tier == AccountTier.Admin;
+                isAdmin = accountResult.Value.account?.Tier is { } et && AccountTierUtils.HasAdminPortalAccess(et);
             }
 
             if (isAdmin)

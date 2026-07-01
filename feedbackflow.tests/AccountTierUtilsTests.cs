@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharedDump.Models.Account;
 using SharedDump.Utils.Account;
+using System.Linq;
 
 namespace FeedbackFlow.Tests;
 
@@ -15,6 +16,7 @@ public class AccountTierUtilsTests
         Assert.AreEqual("Pro", AccountTierUtils.GetTierName(AccountTier.Pro));
         Assert.AreEqual("Pro+", AccountTierUtils.GetTierName(AccountTier.ProPlus));
         Assert.AreEqual("Super User", AccountTierUtils.GetTierName(AccountTier.SuperUser));
+        Assert.AreEqual("Moderator", AccountTierUtils.GetTierName(AccountTier.Moderator));
         Assert.AreEqual("Admin", AccountTierUtils.GetTierName(AccountTier.Admin));
     }
 
@@ -44,6 +46,7 @@ public class AccountTierUtilsTests
         Assert.IsTrue(AccountTierUtils.SupportsEmailNotifications(AccountTier.Pro));
         Assert.IsTrue(AccountTierUtils.SupportsEmailNotifications(AccountTier.ProPlus));
         Assert.IsTrue(AccountTierUtils.SupportsEmailNotifications(AccountTier.SuperUser));
+        Assert.IsTrue(AccountTierUtils.SupportsEmailNotifications(AccountTier.Moderator));
         Assert.IsTrue(AccountTierUtils.SupportsEmailNotifications(AccountTier.Admin));
     }
 
@@ -73,7 +76,51 @@ public class AccountTierUtilsTests
         Assert.IsTrue(AccountTierUtils.SupportsTwitterAccess(AccountTier.Pro));
         Assert.IsTrue(AccountTierUtils.SupportsTwitterAccess(AccountTier.ProPlus));
         Assert.IsTrue(AccountTierUtils.SupportsTwitterAccess(AccountTier.SuperUser));
+        Assert.IsTrue(AccountTierUtils.SupportsTwitterAccess(AccountTier.Moderator));
         Assert.IsTrue(AccountTierUtils.SupportsTwitterAccess(AccountTier.Admin));
+    }
+
+    [TestMethod]
+    [TestCategory("Account")]
+    public void Moderator_ShouldHaveAdminPortalAccessButNotManagement()
+    {
+        Assert.IsTrue(AccountTierUtils.HasAdminPortalAccess(AccountTier.Moderator));
+        Assert.IsFalse(AccountTierUtils.IsAdmin(AccountTier.Moderator));
+        Assert.IsFalse(AccountTierUtils.CanManageUsers(AccountTier.Moderator));
+        Assert.IsFalse(AccountTierUtils.CanManageAdminReports(AccountTier.Moderator));
+    }
+
+    [TestMethod]
+    [TestCategory("Account")]
+    public void Admin_ShouldHaveFullAccess()
+    {
+        Assert.IsTrue(AccountTierUtils.IsAdmin(AccountTier.Admin));
+        Assert.IsTrue(AccountTierUtils.HasAdminPortalAccess(AccountTier.Admin));
+        Assert.IsTrue(AccountTierUtils.CanManageUsers(AccountTier.Admin));
+        Assert.IsTrue(AccountTierUtils.CanManageAdminReports(AccountTier.Admin));
+    }
+
+    [TestMethod]
+    [TestCategory("Account")]
+    public void NonInternalTiers_ShouldNotHaveAdminPortalAccess()
+    {
+        Assert.IsFalse(AccountTierUtils.HasAdminPortalAccess(AccountTier.Free));
+        Assert.IsFalse(AccountTierUtils.HasAdminPortalAccess(AccountTier.Pro));
+        Assert.IsFalse(AccountTierUtils.HasAdminPortalAccess(AccountTier.ProPlus));
+        Assert.IsFalse(AccountTierUtils.HasAdminPortalAccess(AccountTier.SuperUser));
+    }
+
+    [TestMethod]
+    [TestCategory("Account")]
+    public void GetAdminAssignableTiers_ShouldIncludeAllExceptAdmin()
+    {
+        var assignable = AccountTierUtils.GetAdminAssignableTiers();
+        Assert.IsFalse(assignable.Contains(AccountTier.Admin), "Admin must not be assignable");
+        Assert.IsTrue(assignable.Contains(AccountTier.Free));
+        Assert.IsTrue(assignable.Contains(AccountTier.Pro));
+        Assert.IsTrue(assignable.Contains(AccountTier.ProPlus));
+        Assert.IsTrue(assignable.Contains(AccountTier.SuperUser));
+        Assert.IsTrue(assignable.Contains(AccountTier.Moderator));
     }
 
     [TestMethod]

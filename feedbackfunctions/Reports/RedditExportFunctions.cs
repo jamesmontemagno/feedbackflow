@@ -13,6 +13,7 @@ using SharedDump.Models.Account;
 using SharedDump.Models.Reddit;
 using SharedDump.Models.Reports;
 using SharedDump.Services.Interfaces;
+using SharedDump.Utils.Account;
 
 namespace FeedbackFunctions.Reports;
 
@@ -428,7 +429,7 @@ public class RedditExportFunctions
         }
 
         var userAccount = await _userAccountService.GetUserAccountAsync(authenticatedUser.UserId);
-        if (userAccount?.Tier != AccountTier.Admin)
+        if (userAccount is null || !AccountTierUtils.HasAdminPortalAccess(userAccount.Tier))
         {
             var forbidden = req.CreateResponse(HttpStatusCode.Forbidden);
             await forbidden.WriteStringAsync("Admin access required");

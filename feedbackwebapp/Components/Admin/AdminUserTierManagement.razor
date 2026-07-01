@@ -1,6 +1,7 @@
 @namespace FeedbackWebApp.Components.Admin
 @using FeedbackWebApp.Services.Account
 @using SharedDump.Models.Account
+@using SharedDump.Utils.Account
 @inject IAdminUserTierService AdminUserTierService
 @inject IToastService ToastService
 
@@ -11,7 +12,7 @@
                 <i class="bi bi-people me-2"></i>
                 User Tier Management
             </h5>
-            <small class="text-muted">Modify user tiers (Free, Pro, Pro+). No personal data shown.</small>
+            <small class="text-muted">Modify user tiers (any tier except Admin). No personal data shown.</small>
         </div>
         <div class="admin-user-tiers-toolbar d-flex align-items-center gap-2">
             <div class="position-relative filter-input-wrapper">
@@ -76,9 +77,10 @@
                                 <td class="name-cell" title="@u.MaskedName">@u.MaskedName</td>
                                 <td>
                                     <select class="form-select form-select-sm" @bind="u.Tier" @bind:after="() => OnTierChanged(u)" disabled="@isProcessing">
-                                        <option value="@AccountTier.Free">Free</option>
-                                        <option value="@AccountTier.Pro">Pro</option>
-                                        <option value="@AccountTier.ProPlus">Pro+</option>
+                                        @foreach (var tier in AssignableTiers)
+                                        {
+                                            <option value="@tier">@AccountTierUtils.GetTierName(tier)</option>
+                                        }
                                     </select>
                                 </td>
                                 <td class="d-none d-md-table-cell">@u.AnalysesUsed</td>
@@ -149,6 +151,7 @@
 
 @code {
     private List<AdminUserTierInfo>? users;
+    private static readonly IReadOnlyList<AccountTier> AssignableTiers = AccountTierUtils.GetAdminAssignableTiers();
     private bool isLoading = true;
     private bool isProcessing = false;
     private string? processingUser;

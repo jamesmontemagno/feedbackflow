@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharedDump.Models.Account;
+using SharedDump.Utils.Account;
 using System.Linq;
 
 namespace FeedbackFlow.Tests;
@@ -7,7 +8,7 @@ namespace FeedbackFlow.Tests;
 [TestClass]
 public class AdminUserTierFunctionsTests
 {
-    private static readonly AccountTier[] Allowed = new[] { AccountTier.Free, AccountTier.Pro, AccountTier.ProPlus };
+    private static readonly AccountTier[] Allowed = AccountTierUtils.GetAdminAssignableTiers().ToArray();
 
     [TestMethod]
     [TestCategory("Account")]
@@ -30,10 +31,20 @@ public class AdminUserTierFunctionsTests
 
     [TestMethod]
     [TestCategory("Account")]
+    public void AllowedTiers_IncludeInternalNonAdminTiers()
+    {
+        Assert.IsTrue(Allowed.Contains(AccountTier.Free));
+        Assert.IsTrue(Allowed.Contains(AccountTier.Pro));
+        Assert.IsTrue(Allowed.Contains(AccountTier.ProPlus));
+        Assert.IsTrue(Allowed.Contains(AccountTier.SuperUser));
+        Assert.IsTrue(Allowed.Contains(AccountTier.Moderator));
+    }
+
+    [TestMethod]
+    [TestCategory("Account")]
     public void DisallowedTiers_NotInAllowedSet()
     {
         Assert.IsFalse(Allowed.Contains(AccountTier.Admin));
-        Assert.IsFalse(Allowed.Contains(AccountTier.SuperUser));
     }
 
     [TestMethod]

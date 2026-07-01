@@ -11,6 +11,7 @@ using FeedbackFunctions.Services.Account;
 using FeedbackFunctions.Services.Reports;
 using SharedDump.Models.Account;
 using SharedDump.Models.Reports;
+using SharedDump.Utils.Account;
 
 namespace FeedbackFunctions.Reports;
 
@@ -194,7 +195,7 @@ public class ReportDataAdminFunctions
         }
 
         var userAccount = await _userAccountService.GetUserAccountAsync(authenticatedUser.UserId);
-        if (userAccount?.Tier != AccountTier.Admin)
+        if (userAccount is null || !AccountTierUtils.HasAdminPortalAccess(userAccount.Tier))
         {
             var forbidden = req.CreateResponse(HttpStatusCode.Forbidden);
             await forbidden.WriteStringAsync("Admin access required");

@@ -15,27 +15,33 @@
                     <div class="desc">Metrics & usage</div>
                 </a>
             </div>
-            <div class="col-6 col-md-3">
-                <a href="/admin/api-keys" class="admin-feature-tile d-block text-decoration-none">
-                    <div class="icon-wrapper"><i class="bi bi-key"></i></div>
-                    <div class="title">API Keys</div>
-                    <div class="desc">User key mgmt</div>
-                </a>
-            </div>
-            <div class="col-6 col-md-3">
-                <a href="/admin/user-tiers" class="admin-feature-tile d-block text-decoration-none">
-                    <div class="icon-wrapper"><i class="bi bi-people"></i></div>
-                    <div class="title">User Tiers</div>
-                    <div class="desc">Plans & limits</div>
-                </a>
-            </div>
-            <div class="col-6 col-md-3">
-                <a href="/admin/reports" class="admin-feature-tile d-block text-decoration-none">
-                    <div class="icon-wrapper"><i class="bi bi-file-earmark-bar-graph"></i></div>
-                    <div class="title">Reports</div>
-                    <div class="desc">Automation</div>
-                </a>
-            </div>
+            @if (CanManageUsers)
+            {
+                <div class="col-6 col-md-3">
+                    <a href="/admin/api-keys" class="admin-feature-tile d-block text-decoration-none">
+                        <div class="icon-wrapper"><i class="bi bi-key"></i></div>
+                        <div class="title">API Keys</div>
+                        <div class="desc">User key mgmt</div>
+                    </a>
+                </div>
+                <div class="col-6 col-md-3">
+                    <a href="/admin/user-tiers" class="admin-feature-tile d-block text-decoration-none">
+                        <div class="icon-wrapper"><i class="bi bi-people"></i></div>
+                        <div class="title">User Tiers</div>
+                        <div class="desc">Plans & limits</div>
+                    </a>
+                </div>
+            }
+            @if (CanManageAdminReports)
+            {
+                <div class="col-6 col-md-3">
+                    <a href="/admin/reports" class="admin-feature-tile d-block text-decoration-none">
+                        <div class="icon-wrapper"><i class="bi bi-file-earmark-bar-graph"></i></div>
+                        <div class="title">Reports</div>
+                        <div class="desc">Automation</div>
+                    </a>
+                </div>
+            }
             <div class="col-6 col-md-3">
                 <a href="/admin/report-data" class="admin-feature-tile d-block text-decoration-none">
                     <div class="icon-wrapper"><i class="bi bi-database-down"></i></div>
@@ -53,3 +59,8 @@
         </div>
     </div>
 </div>
+
+@code {
+    [Parameter] public bool CanManageUsers { get; set; } = true;
+    [Parameter] public bool CanManageAdminReports { get; set; } = true;
+}

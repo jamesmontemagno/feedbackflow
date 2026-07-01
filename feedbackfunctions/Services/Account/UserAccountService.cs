@@ -296,6 +296,14 @@ public class UserAccountService : IUserAccountService
                 ApiLimit = 1000,
                 AnalysisRetentionDays = 3650 // 10 years
             },
+            AccountTier.Moderator => new AccountLimits 
+            { 
+                AnalysisLimit = 10000,
+                ReportLimit = 10000,
+                FeedQueryLimit = 10000,
+                ApiLimit = 1000,
+                AnalysisRetentionDays = 3650 // 10 years
+            },
             AccountTier.Admin => new AccountLimits 
             { 
                 AnalysisLimit = 10000,
