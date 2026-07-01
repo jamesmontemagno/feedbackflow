@@ -1299,4 +1299,167 @@ public class GitHubService : IGitHubService
 
         return discussionModel;
     }
+
+    public Task<GithubDiscussionModel?> GetOrganizationDiscussionWithCommentsAsync(string organizationLogin, int discussionNumber)
+    {
+        return GetScopedDiscussionWithCommentsAsync("org", "orgs", organizationLogin, discussionNumber);
+    }
+
+    public Task<GithubDiscussionModel?> GetUserDiscussionWithCommentsAsync(string userLogin, int discussionNumber)
+    {
+        return GetScopedDiscussionWithCommentsAsync("user", "users", userLogin, discussionNumber);
+    }
+
+    private async Task<GithubDiscussionModel?> GetScopedDiscussionWithCommentsAsync(
+        string searchQualifier,
+        string urlScope,
+        string login,
+        int discussionNumber)
+    {
+        var hasMorePages = true;
+        string? endCursor = null;
+        var retryCount = 0;
+        GithubDiscussionModel? discussionModel = null;
+        var allComments = new List<GithubCommentModel>();
+        var expectedUrl = $"https://github.com/{urlScope}/{login}/discussions/{discussionNumber}";
+        var searchQuery = $"{discussionNumber} {searchQualifier}:{login}";
+
+        while (hasMorePages)
+        {
+            var discussionQuery = @"
+            query($query: String!, $after: String) {
+                search(query: $query, type: DISCUSSION, first: 10) {
+                    nodes {
+                        ... on Discussion {
+                            id
+                            number
+                            title
+                            url
+                            answer {
+                                id
+                            }
+                            comments(first: 100, after: $after) {
+                                edges {
+                                    node {
+                                        id
+                                        body
+                                        url
+                                        createdAt
+                                        author {
+                                            login
+                                        }
+                                        replies(first: 100) {
+                                            edges {
+                                                node {
+                                                    id
+                                                    body
+                                                    url
+                                                    createdAt
+                                                    author {
+                                                        login
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                pageInfo {
+                                    hasNextPage
+                                    endCursor
+                                }
+                            }
+                        }
+                    }
+                }
+            }";
+
+            while (retryCount < _maxRetries)
+            {
+                var response = await _client.PostAsJsonAsync("https://api.github.com/graphql", new GithubDiscussionSearchQuery
+                {
+                    Query = discussionQuery,
+                    Variables = new() { Query = searchQuery, After = endCursor }
+                },
+                GithubApiJsonContext.Default.GithubDiscussionSearchQuery);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    await HandleRateLimit(response);
+                    retryCount++;
+                    continue;
+                }
+
+                var result = await response.Content.ReadFromJsonAsync(GithubApiJsonContext.Default.DiscussionSearchGraphqlResponse);
+                var discussion = result?.Data.Search.Nodes.FirstOrDefault(d =>
+                    d.Number == discussionNumber &&
+                    d.Url.Equals(expectedUrl, StringComparison.OrdinalIgnoreCase));
+
+                if (discussion is null)
+                {
+                    return null;
+                }
+
+                discussionModel ??= new GithubDiscussionModel
+                {
+                    Title = discussion.Title,
+                    AnswerId = discussion.Answer?.Id,
+                    Url = discussion.Url,
+                    Comments = Array.Empty<GithubCommentModel>()
+                };
+
+                foreach (var commentEdge in discussion.Comments.Edges)
+                {
+                    var comment = commentEdge.Node;
+
+                    var commentJson = new GithubCommentModel
+                    {
+                        Id = comment.Id,
+                        Author = comment.Author?.Login ?? "Unknown",
+                        Content = comment.Body,
+                        CreatedAt = comment.CreatedAt,
+                        Url = comment.Url
+                    };
+
+                    allComments.Add(commentJson);
+
+                    if (comment.Replies is { } replies)
+                    {
+                        foreach (var replyEdge in replies.Edges)
+                        {
+                            var reply = replyEdge.Node;
+
+                            var replyJson = new GithubCommentModel
+                            {
+                                Id = reply.Id,
+                                ParentId = comment.Id,
+                                Author = reply.Author?.Login ?? "Unknown",
+                                Content = reply.Body,
+                                CreatedAt = reply.CreatedAt,
+                                Url = reply.Url
+                            };
+
+                            allComments.Add(replyJson);
+                        }
+                    }
+                }
+
+                hasMorePages = discussion.Comments.PageInfo?.HasNextPage ?? false;
+                endCursor = discussion.Comments.PageInfo?.EndCursor;
+                retryCount = 0;
+                break;
+            }
+
+            if (retryCount == _maxRetries)
+            {
+                throw new Exception("Max retries exceeded");
+            }
+        }
+
+        if (discussionModel is not null)
+        {
+            discussionModel.Comments = allComments.ToArray();
+        }
+
+        return discussionModel;
+    }
 }

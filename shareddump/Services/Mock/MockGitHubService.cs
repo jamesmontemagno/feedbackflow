@@ -553,4 +553,62 @@ public class MockGitHubService : IGitHubService
 
         return mockDiscussion;
     }
+
+    public async Task<GithubDiscussionModel?> GetOrganizationDiscussionWithCommentsAsync(string organizationLogin, int discussionNumber)
+    {
+        await Task.Delay(700);
+
+        if (string.IsNullOrWhiteSpace(organizationLogin) || discussionNumber <= 0)
+            return null;
+
+        return CreateScopedDiscussionMock("orgs", organizationLogin, discussionNumber);
+    }
+
+    public async Task<GithubDiscussionModel?> GetUserDiscussionWithCommentsAsync(string userLogin, int discussionNumber)
+    {
+        await Task.Delay(700);
+
+        if (string.IsNullOrWhiteSpace(userLogin) || discussionNumber <= 0)
+            return null;
+
+        return CreateScopedDiscussionMock("users", userLogin, discussionNumber);
+    }
+
+    private static GithubDiscussionModel CreateScopedDiscussionMock(string urlScope, string login, int discussionNumber)
+    {
+        return new GithubDiscussionModel
+        {
+            Title = $"Discussion #{discussionNumber}: Community feedback and support",
+            AnswerId = $"answer_{discussionNumber}_2",
+            Url = $"https://github.com/{urlScope}/{login}/discussions/{discussionNumber}",
+            Comments = new[]
+            {
+                new GithubCommentModel
+                {
+                    Id = $"discussion_comment_{discussionNumber}_1",
+                    Author = "community-member",
+                    Content = "Can we discuss how this behavior should work across the community?",
+                    CreatedAt = DateTime.UtcNow.AddDays(-7).ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    Url = $"https://github.com/{urlScope}/{login}/discussions/{discussionNumber}#discussioncomment-1"
+                },
+                new GithubCommentModel
+                {
+                    Id = $"answer_{discussionNumber}_2",
+                    Author = "maintainer",
+                    Content = "This is the recommended approach for the broader community discussion.",
+                    CreatedAt = DateTime.UtcNow.AddDays(-6).ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    Url = $"https://github.com/{urlScope}/{login}/discussions/{discussionNumber}#discussioncomment-2"
+                },
+                new GithubCommentModel
+                {
+                    Id = $"discussion_comment_{discussionNumber}_3",
+                    ParentId = $"answer_{discussionNumber}_2",
+                    Author = "community-member",
+                    Content = "Thanks, that helps clarify the expected behavior.",
+                    CreatedAt = DateTime.UtcNow.AddDays(-5).ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    Url = $"https://github.com/{urlScope}/{login}/discussions/{discussionNumber}#discussioncomment-3"
+                }
+            }
+        };
+    }
 }
