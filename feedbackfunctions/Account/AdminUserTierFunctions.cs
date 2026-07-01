@@ -9,12 +9,13 @@ using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
 using FeedbackFunctions.Services.Authentication;
+using SharedDump.Utils.Account;
 
 namespace FeedbackFunctions.Account;
 
 /// <summary>
 /// Administrative functions for viewing and modifying user account tiers.
-/// Admins may set tiers only to Free, Pro, or ProPlus. No PII (email, name) is ever returned.
+/// Admins may set tiers to any tier except Admin (Free, Pro, Pro+, Super User, Moderator). No PII (email, name) is ever returned.
 /// Routes:
 /// - GET /api/GetAllUserTiersAdmin
 /// - POST /api/UpdateUserTierAdmin
@@ -27,11 +28,7 @@ public class AdminUserTierFunctions
     private readonly AuthenticationMiddleware _authMiddleware;
 
     private static readonly AccountTier[] AllowedTargetTiers =
-    [
-        AccountTier.Free,
-        AccountTier.Pro,
-        AccountTier.ProPlus
-    ];
+        AccountTierUtils.GetAdminAssignableTiers().ToArray();
 
     public AdminUserTierFunctions(
         ILogger<AdminUserTierFunctions> logger,
@@ -75,9 +72,9 @@ public class AdminUserTierFunctions
                 .GroupBy(u => u.UserId)
                 .ToDictionary(g => g.Key, g => g.First().Name ?? string.Empty);
 
-            // Project & mask (exclude admin & super users to avoid accidental edits + internal accounts)
+            // Project & mask (exclude only admin accounts to avoid accidental edits of administrators)
             var result = allAccounts
-                .Where(a => a.Tier != AccountTier.Admin && a.Tier != AccountTier.SuperUser)
+                .Where(a => a.Tier != AccountTier.Admin)
                 .Select(a => new UserTierAdminView
                 {
                     UserId = a.UserId, // full id (non-PII GUID) used for updates
@@ -162,7 +159,7 @@ public class AdminUserTierFunctions
                 return notFound;
             }
 
-            if (account.Tier == AccountTier.Admin || account.Tier == AccountTier.SuperUser)
+            if (account.Tier == AccountTier.Admin)
             {
                 var forbiddenTarget = req.CreateResponse(HttpStatusCode.Forbidden);
                 await forbiddenTarget.WriteAsJsonAsync(new { Data = (object?)null, Success = false, Message = "Cannot modify this account" });

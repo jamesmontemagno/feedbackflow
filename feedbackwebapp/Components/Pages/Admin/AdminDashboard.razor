@@ -6,6 +6,7 @@
 @using SharedDump.Models.Admin
 @using SharedDump.Models.Account
 @using SharedDump.Utils
+@using SharedDump.Utils.Account
 @inject IAdminDashboardService AdminDashboardService
 @inject IAccountServiceProvider AccountServiceProvider
 @inject IToastService ToastService
@@ -122,7 +123,7 @@
             var accountResult = await accountService.GetUserAccountAndLimitsAsync();
             if (accountResult.HasValue)
             {
-                isAdmin = accountResult.Value.account?.Tier == AccountTier.Admin;
+                isAdmin = accountResult.Value.account?.Tier is { } dt && AccountTierUtils.HasAdminPortalAccess(dt);
             }
             if (isAdmin)
             {

@@ -63,14 +63,14 @@
                                         </span>
                                     </div>
                                 }
-                                else if (userAccount?.Tier == AccountTier.Admin)
+                                else if (userAccount?.Tier == AccountTier.Moderator)
                                 {
                                     <div class="mt-2">
                                         <span class="badge bg-warning text-dark fs-6">
-                                            <i class="bi bi-star-fill me-1"></i>
-                                            Admin
+                                            <i class="bi bi-shield-fill me-1"></i>
+                                            Moderator
                                         </span>
-                                        <p class="text-muted small mt-1 mb-0">Administrative Account</p>
+                                        <p class="text-muted small mt-1 mb-0">Moderator Account</p>
                                     </div>
                                 }
                             </div>
@@ -91,6 +91,13 @@
                                             <span class="badge bg-warning text-dark ms-2">
                                                 <i class="bi bi-star-fill me-1"></i>
                                                 Admin
+                                            </span>
+                                        }
+                                        else if (userAccount?.Tier == AccountTier.Moderator)
+                                        {
+                                            <span class="badge bg-warning text-dark ms-2">
+                                                <i class="bi bi-shield-fill me-1"></i>
+                                                Moderator
                                             </span>
                                         }
                                     </p>

@@ -8,6 +8,7 @@ using FeedbackFunctions.Attributes;
 using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Services.Account;
 using SharedDump.Models.Account;
+using SharedDump.Utils.Account;
 
 namespace FeedbackFunctions.Admin;
 
@@ -56,9 +57,9 @@ public class AdminDashboardFunctions
                 return unauthorizedResponse;
             }
 
-            // Check if user is admin
+            // Check if user has admin portal access (Admin or Moderator)
             var userAccount = await _userAccountService.GetUserAccountAsync(authenticatedUser.UserId);
-            if (userAccount?.Tier != AccountTier.Admin)
+            if (userAccount is null || !AccountTierUtils.HasAdminPortalAccess(userAccount.Tier))
             {
                 var forbiddenResponse = req.CreateResponse(HttpStatusCode.Forbidden);
                 await forbiddenResponse.WriteStringAsync("Admin access required");

@@ -6,5 +6,6 @@ public enum AccountTier
     Pro = 1,
     ProPlus = 2,
     SuperUser = 100,
+    Moderator = 200,
     Admin = 225
 }

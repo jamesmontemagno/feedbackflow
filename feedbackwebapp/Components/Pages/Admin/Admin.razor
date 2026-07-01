@@ -4,6 +4,7 @@
 @using FeedbackWebApp.Services.Account
 @using SharedDump.Models.Account
 @using SharedDump.Utils
+@using SharedDump.Utils.Account
 @inject IAuthenticationService AuthService
 @inject IAccountServiceProvider AccountServiceProvider
 @inject IToastService ToastService
@@ -49,7 +50,7 @@
             <i class="bi bi-gear-fill"></i>
             Administration
         </h1>
-        <AdminFeaturesPanel />
+        <AdminFeaturesPanel CanManageUsers="canManageUsers" CanManageAdminReports="canManageAdminReports" />
     }
 </div>
 
@@ -57,6 +58,8 @@
     private bool isLoading = true;
     private bool isAuthenticated = false;
     private bool isAdmin = false;
+    private bool canManageUsers = false;
+    private bool canManageAdminReports = false;
     private string errorMessage = string.Empty;
     private bool _firstRenderProcessed = false;
 
@@ -116,7 +119,10 @@
             var accountResult = await accountService.GetUserAccountAndLimitsAsync();
             if (accountResult.HasValue)
             {
-                isAdmin = accountResult.Value.account?.Tier == AccountTier.Admin;
+                var tier = accountResult.Value.account?.Tier;
+                isAdmin = tier.HasValue && AccountTierUtils.HasAdminPortalAccess(tier.Value);
+                canManageUsers = tier.HasValue && AccountTierUtils.CanManageUsers(tier.Value);
+                canManageAdminReports = tier.HasValue && AccountTierUtils.CanManageAdminReports(tier.Value);
             }
 
             if (!isAdmin && ToastService is not null)
