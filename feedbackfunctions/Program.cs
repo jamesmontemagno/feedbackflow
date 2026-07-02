@@ -20,6 +20,7 @@ using FeedbackFunctions.Services.Authentication;
 using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Services.Account;
 using FeedbackFunctions.Services.Email;
+using FeedbackFunctions.Services.Sharing;
 using FeedbackFunctions.Services.Storage;
 using FeedbackFunctions.Services.Twitter;
 using System.Configuration;
@@ -268,6 +269,7 @@ void RegisterStorageServices(IServiceCollection services)
     services.AddSingleton<FeedbackStorageClients>();
     services.AddSingleton<ITableInitializationService, TableInitializationService>();
     services.AddSingleton<IReportStorageService, ReportStorageService>();
+    services.AddSingleton<ISharedAnalysisStorageService, SharedAnalysisStorageService>();
     services.AddScoped<IFeatureGateService, FeatureGateService>();
 }
 

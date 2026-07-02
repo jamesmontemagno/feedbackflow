@@ -5,6 +5,7 @@ using SharedDump.Models.YouTube;
 using SharedDump.Models.Reddit;
 using SharedDump.Models.ContentSearch;
 using SharedDump.Models.Reports;
+using FeedbackFunctions.FeedbackAnalysis;
 
 namespace FeedbackFunctions;
 
@@ -24,4 +25,9 @@ namespace FeedbackFunctions;
 [JsonSerializable(typeof(OmniSearchResponse))]
 [JsonSerializable(typeof(OmniSearchResult))]
 [JsonSerializable(typeof(List<OmniSearchResult>))]
+[JsonSerializable(typeof(DeveloperReportRequest))]
+[JsonSerializable(typeof(DeveloperReportResponse))]
+[JsonSerializable(typeof(DeveloperReportSourceResult))]
+[JsonSerializable(typeof(List<string>))]
+[JsonSerializable(typeof(List<DeveloperReportSourceResult>))]
 public partial class FeedbackJsonContext : JsonSerializerContext { }
