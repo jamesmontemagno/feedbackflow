@@ -1,16 +1,14 @@
 using System.Net;
 using Azure.Storage.Blobs;
-using Azure.Data.Tables;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SharedDump.Models;
-using System.Text;
 using System.Text.Json;
 using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
+using FeedbackFunctions.Services.Sharing;
 using FeedbackFunctions.Services.Storage;
 
 namespace FeedbackFunctions;
@@ -56,12 +54,11 @@ public class SharingFunctions
 {
     private readonly FeedbackFunctions.Services.Account.IUserAccountService _userAccountService;
     private const string ContainerName = "shared-analyses";
-    private const string TableName = "SharedAnalyses";
     private readonly ILogger<SharingFunctions> _logger;
     private readonly AuthenticationMiddleware _authMiddleware;
     private readonly FeedbackStorageClients _storage;
     private readonly ITableInitializationService _tableInitializationService;
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _sharedAnalysisCache = new();
+    private readonly ISharedAnalysisStorageService _sharedAnalysisStorageService;
 
     /// <summary>
     /// Initializes a new instance of the SharingFunctions class
@@ -74,12 +71,14 @@ public class SharingFunctions
         AuthenticationMiddleware authMiddleware,
         FeedbackStorageClients storage,
         ITableInitializationService tableInitializationService,
+        ISharedAnalysisStorageService sharedAnalysisStorageService,
         FeedbackFunctions.Services.Account.IUserAccountService userAccountService)
     {
         _logger = logger;
         _authMiddleware = authMiddleware;
         _storage = storage;
         _tableInitializationService = tableInitializationService;
+        _sharedAnalysisStorageService = sharedAnalysisStorageService;
         _userAccountService = userAccountService;
     }
 
@@ -88,7 +87,6 @@ public class SharingFunctions
     /// Saves an analysis to Azure Blob Storage for sharing
     /// </summary>
     /// <param name="req">HTTP request containing the analysis data</param>
-    /// <param name="containerClient">Azure Blob container client injected by the runtime</param>
     /// <returns>HTTP response with the unique ID for accessing the shared analysis</returns>
     /// <remarks>
     /// The request body should contain a JSON representation of an AnalysisData object.
@@ -109,8 +107,7 @@ public class SharingFunctions
     [Function("SaveSharedAnalysis")]
     [Authorize]
     public async Task<HttpResponseData> SaveSharedAnalysis(
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequestData req,
-        [BlobInput(ContainerName, Connection = "ProductionStorage")] BlobContainerClient containerClient)
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequestData req)
     {
         _logger.LogInformation("Processing shared analysis save request");
         
@@ -142,29 +139,9 @@ public class SharingFunctions
         var analysisData = requestData.Analysis;
         var isPublic = requestData.IsPublic;
         
-        // Generate unique ID
-        string id = Guid.NewGuid().ToString();
-        
         try
         {
-            await _tableInitializationService.EnsureSharedAnalysesStorageAsync();
-
-            // Save to blob storage with the ID as the blob name
-            var blobClient = containerClient.GetBlobClient($"{id}.json");
-            
-            // Store the original analysis data (not the request wrapper)
-            var analysisJson = JsonSerializer.Serialize(analysisData, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            using var ms = new MemoryStream(Encoding.UTF8.GetBytes(analysisJson));
-            await blobClient.UploadAsync(ms, overwrite: true);
-
-            // Save metadata to table storage with public flag
-            var sharedAnalysisEntity = new SharedAnalysisEntity(user.UserId, id, analysisData, isPublic);
-            await _storage.SharedAnalysesTable.UpsertEntityAsync(sharedAnalysisEntity);
-
-            // Add to in-memory cache
-            _sharedAnalysisCache[id] = analysisJson;
-
-            _logger.LogInformation("Successfully saved shared analysis {Id} for user {UserId} (Public: {IsPublic})", id, user.UserId, isPublic);
+            var id = await _sharedAnalysisStorageService.SaveAnalysisAsync(user.UserId, analysisData, isPublic);
 
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "application/json");
@@ -283,7 +260,7 @@ public class SharingFunctions
         _logger.LogDebug("Access granted for analysis {Id}", id);
 
         // Check in-memory cache first
-        if (_sharedAnalysisCache.TryGetValue(id, out var cachedJson))
+        if (_sharedAnalysisStorageService.TryGetCachedAnalysis(id, out var cachedJson))
         {
             var cachedResponse = req.CreateResponse(HttpStatusCode.OK);
             cachedResponse.Headers.Add("Content-Type", "application/json");
@@ -292,7 +269,7 @@ public class SharingFunctions
         }
 
         // Add to cache for future requests
-        _sharedAnalysisCache[id] = analysisJson;
+        _sharedAnalysisStorageService.CacheAnalysis(id, analysisJson);
 
         var response = req.CreateResponse(HttpStatusCode.OK);
         response.Headers.Add("Content-Type", "application/json");
@@ -378,7 +355,7 @@ public class SharingFunctions
             await _storage.SharedAnalysesTable.UpsertEntityAsync(entity);
 
             // Remove from cache to ensure fresh data is loaded with updated visibility settings
-            _sharedAnalysisCache.TryRemove(id, out _);
+            _sharedAnalysisStorageService.RemoveCachedAnalysis(id);
             _logger.LogDebug("Removed analysis {Id} from cache after visibility update", id);
 
             _logger.LogInformation("Successfully updated analysis {Id} visibility to {IsPublic} for user {UserId}", 
@@ -468,7 +445,7 @@ public class SharingFunctions
                 await blobClient.DeleteIfExistsAsync();
 
                 // Remove from cache if present
-                _sharedAnalysisCache.TryRemove(id, out _);
+                _sharedAnalysisStorageService.RemoveCachedAnalysis(id);
 
                 deletedBlobCount++;
             }
@@ -631,7 +608,7 @@ public class SharingFunctions
             await blobClient.DeleteIfExistsAsync();
 
             // Remove from in-memory cache if present
-            _sharedAnalysisCache.TryRemove(id, out _);
+            _sharedAnalysisStorageService.RemoveCachedAnalysis(id);
 
             _logger.LogInformation("Successfully deleted shared analysis {Id} for user {UserId}", id, user.UserId);
 

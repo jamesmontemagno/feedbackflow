@@ -23,10 +23,12 @@ using SharedDump.Services.Interfaces;
 using FeedbackFunctions.Middleware;
 using FeedbackFunctions.Extensions;
 using FeedbackFunctions.Attributes;
+using FeedbackFunctions.Services.Sharing;
 using FeedbackFunctions.Services.Account;
 using FeedbackFunctions.Services.Twitter;
 using FeedbackFunctions.Utils;
 using SharedDump.Models.Account;
+using SharedDump.Utils;
 
 namespace FeedbackFunctions.FeedbackAnalysis;
 
@@ -52,6 +54,8 @@ public class FeedbackFunctions
     private readonly IUserAccountService _userAccountService;
     private readonly ITwitterThreadCacheService _twitterThreadCacheService;
     private readonly IFeatureGateService _featureGateService;
+    private readonly ISharedAnalysisStorageService _sharedAnalysisStorageService;
+    private readonly IConfiguration _configuration;
 
     /// <summary>
     /// Initializes a new instance of the FeedbackFunctions class
@@ -78,7 +82,9 @@ public class FeedbackFunctions
         AuthenticationMiddleware authMiddleware,
         IUserAccountService userAccountService,
         ITwitterThreadCacheService twitterThreadCacheService,
-        IFeatureGateService featureGateService)
+        IFeatureGateService featureGateService,
+        ISharedAnalysisStorageService sharedAnalysisStorageService,
+        IConfiguration configuration)
     {
         _logger = logger;
         _githubService = githubService;
@@ -93,6 +99,8 @@ public class FeedbackFunctions
         _userAccountService = userAccountService;
         _twitterThreadCacheService = twitterThreadCacheService;
         _featureGateService = featureGateService;
+        _sharedAnalysisStorageService = sharedAnalysisStorageService;
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -836,8 +844,8 @@ public class FeedbackFunctions
 
             var queryParams = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
             var url = queryParams["url"];
-        var customPrompt = queryParams["customPrompt"];
-        var typeStr = queryParams["type"];
+            var customPrompt = queryParams["customPrompt"];
+            var typeStr = queryParams["type"];
 
             if (string.IsNullOrEmpty(url))
             {
@@ -846,16 +854,238 @@ public class FeedbackFunctions
                 return response;
             }
 
-        var responseType = int.TryParse(typeStr, out var type) ? type : 0;
+            var responseType = int.TryParse(typeStr, out var type) ? type : 0;
+            var analysisSource = await AnalyzeUrlSourceAsync(url);
 
-            string serviceType;
-            object platformData;
-            string commentsText;
-
-            // Determine platform and get data
-            if (SharedDump.Utils.UrlParsing.IsGitHubUrl(url))
+            // Handle different response types
+            HttpResponseData successResponse;
+            switch (responseType)
             {
-                serviceType = "github";
+                case 1: // Comments only
+                    if (string.IsNullOrEmpty(analysisSource.CommentsText))
+                    {
+                        successResponse = req.CreateResponse(HttpStatusCode.OK);
+                        await successResponse.WriteAsJsonAsync(new { message = "No comments available for this URL" });
+                    }
+                    else
+                    {
+                        successResponse = req.CreateResponse(HttpStatusCode.OK);
+                        await successResponse.WriteAsJsonAsync(new { comments = analysisSource.CommentsText });
+                    }
+                    break;
+
+                case 2: // Both comments and analysis
+                    if (string.IsNullOrEmpty(analysisSource.CommentsText))
+                    {
+                        successResponse = req.CreateResponse(HttpStatusCode.OK);
+                        await successResponse.WriteAsJsonAsync(new
+                        {
+                            comments = "No comments available",
+                            analysis = "## No Comments Available\n\nThere are no comments to analyze at this time."
+                        });
+                    }
+                    else
+                    {
+                        var analysis = await GenerateAnalysisAsync(
+                            analysisSource.ServiceType,
+                            analysisSource.CommentsText,
+                            customPrompt);
+
+                        successResponse = req.CreateResponse(HttpStatusCode.OK);
+                        await successResponse.WriteAsJsonAsync(new
+                        {
+                            comments = analysisSource.CommentsText,
+                            analysis
+                        });
+                    }
+                    break;
+
+                default: // 0 or any other value = Analysis only (default behavior)
+                    successResponse = req.CreateResponse(HttpStatusCode.OK);
+                    if (string.IsNullOrEmpty(analysisSource.CommentsText))
+                    {
+                        await successResponse.WriteStringAsync("## No Comments Available\n\nThere are no comments to analyze at this time.");
+                    }
+                    else
+                    {
+                        var analysis = await GenerateAnalysisAsync(
+                            analysisSource.ServiceType,
+                            analysisSource.CommentsText,
+                            customPrompt);
+                        await successResponse.WriteStringAsync(analysis);
+                    }
+                    break;
+            }
+                 
+            // Track API usage on successful completion (AutoAnalyze = 1 usage point)
+            await ApiKeyValidationHelper.TrackApiUsageAsync(userId!, 1, _userAccountService, _logger, url);
+                 
+            return successResponse;
+        }
+        catch (FeatureDisabledException ex)
+        {
+            var response = req.CreateResponse(HttpStatusCode.ServiceUnavailable);
+            await response.WriteAsJsonAsync(new
+            {
+                ex.ErrorCode,
+                ex.Message
+            });
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing auto-analyze request");
+            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await response.WriteStringAsync("An error occurred processing the request");
+            return response;
+        }
+    }
+
+    [Function("GenerateDeveloperReport")]
+    public async Task<HttpResponseData> GenerateDeveloperReport(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
+    {
+        try
+        {
+            _logger.LogInformation("Processing developer report generation request");
+
+            var request = await JsonSerializer.DeserializeAsync(
+                req.Body,
+                FeedbackJsonContext.Default.DeveloperReportRequest);
+            var urls = request?.Urls
+                .Where(url => !string.IsNullOrWhiteSpace(url))
+                .Select(url => url.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList() ?? new List<string>();
+
+            if (urls.Count == 0)
+            {
+                var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+                await badResponse.WriteStringAsync("At least one URL is required.");
+                return badResponse;
+            }
+
+            var (isValid, errorResponse, userId) = await ApiKeyValidationHelper.ValidateApiKeyWithUsageAsync(
+                req,
+                req.FunctionContext.InstanceServices.GetRequiredService<IApiKeyService>(),
+                _userAccountService,
+                _logger,
+                urls.Count);
+            if (!isValid)
+            {
+                return errorResponse!;
+            }
+
+            var sources = new List<UrlAnalysisSource>();
+            foreach (var url in urls)
+            {
+                sources.Add(await AnalyzeUrlSourceAsync(url));
+            }
+
+            var combinedComments = BuildCombinedCommentsText(sources);
+            var sourceType = string.Join(", ", sources.Select(source => source.SourceType).Distinct(StringComparer.OrdinalIgnoreCase));
+            var hasAnyComments = sources.Any(source => !string.IsNullOrWhiteSpace(source.CommentsText));
+            var analysis = !hasAnyComments
+                ? "## No Comments Available\n\nThere are no comments to analyze at this time."
+                : await GenerateAnalysisAsync(sourceType, combinedComments, request?.CustomPrompt);
+
+            string? savedAnalysisId = null;
+            string? publicUrl = null;
+            var shouldSave = request?.SaveReport == true;
+            var isPublic = request?.IsPublic ?? true;
+            if (shouldSave)
+            {
+                var analysisData = new AnalysisData
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Title = $"{sourceType} Analysis",
+                    Summary = AnalysisDataHelper.TruncateSummary(analysis) ?? string.Empty,
+                    FullAnalysis = analysis,
+                    SourceType = sourceType,
+                    UserInput = AnalysisDataHelper.TruncateUserInput(string.Join(", ", urls)),
+                    CreatedDate = DateTime.UtcNow,
+                };
+
+                savedAnalysisId = await _sharedAnalysisStorageService.SaveAnalysisAsync(userId!, analysisData, isPublic);
+                publicUrl = WebUrlHelper.BuildAnalysisUrl(_configuration, savedAnalysisId);
+            }
+
+            await ApiKeyValidationHelper.TrackApiUsageAsync(
+                userId!,
+                urls.Count,
+                _userAccountService,
+                _logger,
+                string.Join(", ", urls));
+
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            await response.WriteAsJsonAsync(new DeveloperReportResponse
+            {
+                Analysis = analysis,
+                SourceType = sourceType,
+                Urls = urls,
+                Sources = sources.Select(source => new DeveloperReportSourceResult
+                {
+                    Url = source.Url,
+                    SourceType = source.SourceType,
+                    HasComments = !string.IsNullOrWhiteSpace(source.CommentsText)
+                }).ToList(),
+                SavedAnalysisId = savedAnalysisId,
+                Url = publicUrl,
+                IsPublic = shouldSave && isPublic
+            });
+
+            return response;
+        }
+        catch (FeatureDisabledException ex)
+        {
+            var response = req.CreateResponse(HttpStatusCode.ServiceUnavailable);
+            await response.WriteAsJsonAsync(new
+            {
+                ex.ErrorCode,
+                ex.Message
+            });
+            return response;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid developer report request");
+            var response = req.CreateResponse(HttpStatusCode.BadRequest);
+            await response.WriteStringAsync(ex.Message);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing developer report generation request");
+            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await response.WriteStringAsync("An error occurred processing the request");
+            return response;
+        }
+    }
+
+    #region Helper Methods for AutoAnalyze
+
+    private sealed record UrlAnalysisSource(string Url, string ServiceType, string SourceType, string CommentsText);
+
+    private sealed class FeatureDisabledException : Exception
+    {
+        public FeatureDisabledException(string errorCode, string message)
+            : base(message)
+        {
+            ErrorCode = errorCode;
+        }
+
+        public string ErrorCode { get; }
+    }
+
+    private async Task<UrlAnalysisSource> AnalyzeUrlSourceAsync(string url)
+    {
+        string serviceType;
+        object platformData;
+        string commentsText;
+
+        if (SharedDump.Utils.UrlParsing.IsGitHubUrl(url))
+        {
+            serviceType = "github";
             platformData = await GetGitHubDataForAnalysis(url);
             commentsText = ConvertGitHubDataToCommentsText(platformData);
         }
@@ -869,9 +1099,7 @@ public class FeedbackFunctions
         {
             if (SharedDump.Utils.UrlParsing.IsRedditShareUrl(url))
             {
-                var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await badResponse.WriteStringAsync(SharedDump.Utils.UrlParsing.UnsupportedRedditShareUrlMessage);
-                return badResponse;
+                throw new InvalidOperationException(SharedDump.Utils.UrlParsing.UnsupportedRedditShareUrlMessage);
             }
 
             serviceType = "reddit";
@@ -886,17 +1114,11 @@ public class FeedbackFunctions
         }
         else if (SharedDump.Utils.UrlParsing.IsTwitterUrl(url))
         {
-            // Check if X/Twitter is enabled
             if (!_featureGateService.IsXEnabled)
             {
-                var disabledResponse = req.CreateResponse(HttpStatusCode.ServiceUnavailable);
-                await disabledResponse.WriteAsJsonAsync(new
-                {
-                    ErrorCode = "X_FEATURE_DISABLED",
-                    Message = "X/Twitter integration is currently disabled."
-                });
-                return disabledResponse;
+                throw new FeatureDisabledException("X_FEATURE_DISABLED", "X/Twitter integration is currently disabled.");
             }
+
             serviceType = "twitter";
             platformData = await GetTwitterDataForAnalysis(url);
             commentsText = ConvertTwitterDataToCommentsText(platformData);
@@ -913,104 +1135,73 @@ public class FeedbackFunctions
             var hackerNewsId = SharedDump.Utils.UrlParsing.ExtractHackerNewsId(url);
             if (string.IsNullOrEmpty(hackerNewsId))
             {
-                var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
-                await badResponse.WriteStringAsync("Could not extract Hacker News ID from URL");
-                return badResponse;
+                throw new InvalidOperationException("Could not extract Hacker News ID from URL");
             }
-                platformData = await GetHackerNewsDataForAnalysis(hackerNewsId);
-                commentsText = ConvertHackerNewsDataToCommentsText(platformData);
-            }
-                else
-                {
-                    var response = req.CreateResponse(HttpStatusCode.BadRequest);
-                    await response.WriteStringAsync("Unsupported URL format. Supported platforms: GitHub, YouTube, Reddit, DevBlogs, Twitter/X, BlueSky, Hacker News");
-                    return response;
-                }
 
-                // Handle different response types
-                HttpResponseData successResponse;
-                
-                switch (responseType)
-                {
-                    case 1: // Comments only
-                        if (string.IsNullOrEmpty(commentsText))
-                        {
-                            successResponse = req.CreateResponse(HttpStatusCode.OK);
-                            await successResponse.WriteAsJsonAsync(new { message = "No comments available for this URL" });
-                        }
-                        else
-                        {
-                            successResponse = req.CreateResponse(HttpStatusCode.OK);
-                            await successResponse.WriteAsJsonAsync(new { comments = commentsText });
-                        }
-                        break;
-                        
-                    case 2: // Both comments and analysis
-                        if (string.IsNullOrEmpty(commentsText))
-                        {
-                            successResponse = req.CreateResponse(HttpStatusCode.OK);
-                            await successResponse.WriteAsJsonAsync(new { 
-                                comments = "No comments available",
-                                analysis = "## No Comments Available\n\nThere are no comments to analyze at this time."
-                            });
-                        }
-                        else
-                        {
-                            var analysisBuilder = new System.Text.StringBuilder();
-                            await foreach (var update in _analyzerService.GetStreamingAnalysisAsync(
-                                serviceType, 
-                                commentsText,
-                                customPrompt))
-                            {
-                                analysisBuilder.Append(update);
-                            }
-                            
-                            successResponse = req.CreateResponse(HttpStatusCode.OK);
-                            await successResponse.WriteAsJsonAsync(new { 
-                                comments = commentsText,
-                                analysis = analysisBuilder.ToString()
-                            });
-                        }
-                        break;
-                        
-                    default: // 0 or any other value = Analysis only (default behavior)
-                        if (string.IsNullOrEmpty(commentsText))
-                        {
-                            successResponse = req.CreateResponse(HttpStatusCode.OK);
-                            await successResponse.WriteStringAsync("## No Comments Available\n\nThere are no comments to analyze at this time.");
-                        }
-                        else
-                        {
-                            var analysisBuilder = new System.Text.StringBuilder();
-                            await foreach (var update in _analyzerService.GetStreamingAnalysisAsync(
-                                serviceType, 
-                                commentsText,
-                                customPrompt))
-                            {
-                                analysisBuilder.Append(update);
-                            }
-                            
-                            successResponse = req.CreateResponse(HttpStatusCode.OK);
-                            await successResponse.WriteStringAsync(analysisBuilder.ToString());
-                        }
-                        break;
-                }
-                
-                // Track API usage on successful completion (AutoAnalyze = 1 usage point)
-                await ApiKeyValidationHelper.TrackApiUsageAsync(userId!, 1, _userAccountService, _logger, url);
-                
-                return successResponse;
+            platformData = await GetHackerNewsDataForAnalysis(hackerNewsId);
+            commentsText = ConvertHackerNewsDataToCommentsText(platformData);
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "Error processing auto-analyze request");
-            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await response.WriteStringAsync("An error occurred processing the request");
-            return response;
+            throw new InvalidOperationException("Unsupported URL format. Supported platforms: GitHub, YouTube, Reddit, DevBlogs, Twitter/X, BlueSky, Hacker News");
         }
+
+        return new UrlAnalysisSource(url, serviceType, GetDisplaySourceType(serviceType), commentsText);
     }
 
-    #region Helper Methods for AutoAnalyze
+    private static string GetDisplaySourceType(string serviceType)
+    {
+        return serviceType.ToLowerInvariant() switch
+        {
+            "github" => "GitHub",
+            "youtube" => "YouTube",
+            "reddit" => "Reddit",
+            "devblogs" => "DevBlogs",
+            "twitter" => "Twitter",
+            "bluesky" => "BlueSky",
+            "hackernews" => "HackerNews",
+            _ => serviceType
+        };
+    }
+
+    private async Task<string> GenerateAnalysisAsync(string serviceType, string commentsText, string? customPrompt)
+    {
+        var analysisBuilder = new System.Text.StringBuilder();
+        await foreach (var update in _analyzerService.GetStreamingAnalysisAsync(
+            serviceType,
+            commentsText,
+            customPrompt))
+        {
+            analysisBuilder.Append(update);
+        }
+
+        return analysisBuilder.ToString();
+    }
+
+    private static string BuildCombinedCommentsText(IEnumerable<UrlAnalysisSource> sources)
+    {
+        var result = new System.Text.StringBuilder();
+        foreach (var source in sources)
+        {
+            result.AppendLine($"# Source: {source.SourceType}");
+            result.AppendLine($"URL: {source.Url}");
+            result.AppendLine();
+
+            if (string.IsNullOrWhiteSpace(source.CommentsText))
+            {
+                result.AppendLine("No comments available for this URL.");
+            }
+            else
+            {
+                result.AppendLine(source.CommentsText);
+            }
+
+            result.AppendLine();
+            result.AppendLine("---");
+        }
+
+        return result.ToString();
+    }
 
     private async Task<object> GetGitHubDataForAnalysis(string url)
     {

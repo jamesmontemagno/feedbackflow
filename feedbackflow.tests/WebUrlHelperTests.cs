@@ -131,6 +131,25 @@ public class WebUrlHelperTests
     }
 
     [TestMethod]
+    public void BuildAnalysisUrl_WithAnalysisId_ReturnsCorrectUrl()
+    {
+        // Arrange
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["WebUrl"] = "https://test.com/"
+            })
+            .Build();
+        var analysisId = Guid.NewGuid().ToString();
+
+        // Act
+        var result = WebUrlHelper.BuildAnalysisUrl(configuration, analysisId);
+
+        // Assert
+        Assert.AreEqual($"https://test.com/analysis/{analysisId}", result);
+    }
+
+    [TestMethod]
     public void BuildReportQueryUrl_WithReportId_ReturnsCorrectUrl()
     {
         // Arrange

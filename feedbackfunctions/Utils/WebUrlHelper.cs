@@ -57,7 +57,18 @@ public static class WebUrlHelper
         
         return url;
     }
-    
+
+    /// <summary>
+    /// Builds a URL for viewing a shared analysis by ID
+    /// </summary>
+    /// <param name="configuration">The configuration service</param>
+    /// <param name="analysisId">The shared analysis ID</param>
+    /// <returns>The complete URL to view the shared analysis</returns>
+    public static string BuildAnalysisUrl(IConfiguration configuration, string analysisId)
+    {
+        return BuildUrl(configuration, $"/analysis/{analysisId}");
+    }
+     
     /// <summary>
     /// Builds a URL for viewing a report with query parameters
     /// </summary>

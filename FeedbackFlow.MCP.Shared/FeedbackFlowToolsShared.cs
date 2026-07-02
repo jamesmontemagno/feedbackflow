@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using System.Text;
+using System.Text.Json;
 using ModelContextProtocol.Server;
 
 namespace FeedbackFlow.MCP.Shared;
@@ -21,6 +23,17 @@ public sealed class FeedbackFlowToolsShared
         AnalysisOnly = 0,
         CommentsOnly = 1,
         AnalysisAndComments = 2
+    }
+
+    private sealed class DeveloperReportRequest
+    {
+        public List<string> Urls { get; set; } = new();
+
+        public string? CustomPrompt { get; set; }
+
+        public bool SaveReport { get; set; }
+
+        public bool IsPublic { get; set; } = true;
     }
 
     [McpServerTool, Description("Analyze feedback from various sources using AI (AutoAnalyze function).")]
@@ -60,6 +73,59 @@ public sealed class FeedbackFlowToolsShared
             {
                 return $"Error: API call failed with status {response.StatusCode}. Response: {content}";
             }
+        }
+        catch (Exception ex)
+        {
+            return $"Error: Exception occurred - {ex.Message}";
+        }
+    }
+
+    [McpServerTool, Description("Generate a combined AI analysis report from one or more feedback URLs, optionally save it publicly, and return the report URL.")]
+    public async Task<string> GenerateDeveloperReport(
+        [Description("The URLs to analyze and combine into a single report. Supported platforms include GitHub, YouTube, Reddit, DevBlogs, Twitter/X, BlueSky, and Hacker News.")] List<string> urls,
+        [Description("Custom analysis prompt (optional)")] string? customPrompt = null,
+        [Description("Save the generated report and return a web URL (default: true)")] bool saveReport = true,
+        [Description("Make the saved report publicly accessible (default: true)")] bool isPublic = true)
+    {
+        var apiKey = _authenticationProvider.GetAuthenticationToken();
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            return _authenticationProvider.GetAuthenticationErrorMessage();
+        }
+
+        if (urls == null || urls.Count == 0 || urls.All(string.IsNullOrWhiteSpace))
+        {
+            return "Error: At least one URL is required.";
+        }
+
+        try
+        {
+            using var httpClient = _httpClientFactory.CreateClient();
+
+            var requestBody = new DeveloperReportRequest
+            {
+                Urls = urls.Where(url => !string.IsNullOrWhiteSpace(url)).Select(url => url.Trim()).ToList(),
+                CustomPrompt = customPrompt,
+                SaveReport = saveReport,
+                IsPublic = isPublic
+            };
+
+            var requestUrl = $"{BaseUrl}/api/GenerateDeveloperReport";
+            var request = new HttpRequestMessage(HttpMethod.Post, requestUrl)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("x-api-key", apiKey);
+
+            var response = await httpClient.SendAsync(request);
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                return content;
+            }
+
+            return $"Error: API call failed with status {response.StatusCode}. Response: {content}";
         }
         catch (Exception ex)
         {
